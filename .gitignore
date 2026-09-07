@@ -26,3 +26,6 @@ secrets.*
 
 # ESP-IDF (build/ is already covered above)
 sdkconfig.old
+
+# Go
+bin/
