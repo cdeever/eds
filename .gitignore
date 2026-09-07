@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Local tuning output
+sheet.png
+testdata/
+
+# Terraform - see infra/deevnet-tenant-eds for the authoritative rules.
+# State is never committed; provider pins are.
+.terraform/
+*.tfplan
+terraform.tfstate
+terraform.tfstate.backup
+fabric.auto.tfvars
+*.auto.tfvars
+
+# Secrets arrive as environment variables, never as files.
+*.env
+secrets.*
+
+# ESP-IDF (build/ is already covered above)
+sdkconfig.old
