@@ -29,3 +29,5 @@ sdkconfig.old
 
 # Go
 bin/
+main/certs/*.pem
+firmware/*/test/host/run-tests
