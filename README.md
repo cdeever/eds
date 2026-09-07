@@ -10,7 +10,7 @@ This is a monorepo. Each project below is a distinct piece of that system.
 | [`services/palette`](services/palette) | Python | Album cover art in, ranked colour swatches out |
 | [`services/lightd`](services/lightd) | Go | Cover image in, MQTT scene out |
 | [`firmware/lp-stand`](firmware/lp-stand) | C / ESP-IDF | The LP jacket stand: MQTT subscriber driving an addressable RGB strip |
-| [`infra/deevnet-tenant-eds`](infra) | Terraform | The EdS tenant on the deevnet Proxmox substrate |
+| [`infra/deevnet-tenant-eds`](infra/deevnet-tenant-eds) | Terraform | The EdS tenant on the deevnet Proxmox substrate |
 
 ## The first vertical
 
