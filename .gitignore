@@ -24,10 +24,22 @@ fabric.auto.tfvars
 *.env
 secrets.*
 
-# ESP-IDF (build/ is already covered above)
+# ESP-IDF (build/ is already covered above).
+#
+# sdkconfig is GENERATED from sdkconfig.defaults on the first build and holds
+# the values actually configured - including CONFIG_LP_WIFI_PASSWORD and
+# CONFIG_LP_MQTT_PASSWORD. It is the one file in this repository that would
+# carry a live secret, so it is ignored rather than trusted to discipline.
+# Unanchored on purpose: it matches at any depth, for any future firmware.
+sdkconfig
 sdkconfig.old
 
 # Go
 bin/
-main/certs/*.pem
 firmware/*/test/host/run-tests
+
+# Embedded CA bundles, staged locally rather than committed. The previous
+# pattern here was `main/certs/*.pem`, which contains a slash and is therefore
+# anchored to this directory - so it only ever matched a top-level main/certs/
+# that does not exist, and never the firmware's.
+**/certs/*.pem
