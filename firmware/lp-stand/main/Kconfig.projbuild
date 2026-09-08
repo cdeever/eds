@@ -1,0 +1,76 @@
+menu "LP jacket stand"
+
+    config LP_STAND_ID
+        string "Stand identifier"
+        default "lp-stand-01"
+        help
+            Appears in the MQTT topics and as the client id. Must match the
+            stand lightd publishes to: eds/lightstand/<id>/scene.
+
+    config LP_TOPIC_PREFIX
+        string "Topic prefix"
+        default "eds"
+        help
+            Root of the topic tree. Must match lightd's LIGHTD_TOPIC_PREFIX.
+
+    menu "Strip"
+
+        config LP_LED_COUNT
+            int "Number of LEDs"
+            range 1 300
+            default 60
+
+        config LP_LED_GPIO
+            int "Data GPIO"
+            range 0 48
+            default 18
+            help
+                Data line for the WS2812/SK6812 strip. Pick a pin that is not
+                strapped at boot, or the strip will flicker during reset.
+
+    endmenu
+
+    menu "Network"
+
+        config LP_WIFI_SSID
+            string "WiFi SSID"
+            default "DVNTM-IOT"
+            help
+                The stand belongs on the IoT segment (VLAN 30), where the
+                segmentation model puts custom-firmware embedded devices.
+
+        config LP_WIFI_PASSWORD
+            string "WiFi password"
+            default ""
+
+        config LP_MQTT_URI
+            string "Broker URI"
+            default "mqtt://mqtt.mobile.deevnet.net:1883"
+            help
+                mqtt:// for bring-up, mqtts:// once the broker has a
+                certificate. The broker is dv02mqt001v01 on IoT Backend
+                (VLAN 35); `mqtt` is its service CNAME, so the host can move
+                without reflashing every stand.
+
+        config LP_MQTT_USERNAME
+            string "Broker username"
+            default "lp-stand-01"
+
+        config LP_MQTT_PASSWORD
+            string "Broker password"
+            default ""
+            help
+                Stored in the firmware image. This is the weak point of
+                username/password auth and the reason per-device client
+                certificates are on the roadmap.
+
+        config LP_MQTT_USE_TLS
+            bool "Verify the broker with an embedded CA"
+            default n
+            help
+                Requires main/certs/mqtt_ca.pem. Leave off only for bring-up
+                against a local broker.
+
+    endmenu
+
+endmenu

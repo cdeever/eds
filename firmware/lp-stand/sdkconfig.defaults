@@ -1,0 +1,17 @@
+# Defaults that make a fresh checkout build into something that runs.
+
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=4096
+
+# The render task touches the strip every 16ms; the default 100Hz tick makes
+# that a 10ms granularity, which visibly beats against the frame interval.
+CONFIG_FREERTOS_HZ=1000
+
+# Scenes are small and infrequent.
+CONFIG_MQTT_BUFFER_SIZE=2048
+
+# Recover rather than sulk: an unattended stand should come back on its own.
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=y
+
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"

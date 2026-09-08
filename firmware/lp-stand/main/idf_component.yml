@@ -1,0 +1,6 @@
+dependencies:
+  idf: ">=5.1"
+  # Espressif's own strip driver. The timing for WS2812-class parts is
+  # unforgiving and this already gets it right; there is nothing to be learned
+  # by reimplementing it and plenty to get subtly wrong.
+  espressif/led_strip: "^2.5.3"
