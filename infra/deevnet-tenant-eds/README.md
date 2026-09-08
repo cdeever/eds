@@ -8,7 +8,7 @@ rebuildable from scratch against the substrate without a substrate commit
 |---|---|
 | Index | 1 (to be allocated in the factory's `TENANTS.md`) |
 | Subnet | `10.20.129.0/24`, gateway `10.20.129.1` |
-| Zone | `eds.dvntm.deevnet.net` |
+| Zone | `eds.mobile.deevnet.net` |
 | Service host | `10.20.129.10` — `palette` and `lightd` |
 | Module | `tenant-module-v1.1.0` |
 

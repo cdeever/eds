@@ -19,10 +19,17 @@ DEEVNET_ROOT  ?= $(CURDIR)/../../..
 IMAGE_FACTORY ?= $(DEEVNET_ROOT)/deevnet-image-factory
 INVENTORY     ?= $(DEEVNET_ROOT)/ansible-inventory-deevnet
 
-SITE     ?= mobile
-PVE_NODE ?= pve2
-PVE_ENV  := $(IMAGE_FACTORY)/build/pve-env/$(PVE_NODE).env
-VAULT    := $(INVENTORY)/$(SITE)/group_vars/all/vault.yml
+SITE ?= mobile
+
+# The image factory's credential target is still named pve2-env, but the file it
+# writes is named after the PVE *node*, which ADR-0008 renamed from pve2 to
+# dv02hyp002p02. tdemo's Makefile conflates the two and now looks for a
+# pve2.env that the factory no longer writes, so `make plan` there re-renders
+# credentials on every run. Keeping them separate is the fix.
+PVE_ENV_TARGET ?= pve2-env
+PVE_NODE       ?= dv02hyp002p02
+PVE_ENV        := $(IMAGE_FACTORY)/build/pve-env/$(PVE_NODE).env
+VAULT          := $(INVENTORY)/$(SITE)/group_vars/all/vault.yml
 
 TF_APPROVE := $(if $(AUTO),-auto-approve,)
 
@@ -61,7 +68,7 @@ $(PVE_ENV): check-paths
 	$(MAKE) creds
 
 creds: check-paths
-	$(MAKE) -C "$(IMAGE_FACTORY)" $(PVE_NODE)-env
+	$(MAKE) -C "$(IMAGE_FACTORY)" $(PVE_ENV_TARGET)
 
 # The TSIG secret is delivery-by-environment on purpose: it is a secret this
 # repository must never hold.

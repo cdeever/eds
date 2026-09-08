@@ -34,7 +34,7 @@ menu "LP jacket stand"
 
         config LP_WIFI_SSID
             string "WiFi SSID"
-            default "deevnet-iot"
+            default "DVNTM-IOT"
             help
                 The stand belongs on the IoT segment (VLAN 30), where the
                 segmentation model puts custom-firmware embedded devices.
@@ -45,10 +45,12 @@ menu "LP jacket stand"
 
         config LP_MQTT_URI
             string "Broker URI"
-            default "mqtt://mqtt01.mobile.deevnet.net:1883"
+            default "mqtt://mqtt.mobile.deevnet.net:1883"
             help
                 mqtt:// for bring-up, mqtts:// once the broker has a
-                certificate. mqtt01 lives on IoT Backend (VLAN 35).
+                certificate. The broker is dv02mqt001v01 on IoT Backend
+                (VLAN 35); `mqtt` is its service CNAME, so the host can move
+                without reflashing every stand.
 
         config LP_MQTT_USERNAME
             string "Broker username"
