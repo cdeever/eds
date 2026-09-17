@@ -1,20 +1,10 @@
-# Terraform state is NOT committed. It lives in the substrate's state store
-# (ADR-0007), which also gives locking that a repository cannot.
+# Terraform state is NOT committed: it holds every credential the substrate
+# issued this tenant (ADR-0015 §4).
 terraform.tfstate
 terraform.tfstate.backup
 .terraform/
 *.tfplan
 .terraform.tfstate.lock.info
 
-# Issued by the substrate, not authored here - re-issue rather than commit.
-fabric.auto.tfvars
-
-# Never: the TSIG secret and the state credential arrive as environment
-# variables, not files.
-*.auto.tfvars
-secrets.auto.tfvars
-*.env
-
-# Provider pins ARE committed (.terraform.lock.hcl is deliberately absent from
-# this list): a module pinned by tag with providers left to float is half a
-# pin, and the floating half is the dangerous one.
+# Issued at admission, never committed.
+site-ca.pem

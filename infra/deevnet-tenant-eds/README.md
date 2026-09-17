@@ -1,87 +1,65 @@
 # deevnet-tenant-eds
 
-The EdS tenant, as code: its overlay network, its workload and its DNS records,
-rebuildable from scratch against the substrate without a substrate commit
-([ADR-0006](https://github.com/deevnet/deevnet-docs)).
+The EdS tenant, as code: its network, its workload and its DNS records, built
+through the Deevnet API and rebuildable without a substrate commit
+([ADR-0015][adr15]).
 
 | | |
 |---|---|
-| Index | 1 (allocated in the factory's `TENANTS.md`) |
-| Subnet | `10.20.129.0/24`, gateway `10.20.129.1` |
 | Zone | `eds.mobile.deevnet.net` |
-| Service host | `10.20.129.10` — `palette` and `lightd` |
-| Module | `tenant-module-v1.1.0` |
+| Services | `palette` and `lightd`, on one workload |
+| Provider | `deevnet/deevnet` |
+
+[adr15]: https://deevnet.github.io/deevnet-docs/docs/architecture/decisions/0015-tenant-onboarding-through-api/
+[adr6]: https://deevnet.github.io/deevnet-docs/docs/architecture/decisions/0006-tenant-code-boundary/
+[adr7]: https://deevnet.github.io/deevnet-docs/docs/architecture/decisions/0007-terraform-state-custody/
+[adr4]: https://deevnet.github.io/deevnet-docs/docs/architecture/decisions/0004-tenant-dns-publication/
+[adr12]: https://deevnet.github.io/deevnet-docs/docs/architecture/decisions/0012-iot-platform-api/
+
+## What EdS holds
+
+One credential: its Deevnet API token. No index, no Proxmox token, no vault
+access. The API issues the index, the network numbering, the DNS zone and key,
+the state-store credential and each workload's address, and they land in this
+tenant's Terraform state, which is their authoritative copy.
 
 ## Status: written, never applied
 
-This has been `terraform validate`d against the real module at
-`tenant-module-v1.1.0`, and its derived addressing checked against ADR-0002.
-It has **not** been planned or applied. Where each prerequisite stands:
+The configuration validates against the provider. It has **not** been applied,
+and cannot be until the API is deployed (CHG-0010). When it is:
 
-1. **Index 1 is allocated.** `tdemo` released it when it was destroyed on
-   2026-09-05. eds took it in the inventory's `deevnet_tenants` on 2026-09-07,
-   and the factory's `TENANTS.md` records it.
-2. **Onboarding is partly done.**
-   - **DNS (ADR-0004): done.** CHG-0008 created both eds zones on
-     `dv02idn001v01` and bound the `eds` TSIG key to them, and the zones resolve
-     through the core router.
-   - **State (ADR-0007): done.** The same change created eds's scoped state
-     credential on `dv02prv001v01`.
-   - **Dynamic updates from the tenant fabric: not yet.** PowerDNS still
-     accepts updates from the management subnet only. The fix is
-     `deevnet/ansible-collection-deevnet.mgmt#19`, not yet applied. Until it
-     is, an update sent from the Builder, on management, is admitted, and one
-     sent from inside the tenant fabric is refused.
-   - **Egress (ADR-0003): not confirmed here.**
-3. **Issue the fabric attachment**: `make tenant-attachment TENANT=$(pwd)` in
-   the factory, which writes `fabric.auto.tfvars` here.
+1. The operator admits `eds` and sends back a single-use enrollment token, the
+   API's address and its CA certificate.
+2. `export DEEVNET_API_TOKEN=<enrollment token>` and `make init && make apply`.
+   That spends the token and returns EdS's own.
+3. `export DEEVNET_API_TOKEN=$(terraform output -raw api_token)` from then on.
+4. `make state-backend`, then `terraform init -migrate-state`, to keep state in
+   the substrate's store ([ADR-0007][adr7]) - or leave it out and keep custody
+   here.
 
-The tenant DNS server and state store moved to Platform (VLAN 25) in CHG-0008.
-This tenant reaches both by name (`tdns`, `tfstate`), so the move needed only
-the `dns_update_server` default fixed, which had been a hardcoded address.
+**Its zones and its state-store user already exist**, created by CHG-0008 from
+the inventory. The API adopts them rather than recreating them. The **TSIG
+secret is replaced** by the one the API issues, and this state becomes its
+authoritative copy - nothing held the old one except the substrate vault, and
+EdS has never applied.
+
+## Publishing names
+
+The API publishes `services.eds.mobile.deevnet.net` and the two service names
+beside it. EdS's TSIG key is still issued, so anything it would rather publish
+itself over RFC 2136 still works ([ADR-0004][adr4]):
+`terraform output -json dns_publication`.
 
 ## This diverges from ADR-0006, on purpose
 
-ADR-0006's pattern is that the repository *is* the tenant — a standalone
-`deevnet-tenant-<name>` repository with the deevnet repositories as siblings.
-This tenant instead lives two directories inside the EdS monorepo, so that the
-application and the infrastructure it runs on stay in one place.
+[ADR-0006][adr6]'s pattern is that the repository *is* the tenant — a standalone
+`deevnet-tenant-<name>` repository. This tenant instead lives two directories
+inside the EdS monorepo, so that the application and the infrastructure it runs
+on stay in one place.
 
-The practical cost is one assumption: the Makefile expects the deevnet
-repositories three levels up rather than one. That is inspectable rather than
-something to discover from a failure:
-
-```bash
-make paths        # says where it is looking, and whether each exists
-make plan DEEVNET_ROOT=/path/to/checkouts   # if yours live elsewhere
-```
-
-Nothing else about the pattern changes. State still lives in the substrate's
-store, the module is still pinned by tag, and the secrets still arrive as
-environment variables.
-
-## What the substrate issues, and what you author
-
-| Issued | Arrives as | Re-issue with |
-|---|---|---|
-| Fabric attachment | `fabric.auto.tfvars` | `make tenant-attachment TENANT=$(pwd)` in the factory |
-| TSIG key | `TF_VAR_tsig_key_secret` | read from the inventory vault |
-| Tenant index | the value in `main.tf` | allocated in `TENANTS.md` |
-
-## Running it
-
-```bash
-export TF_VAR_tsig_key_secret=$(ansible-vault view \
-  ../../../ansible-inventory-deevnet/mobile/group_vars/all/vault.yml \
-  | yq -r .vault_tenant_tsig_keys.eds)
-
-make init      # fetches the tagged module - needs GitHub and your ssh-agent
-make plan
-make apply
-```
-
-Proxmox credentials are rendered from the inventory vault by the targets
-themselves; nothing is stored here.
+That used to cost something: the Makefile had to find the deevnet repositories
+to render credentials. It no longer does. A tenant reaches one API with one
+token, so this directory is self-contained wherever it sits.
 
 ## Why the broker is not in this tenant
 
@@ -112,10 +90,10 @@ because tenants are otherwise granted Platform only.
 
 ## Site: built on mobile, designed for home
 
-The site selectors (`site_octet`, `vrf_vni_base`, `vnet_vni_base`,
-`dns_substrate`) are passed explicitly in `terraform.tfvars` rather than left
-to the module's defaults, so relocating EdS to the home site is a change there
-rather than an edit to `main.tf`.
+The site is no longer named here at all. Each site runs its own API
+([ADR-0015][adr15] §8), so relocating EdS means pointing `DEEVNET_API_ENDPOINT`
+at the home site's API and being admitted there; its index and addressing come
+from that site.
 
 That matters for this tenant in particular. ADR-0008 records that only the
 mobile site has hosts, and `addressing.md` describes a "mobile co-located with
@@ -123,17 +101,27 @@ home" WAN mode — the mobile rack travels. A turntable does not. **The lights
 stop when the rack leaves.** Accepted for now, because mobile is the only
 fabric that exists.
 
-## State and pins
+## Until the provider is published
 
-State is **not** in this repository; it lives in the substrate's state store
-(ADR-0007) under `tenants/eds/terraform.tfstate`, which also provides the
-locking a repository cannot.
+The provider is not in the public registry yet, so `terraform init` needs it
+locally:
 
-`.terraform.lock.hcl` **is** committed. A module pinned by tag with providers
-left to float is half a pin, and the floating half is the dangerous one.
+```bash
+git clone git@github.com:deevnet/terraform-provider-deevnet.git
+cd terraform-provider-deevnet && make build
+D=~/.terraform.d/plugins/registry.terraform.io/deevnet/deevnet/0.1.0/linux_amd64
+mkdir -p $D && cp terraform-provider-deevnet $D/
+```
 
-The module is pinned to `tenant-module-v1.1.0` rather than the `v1.0.0` tdemo
-used; the only difference is a validation rejecting a `tenant_index` outside
-1–63. `terraform init` vendors the module and neither `plan` nor `apply`
-re-fetches it, so moving to a newer tag needs an explicit
-`terraform init -upgrade` — a feature and a trap in equal measure.
+The site's provider mirror replaces this ([ADR-0012][adr12] §7).
+
+## State
+
+State is **not** committed here. It holds every credential the substrate issued
+EdS ([ADR-0015][adr15] §4), so it belongs in the substrate's state store under
+`tenants/eds/terraform.tfstate`, which also gives the locking a repository
+cannot — or somewhere with the same care, if EdS keeps its own custody
+([ADR-0007][adr7]).
+
+`.terraform.lock.hcl` will be committed once the provider is published and the
+site mirror serves it; until then it would pin a local build.
