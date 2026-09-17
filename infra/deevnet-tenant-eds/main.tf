@@ -27,20 +27,20 @@ terraform {
   # tenant below, so it is configured after the first apply:
   # `make state-backend`, then `terraform init -migrate-state`.
   #
-  # backend "s3" {
-  #   bucket       = "tf-state"
-  #   key          = "tenants/eds/terraform.tfstate"
-  #   region       = "us-east-1"
-  #   endpoints    = { s3 = "http://tfstate.mobile.deevnet.net:9000" }
-  #   use_lockfile = true
-  #
-  #   skip_credentials_validation = true
-  #   skip_region_validation      = true
-  #   skip_requesting_account_id  = true
-  #   skip_metadata_api_check     = true
-  #   skip_s3_checksum            = true
-  #   use_path_style              = true
-  # }
+  backend "s3" {
+    bucket       = "tf-state"
+    key          = "tenants/eds/terraform.tfstate"
+    region       = "us-east-1"
+    endpoints    = { s3 = "http://tfstate.mobile.deevnet.net:9000" }
+    use_lockfile = true
+  
+    skip_credentials_validation = true
+    skip_region_validation      = true
+    skip_requesting_account_id  = true
+    skip_metadata_api_check     = true
+    skip_s3_checksum            = true
+    use_path_style              = true
+  }
 }
 
 # DEEVNET_API_ENDPOINT, DEEVNET_API_TOKEN, DEEVNET_API_CACERT.

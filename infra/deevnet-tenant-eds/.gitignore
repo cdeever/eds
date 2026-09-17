@@ -8,3 +8,12 @@ terraform.tfstate.backup
 
 # Issued at admission, never committed.
 site-ca.pem
+
+# A failed apply or destroy writes the state it could not persist here, and it
+# holds the same credentials the state does.
+errored.tfstate
+
+# The lock file pins provider checksums, and until deevnet/deevnet is published
+# or mirrored (ADR-0012 §7) the only source is a locally built binary whose
+# hash is nobody else's. It comes back with the mirror.
+.terraform.lock.hcl
