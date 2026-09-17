@@ -1,101 +1,65 @@
-# Tenant: eds
+# EdS tenant.
 #
-# Everything that recurs - adding a record, rebuilding, destroying - happens
-# here and touches no substrate repository (ADR-0006).
-#
-# Two things arrive from the substrate at onboarding and are not authored here:
-#   fabric.auto.tfvars       make tenant-attachment TENANT=$(CURDIR)
-#   TF_VAR_tsig_key_secret   read from the inventory vault, exported
-#
+# EdS holds one credential: its Deevnet API token. No vault, no Proxmox
+# credential, no index. The substrate issues the rest through the API
+# (ADR-0015), and it lands in this tenant's Terraform state.
 .ONESHELL:
 SHELL := /usr/bin/bash
 .SHELLFLAGS := -euo pipefail -c
 
-# The tdemo pattern assumes the deevnet repositories are siblings of the tenant
-# repository. This tenant lives two directories inside the EdS monorepo, so
-# they are three levels up instead. Override DEEVNET_ROOT if your checkouts
-# live somewhere else.
-DEEVNET_ROOT  ?= $(CURDIR)/../../..
-IMAGE_FACTORY ?= $(DEEVNET_ROOT)/deevnet-image-factory
-INVENTORY     ?= $(DEEVNET_ROOT)/ansible-inventory-deevnet
-
-SITE ?= mobile
-
-# The image factory's credential target is still named pve2-env, but the file it
-# writes is named after the PVE *node*, which ADR-0008 renamed from pve2 to
-# dv02hyp002p02. tdemo's Makefile conflates the two and now looks for a
-# pve2.env that the factory no longer writes, so `make plan` there re-renders
-# credentials on every run. Keeping them separate is the fix.
-PVE_ENV_TARGET ?= pve2-env
-PVE_NODE       ?= dv02hyp002p02
-PVE_ENV        := $(IMAGE_FACTORY)/build/pve-env/$(PVE_NODE).env
-VAULT          := $(INVENTORY)/$(SITE)/group_vars/all/vault.yml
+export DEEVNET_API_ENDPOINT ?= https://api.mobile.deevnet.net:8080
+export DEEVNET_API_CACERT   ?= $(CURDIR)/site-ca.pem
 
 TF_APPROVE := $(if $(AUTO),-auto-approve,)
 
-.PHONY: help paths creds require-secret init plan apply destroy fmt validate
+.PHONY: help require-token init plan apply destroy state-backend fmt validate
 
 help:
-	@echo "eds - tenant repository (inside the EdS monorepo)"
+	@echo "eds - tenant (inside the EdS monorepo)"
 	@echo
-	@echo "  paths     show where this expects the deevnet repositories"
-	@echo "  init      terraform init (fetches the tagged module; needs GitHub + ssh-agent)"
-	@echo "  plan      terraform plan"
-	@echo "  apply     terraform apply         (AUTO=1 to skip approval)"
-	@echo "  destroy   terraform destroy       (AUTO=1 to skip approval)"
-	@echo "  validate  fmt check + validate"
+	@echo "  init           terraform init"
+	@echo "  plan           terraform plan"
+	@echo "  apply          terraform apply    (AUTO=1 to skip approval)"
+	@echo "  destroy        terraform destroy  (AUTO=1 to skip approval)"
+	@echo "  state-backend  print the backend block this tenant was issued"
+	@echo "  validate       fmt check + validate"
 	@echo
-	@echo "Requires TF_VAR_tsig_key_secret in the environment - see README."
+	@echo "Needs DEEVNET_API_TOKEN: the enrollment token on the first apply,"
+	@echo "then the api_token output. Endpoint: $(DEEVNET_API_ENDPOINT)"
 
-# The sibling-path assumption is the one thing the monorepo layout changed, so
-# make it inspectable rather than something to discover from a failure.
-paths:
-	@echo "DEEVNET_ROOT  $(DEEVNET_ROOT)"
-	@echo "IMAGE_FACTORY $(IMAGE_FACTORY)  $$([[ -d "$(IMAGE_FACTORY)" ]] && echo OK || echo MISSING)"
-	@echo "INVENTORY     $(INVENTORY)  $$([[ -d "$(INVENTORY)" ]] && echo OK || echo MISSING)"
-	@echo "VAULT         $(VAULT)  $$([[ -f "$(VAULT)" ]] && echo OK || echo MISSING)"
-
-check-paths:
-	@if [[ ! -d "$(IMAGE_FACTORY)" ]]; then
-		echo "deevnet-image-factory not found at $(IMAGE_FACTORY)" >&2
-		echo "This tenant lives inside the EdS monorepo, so the deevnet repositories" >&2
-		echo "are expected three levels up rather than one. Set DEEVNET_ROOT if yours" >&2
-		echo "are elsewhere:  make plan DEEVNET_ROOT=/path/to/checkouts" >&2
+require-token:
+	@if [[ -z "$${DEEVNET_API_TOKEN:-}" ]]; then
+		echo "DEEVNET_API_TOKEN is not set." >&2
+		echo "  First apply:  the enrollment token the substrate issued at admission." >&2
+		echo "  After that:   terraform output -raw api_token" >&2
 		exit 2
 	fi
 
-$(PVE_ENV): check-paths
-	$(MAKE) creds
-
-creds: check-paths
-	$(MAKE) -C "$(IMAGE_FACTORY)" $(PVE_ENV_TARGET)
-
-# The TSIG secret is delivery-by-environment on purpose: it is a secret this
-# repository must never hold.
-require-secret:
-	@if [[ -z "$${TF_VAR_tsig_key_secret:-}" ]]; then
-		echo "TF_VAR_tsig_key_secret is not set." >&2
-		echo "It is issued by the substrate and lives in the inventory vault." >&2
-		echo "  export TF_VAR_tsig_key_secret=\$$(ansible-vault view \\" >&2
-		echo "    $(VAULT) \\" >&2
-		echo "    | yq -r .vault_tenant_tsig_keys.eds)" >&2
-		exit 2
-	fi
-
-init: $(PVE_ENV)
+init:
 	terraform init
 
-plan: require-secret $(PVE_ENV)
-	source "$(PVE_ENV)"
+plan: require-token
 	terraform plan
 
-apply: require-secret $(PVE_ENV)
-	source "$(PVE_ENV)"
+apply: require-token
 	terraform apply $(TF_APPROVE)
 
-destroy: require-secret $(PVE_ENV)
-	source "$(PVE_ENV)"
+destroy: require-token
 	terraform destroy $(TF_APPROVE)
+
+state-backend:
+	@terraform output -json state_backend | python3 -c '
+	import json, sys
+	d = json.load(sys.stdin)
+	print("# Uncomment the backend block in main.tf with these values, then")
+	print("# export AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY and run")
+	print("#   terraform init -migrate-state")
+	print()
+	print("  bucket    = \"%s\"" % d["bucket"])
+	print("  key       = \"%s\"" % d["key"])
+	print("  endpoints = { s3 = \"%s\" }" % d["endpoint"])
+	print("  access_key: %s" % d["access_key"])
+	'
 
 fmt:
 	terraform fmt -recursive
