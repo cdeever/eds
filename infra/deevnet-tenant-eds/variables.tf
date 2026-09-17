@@ -106,10 +106,12 @@ variable "dns_update_server" {
   type        = string
   description = <<-EOT
     Authoritative server that accepts the dynamic updates. This is the tenant
-    DNS host, not the substrate resolver: workloads still *resolve* through
-    10.20.99.1, which delegates these zones here.
+    DNS service in the substrate's identity VM, not the substrate resolver:
+    workloads still *resolve* through the core router, which forwards these
+    zones here. A name, so the service can move hosts without a tenant edit -
+    the old 10.20.99.30 default broke when CHG-0008 moved it to Platform.
   EOT
-  default     = "10.20.99.30"
+  default     = "tdns.mobile.deevnet.net"
 }
 
 # --- Fabric attachment -------------------------------------------------------

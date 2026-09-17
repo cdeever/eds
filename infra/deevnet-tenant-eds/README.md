@@ -6,7 +6,7 @@ rebuildable from scratch against the substrate without a substrate commit
 
 | | |
 |---|---|
-| Index | 1 (to be allocated in the factory's `TENANTS.md`) |
+| Index | 1 (allocated in the factory's `TENANTS.md`) |
 | Subnet | `10.20.129.0/24`, gateway `10.20.129.1` |
 | Zone | `eds.mobile.deevnet.net` |
 | Service host | `10.20.129.10` — `palette` and `lightd` |
@@ -16,15 +16,29 @@ rebuildable from scratch against the substrate without a substrate commit
 
 This has been `terraform validate`d against the real module at
 `tenant-module-v1.1.0`, and its derived addressing checked against ADR-0002.
-It has **not** been planned or applied, and three things must happen first:
+It has **not** been planned or applied. Where each prerequisite stands:
 
-1. **Allocate index 1** in `deevnet-tenant-factory`'s `TENANTS.md`. It is free —
-   `tdemo` was destroyed on 2026-09-05 and released it — but the allocation is
-   an act, not an assumption.
-2. **Onboard the tenant**: egress (ADR-0003) and DNS zones plus a TSIG key
-   (ADR-0004), both driven from `deevnet_tenants` in the inventory.
+1. **Index 1 is allocated.** `tdemo` released it when it was destroyed on
+   2026-09-05. eds took it in the inventory's `deevnet_tenants` on 2026-09-07,
+   and the factory's `TENANTS.md` records it.
+2. **Onboarding is partly done.**
+   - **DNS (ADR-0004): done.** CHG-0008 created both eds zones on
+     `dv02idn001v01` and bound the `eds` TSIG key to them, and the zones resolve
+     through the core router.
+   - **State (ADR-0007): done.** The same change created eds's scoped state
+     credential on `dv02prv001v01`.
+   - **Dynamic updates from the tenant fabric: not yet.** PowerDNS still
+     accepts updates from the management subnet only. The fix is
+     `deevnet/ansible-collection-deevnet.mgmt#19`, not yet applied. Until it
+     is, an update sent from the Builder, on management, is admitted, and one
+     sent from inside the tenant fabric is refused.
+   - **Egress (ADR-0003): not confirmed here.**
 3. **Issue the fabric attachment**: `make tenant-attachment TENANT=$(pwd)` in
    the factory, which writes `fabric.auto.tfvars` here.
+
+The tenant DNS server and state store moved to Platform (VLAN 25) in CHG-0008.
+This tenant reaches both by name (`tdns`, `tfstate`), so the move needed only
+the `dns_update_server` default fixed, which had been a hardcoded address.
 
 ## This diverges from ADR-0006, on purpose
 
@@ -71,8 +85,10 @@ themselves; nothing is stored here.
 
 ## Why the broker is not in this tenant
 
-EdS's MQTT broker is `mqtt01` on the substrate's **IoT Backend** segment
-(VLAN 35), not a VM in here — and that is forced rather than preferred.
+EdS's MQTT broker belongs to the substrate, in the device messaging VM
+`dv02msg001v01` on the **IoT Backend** segment (VLAN 35), not in a VM here.
+That is forced rather than preferred. The VM exists, but the broker (VerneMQ,
+ADR-0012 §8) isn't built yet.
 
 MQTT clients always initiate the connection: the ESP32 in the LP stand dials
 the broker, never the reverse. So whichever segment holds the broker must
@@ -82,14 +98,17 @@ never learns tenant address space. Putting the broker on a tenant VM would mean
 inventing that path, which is an ADR rather than a config change.
 
 IoT Backend is already defined to *"accept inbound connections from IoT segment
-(sensor data, MQTT publish)"*, with `mqtt01` named in the model as its typical
-inhabitant. So the stand sits on IoT (VLAN 30) and talks to IoT Backend, and
+(sensor data, MQTT publish)"*. So the stand sits on IoT (VLAN 30) and talks to IoT Backend, and
 `lightd` in this tenant connects **outbound** to the same broker.
 
-That last hop needs **one new perimeter rule**: `Tenant → IoT Backend` is not
-in the current allow matrix (tenants are granted Platform). It is the cheap
-direction — outbound over the transit path that already works — but it is not
-free, and it is not authored here.
+That last hop needs its own perimeter rule, `tenant_transit -> iot_backend`,
+because tenants are otherwise granted Platform only.
+- **Declared:** in the inventory's `firewall.yml`, added with this tenant's
+  onboarding.
+- **Not enforced:** the core router's zone policy (CHG-0007) hasn't been
+  applied yet, and the router passes all traffic until it is.
+- **Where lightd's credentials will come from:** a broker account issued
+  through the Deevnet API (ADR-0012 §3), not the substrate vault.
 
 ## Site: built on mobile, designed for home
 
