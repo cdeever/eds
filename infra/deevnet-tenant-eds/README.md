@@ -37,9 +37,11 @@ and cannot be until the API is deployed (CHG-0010). When it is:
    the substrate's store ([ADR-0007][adr7]) - or leave it out and keep custody
    here.
 
-**Its zones, TSIG key and state credential already exist**, created by CHG-0008
-from the inventory. The API adopts them rather than recreating: the first apply
-takes them over, and the keys EdS was issued keep working.
+**Its zones and its state-store user already exist**, created by CHG-0008 from
+the inventory. The API adopts them rather than recreating them. The **TSIG
+secret is replaced** by the one the API issues, and this state becomes its
+authoritative copy - nothing held the old one except the substrate vault, and
+EdS has never applied.
 
 ## Publishing names
 
