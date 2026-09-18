@@ -41,6 +41,16 @@ output "dns_publication" {
   }
 }
 
+output "device_wifi" {
+  description = "What EdS's devices are flashed with. Do not hardcode the SSID - it differs by site."
+  sensitive   = true
+  value = {
+    ssid = deevnet_iot_wifi_key.devices.ssid
+    psk  = deevnet_iot_wifi_key.devices.psk
+    vlan = deevnet_iot_wifi_key.devices.vlan
+  }
+}
+
 output "api_token" {
   description = "EdS's own API token. Every apply after the first uses it."
   sensitive   = true

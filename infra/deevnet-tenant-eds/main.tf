@@ -33,7 +33,7 @@ terraform {
     region       = "us-east-1"
     endpoints    = { s3 = "http://tfstate.mobile.deevnet.net:9000" }
     use_lockfile = true
-  
+
     skip_credentials_validation = true
     skip_region_validation      = true
     skip_requesting_account_id  = true
@@ -75,4 +75,24 @@ resource "deevnet_dns_record" "lightd" {
   tenant  = deevnet_tenant.eds.name
   name    = "lightd"
   address = deevnet_workload.services.address
+}
+
+# The Wi-Fi credential EdS's devices are flashed with (ADR-0012 §3, CHG-0013).
+#
+# One key serves every device: the LP stand, and any later one. The substrate
+# does not know those devices individually, and a MAC binding would buy no
+# enforcement while making a first flash wait on a substrate registration.
+#
+# EdS chooses the trust class and nothing else. `iot` is for devices whose
+# firmware its owner controls, which is what the stand is. The SSID and the VLAN
+# come back from the API - a tenant does not pick a VLAN, which is what keeps
+# this tenant's network off the air.
+#
+# CAREFUL: replacing this resource issues a NEW key, and every device already
+# flashed with the old one stops associating until it is reflashed. A lost API
+# database does NOT do that - it restores this key from state.
+resource "deevnet_iot_wifi_key" "devices" {
+  tenant      = deevnet_tenant.eds.name
+  name        = "devices"
+  trust_class = "iot"
 }
