@@ -27,3 +27,22 @@ variable "ssh_keys" {
   default     = []
   description = "Public keys for the workload's cloud-init account. Public halves only."
 }
+
+variable "broker_host" {
+  type        = string
+  default     = "mqtt.mobile.deevnet.net"
+  description = <<-EOT
+    The substrate's MQTT broker. A variable rather than a hardcoded string
+    because it is a SUBSTRATE name, not EdS's - moving EdS to another site
+    means pointing at that site's broker.
+
+    It is not an attribute of the tenant because the API does not issue one
+    today; every other substrate value EdS uses (the DNS server, the state
+    endpoint, the Wi-Fi SSID) comes back from the API, and this is the one
+    that still has to be named here.
+
+    NOT mqt01 or mqtt01: those names do not resolve. The broker is a VerneMQ
+    container on the messaging VM (CHG-0015) and its certificate is valid for
+    this name and for the host's own.
+  EOT
+}

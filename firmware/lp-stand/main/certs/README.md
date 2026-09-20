@@ -1,7 +1,7 @@
 # certs
 
 `mqtt_ca.pem` goes here when `LP_MQTT_USE_TLS` is enabled — the CA that signed
-the broker's certificate, so the stand can verify `mqtt01` before handing over
+the broker's certificate, so the stand can verify the broker before handing over
 credentials.
 
 It is deliberately not committed: it is installation-specific, and a repository

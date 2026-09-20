@@ -37,7 +37,7 @@ make build flash monitor PORT=/dev/ttyUSB0
 ## How it works
 
 ```
-mqtt01 ──▶ eds/lightstand/<id>/scene ──▶ parse ──▶ validate ──▶ render task ──▶ strip
+ mqtt  ──▶ eds/lightstand/<id>/scene ──▶ parse ──▶ validate ──▶ render task ──▶ strip
                     (retained)                                    (60 fps)
 ```
 
@@ -108,7 +108,7 @@ Everything below is a deliberate choice, not an accident:
 
 The stand belongs on the substrate's **IoT segment (VLAN 30)** — the model's
 slot for "custom-developed embedded devices with controlled firmware" — and
-dials **`mqtt01` on IoT Backend (VLAN 35)**.
+dials **`mqtt.mobile.deevnet.net` on IoT Backend (VLAN 35)**.
 
 That placement is forced, not chosen: MQTT clients always initiate, so whichever
 segment holds the broker must accept inbound, and the tenant fabric has no

@@ -21,11 +21,12 @@ deevnet substrate — while depending on none of the still-unscoped parts
 (listening, identification, playback, personality).
 
 ```
-cover image ──▶ lightd ──▶ palette ──▶ lightd ──▶ mqtt01 ──▶ LP stand
+cover image ──▶ lightd ──▶ palette ──▶ lightd ──▶  mqtt  ──▶ LP stand
                 (Go)       (Python)               (VLAN 35)   (VLAN 30)
 ```
 
-The broker is `mqtt01` on the substrate's IoT Backend segment, not a tenant VM.
+The broker is `mqtt.mobile.deevnet.net` on the substrate's IoT Backend segment,
+not a tenant VM.
 MQTT clients always dial the broker, so whichever segment holds it must accept
 inbound — and the tenant fabric has no inbound path by design (ADR-0001,
 ADR-0003). IoT Backend is the segment already defined to accept exactly this.

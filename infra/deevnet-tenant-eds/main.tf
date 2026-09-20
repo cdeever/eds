@@ -96,3 +96,72 @@ resource "deevnet_iot_wifi_key" "devices" {
   name        = "devices"
   trust_class = "iot"
 }
+
+# The LP jacket stand, in the tenant's device registry (ADR-0012 §3, CHG-0014).
+#
+# The entry is an identity and nothing else: it carries no credential and
+# grants no access. What it is FOR is the pairing rule below - a broker account
+# for a device may only be issued against a device in trust class `iot`, which
+# is the class for devices whose firmware its owner controls. That is the stand.
+#
+# The MAC is deliberately not set. It is a label for the owner's own inventory
+# and the substrate enforces nothing with it, so recording one here would only
+# make a first flash wait on a registration.
+resource "deevnet_iot_device" "lp_stand_01" {
+  tenant      = deevnet_tenant.eds.name
+  name        = "lp-stand-01"
+  trust_class = "iot"
+}
+
+# lightd's own broker account (ADR-0012 §3, §10; CHG-0016).
+#
+# A WORKLOAD account: no device, because lightd runs on the services VM and
+# reaches the broker over tenant_transit -> iot_backend, not from VLAN 30.
+#
+# Topic patterns are RELATIVE to the tenant. The API writes the "eds/" prefix
+# itself, which is what confines this tenant to its own topics - so write
+# "lightstand/+/scene", never "eds/lightstand/+/scene". They come back absolute
+# in granted_publish / granted_subscribe, which is what the broker enforces.
+#
+# These are the permissions that lived in the substrate's inventory as
+# `mqtt_acls` until this resource existed. lightd publishes scenes to any stand
+# and reads their presence; it never writes a stand's own status.
+resource "deevnet_iot_broker_account" "lightd" {
+  tenant = deevnet_tenant.eds.name
+  name   = "lightd"
+
+  publish = [
+    "lightstand/+/scene", # a scene to any stand
+    "lightd/status",      # its own liveness
+  ]
+  subscribe = [
+    "lightstand/+/status", # a stand's presence
+    "lightstand/+/state",  # and what it is currently showing
+  ]
+}
+
+# The stand's own account, scoped to ITS OWN topics.
+#
+# Deliberately narrower than lightd's. A device credential that could write any
+# stand's scene could repaint every stand in the house, and the IoT segment is
+# rated Medium trust precisely because its devices are assumed reachable by
+# things EdS did not write. The stand reads the scene meant for it and reports
+# only on itself.
+#
+# CAREFUL: replacing this resource issues a NEW password, and the stand stops
+# connecting until it is reflashed. A lost API database does NOT do that - it
+# restores this account from state, the same way the Wi-Fi key above is
+# restored (ADR-0012 §5).
+resource "deevnet_iot_broker_account" "lp_stand_01" {
+  tenant = deevnet_tenant.eds.name
+  name   = "lp-stand-01"
+  device = deevnet_iot_device.lp_stand_01.name
+
+  publish = [
+    "lightstand/lp-stand-01/status",
+    "lightstand/lp-stand-01/state",
+  ]
+  subscribe = [
+    "lightstand/lp-stand-01/scene",
+  ]
+}

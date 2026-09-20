@@ -56,3 +56,34 @@ output "api_token" {
   sensitive   = true
   value       = deevnet_tenant.eds.api_token
 }
+
+output "broker" {
+  description = "Where MQTT clients dial, and what the broker's certificate is verified against."
+  value = {
+    host = var.broker_host
+    port = 8883
+    ca   = "site-ca.pem"
+  }
+}
+
+output "lightd_broker" {
+  description = "lightd's MQTT credential. The service config reads these."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.lightd.username
+    password  = deevnet_iot_broker_account.lightd.password
+    publish   = deevnet_iot_broker_account.lightd.granted_publish
+    subscribe = deevnet_iot_broker_account.lightd.granted_subscribe
+  }
+}
+
+output "lp_stand_01_broker" {
+  description = "What the LP stand's firmware is flashed with, beside the Wi-Fi key above."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.lp_stand_01.username
+    password  = deevnet_iot_broker_account.lp_stand_01.password
+    publish   = deevnet_iot_broker_account.lp_stand_01.granted_publish
+    subscribe = deevnet_iot_broker_account.lp_stand_01.granted_subscribe
+  }
+}
