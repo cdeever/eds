@@ -8,7 +8,7 @@ in it, maps those onto a scene the stand can render, and publishes that scene
 retained to the stand's MQTT topic.
 
 ```
-cover image ──▶ lightd ──▶ palette ──▶ lightd ──▶ mqtt01 ──▶ LP stand
+cover image ──▶ lightd ──▶ palette ──▶ lightd ──▶  mqtt  ──▶ LP stand
 ```
 
 `POST /v1/cover` is deliberately the interface the future album cover resolver
@@ -54,7 +54,7 @@ container without knowing which. That choice is still open.
 | `LIGHTD_PALETTE_URL` | `http://127.0.0.1:8731` | palette service |
 | `LIGHTD_STAND_ID` | `lp-stand-01` | default stand |
 | `LIGHTD_TOPIC_PREFIX` | `eds` | root of the topic tree |
-| `LIGHTD_MQTT_URL` | `tcp://127.0.0.1:1883` | `tls://mqtt01…:8883` in production |
+| `LIGHTD_MQTT_URL` | `tcp://127.0.0.1:1883` | `tls://mqtt.mobile.deevnet.net:8883` in production |
 | `LIGHTD_MQTT_USERNAME` / `_PASSWORD` | — | broker credentials |
 | `LIGHTD_MQTT_CA_FILE` | — | CA for the broker's certificate |
 | `LIGHTD_MQTT_INSECURE` | `false` | bring-up only; never with a real cert |
@@ -131,12 +131,12 @@ the first time something looks wrong.
 
 ## The broker is not in the tenant
 
-`mqtt01` lives on the substrate's IoT Backend segment (VLAN 35), and lightd
+The broker lives on the substrate's IoT Backend segment (VLAN 35), and lightd
 connects outbound to it from the EdS tenant.
 
 MQTT clients always dial the broker, so whichever segment holds it must accept
 inbound — and the tenant fabric has no inbound path by design (ADR-0001,
 ADR-0003). IoT Backend is the segment already defined to accept exactly this,
-with `mqtt01` named in the model as its typical inhabitant. Putting the broker
+with the broker named in the model as its typical inhabitant. Putting the broker
 on a tenant VM would have meant inventing an inbound path to tenant address
 space, which is an ADR, not a config change.
