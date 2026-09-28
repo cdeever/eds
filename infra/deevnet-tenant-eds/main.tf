@@ -19,31 +19,13 @@ terraform {
   required_providers {
     deevnet = {
       source  = "deevnet/deevnet"
-      version = "~> 0.1"
+      version = "~> 0.5"
     }
   }
 
-  # The substrate's state store (ADR-0007). Its credentials are outputs of the
-  # tenant below, so it is configured after the first apply:
-  # `make state-backend`, then `terraform init -migrate-state`.
-  #
-  backend "s3" {
-    bucket       = "tf-state"
-    key          = "tenants/eds/terraform.tfstate"
-    region       = "us-east-1"
-    endpoints    = { s3 = "https://tfstate.mobile.deevnet.net:9000" }
-    use_lockfile = true
-
-    # TLS from the site CA (CHG-0030): the same site-ca.pem the provider uses.
-    custom_ca_bundle = "site-ca.pem"
-
-    skip_credentials_validation = true
-    skip_region_validation      = true
-    skip_requesting_account_id  = true
-    skip_metadata_api_check     = true
-    skip_s3_checksum            = true
-    use_path_style              = true
-  }
+  # No backend here. The first apply keeps state on this machine; after it,
+  # `make state-backend` writes backend.tf for the state store the substrate
+  # issued this tenant (ADR-0007), from this tenant's own outputs.
 }
 
 # DEEVNET_API_ENDPOINT, DEEVNET_API_TOKEN, DEEVNET_API_CACERT.
@@ -94,6 +76,10 @@ resource "deevnet_dns_record" "lightd" {
 # CAREFUL: replacing this resource issues a NEW key, and every device already
 # flashed with the old one stops associating until it is reflashed. A lost API
 # database does NOT do that - it restores this key from state.
+#
+# Beside it the tenant holds a `tenant_dev` key named `admission`, for the
+# developer's computer on DVNTM-TD (ADR-0029). It came with the admission and
+# the API adopts it when the tenant is created, so it is not declared here.
 resource "deevnet_iot_wifi_key" "devices" {
   tenant      = deevnet_tenant.eds.name
   name        = "devices"
@@ -163,6 +149,7 @@ resource "deevnet_iot_broker_account" "lp_stand_01" {
   publish = [
     "lightstand/lp-stand-01/status",
     "lightstand/lp-stand-01/state",
+    "log/lp-stand-01", # its own log lines, into the tenant's log store (CHG-0021)
   ]
   subscribe = [
     "lightstand/lp-stand-01/scene",
