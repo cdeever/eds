@@ -46,17 +46,24 @@ curl 'http://localhost:8732/v1/scene?stand=lp-stand-01'   # what was last sent
 
 All environment, no config file: the broker credentials must never land on disk
 in a repository, and the same binary has to work under a systemd unit or a
-container without knowing which. That choice is still open.
+container without knowing which.
+
+**The broker settings fall back to the platform's names**, the ones in a
+Deevnet tenant's `kit.env`: `MQTT_HOST` (dialed as `tls://MQTT_HOST:MQTT_PORT`,
+port 8883 by default), `MQTT_USERNAME`, `MQTT_PASSWORD`, `MQTT_CA_FILE`, and
+`DEEVNET_TENANT` as the topic prefix. So `kit.env` alone is enough, on a
+workload or a Pi. A `LIGHTD_*` variable, when set, wins.
 
 | Variable | Default | |
 |---|---|---|
 | `LIGHTD_ADDR` | `:8732` | listen address |
 | `LIGHTD_PALETTE_URL` | `http://127.0.0.1:8731` | palette service |
 | `LIGHTD_STAND_ID` | `lp-stand-01` | default stand |
-| `LIGHTD_TOPIC_PREFIX` | `eds` | root of the topic tree |
-| `LIGHTD_MQTT_URL` | `tcp://127.0.0.1:1883` | `tls://mqtt.mobile.deevnet.net:8883` in production |
-| `LIGHTD_MQTT_USERNAME` / `_PASSWORD` | — | broker credentials |
-| `LIGHTD_MQTT_CA_FILE` | — | CA for the broker's certificate |
+| `LIGHTD_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | root of the topic tree |
+| `LIGHTD_MQTT_URL` | `tls://$MQTT_HOST:$MQTT_PORT`, else `tcp://127.0.0.1:1883` | the broker |
+| `LIGHTD_MQTT_CLIENT_ID` | `lightd` | must be unique on the broker; `eds-lightd` in production |
+| `LIGHTD_MQTT_USERNAME` / `_PASSWORD` | `$MQTT_USERNAME` / `$MQTT_PASSWORD` | broker credentials |
+| `LIGHTD_MQTT_CA_FILE` | `$MQTT_CA_FILE` | CA for the broker's certificate |
 | `LIGHTD_MQTT_INSECURE` | `false` | bring-up only; never with a real cert |
 | `LIGHTD_EFFECT` | `breathe` | default effect |
 | `LIGHTD_SPEED` / `LIGHTD_BRIGHTNESS` | `0.4` / `0.8` | |

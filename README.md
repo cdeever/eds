@@ -11,6 +11,7 @@ This is a monorepo. Each project below is a distinct piece of that system.
 | [`services/lightd`](services/lightd) | Go | Cover image in, MQTT scene out |
 | [`firmware/lp-stand`](firmware/lp-stand) | C / ESP-IDF | The LP jacket stand: MQTT subscriber driving an addressable RGB strip |
 | [`infra/deevnet-tenant-eds`](infra/deevnet-tenant-eds) | Terraform | The EdS tenant on the deevnet Proxmox substrate |
+| [`deploy`](deploy) | Make, systemd | palette and lightd as containers on the tenant's workload |
 
 ## The first vertical
 

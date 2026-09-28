@@ -1,0 +1,16 @@
+# lightd - cover image in, MQTT scene out.
+#
+# A static binary on distroless: no shell, no package manager, a non-root user,
+# and the CA roots the broker's TLS needs. Settings are all environment - see
+# the README - and on Deevnet they come from the tenant's kit.env.
+FROM docker.io/library/golang:1.25 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/lightd ./cmd/lightd
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/lightd /lightd
+EXPOSE 8732
+ENTRYPOINT ["/lightd"]

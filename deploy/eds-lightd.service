@@ -1,0 +1,18 @@
+[Unit]
+Description=EdS lightd (container)
+Wants=network-online.target eds-palette.service
+After=network-online.target eds-palette.service
+
+[Service]
+Environment=IMAGE=localhost/eds-lightd:latest
+ExecStartPre=-/usr/bin/podman rm -f eds-lightd
+ExecStart=/usr/bin/podman run --rm --name eds-lightd --network host \
+  --env-file /opt/eds/kit.env --env-file /opt/eds/lightd.env \
+  -v /opt/eds/site-ca.pem:/kit/site-ca.pem:ro -e MQTT_CA_FILE=/kit/site-ca.pem \
+  ${IMAGE}
+ExecStop=/usr/bin/podman stop -t 10 eds-lightd
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

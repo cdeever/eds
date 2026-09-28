@@ -41,6 +41,61 @@ func TestOverrides(t *testing.T) {
 	}
 }
 
+// kit.env is the platform's settings file: with nothing but it, lightd must
+// reach the tenant's broker over TLS as the tenant's account.
+func TestKitEnv(t *testing.T) {
+	t.Setenv("DEEVNET_TENANT", "tdemo")
+	t.Setenv("MQTT_HOST", "mqtt.mobile.deevnet.net")
+	t.Setenv("MQTT_PORT", "8883")
+	t.Setenv("MQTT_USERNAME", "tdemo.lightd")
+	t.Setenv("MQTT_PASSWORD", "secret")
+	t.Setenv("MQTT_CA_FILE", "/kit/site-ca.pem")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := cfg.Broker
+	if b.URL != "tls://mqtt.mobile.deevnet.net:8883" {
+		t.Errorf("url = %q", b.URL)
+	}
+	if b.Username != "tdemo.lightd" || b.Password != "secret" || b.CAFile != "/kit/site-ca.pem" {
+		t.Errorf("credentials = %q / %q / %q", b.Username, b.Password, b.CAFile)
+	}
+	if b.TopicPrefix != "tdemo" {
+		t.Errorf("prefix = %q", b.TopicPrefix)
+	}
+}
+
+// A LIGHTD_* setting is the more specific one, so it wins over kit.env.
+func TestLightdWinsOverKitEnv(t *testing.T) {
+	t.Setenv("MQTT_HOST", "mqtt.mobile.deevnet.net")
+	t.Setenv("MQTT_USERNAME", "from-kit")
+	t.Setenv("DEEVNET_TENANT", "tdemo")
+	t.Setenv("LIGHTD_MQTT_URL", "tcp://127.0.0.1:21883")
+	t.Setenv("LIGHTD_MQTT_USERNAME", "from-lightd")
+	t.Setenv("LIGHTD_TOPIC_PREFIX", "eds")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Broker.URL != "tcp://127.0.0.1:21883" || cfg.Broker.Username != "from-lightd" || cfg.Broker.TopicPrefix != "eds" {
+		t.Errorf("kit.env won: %+v", cfg.Broker)
+	}
+}
+
+func TestKitEnvDefaultPort(t *testing.T) {
+	t.Setenv("MQTT_HOST", "mqtt.example")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Broker.URL != "tls://mqtt.example:8883" {
+		t.Errorf("url = %q", cfg.Broker.URL)
+	}
+}
+
 // A typo in a unit file should stop the daemon, not silently light the room
 // wrong.
 func TestRejectsInvalidValues(t *testing.T) {
