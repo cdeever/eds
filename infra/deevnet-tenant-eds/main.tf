@@ -19,7 +19,7 @@ terraform {
   required_providers {
     deevnet = {
       source  = "deevnet/deevnet"
-      version = "~> 0.1"
+      version = "~> 0.5"
     }
   }
 
@@ -163,6 +163,7 @@ resource "deevnet_iot_broker_account" "lp_stand_01" {
   publish = [
     "lightstand/lp-stand-01/status",
     "lightstand/lp-stand-01/state",
+    "log/lp-stand-01", # its own log lines, into the tenant's log store (CHG-0021)
   ]
   subscribe = [
     "lightstand/lp-stand-01/scene",

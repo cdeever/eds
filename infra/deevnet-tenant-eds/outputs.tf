@@ -87,3 +87,36 @@ output "lp_stand_01_broker" {
     subscribe = deevnet_iot_broker_account.lp_stand_01.granted_subscribe
   }
 }
+
+output "login" {
+  description = "How to log in to the services VM, with a key in ssh_keys."
+  value       = "ssh ${deevnet_workload.services.login_user}@${deevnet_workload.services.fqdn}"
+}
+
+# The services' whole environment, in the shape deevnet-kit and the Deploy
+# Your App page expect: `terraform output -raw kit_env > kit.env`. The app's
+# login is lightd's broker account.
+#
+# The log and dashboard values print empty if this state has never held them:
+# EdS was issued its log tokens and Grafana organization by reconcile
+# (CHG-0020, CHG-0024), not by a create, so they may not be in this state.
+output "kit_env" {
+  sensitive = true
+  value     = <<-EOT
+    DEEVNET_TENANT=${deevnet_tenant.eds.name}
+    MQTT_HOST=${var.broker_host}
+    MQTT_PORT=8883
+    MQTT_CA_FILE=site-ca.pem
+    MQTT_USERNAME=${deevnet_iot_broker_account.lightd.username}
+    MQTT_PASSWORD=${deevnet_iot_broker_account.lightd.password}
+    LOG_ENDPOINT=${deevnet_tenant.eds.log_endpoint == null ? "" : deevnet_tenant.eds.log_endpoint}
+    LOG_INGEST_TOKEN=${deevnet_tenant.eds.log_ingest_token == null ? "" : deevnet_tenant.eds.log_ingest_token}
+    LOG_READ_TOKEN=${deevnet_tenant.eds.log_read_token == null ? "" : deevnet_tenant.eds.log_read_token}
+    LOG_SELECT_HEADER=${deevnet_tenant.eds.log_select_header == null ? "" : deevnet_tenant.eds.log_select_header}
+    LOG_DEVICE_PARTITION=${deevnet_tenant.eds.index}-2
+    GRAFANA_URL=${deevnet_tenant.eds.dashboard_url == null ? "" : deevnet_tenant.eds.dashboard_url}
+    GRAFANA_AUTH=${deevnet_tenant.eds.dashboard_username == null ? "" : deevnet_tenant.eds.dashboard_username}:${deevnet_tenant.eds.dashboard_password == null ? "" : deevnet_tenant.eds.dashboard_password}
+    GRAFANA_ORG_ID=${deevnet_tenant.eds.dashboard_org_id == null ? 0 : deevnet_tenant.eds.dashboard_org_id}
+    GRAFANA_CA_CERT=site-ca.pem
+  EOT
+}

@@ -10,9 +10,14 @@ SHELL := /usr/bin/bash
 export DEEVNET_API_ENDPOINT ?= https://api.mobile.deevnet.net:8080
 export DEEVNET_API_CACERT   ?= $(CURDIR)/site-ca.pem
 
+# The state store's credentials (secret, gitignored). State lives in the store,
+# so every command needs them; `make backend-env` writes the file.
+-include .backend.env
+export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+
 TF_APPROVE := $(if $(AUTO),-auto-approve,)
 
-.PHONY: help require-token init plan apply destroy state-backend fmt validate
+.PHONY: help require-token init plan apply destroy state-backend backend-env fmt validate
 
 help:
 	@echo "eds - tenant (inside the EdS monorepo)"
@@ -22,6 +27,8 @@ help:
 	@echo "  apply          terraform apply    (AUTO=1 to skip approval)"
 	@echo "  destroy        terraform destroy  (AUTO=1 to skip approval)"
 	@echo "  state-backend  print the backend block this tenant was issued"
+	@echo "  backend-env    write .backend.env (the state store's credentials)"
+	@echo "                 from terraform.tfstate.backup, the pre-migration state"
 	@echo "  validate       fmt check + validate"
 	@echo
 	@echo "Needs DEEVNET_API_TOKEN: the enrollment token on the first apply,"
@@ -59,6 +66,20 @@ state-backend:
 	print("  key       = \"%s\"" % d["key"])
 	print("  endpoints = { s3 = \"%s\" }" % d["endpoint"])
 	print("  access_key: %s" % d["access_key"])
+	'
+
+# The state store's credentials are outputs of the tenant, and the tenant's
+# state is IN the store - so they can't be read from it without them. The
+# local state left behind by the migration still holds them.
+backend-env:
+	@python3 -c '
+	import json, os
+	s = json.load(open("terraform.tfstate.backup"))
+	t = next(r for r in s["resources"] if r["type"] == "deevnet_tenant")["instances"][0]["attributes"]
+	fd = os.open(".backend.env", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+	os.write(fd, ("AWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\n" % (t["state_access_key"], t["state_secret_key"])).encode())
+	os.close(fd)
+	print("wrote .backend.env")
 	'
 
 fmt:

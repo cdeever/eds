@@ -23,25 +23,28 @@ access. The API issues the index, the network numbering, the DNS zone and key,
 the state-store credential and each workload's address, and they land in this
 tenant's Terraform state, which is their authoritative copy.
 
-## Status: written, never applied
+## Running it
 
-The configuration validates against the provider. It has **not** been applied,
-and cannot be until the API is deployed (CHG-0010). When it is:
+EdS is live: index 2, subnet 10.20.130.0/24, one workload
+(`services.eds.mobile.deevnet.net`), and its state in the substrate's store
+([ADR-0007][adr7]). It is the operator's own tenant, so the substrate's
+`a_autoprov` key is in `ssh_keys` beside the operator's own keys.
 
-1. The operator admits `eds` and sends back a single-use enrollment token, the
-   API's address and its CA certificate.
-2. `export DEEVNET_API_TOKEN=<enrollment token>` and `make init && make apply`.
-   That spends the token and returns EdS's own.
-3. `export DEEVNET_API_TOKEN=$(terraform output -raw api_token)` from then on.
-4. `make state-backend`, then `terraform init -migrate-state`, to keep state in
-   the substrate's store ([ADR-0007][adr7]) - or leave it out and keep custody
-   here.
+1. `make backend-env` once per machine: it writes `.backend.env`, the state
+   store's credentials, from `terraform.tfstate.backup` (the local state the
+   migration left behind; the store can't hand out the key to itself).
+2. `make init`.
+3. `export DEEVNET_API_TOKEN=$(terraform output -raw api_token)`, then
+   `make plan` / `make apply`.
 
-**Its zones and its state-store user already exist**, created by CHG-0008 from
-the inventory. The API adopts them rather than recreating them. The **TSIG
-secret is replaced** by the one the API issues, and this state becomes its
-authoritative copy - nothing held the old one except the substrate vault, and
-EdS has never applied.
+`site-ca.pem` and `ssh.auto.tfvars` are local and gitignored. Keys are written
+when the VM is built, so a change to `ssh_keys` needs
+`terraform apply -replace=deevnet_workload.services`.
+
+`terraform output login` prints the SSH line; `terraform output -raw kit_env`
+is the services' environment. Its log and Grafana secrets print empty: EdS
+was issued them by reconcile (CHG-0020, CHG-0024), not by a create, and this
+state has never held them.
 
 ## Publishing names
 

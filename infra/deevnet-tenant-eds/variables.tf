@@ -25,7 +25,15 @@ variable "vm_memory_mb" {
 variable "ssh_keys" {
   type        = list(string)
   default     = []
-  description = "Public keys for the workload's cloud-init account. Public halves only."
+  description = <<-EOT
+    Public keys that may log in as the workload's login_user (`tenant`).
+    Public halves only. Keys are written when the VM is built, so changing
+    this list means `terraform apply -replace=deevnet_workload.services`.
+
+    EdS is the operator's own tenant, so the substrate's a_autoprov key is on
+    this list deliberately: it lets the Builder's automation reach the VM. A
+    tenant someone else owns would never carry it (ADR-0028).
+  EOT
 }
 
 variable "broker_host" {
