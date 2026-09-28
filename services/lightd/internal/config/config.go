@@ -3,7 +3,12 @@
 // Environment rather than a file because the two secrets involved - the broker
 // credentials - must never land on disk in a repository, and because the same
 // binary has to work under a systemd unit or a container without knowing which
-// it is. That choice is still open.
+// it is.
+//
+// Every broker setting falls back to the platform's names - the ones in the
+// tenant's kit.env (MQTT_HOST, MQTT_USERNAME, DEEVNET_TENANT, ...) - so the
+// same image runs on a Deevnet workload or a Pi with nothing but that file.
+// A LIGHTD_* variable, when set, still wins.
 package config
 
 import (
@@ -35,15 +40,16 @@ func Load() (Config, error) {
 		PaletteURL: env("LIGHTD_PALETTE_URL", "http://127.0.0.1:8731"),
 		StandID:    env("LIGHTD_STAND_ID", "lp-stand-01"),
 		Broker: broker.Config{
-			URL:      env("LIGHTD_MQTT_URL", "tcp://127.0.0.1:1883"),
+			URL:      env("LIGHTD_MQTT_URL", kitBrokerURL()),
 			ClientID: env("LIGHTD_MQTT_CLIENT_ID", "lightd"),
-			Username: env("LIGHTD_MQTT_USERNAME", ""),
-			Password: env("LIGHTD_MQTT_PASSWORD", ""),
-			CAFile:   env("LIGHTD_MQTT_CA_FILE", ""),
+			Username: env("LIGHTD_MQTT_USERNAME", env("MQTT_USERNAME", "")),
+			Password: env("LIGHTD_MQTT_PASSWORD", env("MQTT_PASSWORD", "")),
+			CAFile:   env("LIGHTD_MQTT_CA_FILE", env("MQTT_CA_FILE", "")),
 			// Bring-up escape hatch only; mqtt01 gets a real certificate.
 			InsecureSkipVerify: envBool("LIGHTD_MQTT_INSECURE", false),
-			TopicPrefix:        env("LIGHTD_TOPIC_PREFIX", "eds"),
-			Timeout:            10 * time.Second,
+			// The broker confines a tenant to topics under its own name.
+			TopicPrefix: env("LIGHTD_TOPIC_PREFIX", env("DEEVNET_TENANT", "eds")),
+			Timeout:     10 * time.Second,
 		},
 		Scene: defaults,
 	}
@@ -90,6 +96,16 @@ func (c Config) validate() error {
 		return fmt.Errorf("config: LIGHTD_MAX_COLORS must be at least 1, got %d", c.Scene.MaxColors)
 	}
 	return nil
+}
+
+// kitBrokerURL is the broker kit.env names: MQTT_HOST over TLS, on MQTT_PORT
+// or 8883. Without MQTT_HOST it is the development broker.
+func kitBrokerURL() string {
+	host, ok := os.LookupEnv("MQTT_HOST")
+	if !ok || host == "" {
+		return "tcp://127.0.0.1:1883"
+	}
+	return "tls://" + host + ":" + env("MQTT_PORT", "8883")
 }
 
 func env(key, fallback string) string {

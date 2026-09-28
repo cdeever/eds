@@ -1,0 +1,15 @@
+[Unit]
+Description=EdS palette (container)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Environment=IMAGE=localhost/eds-palette:latest
+ExecStartPre=-/usr/bin/podman rm -f eds-palette
+ExecStart=/usr/bin/podman run --rm --name eds-palette --network host ${IMAGE}
+ExecStop=/usr/bin/podman stop -t 10 eds-palette
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

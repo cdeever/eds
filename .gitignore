@@ -22,6 +22,8 @@ fabric.auto.tfvars
 
 # Secrets arrive as environment variables, never as files.
 *.env
+# Not secret: lightd's own settings on the workload (kit.env stays ignored).
+!deploy/lightd.env
 secrets.*
 
 # ESP-IDF (build/ is already covered above).

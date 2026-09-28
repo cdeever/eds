@@ -1,0 +1,6 @@
+.venv/
+.pytest_cache/
+tests/
+testdata/
+**/__pycache__/
+sheet.png
