@@ -20,7 +20,7 @@ terraform {{
     key              = "{d["key"]}"
     region           = "us-east-1"
     endpoints        = {{ s3 = "{d["endpoint"]}" }}
-    custom_ca_bundle = "site-ca.pem"
+    custom_ca_bundle = "deevnet-mobile-root-ca.pem"
     use_lockfile     = true
 
     # MinIO, not AWS.

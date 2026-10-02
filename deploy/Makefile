@@ -21,7 +21,7 @@ help:
 	@echo "  ship     build and copy the images, then restart (a new version)"
 	@echo "  load     copy the built images to the workload"
 	@echo "  kit-env  write kit.env from the tenant's Terraform outputs"
-	@echo "  units    copy kit.env, lightd.env, site-ca.pem and the units; start"
+	@echo "  units    copy kit.env, lightd.env, deevnet-mobile-root-ca.pem and the units; start"
 	@echo "  restart  restart both services"
 	@echo "  status   systemd status of both"
 	@echo "  logs     follow both services' logs"
@@ -43,10 +43,10 @@ ship: images
 
 units: kit-env
 	ssh $(HOST) 'sudo install -d -m 0755 /opt/eds && mkdir -p ~/eds-deploy'
-	scp kit.env lightd.env $(INFRA)/site-ca.pem eds-palette.service eds-lightd.service $(HOST):eds-deploy/
+	scp kit.env lightd.env $(INFRA)/deevnet-mobile-root-ca.pem eds-palette.service eds-lightd.service $(HOST):eds-deploy/
 	ssh $(HOST) 'cd ~/eds-deploy && \
 		sudo install -m 0600 kit.env lightd.env /opt/eds/ && \
-		sudo install -m 0644 site-ca.pem /opt/eds/ && \
+		sudo install -m 0644 deevnet-mobile-root-ca.pem /opt/eds/ && \
 		sudo install -m 0644 eds-palette.service eds-lightd.service /etc/systemd/system/ && \
 		cd && rm -rf ~/eds-deploy && \
 		sudo systemctl daemon-reload && sudo systemctl enable eds-palette eds-lightd && \

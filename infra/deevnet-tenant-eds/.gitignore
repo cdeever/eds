@@ -7,6 +7,7 @@ terraform.tfstate.backup
 .terraform.tfstate.lock.info
 
 # Issued at admission, never committed.
+deevnet-mobile-root-ca.pem
 site-ca.pem
 
 # A failed apply or destroy writes the state it could not persist here, and it
