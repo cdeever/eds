@@ -9,7 +9,7 @@
 SHELL := /bin/bash
 
 export DEEVNET_API_ENDPOINT ?= https://api.mobile.deevnet.net:8080
-export DEEVNET_API_CACERT   ?= $(CURDIR)/site-ca.pem
+export DEEVNET_API_CACERT   ?= $(CURDIR)/deevnet-mobile-root-ca.pem
 
 # The state store's credentials, once `make state-backend` has written them.
 # Secret, gitignored, and needed by every command once state lives in the store.

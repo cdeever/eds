@@ -21,7 +21,7 @@ store's credentials, where `kit.env` is read from).
 | `eds-lightd.service` | `localhost/eds-lightd`, port 8732; starts after palette |
 | `/opt/eds/kit.env` | secret, 0600: lightd's broker login and the tenant's tokens |
 | `/opt/eds/lightd.env` | lightd's own settings; overrides `kit.env` |
-| `/opt/eds/site-ca.pem` | the site CA the broker's certificate is checked against |
+| `/opt/eds/deevnet-mobile-root-ca.pem` | the site CA the broker's certificate is checked against |
 
 Both run with host networking, and the workload's firewall admits only SSH, so
 neither port is reachable from outside the VM: lightd reaches palette on
