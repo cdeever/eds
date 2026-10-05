@@ -62,7 +62,7 @@ output "broker" {
   value = {
     host = var.broker_host
     port = 8883
-    ca   = "deevnet-mobile-root-ca.pem"
+    ca   = "deevnet-root-ca.pem"
   }
 }
 
@@ -102,7 +102,7 @@ output "kit_env" {
     DEEVNET_TENANT=${deevnet_tenant.eds.name}
     MQTT_HOST=${var.broker_host}
     MQTT_PORT=8883
-    MQTT_CA_FILE=deevnet-mobile-root-ca.pem
+    MQTT_CA_FILE=deevnet-root-ca.pem
     MQTT_USERNAME=${deevnet_iot_broker_account.lightd.username}
     MQTT_PASSWORD=${deevnet_iot_broker_account.lightd.password}
     LOG_ENDPOINT=${deevnet_tenant.eds.log_endpoint}
@@ -114,6 +114,6 @@ output "kit_env" {
     GRAFANA_AUTH=${deevnet_tenant.eds.dashboard_username}:${deevnet_tenant.eds.dashboard_password}
     GRAFANA_ORG_ID=${deevnet_tenant.eds.dashboard_org_id}
     TF_VAR_grafana_org_id=${deevnet_tenant.eds.dashboard_org_id}
-    GRAFANA_CA_CERT=deevnet-mobile-root-ca.pem
+    GRAFANA_CA_CERT=deevnet-root-ca.pem
   EOT
 }

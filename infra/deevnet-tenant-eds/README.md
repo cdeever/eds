@@ -26,7 +26,7 @@ tenant's Terraform state, which is their authoritative copy.
 ## Running it
 
 EdS is the operator's own tenant, so the substrate's `a_autoprov` key is in
-`ssh_keys` beside the operator's own keys. `deevnet-mobile-root-ca.pem` and `ssh.auto.tfvars`
+`ssh_keys` beside the operator's own keys. `deevnet-root-ca.pem` and `ssh.auto.tfvars`
 are local and gitignored.
 
 1. The operator admits `eds` and hands back a single-use **enrollment token**
@@ -109,7 +109,7 @@ fabric that exists.
 `install-provider.sh`:
 
 ```bash
-curl -fsSL --cacert deevnet-mobile-root-ca.pem -O https://downloads.mobile.deevnet.net:8443/scripts/install-provider.sh
+curl -fsSL --cacert deevnet-root-ca.pem -O https://downloads.mobile.deevnet.net:8443/scripts/install-provider.sh
 bash install-provider.sh
 ```
 
