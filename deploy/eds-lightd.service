@@ -8,7 +8,7 @@ Environment=IMAGE=localhost/eds-lightd:latest
 ExecStartPre=-/usr/bin/podman rm -f eds-lightd
 ExecStart=/usr/bin/podman run --rm --name eds-lightd --network host \
   --env-file /opt/eds/kit.env --env-file /opt/eds/lightd.env \
-  -v /opt/eds/deevnet-mobile-root-ca.pem:/kit/deevnet-mobile-root-ca.pem:ro -e MQTT_CA_FILE=/kit/deevnet-mobile-root-ca.pem \
+  -v /opt/eds/deevnet-root-ca.pem:/kit/deevnet-root-ca.pem:ro -e MQTT_CA_FILE=/kit/deevnet-root-ca.pem \
   ${IMAGE}
 ExecStop=/usr/bin/podman stop -t 10 eds-lightd
 Restart=on-failure

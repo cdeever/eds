@@ -6,7 +6,7 @@ terraform {
     key              = "tenants/eds/terraform.tfstate"
     region           = "us-east-1"
     endpoints        = { s3 = "https://tfstate.mobile.deevnet.net:9000" }
-    custom_ca_bundle = "deevnet-mobile-root-ca.pem"
+    custom_ca_bundle = "deevnet-root-ca.pem"
     use_lockfile     = true
 
     # MinIO, not AWS.
