@@ -39,12 +39,8 @@ jobs:
     env:
       HUGO_VERSION: 0.165.0
     steps:
-      - name: Install Hugo CLI
-        run: |
-          wget -O "${{ runner.temp }}/hugo.deb" \
-            "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb"
-          sudo dpkg -i "${{ runner.temp }}/hugo.deb"
-
+      # First, and not only by convention: every step here defaults to
+      # working-directory docs, which does not exist until this has run.
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -52,6 +48,12 @@ jobs:
           # enableGitInfo produce real "last modified" dates.
           submodules: recursive
           fetch-depth: 0
+
+      - name: Install Hugo CLI
+        run: |
+          wget -O "${{ runner.temp }}/hugo.deb" \
+            "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb"
+          sudo dpkg -i "${{ runner.temp }}/hugo.deb"
 
       - name: Setup Pages
         id: pages
