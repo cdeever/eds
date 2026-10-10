@@ -7,7 +7,7 @@ weight: 11
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}} — until a driver has paired with the real iTunes; see [What would settle it](#what-would-settle-it) |
+| **Status** | {{< adr-status "Accepted" >}} 2026-10-10, after pairing with the real iTunes; see [Evidence](#evidence). Opened the same day as `Proposed` |
 | **Date** | 2026-10-10 |
 | **Scope** | How the iTunes driver learns of track changes and gets artwork. |
 | **Related** | [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), [ADR-0007](/docs/architecture/decisions/0007-drivers-are-portable-go/), [ADR-0010](/docs/architecture/decisions/0010-home-lan-relay/) |
@@ -78,18 +78,50 @@ interface, if pairing proves closed.
 - There is no Go implementation to reuse; the client is written here, with
   [pyatv](https://github.com/postlund/pyatv)'s `dmap` module as the reference.
 
-## What would settle it
+## Evidence
 
-Recorded here when tried. Each is a check against the real player:
+**2026-10-10 — paired with classic iTunes 12.13.10.3 on Windows 11**, from the
+test client (`npagent pair`, `npagent watch`) on a Mac on the same LAN.
 
-1. Classic iTunes 12.13 shows the Remote button and accepts a pairing from a
-   third-party remote. One user report says the button never appeared on
-   12.13.3.2.
-2. The phone remote still works afterwards.
-3. The long-poll returns on a track change, and on pause.
-4. Artwork is returned, and in what format and size.
-5. The Music app on macOS accepts the same pairing.
-6. What happens to the connection when iTunes quits or the PC sleeps.
+- **Pairing was accepted.** With the remote advertised, iTunes showed its
+  Remote button; the code was typed in; iTunes called back to `/pair` and the
+  client then logged in with the pairing GUID. No Apple ID, no Home Sharing.
+- **The phone remote still works.** It was already paired, stayed paired, and
+  connected afterwards. iTunes holds several remotes.
+- **Changes are pushed.** Play, next track, pause and a change of album each
+  arrived within the same second, on the request left hanging for them.
+- **The cover comes from iTunes.** Three covers, as JPEG (41 KB, 48 KB) and
+  PNG (363 KB), 500 px square, each fetched in 55-186 ms.
+- **A new album is distinguishable from a new track**: the album id changed
+  with the album and not between two tracks on one.
+
+What the driver has to allow for, seen in the same run:
+
+- **iTunes answers several times per action.** One click produced two or three
+  identical reports, with the revision number jumping by more than one. The
+  driver drops repeats.
+- **Stop is reported as pause.** iTunes has no stopped state for a loaded
+  track; it reported `paused`.
+- **A stopped player with nothing loaded** reports no track at all.
+
+**Bonjour on the PC was the only obstacle, and it was Windows, not iTunes.**
+No Remote button appeared at first. iTunes was reachable on port 3689 and
+answered `server-info`, but the PC answered no Bonjour query, so iTunes never
+saw the remote's advertisement. The cause: the network was set to *Private*
+and the firewall allowed **Bonjour Service** on *Public* networks only.
+Ticking *Private* for Bonjour Service (and for iTunes) under *Allow an app
+through Windows Firewall* fixed it at once. Worth checking first on any other
+PC: from another machine, `dig @224.0.0.251 -p 5353 -x <the PC's address>`
+answers with its name when Bonjour is getting through.
+
+## Still to be seen
+
+None of these would change the decision; each shapes the driver.
+
+1. What happens to the hanging request when iTunes quits or the PC sleeps.
+2. Whether the Music app on macOS accepts the same pairing, which decides
+   whether the driver can be developed against it.
+3. Whether the pairing survives an iTunes update.
 
 ## Sources
 

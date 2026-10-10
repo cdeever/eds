@@ -77,6 +77,34 @@ with no art, and a locally read TIDAL has no album.
 - Per-stand assignment is not ruled out. It would extend this record when a
   second stand in a second room exists.
 
+## Evidence
+
+**2026-10-10 — built, and run against the live catalogues.** This record was
+accepted on reasoning; these are the things building it showed.
+
+- All three catalogues returned the right cover for a known album (Miles
+  Davis, *Kind of Blue*): Deezer 111 KB, iTunes 59 KB, the Cover Art Archive
+  49 KB. A track with no album was resolved to its album by Deezer and by
+  iTunes, and a track that does not exist was correctly not found.
+- **Deezer's field syntax does not work for tracks.** `artist:"…" album:"…"`
+  works on its album search; `artist:"…" track:"…"` returns nothing, or
+  something unrelated, on both its track search and its general search. Track
+  lookups use plain text, which returns the right track first, and check every
+  result's artist and title before taking it. The tests against a stand-in
+  had passed with the field syntax; only the live service showed it.
+- **Catalogues disagree about the album.** For one track, Deezer named the
+  single and iTunes the album. The order above stands for covers, which is
+  what it was chosen for; for naming a missing album, iTunes may be the better
+  first choice. Left as it is until a source without albums is actually in
+  use ([ADR-0014](/docs/architecture/decisions/0014-tidal-by-lastfm/)).
+- **A catalogue's cover is not byte-stable.** The same Deezer cover fetched
+  in two runs had two different hashes. Within a run the cache hides it; a
+  restarted nowplayd may publish the "same" cover once as a new one.
+- End to end on a development broker: a source state with no album and no
+  cover became `current` with both about a second later, and `lightd` lit a
+  scene from it. A second source starting another album took over, as the
+  rule says, in about four seconds including the lookup.
+
 Sources: [Deezer API](https://api.deezer.com/search/album),
 [iTunes Search API](https://performance-partners.apple.com/search-api),
 [MusicBrainz rate limiting](https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting),

@@ -7,7 +7,7 @@ weight: 13
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}} — the protocol has not yet been read, let alone tried; see [What would settle it](#what-would-settle-it) |
+| **Status** | {{< adr-status "Proposed" >}} — the protocol has been read and does what is needed; it has not been tried against a real MusicBee. See [What would settle it](#what-would-settle-it) |
 | **Date** | 2026-10-10 |
 | **Scope** | How the MusicBee driver learns of track changes and gets artwork. |
 | **Related** | [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), [ADR-0007](/docs/architecture/decisions/0007-drivers-are-portable-go/), [ADR-0010](/docs/architecture/decisions/0010-home-lan-relay/), [ADR-0011](/docs/architecture/decisions/0011-itunes-by-remote-pairing/) |
@@ -58,20 +58,53 @@ new record extending
   PC's firewall.
 - The driver depends on a third party's protocol staying compatible. The
   plugin is actively maintained, and the protocol is versioned.
-- This record rests on less evidence than the other three: the protocol's
-  documents have been located but not read.
+- The driver speaks the plugin's **legacy protocol (V4)**, not its newer one;
+  see the evidence below.
+
+## Evidence so far
+
+**2026-10-10 — the protocol documents, read at the repository's `main`.** Not
+yet tried against a running MusicBee.
+
+The plugin serves two protocols on one TCP port (default 3000) and tells them
+apart by the first frame.
+
+| | V4 (legacy) | V6 |
+|---|---|---|
+| In a release | every shipping version, including v1.5.0 | **no** — on `main` only, 181 commits past v1.5.0 |
+| Stability | frozen, "preserved byte-for-byte, not extended" | "active development" |
+| Framing | JSON objects ended by CRLF | JSON objects ended by newline, with an envelope and ids |
+| Track change | pushed: `nowplayingtrack` with artist, title, album, year, path | pushed: `now_playing_changed`, then re-query `now_playing_state` |
+| Play state | pushed: `playerstate` — `Playing`, `Paused`, `Stopped` | pushed: `play_state_changed` |
+| Cover | pushed: `nowplayingcover`, the image as base64 | a content hash on the track; fetched from `GET /api/cover/{hash}` |
+| Keepalive | the server pings | the client pings every 15 s |
+| Access | an address filter | optional pairing, off by default |
+
+So, against the questions below: (1) yes, track changes are pushed in both;
+(2) title, artist and album are supplied, and the cover as base64 in V4;
+(3) yes, three states; (4) no authentication by default.
+
+**What this decides for the driver:** it speaks **V4**. V4 is what the
+installed plugin has, it is frozen, and it pushes everything needed. V6 is
+the better protocol, with a typed track and a cover that can be cached by
+hash, but it is not released. Moving to it later would extend this record.
 
 ## What would settle it
 
-1. The protocol pushes a message when the track changes, without polling.
-2. It supplies title, artist and album, and the cover, and in what form.
-3. Play, pause and stop are distinguishable.
-4. Whether a client must authenticate, and how.
-5. Behaviour when MusicBee quits and restarts.
+1. ~~The protocol pushes a message when the track changes, without polling.~~
+   Yes, on paper.
+2. ~~It supplies title, artist and album, and the cover, and in what form.~~
+   Yes, on paper; the cover is base64 in V4.
+3. ~~Play, pause and stop are distinguishable.~~ Yes, on paper.
+4. ~~Whether a client must authenticate, and how.~~ Not by default.
+5. All of the above against a running MusicBee with the plugin installed.
+6. Whether the plugin's address filter admits the relay by default.
+7. Behaviour when MusicBee quits and restarts.
 
 ## Sources
 
-- [MusicBee Remote plugin](https://github.com/musicbeeremote/mbrc-plugin) — v1.5.0, 2026-08-31; protocol under `docs/`
+- [MusicBee Remote plugin](https://github.com/musicbeeremote/mbrc-plugin) — v1.5.0, 2026-08-31
+- [Its protocol overview](https://github.com/musicbeeremote/mbrc-plugin/blob/main/docs/protocol.md), [V4](https://github.com/musicbeeremote/mbrc-plugin/blob/main/docs/protocol-v4.md) and [V6](https://github.com/musicbeeremote/mbrc-plugin/blob/main/docs/protocol-v6.md)
 - [Musicbee-MQTT](https://github.com/TroyFernandes/Musicbee-MQTT) — a small plugin that publishes now-playing to MQTT; the model for the fallback
 - [mb_MediaControl issues](https://github.com/HenryPDT/mb_MediaControl/issues) — the media-controls plugin's open bugs
 - [ScrobblerBrainz](https://github.com/karaluh/ScrobblerBrainz) — "now playing" to ListenBrainz

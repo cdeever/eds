@@ -10,6 +10,7 @@ weight: 10
 | **Status** | {{< adr-status "Accepted" >}} |
 | **Date** | 2026-10-10 |
 | **Scope** | How a driver that must be near a player on the home LAN reaches the broker at the Deevnet Mobile site. |
+| **Extended by** | [ADR-0015](/docs/architecture/decisions/0015-eds-builds-its-own-pi-images/): the image is EdS's own, and a relay is a way of configuring it |
 | **Related** | [ADR-0003](/docs/architecture/decisions/0003-broker-is-the-substrates/), [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), the Deevnet network segmentation standard ([deevnet-docs](https://deevnet.github.io/deevnet-docs/)) |
 
 ---
@@ -63,3 +64,28 @@ inside the site. It doubles as a development box.
 - A driver that had to run on a PC itself — none is planned — would publish
   to a small MQTT relay on this Pi rather than reach the site directly. That
   would extend this record.
+
+## How it was built
+
+**2026-10-10**, in [CHG-0002](/docs/changes/2026/0002-relay-pi-and-now-playing-accounts/).
+
+- The Pi is `dv02rpi002p01`. Its **Ethernet** is its leg on the site: the IoT
+  segment, where its address was already reserved, and from which the broker
+  is reachable. Its **Wi-Fi** is its leg on the home LAN.
+- "Must not forward" is held in two places, and each is checked: forwarding
+  off in the kernel, and a firewall whose forward chain drops everything. The
+  image build fails without both; `eds-relay-status` checks both on the
+  running Pi.
+- "Its default route stays where it is" is held by the Wi-Fi connection
+  itself: no default route, no DNS and no routes taken from DHCP.
+- One thing this record did not anticipate: **pairing needs something to come
+  in from the home side.** iTunes has to see the relay's Bonjour
+  advertisement and call it back when the code is typed. So the home leg
+  admits Bonjour and one fixed port, and nothing else — not SSH.
+- **The image carries no secret.** The home Wi-Fi key and the agent's broker
+  account are written to the card after it is flashed and imported at boot.
+- The image was first built as a variant in the substrate's image factory,
+  and moved to EdS the same day
+  ([ADR-0015](/docs/architecture/decisions/0015-eds-builds-its-own-pi-images/)):
+  it is `images/agent`, and the card's settings are written by `deploy/relay`.
+- `eds-relay-status` became `eds-agent-status` with that move.
