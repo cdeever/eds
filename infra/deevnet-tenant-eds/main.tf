@@ -4,11 +4,11 @@
 # lightd. It does NOT host the MQTT broker - see the README for why that is a
 # forced choice rather than a preference.
 #
-# Everything here goes through the Deevnet API (ADR-0015): the tenant's
+# Everything here goes through the Deevnet API (Deevnet ADR-0015): the tenant's
 # network, its workload and its names. EdS holds one credential, its Deevnet
 # token, and no substrate credential at all.
 #
-# Unlike the pattern in ADR-0006, where the repository *is* the tenant, this
+# Unlike the pattern in Deevnet ADR-0006, where the repository *is* the tenant, this
 # tenant lives inside the EdS monorepo so the application and the
 # infrastructure it runs on stay in one place. Nothing else about the pattern
 # changes.
@@ -30,7 +30,7 @@ terraform {
 
   # No backend here. The first apply keeps state on this machine; after it,
   # `make state-backend` writes backend.tf for the state store the substrate
-  # issued this tenant (ADR-0007), from this tenant's own outputs.
+  # issued this tenant (Deevnet ADR-0007), from this tenant's own outputs.
 }
 
 # DEEVNET_API_ENDPOINT, DEEVNET_API_TOKEN, DEEVNET_API_CACERT.
@@ -54,7 +54,7 @@ resource "deevnet_workload" "services" {
 
 # Service names, so firmware and operators address the service rather than the
 # machine. The API publishes the workload's own name; these are the two beside
-# it (ADR-0015 §13).
+# it (Deevnet ADR-0015 §13).
 resource "deevnet_dns_record" "palette" {
   tenant  = deevnet_tenant.eds.name
   name    = "palette"
@@ -67,7 +67,7 @@ resource "deevnet_dns_record" "lightd" {
   address = deevnet_workload.services.address
 }
 
-# The Wi-Fi credential EdS's devices are flashed with (ADR-0012 §3, CHG-0013).
+# The Wi-Fi credential EdS's devices are flashed with (Deevnet ADR-0012 §3, Deevnet CHG-0013).
 #
 # One key serves every device: the LP stand, and any later one. The substrate
 # does not know those devices individually, and a MAC binding would buy no
@@ -83,7 +83,7 @@ resource "deevnet_dns_record" "lightd" {
 # database does NOT do that - it restores this key from state.
 #
 # Beside it the tenant holds a `tenant_dev` key named `admission`, for the
-# developer's computer on DVNTM-TD (ADR-0029). It came with the admission and
+# developer's computer on DVNTM-TD (Deevnet ADR-0029). It came with the admission and
 # the API adopts it when the tenant is created, so it is not declared here.
 resource "deevnet_iot_wifi_key" "devices" {
   tenant      = deevnet_tenant.eds.name
@@ -91,7 +91,7 @@ resource "deevnet_iot_wifi_key" "devices" {
   trust_class = "iot"
 }
 
-# The LP jacket stand, in the tenant's device registry (ADR-0012 §3, CHG-0014).
+# The LP jacket stand, in the tenant's device registry (Deevnet ADR-0012 §3, Deevnet CHG-0014).
 #
 # The entry is an identity and nothing else: it carries no credential and
 # grants no access. What it is FOR is the pairing rule below - a broker account
@@ -107,7 +107,7 @@ resource "deevnet_iot_device" "lp_stand_01" {
   trust_class = "iot"
 }
 
-# lightd's own broker account (ADR-0012 §3, §10; CHG-0016).
+# lightd's own broker account (Deevnet ADR-0012 §3, §10; Deevnet CHG-0016).
 #
 # A WORKLOAD account: no device, because lightd runs on the services VM and
 # reaches the broker over tenant_transit -> iot_backend, not from VLAN 30.
@@ -145,7 +145,7 @@ resource "deevnet_iot_broker_account" "lightd" {
 # CAREFUL: replacing this resource issues a NEW password, and the stand stops
 # connecting until it is reflashed. A lost API database does NOT do that - it
 # restores this account from state, the same way the Wi-Fi key above is
-# restored (ADR-0012 §5).
+# restored (Deevnet ADR-0012 §5).
 resource "deevnet_iot_broker_account" "lp_stand_01" {
   tenant = deevnet_tenant.eds.name
   name   = "lp-stand-01"
@@ -154,7 +154,7 @@ resource "deevnet_iot_broker_account" "lp_stand_01" {
   publish = [
     "lightstand/lp-stand-01/status",
     "lightstand/lp-stand-01/state",
-    "log/lp-stand-01", # its own log lines, into the tenant's log store (CHG-0021)
+    "log/lp-stand-01", # its own log lines, into the tenant's log store (Deevnet CHG-0021)
   ]
   subscribe = [
     "lightstand/lp-stand-01/scene",

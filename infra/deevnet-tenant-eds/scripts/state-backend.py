@@ -12,7 +12,7 @@ import sys
 d = json.load(sys.stdin)
 
 with open("backend.tf", "w") as f:
-    f.write(f'''# The state store the substrate issued this tenant (ADR-0007), written by
+    f.write(f'''# The state store the substrate issued this tenant (Deevnet ADR-0007), written by
 # `make state-backend`. Not secret: the credentials are in .backend.env.
 terraform {{
   backend "s3" {{

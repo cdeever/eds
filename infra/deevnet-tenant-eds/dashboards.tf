@@ -1,4 +1,4 @@
-# The stands' dashboard, in EdS's Grafana organization (ADR-0024).
+# The stands' dashboard, in EdS's Grafana organization (Deevnet ADR-0024).
 #
 # A stand publishes its key events to its MQTT log topic, the substrate's
 # bridge carries them into this tenant's device log partition, and the

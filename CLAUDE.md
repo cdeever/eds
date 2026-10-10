@@ -26,6 +26,29 @@ builds the monorepo as a whole; work inside one project directory at a time.
 Each project's README carries the design rationale in depth. Read the relevant
 one before changing behaviour — the choices there are argued, not incidental.
 
+## Decisions are recorded — read them first
+
+Design decisions, changes and incidents are kept as records on the docs site,
+so a settled question is found rather than argued again:
+
+| Record | Where | Write one when |
+|---|---|---|
+| **ADR-NNNN** | `docs/content/docs/architecture/decisions/` | two approaches were seriously considered; before the code |
+| **CHG-NNNN** | `docs/content/docs/changes/<year>/` | something running changes: a `terraform apply`, a deployment, a device flashed or reprovisioned, a credential renewed |
+| **INC-NNNN** | `docs/content/docs/incidents/<year>/` | something failed that a person would notice |
+
+- **Before proposing a design, read the decision index**
+  (`docs/content/docs/architecture/decisions/_index.md`). If a record answers
+  the question, that answer stands. To change it, write a new record that
+  extends or supersedes the old one; never rewrite an accepted record.
+- A record resting on something unproven is `Proposed`, and lists what would
+  settle it. Put the evidence in the record when it arrives.
+- Records move in the same commit as the work, and each needs a row in its
+  index table.
+- **A bare `ADR-0006` means an EdS record.** The substrate uses the same
+  names: always write `Deevnet ADR-0012` for one of its.
+- Rules and templates: `docs/content/docs/develop/records/`.
+
 ## Commands
 
 ### palette (`services/palette`)
@@ -141,7 +164,7 @@ protect this.
 The broker `mqtt01` is on the substrate's IoT Backend segment (VLAN 35), **not**
 a tenant VM, and the stand sits on IoT (VLAN 30). This is forced, not preferred:
 MQTT clients always dial the broker, so its segment must accept inbound, and the
-tenant fabric has no inbound path by design (ADR-0001, ADR-0003). Moving the
+tenant fabric has no inbound path by design (Deevnet ADR-0001, Deevnet ADR-0003). Moving the
 broker into the tenant is an ADR, not a config change.
 
 ## Conventions that matter
@@ -168,7 +191,7 @@ broker into the tenant is an ADR, not a config change.
 - **k-means in palette uses a fixed seed.** A stable input must not repaint the
   room; do not introduce nondeterminism.
 - **Terraform: state is never committed** (it lives in the substrate's store,
-  ADR-0007), but `.terraform.lock.hcl` **is** — a module pinned by tag with
+  Deevnet ADR-0007), but `.terraform.lock.hcl` **is** — a module pinned by tag with
   floating providers is half a pin. The module is pinned to
   `tenant-module-v1.1.0`; moving tags needs an explicit `terraform init -upgrade`.
 

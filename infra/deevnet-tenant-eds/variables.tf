@@ -1,7 +1,7 @@
 # EdS declares what its services run on, and nothing about the substrate.
 #
 # The index, subnet, gateway, VMID, MAC and address are the API's to issue
-# (ADR-0015), so the site selectors this file used to carry - site_octet, VNI
+# (Deevnet ADR-0015), so the site selectors this file used to carry - site_octet, VNI
 # bases, the DNS substrate - are gone: they are the API's, and moving EdS to
 # another site means pointing at that site's API.
 
@@ -32,7 +32,7 @@ variable "ssh_keys" {
 
     EdS is the operator's own tenant, so the substrate's a_autoprov key is on
     this list deliberately: it lets the Builder's automation reach the VM. A
-    tenant someone else owns would never carry it (ADR-0028).
+    tenant someone else owns would never carry it (Deevnet ADR-0028).
   EOT
 }
 
@@ -50,7 +50,7 @@ variable "broker_host" {
     that still has to be named here.
 
     NOT mqt01 or mqtt01: those names do not resolve. The broker is a VerneMQ
-    container on the messaging VM (CHG-0015) and its certificate is valid for
+    container on the messaging VM (Deevnet CHG-0015) and its certificate is valid for
     this name and for the host's own.
   EOT
 }

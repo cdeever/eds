@@ -1,0 +1,3 @@
+{{- $status := .Get 0 | default "planned" -}}
+{{- $label := .Get 1 | default $status -}}
+<span class="status-badge status-{{ $status }}">{{ $label }}</span>

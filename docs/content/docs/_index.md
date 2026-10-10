@@ -21,5 +21,18 @@ The split it tries to hold:
 - **Reference** is the contracts. These are the pieces other software depends
   on, so they are described precisely and versioned explicitly.
 
+Those four are **maintained**: kept current as the system changes. Three kinds
+of record are **retained** instead, written once and left as evidence:
+
+- **[Decisions](/docs/architecture/decisions/)** (ADRs) say why a design fork
+  went the way it did, and what was turned down. Read the index before
+  reopening a question.
+- **[Change Records](/docs/changes/)** say what was changed on something
+  running, and what actually happened.
+- **[Incident Records](/docs/incidents/)** say what broke, why, and what was
+  done about it.
+
+[Keeping Records](/docs/develop/records/) has the rules and the templates.
+
 Implementation lives in the repository. This site defines intent, contracts and
 procedure.

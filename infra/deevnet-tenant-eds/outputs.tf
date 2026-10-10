@@ -29,7 +29,7 @@ output "state_backend" {
 }
 
 output "dns_publication" {
-  description = "For publishing names directly over RFC 2136, which EdS may still do (ADR-0004)."
+  description = "For publishing names directly over RFC 2136, which EdS may still do (Deevnet ADR-0004)."
   sensitive   = true
   value = {
     server        = deevnet_tenant.eds.dns_update_server
@@ -88,7 +88,7 @@ output "lp_stand_01_broker" {
   }
 }
 
-# EdS's own log store credentials (ADR-0027, CHG-0020).
+# EdS's own log store credentials (Deevnet ADR-0027, Deevnet CHG-0020).
 #
 # The stand does NOT use these: it publishes its events to MQTT, and the
 # substrate's bridge carries them into this tenant's device partition. These

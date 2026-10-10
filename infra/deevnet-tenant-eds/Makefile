@@ -2,7 +2,7 @@
 #
 # EdS holds one credential: its Deevnet API token. No vault, no Proxmox
 # credential, no index. The substrate issues the rest through the API
-# (ADR-0015), and it lands in this tenant's Terraform state.
+# (Deevnet ADR-0015), and it lands in this tenant's Terraform state.
 #
 # Plain recipes, one shell per line: macOS ships GNU make 3.81, which has no
 # .ONESHELL. /bin/bash is on macOS and Linux alike.
@@ -65,7 +65,7 @@ apply: check-backend require-token
 destroy: check-backend require-token
 	terraform destroy $(TF_APPROVE)
 
-# The state store is offered, not mandated (ADR-0007). Its credentials are
+# The state store is offered, not mandated (Deevnet ADR-0007). Its credentials are
 # outputs of the tenant, so it is set up after the first apply: backend.tf
 # (not secret - committed) and .backend.env (secret, gitignored), then the
 # local state moves in.

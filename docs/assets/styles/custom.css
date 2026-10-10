@@ -1,0 +1,135 @@
+/* =============================================================================
+   eds-docs - custom styles
+
+   The theme reads this file, assets/styles/custom.css, and nothing else. It is
+   plain CSS: no nesting and no // comments, because nothing preprocesses it.
+
+   The accent is the warm amber the stand shows before the network exists -
+   rgb(255, 170, 90) in lp_scene_default(). It seemed the right colour for a
+   site about lighting a record sleeve.
+   ========================================================================== */
+
+:root {
+  --accent-color: #c2410c;
+  --accent-light: #ffedd5;
+  --accent-dark: #9a3412;
+  --bg-subtle: #faf9f7;
+  --bg-card: #ffffff;
+  --border-color: #e7e2dc;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --text-muted: #6b6560;
+  --badge-complete: #16a34a;
+  --badge-active: #2563eb;
+  --badge-planned: #d97706;
+  --badge-deprecated: #dc2626;
+  --badge-orange: #ea580c;
+  --badge-text: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent-color: #fb923c;
+    --accent-light: #431407;
+    --accent-dark: #fdba74;
+    --bg-subtle: #1c1917;
+    --bg-card: #232020;
+    --border-color: #3a3431;
+    --text-muted: #a8a29e;
+    --badge-complete: #4ade80;
+    --badge-active: #60a5fa;
+    --badge-planned: #fbbf24;
+    --badge-deprecated: #f87171;
+    --badge-orange: #fb923c;
+    --badge-text: #0f172a;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Landing
+   -------------------------------------------------------------------------- */
+
+.landing-hero {
+  margin-bottom: 2rem;
+}
+
+.subtitle {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  margin-top: -0.5rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Section cards
+   -------------------------------------------------------------------------- */
+
+.section-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.section-card {
+  display: block;
+  padding: 1rem 1.2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  text-decoration: none !important;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.section-card h3 {
+  margin: 0 0 0.35rem;
+  color: var(--accent-color);
+}
+
+.section-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.section-card:hover {
+  border-color: var(--accent-color);
+  box-shadow: var(--shadow-md);
+}
+
+/* -----------------------------------------------------------------------------
+   Tables carrying numbers - the power budget and contract tables read better
+   with tabular figures.
+   -------------------------------------------------------------------------- */
+
+.markdown table td:not(:first-child),
+.markdown table th:not(:first-child) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* -----------------------------------------------------------------------------
+   Status badges - the decision, change and incident records. Same class names
+   and colours as deevnet-docs, so a record reads the same on either site.
+   -------------------------------------------------------------------------- */
+
+.status-badge {
+  display: inline-block;
+  padding: 0.15em 0.65em;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: var(--badge-text);
+}
+
+.status-badge.status-complete { background: var(--badge-complete); }
+.status-badge.status-active { background: var(--badge-active); }
+.status-badge.status-planned { background: var(--badge-planned); }
+.status-badge.status-deprecated { background: var(--badge-deprecated); }
+
+.status-badge.inc-red { background: var(--badge-deprecated); }
+.status-badge.inc-orange { background: var(--badge-orange); }
+.status-badge.inc-green { background: var(--badge-complete); }
+.status-badge.inc-grey { background: var(--text-muted); }

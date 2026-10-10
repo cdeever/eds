@@ -164,7 +164,7 @@ dials **`mqtt.mobile.deevnet.net` on IoT Backend (VLAN 35)**.
 
 That placement is forced, not chosen: MQTT clients always initiate, so whichever
 segment holds the broker must accept inbound, and the tenant fabric has no
-inbound path by design (ADR-0001, ADR-0003). IoT Backend is the segment already
+inbound path by design (Deevnet ADR-0001, Deevnet ADR-0003). IoT Backend is the segment already
 defined to accept exactly this.
 
 ## Roadmap
