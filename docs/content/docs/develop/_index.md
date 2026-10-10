@@ -13,6 +13,7 @@ directory at a time.
 |---|---|---|
 | `services/palette` | Python 3.11+ / FastAPI | `make venv test serve` |
 | `services/lightd` | Go 1.25 | `make check build run` |
+| `services/nowplaying` | Go 1.25 | `make check test-integration run` |
 | `firmware/lp-stand` | C / ESP-IDF 6.x | `make test`, `make build flash` |
 | `infra/deevnet-tenant-eds` | Terraform | `make paths init plan apply` |
 | `docs` | Hugo | `make server` |

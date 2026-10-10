@@ -16,6 +16,7 @@ container without knowing which.
 | `LIGHTD_ADDR` | `:8732` | listen address |
 | `LIGHTD_PALETTE_URL` | `http://127.0.0.1:8731` | palette service |
 | `LIGHTD_STAND_ID` | `lp-stand-01` | default stand |
+| `LIGHTD_COVER_TOPIC` | unset | a topic of cover images to light the stand from, relative to the prefix, e.g. `nowplaying/current/art` |
 | `LIGHTD_TOPIC_PREFIX` | `eds` | root of the topic tree |
 | `LIGHTD_MQTT_URL` | `tcp://127.0.0.1:1883` | `tls://mqtt01…:8883` in production |
 | `LIGHTD_MQTT_USERNAME` / `_PASSWORD` | — | broker credentials |
@@ -29,6 +30,23 @@ container without knowing which.
 | `LIGHTD_MAX_COLORS` | `4` | palette entries per scene |
 
 **Invalid values stop the daemon** rather than lighting the room wrong quietly.
+
+## nowplayd
+
+Environment only, with the same fallbacks to the platform's `kit.env` names.
+A value that cannot be used stops the program.
+
+| Variable | Default | |
+|---|---|---|
+| `NP_MQTT_URL` | `tls://$MQTT_HOST:$MQTT_PORT`, else `tcp://127.0.0.1:1883` | broker |
+| `NP_MQTT_CLIENT_ID` | `eds-nowplayd` | must be unique on the broker |
+| `NP_MQTT_USERNAME` / `NP_MQTT_PASSWORD` | `$MQTT_USERNAME` / `$MQTT_PASSWORD` | `kit.env` carries lightd's login, so nowplayd names its own |
+| `NP_MQTT_CA_FILE` | `$MQTT_CA_FILE` | the Deevnet Root CA |
+| `NP_MQTT_INSECURE` | `false` | bring-up only |
+| `NP_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | one topic level |
+| `NP_CATALOGUES` | `deezer,itunes,musicbrainz` | where a missing album or cover is looked up, in order; empty switches lookups off |
+| `NP_LOOKUP_TIMEOUT` | `10s` | for one catalogue request |
+| `NP_CONTACT` | this repository's URL | goes in the User-Agent sent to catalogues |
 
 ## lp-stand
 
