@@ -1,0 +1,91 @@
+name: Deploy eds-docs to Pages
+
+# EdS is a monorepo, so this must not run for firmware, service or Terraform
+# commits. The path filter is what keeps a docs deployment from being triggered
+# by work that cannot change a single rendered page.
+#
+# The workflow file itself is in the filter deliberately: a change to how the
+# site is built should rebuild the site, even when no content moved.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+    working-directory: docs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HUGO_VERSION: 0.165.0
+    steps:
+      # First, and not only by convention: every step here defaults to
+      # working-directory docs, which does not exist until this has run.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The theme is a submodule; fetch-depth 0 is what makes
+          # enableGitInfo produce real "last modified" dates.
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Hugo CLI
+        run: |
+          wget -O "${{ runner.temp }}/hugo.deb" \
+            "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb"
+          sudo dpkg -i "${{ runner.temp }}/hugo.deb"
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Build with Hugo
+        env:
+          HUGO_CACHEDIR: ${{ runner.temp }}/hugo_cache
+          HUGO_ENVIRONMENT: production
+          TZ: America/Los_Angeles
+        run: |
+          hugo \
+            --gc \
+            --minify \
+            --baseURL "${{ steps.pages.outputs.base_url }}/"
+
+      - name: Upload artifact
+        # Only the main-branch build is a candidate for deployment; a pull
+        # request build exists to catch a broken site before it merges.
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./docs/public
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

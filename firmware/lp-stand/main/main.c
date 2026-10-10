@@ -9,13 +9,19 @@
 // here means a stand whose network has gone away keeps doing something
 // sensible.
 
+#include <stdio.h>
+
 #include "effects.h"
+#include "esp_app_desc.h"
 #include "esp_log.h"
+#include "esp_system.h"
+#include "event_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "led_strip_out.h"
 #include "lp_config.h"
+#include "lp_credentials.h"
 #include "mqtt.h"
 #include "nvs_flash.h"
 #include "scene.h"
@@ -39,6 +45,38 @@ static void on_scene(const lp_scene_t *scene)
     xSemaphoreGive(current_lock);
 
     lp_mqtt_publish_state(scene);
+
+    char extra[96];
+    snprintf(extra, sizeof(extra), "\"effect\":\"%s\",\"colors\":%u,\"brightness\":%.2f",
+             lp_effect_name(scene->effect), (unsigned)scene->palette_len, scene->brightness);
+    lp_event_log_with(LP_EVENT_INFO, "scene.applied", extra, "Showing %s in %u colours",
+                      lp_effect_name(scene->effect), (unsigned)scene->palette_len);
+}
+
+// Why the stand started, in words. A stand that reports "power" once a week
+// is being switched off with the lamp; one that reports "panic" is a bug.
+static const char *reset_reason(void)
+{
+    switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:
+        return "power";
+    case ESP_RST_SW:
+        return "software";
+    case ESP_RST_PANIC:
+        return "panic";
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:
+        return "watchdog";
+    case ESP_RST_BROWNOUT:
+        return "brownout";
+    case ESP_RST_DEEPSLEEP:
+        return "sleep";
+    case ESP_RST_EXT:
+        return "reset pin";
+    default:
+        return "unknown";
+    }
 }
 
 static void render_task(void *arg)
@@ -74,6 +112,27 @@ void app_main(void)
         err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(err);
+
+    // First, so everything after it can be recorded. Failing to create the
+    // queue is not fatal: every recorder checks for it, and a stand that
+    // cannot report is still a stand.
+    if (lp_event_log_init() != ESP_OK) {
+        ESP_LOGW(TAG, "no memory for the event log; running without it");
+    }
+
+    const esp_app_desc_t *app = esp_app_get_description();
+    char extra[128];
+    snprintf(extra, sizeof(extra), "\"reason\":\"%s\",\"firmware\":\"%s\",\"idf\":\"%s\"",
+             reset_reason(), app->version, app->idf_ver);
+    esp_reset_reason_t why = esp_reset_reason();
+    bool crashed = why == ESP_RST_PANIC || why == ESP_RST_INT_WDT || why == ESP_RST_TASK_WDT ||
+                   why == ESP_RST_WDT || why == ESP_RST_BROWNOUT;
+    lp_event_log_with(crashed ? LP_EVENT_ERROR : LP_EVENT_INFO, "system.boot", extra,
+                      "Started after %s, firmware %s", reset_reason(), app->version);
+
+    // Before WiFi or MQTT: both read through this, and an unprovisioned stand
+    // carries on with no keys rather than refusing to boot.
+    ESP_ERROR_CHECK(lp_credentials_load());
 
     current_lock = xSemaphoreCreateMutex();
     ESP_ERROR_CHECK(current_lock == NULL ? ESP_ERR_NO_MEM : ESP_OK);

@@ -45,6 +45,39 @@ Keys are written when the VM is built, so a change to `ssh_keys` needs
 `terraform output login` prints the SSH line; `terraform output -raw kit_env`
 is the services' environment for deevnet-kit.
 
+## Logs and the dashboard
+
+The LP stand does not ship logs itself. It publishes its key events to
+`eds/log/lp-stand-01`, the one topic under `log/` its broker account may write,
+and the substrate's bridge carries them into this tenant's device log
+partition, `(2, 2)`. What the events are is in the
+[firmware's README](../../firmware/lp-stand/README.md#events).
+
+| | |
+|---|---|
+| `make -C ../../firmware/lp-stand logs` | prints them in a terminal, with `log_store.read_token` |
+| Grafana | the dashboard **LP Stand**, in the folder **EdS** of this tenant's organization |
+
+The dashboard is declared in `dashboards.tf` and `dashboards/lp-stand.json`,
+because the platform treats Grafana's own database as rebuildable: one built by
+clicking does not come back, and this one does on the next apply. It reads the
+data source `deevnet-logs-devices`, which the platform wires in and which has
+the same UID in every tenant's organization. `terraform output dashboard` says
+where to log in; the password is the second half of `GRAFANA_AUTH` in
+`terraform output -raw kit_env`.
+
+## On another machine
+
+Three files are not committed and have to be put in this directory:
+
+| File | What it is | Where it comes from |
+|---|---|---|
+| `.backend.env` | the state store's credentials | a machine that already has it |
+| `deevnet-root-ca.pem` | the Deevnet Root CA; public | the operator, or the tenant downloads |
+| `ssh.auto.tfvars` | `ssh_keys` for the workload | a machine that already has it — without it a plan wants to replace the workload's keys |
+
+With those in place `make init` reads the state from the store.
+
 ## Publishing names
 
 The API publishes `services.eds.mobile.deevnet.net` and the two service names

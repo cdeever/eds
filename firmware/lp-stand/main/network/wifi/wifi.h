@@ -12,3 +12,10 @@
 // retrying in the background either way - a stand that gives up needs someone
 // to walk over and power-cycle it.
 esp_err_t lp_wifi_start(void);
+
+// lp_wifi_rssi is the signal from the access point in dBm, or 0 when the
+// stand is not associated.
+int lp_wifi_rssi(void);
+
+// lp_wifi_ip is the stand's address as text, or "" before it has one.
+const char *lp_wifi_ip(void);

@@ -1,0 +1,38 @@
+# eds-docs - the EdS developer and user guide.
+#
+# This site lives inside the EdS monorepo rather than in its own repository,
+# which has one consequence worth knowing: a repository serves exactly one
+# GitHub Pages site, so the baseURL is the repository name (/eds/) and not the
+# site name. Nothing else about the deevnet-docs pattern changes.
+baseURL = "https://cdeever.github.io/eds/"
+locale = "en-us"
+title = "EdS"
+theme = "hugo-book"
+
+# "Last modified" dates come from git, which needs fetch-depth: 0 in CI.
+enableGitInfo = true
+
+[params]
+  BookTitle = "Contents"
+  BookTheme = "auto"
+  BookToC = true
+  BookSearch = true
+  BookRepo = "https://github.com/cdeever/eds"
+  # The site is not at the repository root, so the edit link needs the docs/
+  # prefix; .Path is relative to Hugo's working directory, which is docs/.
+  BookEditLink = '{{ .Site.Params.BookRepo }}/edit/main/docs/{{ .Path }}'
+  BookLastChangeLink = '{{ .Site.Params.BookRepo }}/commit/{{ .GitInfo.Hash }}'
+  BookSection = "docs"
+  # Resolve in-content markdown links through the theme so they honour the
+  # baseURL subpath (/eds/). Without this, absolute links like /docs/... render
+  # literally and 404 on the project Pages site.
+  BookPortableLinks = true
+  description = "Developer and user documentation for EdS - an intelligent music experience platform"
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+  [markup.tableOfContents]
+    startLevel = 1
+    endLevel = 4

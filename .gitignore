@@ -29,19 +29,32 @@ secrets.*
 # ESP-IDF (build/ is already covered above).
 #
 # sdkconfig is GENERATED from sdkconfig.defaults on the first build and holds
-# the values actually configured - including CONFIG_LP_WIFI_PASSWORD and
-# CONFIG_LP_MQTT_PASSWORD. It is the one file in this repository that would
-# carry a live secret, so it is ignored rather than trusted to discipline.
+# the values actually configured. The firmware no longer has an option for
+# either password - they are provisioned into NVS - so it should hold no
+# secret; it stays ignored because it is generated, and because one written
+# before that change may still carry CONFIG_LP_*_PASSWORD.
 # Unanchored on purpose: it matches at any depth, for any future firmware.
 sdkconfig
 sdkconfig.old
 
+# Fetched by the component manager from idf_component.yml; dependencies.lock,
+# which pins what it fetches, IS committed. .cache/ is clangd's index.
+managed_components/
+firmware/*/.cache/
+
 # Go
 bin/
 firmware/*/test/host/run-tests
+*.dSYM/
 
 # Embedded CA bundles, staged locally rather than committed. The previous
 # pattern here was `main/certs/*.pem`, which contains a slash and is therefore
 # anchored to this directory - so it only ever matched a top-level main/certs/
 # that does not exist, and never the firmware's.
 **/certs/*.pem
+
+# Hugo (docs/). The theme is a submodule; public/ and resources/ are build
+# output, and .hugo_build.lock is a transient held only while hugo runs.
+public/
+resources/
+.hugo_build.lock
