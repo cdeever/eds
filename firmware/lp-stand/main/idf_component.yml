@@ -1,6 +1,11 @@
 dependencies:
-  idf: ">=5.1"
+  idf: ">=6.0"
   # Espressif's own strip driver. The timing for WS2812-class parts is
   # unforgiving and this already gets it right; there is nothing to be learned
   # by reimplementing it and plenty to get subtly wrong.
-  espressif/led_strip: "^2.5.3"
+  espressif/led_strip: "^3.0.3"
+
+  # esp-mqtt and cJSON shipped inside IDF through 5.x and moved out to the
+  # component registry in 6.0. They are ordinary managed dependencies now.
+  espressif/mqtt: "^1.1.0"
+  espressif/cjson: "^1.7.19"

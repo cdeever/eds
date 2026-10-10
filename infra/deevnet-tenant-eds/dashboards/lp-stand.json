@@ -1,0 +1,368 @@
+{
+  "uid": "eds-lp-stand",
+  "title": "LP Stand",
+  "tags": [
+    "eds"
+  ],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Scenes shown",
+      "description": "Scenes a stand accepted and started rendering in the selected period.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"scene.applied\" | stats count() scenes"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Scenes refused",
+      "description": "Scenes a stand ignored. It keeps showing the last good one, so from the room this looks like nothing was sent.",
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"scene.rejected\" | stats count() refused"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Restarts",
+      "description": "Times a stand started in the selected period.",
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"system.boot\" | stats count() restarts"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Broker connections",
+      "description": "Times a stand connected to the broker. More than restarts means the connection dropped in between.",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"mqtt.connected\" | stats count() connections"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "WiFi losses",
+      "description": "Times a stand lost its WiFi network.",
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"wifi.disconnected\" | stats count() losses"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Warnings and errors",
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "stats",
+          "expr": "level:in(warn, error) | stats count() problems"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Events by kind",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "statsRange",
+          "expr": "event:* | stats by (event) count() events",
+          "legendFormat": "{{event}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "WiFi signal",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dBm",
+          "custom": {
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 4
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "statsRange",
+          "expr": "rssi:* | stats by (device) avg(rssi) rssi",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "description": "Reported every five minutes, and each time a stand joins the network or the broker."
+    },
+    {
+      "type": "timeseries",
+      "title": "Free memory",
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 4
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "statsRange",
+          "expr": "heap_free:* | stats by (device) min(heap_free) heap_free",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "description": "The stand's free heap, every five minutes. A line that only goes down is a leak."
+    },
+    {
+      "type": "logs",
+      "title": "Stand events",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 14
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "instant",
+          "expr": "*"
+        }
+      ]
+    }
+  ]
+}

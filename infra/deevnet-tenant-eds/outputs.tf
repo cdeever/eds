@@ -88,6 +88,34 @@ output "lp_stand_01_broker" {
   }
 }
 
+# EdS's own log store credentials (ADR-0027, CHG-0020).
+#
+# The stand does NOT use these: it publishes its events to MQTT, and the
+# substrate's bridge carries them into this tenant's device partition. These
+# are for reading them back - firmware/lp-stand/tools/stand_logs.py does - and
+# they are the same values kit_env hands the services for their own logs.
+output "log_store" {
+  description = "Reading this tenant's logs, and writing from anything it runs itself."
+  sensitive   = true
+  value = {
+    endpoint      = deevnet_tenant.eds.log_endpoint
+    account_id    = deevnet_tenant.eds.log_account_id
+    select_header = deevnet_tenant.eds.log_select_header
+    ingest_token  = deevnet_tenant.eds.log_ingest_token
+    read_token    = deevnet_tenant.eds.log_read_token
+  }
+}
+
+output "dashboard" {
+  description = "Where the stands' dashboard is. The password is in kit_env's GRAFANA_AUTH."
+  value = {
+    url      = deevnet_tenant.eds.dashboard_url
+    org_id   = deevnet_tenant.eds.dashboard_org_id
+    username = deevnet_tenant.eds.dashboard_username
+    path     = "/d/eds-lp-stand"
+  }
+}
+
 output "login" {
   description = "How to log in to the services VM, with a key in ssh_keys."
   value       = "ssh ${deevnet_workload.services.login_user}@${deevnet_workload.services.fqdn}"

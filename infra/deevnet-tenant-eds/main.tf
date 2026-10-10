@@ -21,6 +21,11 @@ terraform {
       source  = "deevnet/deevnet"
       version = "~> 0.5"
     }
+    # The stands' dashboard: see dashboards.tf.
+    grafana = {
+      source  = "grafana/grafana"
+      version = "~> 4.46"
+    }
   }
 
   # No backend here. The first apply keeps state on this machine; after it,
