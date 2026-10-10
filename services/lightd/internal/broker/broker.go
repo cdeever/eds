@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -40,11 +41,16 @@ type Config struct {
 	Timeout     time.Duration
 }
 
-// MQTT is a connected publisher.
+// MQTT is a connected publisher, and optionally a subscriber to one topic of
+// cover images.
 type MQTT struct {
 	client  mqtt.Client
 	prefix  string
 	timeout time.Duration
+
+	mu         sync.Mutex
+	coverTopic string
+	covers     chan []byte
 }
 
 // SceneTopic is where a stand listens for what to render.
@@ -59,6 +65,13 @@ func StatusTopic(prefix string) string {
 	return prefix + "/lightd/status"
 }
 
+// CoverTopic is where covers arrive, when lightd is told to listen for them.
+// The name is relative to the prefix, like every topic the tenant declares,
+// because the broker confines an account to its tenant's own tree.
+func CoverTopic(prefix, name string) string {
+	return prefix + "/" + name
+}
+
 // Connect dials the broker and announces presence.
 func Connect(cfg Config) (*MQTT, error) {
 	if cfg.URL == "" {
@@ -69,6 +82,7 @@ func Connect(cfg Config) (*MQTT, error) {
 	}
 
 	status := StatusTopic(cfg.TopicPrefix)
+	m := &MQTT{prefix: cfg.TopicPrefix, timeout: cfg.Timeout}
 
 	opts := mqtt.NewClientOptions().
 		AddBroker(cfg.URL).
@@ -85,6 +99,11 @@ func Connect(cfg Config) (*MQTT, error) {
 		SetWill(status, "offline", 1, true).
 		SetOnConnectHandler(func(c mqtt.Client) {
 			c.Publish(status, 1, true, "online")
+			// A session does not outlive a connection here, so a
+			// subscription made once is gone after the first reconnect.
+			// Making it again on every connect is what keeps covers
+			// arriving, and it brings the retained cover with it.
+			m.resubscribe(c)
 		})
 
 	if cfg.Username != "" {
@@ -109,7 +128,79 @@ func Connect(cfg Config) (*MQTT, error) {
 		return nil, fmt.Errorf("broker: connect %s: %w", cfg.URL, err)
 	}
 
-	return &MQTT{client: client, prefix: cfg.TopicPrefix, timeout: cfg.Timeout}, nil
+	m.client = client
+	return m, nil
+}
+
+// SubscribeCovers starts delivering images published to the named topic,
+// retained one first, to handle. It stays subscribed across reconnects.
+//
+// Covers are handled one at a time, off the client's own goroutine, and a
+// cover that arrives while another is being handled replaces any that is
+// waiting. Only the newest one matters: the handler asks palette for colours
+// and publishes a scene, which is slow next to a burst of track changes, and
+// working through a queue would light the room with covers already gone.
+func (m *MQTT) SubscribeCovers(name string, handle func(image []byte)) error {
+	if name == "" || handle == nil {
+		return fmt.Errorf("broker: a cover subscription needs a topic and a handler")
+	}
+
+	m.mu.Lock()
+	if m.covers != nil {
+		m.mu.Unlock()
+		return fmt.Errorf("broker: already subscribed to covers on %s", m.coverTopic)
+	}
+	m.coverTopic = CoverTopic(m.prefix, name)
+	m.covers = make(chan []byte, 1)
+	covers, topic := m.covers, m.coverTopic
+	m.mu.Unlock()
+
+	go func() {
+		for image := range covers {
+			handle(image)
+		}
+	}()
+
+	token := m.client.Subscribe(topic, 1, m.onCover)
+	if !token.WaitTimeout(m.timeout) {
+		return fmt.Errorf("broker: timed out subscribing to %s", topic)
+	}
+	if err := token.Error(); err != nil {
+		return fmt.Errorf("broker: subscribe %s: %w", topic, err)
+	}
+	return nil
+}
+
+func (m *MQTT) resubscribe(c mqtt.Client) {
+	m.mu.Lock()
+	topic := m.coverTopic
+	m.mu.Unlock()
+	if topic != "" {
+		c.Subscribe(topic, 1, m.onCover)
+	}
+}
+
+// onCover runs on the client's goroutine, so it only hands the image on.
+func (m *MQTT) onCover(_ mqtt.Client, msg mqtt.Message) {
+	// An empty retained message is how a topic is cleared, not a cover.
+	if len(msg.Payload()) == 0 {
+		return
+	}
+	image := append([]byte(nil), msg.Payload()...)
+
+	select {
+	case m.covers <- image:
+	default:
+		// One is already waiting. Drop it for this one.
+		select {
+		case <-m.covers:
+		default:
+		}
+		select {
+		case m.covers <- image:
+		default:
+		}
+	}
 }
 
 func buildTLS(cfg Config) (*tls.Config, error) {

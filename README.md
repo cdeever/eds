@@ -9,9 +9,11 @@ This is a monorepo. Each project below is a distinct piece of that system.
 |---|---|---|
 | [`services/palette`](services/palette) | Python | Album cover art in, ranked colour swatches out |
 | [`services/lightd`](services/lightd) | Go | Cover image in, MQTT scene out |
+| [`services/nowplaying`](services/nowplaying) | Go | What is playing, on the bus: drivers per player, and the one current track with its cover |
 | [`firmware/lp-stand`](firmware/lp-stand) | C / ESP-IDF | The LP jacket stand: MQTT subscriber driving an addressable RGB strip |
 | [`infra/deevnet-tenant-eds`](infra/deevnet-tenant-eds) | Terraform | The EdS tenant on the deevnet Proxmox substrate |
-| [`deploy`](deploy) | Make, systemd | palette and lightd as containers on the tenant's workload |
+| [`images`](images) | Ansible, shell | EdS's Raspberry Pi images, built on the substrate's base; the first is the now-playing agent Pi |
+| [`deploy`](deploy) | Make, systemd | palette and lightd as containers on the tenant's workload; the relay Pi's settings |
 | [`docs`](docs) | Hugo | The developer and user guide, published to [cdeever.github.io/eds](https://cdeever.github.io/eds/) |
 
 ## The first vertical

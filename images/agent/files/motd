@@ -1,0 +1,14 @@
+
+  EdS agent - reports what is playing to the Deevnet broker.
+
+    eth0   Deevnet site (default route, DNS, SSH)
+    wlan0  a second leg, if this card was given one: the players' network,
+           with no route beyond its own subnet
+
+  Settings arrive on the card's boot partition, in eds-agent/, and are
+  imported and removed at boot:   journalctl -u eds-agent-import
+
+    eds-agent-status     each leg, the broker, the player, the agent
+    eds-agent-pair       pair with iTunes (once; prints a code to type in)
+    journalctl -u npagent -f
+

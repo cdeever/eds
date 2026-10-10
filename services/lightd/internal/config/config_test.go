@@ -20,6 +20,21 @@ func TestDefaults(t *testing.T) {
 	if cfg.Scene.Effect != "breathe" {
 		t.Errorf("effect = %q", cfg.Scene.Effect)
 	}
+	// HTTP is the only input unless a cover topic is asked for.
+	if cfg.CoverTopic != "" {
+		t.Errorf("cover topic = %q, want none by default", cfg.CoverTopic)
+	}
+}
+
+func TestCoverTopic(t *testing.T) {
+	t.Setenv("LIGHTD_COVER_TOPIC", "nowplaying/current/art")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.CoverTopic != "nowplaying/current/art" {
+		t.Errorf("cover topic = %q", cfg.CoverTopic)
+	}
 }
 
 func TestOverrides(t *testing.T) {
@@ -108,6 +123,11 @@ func TestRejectsInvalidValues(t *testing.T) {
 		"empty stand":             {"LIGHTD_STAND_ID": ""},
 		"empty effect":            {"LIGHTD_EFFECT": ""},
 		"non-numeric brightness":  {"LIGHTD_BRIGHTNESS": "bright"},
+		// The broker would refuse each of these too, but without saying so.
+		"cover topic with a leading slash": {"LIGHTD_COVER_TOPIC": "/nowplaying/current/art"},
+		"cover topic with a wildcard":      {"LIGHTD_COVER_TOPIC": "nowplaying/+/art"},
+		"cover topic that is everything":   {"LIGHTD_COVER_TOPIC": "#"},
+		"cover topic in the system tree":   {"LIGHTD_COVER_TOPIC": "$SYS/broker"},
 	}
 
 	for name, env := range cases {

@@ -77,6 +77,28 @@ output "lightd_broker" {
   }
 }
 
+output "nowplayd_broker" {
+  description = "nowplayd's MQTT credential. deploy/ writes it to the workload beside kit.env."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.nowplayd.username
+    password  = deevnet_iot_broker_account.nowplayd.password
+    publish   = deevnet_iot_broker_account.nowplayd.granted_publish
+    subscribe = deevnet_iot_broker_account.nowplayd.granted_subscribe
+  }
+}
+
+output "np_relay_broker" {
+  description = "The relay agent's MQTT credential. deploy/relay writes it to a flashed card."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.np_relay.username
+    password  = deevnet_iot_broker_account.np_relay.password
+    publish   = deevnet_iot_broker_account.np_relay.granted_publish
+    subscribe = deevnet_iot_broker_account.np_relay.granted_subscribe
+  }
+}
+
 output "lp_stand_01_broker" {
   description = "What the LP stand's firmware is flashed with, beside the Wi-Fi key above."
   sensitive   = true

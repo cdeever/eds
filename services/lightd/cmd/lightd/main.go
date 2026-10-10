@@ -1,8 +1,9 @@
 // Command lightd turns album cover art into light on an LP jacket stand.
 //
-// It takes a cover image over HTTP, asks the palette service for the colours
-// in it, maps those onto a scene descriptor, and publishes that scene retained
-// to the stand's MQTT topic.
+// It takes a cover image - over HTTP, or from an MQTT topic when one is
+// configured - asks the palette service for the colours in it, maps those onto
+// a scene descriptor, and publishes that scene retained to the stand's MQTT
+// topic.
 package main
 
 import (
@@ -49,7 +50,7 @@ func run(logger *slog.Logger) error {
 		"status_topic", broker.StatusTopic(cfg.Broker.TopicPrefix),
 	)
 
-	handler := server.New(server.Options{
+	covers := server.New(server.Options{
 		Extractor:    palette.New(cfg.PaletteURL),
 		Publisher:    publisher,
 		TopicPrefix:  cfg.Broker.TopicPrefix,
@@ -57,7 +58,25 @@ func run(logger *slog.Logger) error {
 		Swatches:     cfg.Swatches,
 		Scene:        cfg.Scene,
 		Logger:       logger,
-	}).Routes()
+	})
+	handler := covers.Routes()
+
+	if cfg.CoverTopic != "" {
+		topic := broker.CoverTopic(cfg.Broker.TopicPrefix, cfg.CoverTopic)
+		err := publisher.SubscribeCovers(cfg.CoverTopic, func(image []byte) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := covers.ApplyCover(ctx, image); err != nil {
+				// Not fatal, and not retried: the last scene stays up, and
+				// the next cover gets its own chance.
+				logger.Warn("ignored a cover", "topic", topic, "bytes", len(image), "error", err)
+			}
+		})
+		if err != nil {
+			return err
+		}
+		logger.Info("listening for covers", "topic", topic)
+	}
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,

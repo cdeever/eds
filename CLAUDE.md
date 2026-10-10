@@ -20,8 +20,10 @@ builds the monorepo as a whole; work inside one project directory at a time.
 |---|---|---|
 | `services/palette` | Python 3.11+ / FastAPI | `make venv test serve` |
 | `services/lightd` | Go 1.25 | `make check build run` |
+| `services/nowplaying` | Go 1.25 | `make check test-integration run` |
 | `firmware/lp-stand` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
 | `infra/deevnet-tenant-eds` | Terraform | `make paths init plan apply` |
+| `images` | Ansible / shell | `make -C deploy/relay image fetch` (builds on builder) |
 
 Each project's README carries the design rationale in depth. Read the relevant
 one before changing behaviour — the choices there are argued, not incidental.
@@ -75,6 +77,30 @@ make broker-watch              # tail every eds/# topic
 ```
 
 Integration tests are gated on `LIGHTD_TEST_BROKER`; without it they skip.
+
+### nowplaying (`services/nowplaying`)
+
+```bash
+make check                     # gofmt check + go vet + go test ./...
+make broker                    # dev mosquitto (native, not podman) on tcp://127.0.0.1:21883
+make test-integration          # broker + `go test -race -count=1 ./...`
+make run                       # nowplayd on the dev broker, under edsdev/
+make broker-watch              # every edsdev/nowplaying topic; covers shown by size
+```
+
+`bin/npagent pair|watch|run` is the iTunes driver; `make build-arm64` builds it
+for the agent Pi.
+
+EdS's Pi images are its own (`images/`, ADR-0015): the substrate's base image
+with an EdS playbook applied offline. Do not add EdS images to the substrate's
+`deevnet-image-factory`. An image carries no secret and no hostname; those are
+written to a flashed card by `deploy/relay` (`make card`). "The relay" is an
+agent Pi given a second network leg, not a separate image. The Pi is reached
+through builder as `a_autoprov` (`make -C deploy/relay status|pair|logs`).
+
+Integration tests are gated on `NP_TEST_BROKER`. This Makefile runs on macOS
+(make 3.81, `/bin/bash`); the lightd and palette ones hardcode `/usr/bin/bash`
+and `.ONESHELL` and do not.
 
 ### lp-stand (`firmware/lp-stand`)
 
@@ -133,10 +159,14 @@ Two versioned JSON contracts, both stamped `"v": 1`:
   the firmware's validator must agree; a mismatched version is refused, not
   guessed at.
 
-lightd's own HTTP surface: `GET /healthz`, `POST /v1/cover` (image bytes; the
-interface the future album-cover resolver will call), `POST /v1/scene` (publish
-a scene by hand — how the stand gets exercised with no image path), `GET
-/v1/scene` (last sent).
+lightd's own HTTP surface: `GET /healthz`, `POST /v1/cover` (image bytes),
+`POST /v1/scene` (publish a scene by hand — how the stand gets exercised with
+no image path), `GET /v1/scene` (last sent).
+
+lightd has a second input for covers: with `LIGHTD_COVER_TOPIC` set it
+subscribes to that topic and runs each image down the same path as
+`POST /v1/cover` (ADR-0009). It still sees only image bytes. Do not teach it
+about tracks or albums; that knowledge stays on the other side of the topic.
 
 ### MQTT topics
 

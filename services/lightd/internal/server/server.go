@@ -1,8 +1,10 @@
-// Package server is lightd's HTTP surface.
+// Package server is lightd's HTTP surface, and the one path from a cover to a
+// scene.
 //
-// POST /v1/cover is the interface the album cover resolver will eventually
-// call. Building it now rather than a throwaway means nothing here is
-// discarded when the resolver arrives - it just gains a second caller.
+// POST /v1/cover was built as the interface an album cover resolver would
+// call, so that nothing here would be discarded when one arrived. It has
+// arrived as a topic rather than a caller (ADR-0009): ApplyCover takes the
+// same image bytes from MQTT and runs them down the same path.
 package server
 
 import (
@@ -85,7 +87,67 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleCover is the whole vertical in one request: image in, lights change.
+// coverError says which kind of failure a cover met, in the terms HTTP has
+// for it. The topic input has no caller to tell, but logs the same words.
+type coverError struct {
+	status int
+	err    error
+}
+
+func (e *coverError) Error() string { return e.err.Error() }
+func (e *coverError) Unwrap() error { return e.err }
+
+// cover is the whole vertical: image in, lights change. Both inputs end here,
+// so a cover behaves the same however it arrived.
+func (s *Server) cover(ctx context.Context, image []byte, stand string, swatches int, effect, via string) (*publishResult, *coverError) {
+	extracted, err := s.opts.Extractor.Extract(ctx, image, swatches)
+	if err != nil {
+		// An image the extractor rejected is the sender's mistake; an
+		// extractor that is down is not. Reporting both as 502 would send
+		// someone hunting a healthy service over a corrupt JPEG.
+		var upstream *palette.StatusError
+		if errors.As(err, &upstream) && upstream.ClientFault() {
+			return nil, &coverError{http.StatusBadRequest, err}
+		}
+		return nil, &coverError{http.StatusBadGateway, err}
+	}
+
+	opts := s.opts.Scene
+	if effect != "" {
+		opts.Effect = effect
+	}
+
+	built, err := scene.Build(extracted.Swatches, opts)
+	if err != nil {
+		return nil, &coverError{http.StatusUnprocessableEntity, err}
+	}
+
+	if err := s.publish(stand, built); err != nil {
+		return nil, &coverError{http.StatusBadGateway, err}
+	}
+
+	s.opts.Logger.Info("published scene",
+		"via", via,
+		"stand", stand,
+		"effect", built.Effect,
+		"colors", len(built.Palette),
+		"background_dropped", extracted.BackgroundDropped,
+		"fallback", extracted.Fallback,
+	)
+
+	return &publishResult{
+		Stand: stand,
+		Topic: broker.SceneTopic(s.opts.TopicPrefix, stand),
+		Scene: built,
+		Palette: &diagnostics{
+			SwatchesExtracted: len(extracted.Swatches),
+			BackgroundDropped: extracted.BackgroundDropped,
+			Fallback:          extracted.Fallback,
+			Source:            extracted.Source,
+		},
+	}, nil
+}
+
 func (s *Server) handleCover(w http.ResponseWriter, r *http.Request) {
 	image, err := readImage(r)
 	if err != nil {
@@ -103,56 +165,37 @@ func (s *Server) handleCover(w http.ResponseWriter, r *http.Request) {
 		swatches = parsed
 	}
 
-	extracted, err := s.opts.Extractor.Extract(r.Context(), image, swatches)
-	if err != nil {
-		// An image the extractor rejected is the caller's mistake; an
-		// extractor that is down is not. Reporting both as 502 would send
-		// someone hunting a healthy service over a corrupt JPEG.
-		var upstream *palette.StatusError
-		if errors.As(err, &upstream) && upstream.ClientFault() {
-			writeError(w, http.StatusBadRequest, err)
-			return
-		}
-		writeError(w, http.StatusBadGateway, err)
+	result, failed := s.cover(r.Context(), image, s.stand(r), swatches, r.URL.Query().Get("effect"), "http")
+	if failed != nil {
+		writeError(w, failed.status, failed.err)
 		return
 	}
+	writeJSON(w, http.StatusOK, result)
+}
 
-	opts := s.opts.Scene
-	if effect := r.URL.Query().Get("effect"); effect != "" {
-		opts.Effect = effect
+// ApplyCover takes a cover that arrived on the cover topic and lights the
+// default stand from it, with the configured swatch count and effect.
+//
+// It is given image bytes and nothing else. What the image is a cover *of* is
+// not lightd's to know: the topic is a setting, and the music stays on the
+// other side of it.
+//
+// A cover that cannot be used is reported and otherwise ignored, so the stand
+// keeps showing the last good scene - the same answer the firmware gives a
+// scene it cannot render.
+func (s *Server) ApplyCover(ctx context.Context, image []byte) error {
+	if len(image) == 0 {
+		return errors.New("no image supplied")
+	}
+	if len(image) > maxUpload {
+		return fmt.Errorf("cover is %d bytes; the most accepted is %d", len(image), maxUpload)
 	}
 
-	built, err := scene.Build(extracted.Swatches, opts)
-	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, err)
-		return
+	_, failed := s.cover(ctx, image, s.opts.DefaultStand, s.opts.Swatches, "", "topic")
+	if failed != nil {
+		return failed
 	}
-
-	stand := s.stand(r)
-	if err := s.publish(stand, built); err != nil {
-		writeError(w, http.StatusBadGateway, err)
-		return
-	}
-
-	s.opts.Logger.Info("published scene",
-		"stand", stand,
-		"effect", built.Effect,
-		"colors", len(built.Palette),
-		"background_dropped", extracted.BackgroundDropped,
-		"fallback", extracted.Fallback,
-	)
-
-	writeJSON(w, http.StatusOK, publishResult{
-		Stand: stand,
-		Topic: broker.SceneTopic(s.opts.TopicPrefix, stand),
-		Scene: built,
-		Palette: &diagnostics{
-			SwatchesExtracted: len(extracted.Swatches),
-			BackgroundDropped: extracted.BackgroundDropped,
-			Fallback:          extracted.Fallback,
-			Source:            extracted.Source,
-		},
-	})
+	return nil
 }
 
 // handleScene publishes a scene supplied directly. This is how the stand gets

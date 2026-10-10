@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cdeever/eds/services/lightd/internal/broker"
@@ -27,6 +28,9 @@ type Config struct {
 	PaletteURL string
 	Swatches   int
 	StandID    string
+	// CoverTopic, when set, is a topic of cover images to light the stand
+	// from, relative to the topic prefix. Empty means HTTP is the only input.
+	CoverTopic string
 	Broker     broker.Config
 	Scene      scene.Options
 }
@@ -39,6 +43,7 @@ func Load() (Config, error) {
 		Addr:       env("LIGHTD_ADDR", ":8732"),
 		PaletteURL: env("LIGHTD_PALETTE_URL", "http://127.0.0.1:8731"),
 		StandID:    env("LIGHTD_STAND_ID", "lp-stand-01"),
+		CoverTopic: env("LIGHTD_COVER_TOPIC", ""),
 		Broker: broker.Config{
 			URL:      env("LIGHTD_MQTT_URL", kitBrokerURL()),
 			ClientID: env("LIGHTD_MQTT_CLIENT_ID", "lightd"),
@@ -84,6 +89,11 @@ func (c Config) validate() error {
 	switch {
 	case c.StandID == "":
 		return fmt.Errorf("config: LIGHTD_STAND_ID must not be empty")
+	// The broker enforces these too, but silently: a subscription it refuses
+	// looks exactly like a quiet topic. Better to stop here and say why.
+	case strings.HasPrefix(c.CoverTopic, "/") || strings.ContainsAny(c.CoverTopic, "#+$"):
+		return fmt.Errorf("config: LIGHTD_COVER_TOPIC must be one topic relative to the prefix, "+
+			"with no leading / and no wildcards, got %q", c.CoverTopic)
 	case c.Swatches < 1 || c.Swatches > 16:
 		return fmt.Errorf("config: LIGHTD_SWATCHES must be 1-16, got %d", c.Swatches)
 	case c.Scene.Brightness < 0 || c.Scene.Brightness > 1:

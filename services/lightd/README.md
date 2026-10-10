@@ -11,9 +11,28 @@ retained to the stand's MQTT topic.
 cover image ──▶ lightd ──▶ palette ──▶ lightd ──▶  mqtt  ──▶ LP stand
 ```
 
-`POST /v1/cover` is deliberately the interface the future album cover resolver
-will call, so nothing built here gets thrown away when it arrives — it just
-gains a second caller.
+`POST /v1/cover` was built as the interface an album cover resolver would
+call, so that nothing here would be thrown away when one arrived. It arrived
+as a topic rather than a caller.
+
+### Covers from a topic
+
+Set `LIGHTD_COVER_TOPIC` and lightd also subscribes to that topic and runs
+each image it receives down the same path as `POST /v1/cover`, for the default
+stand ([ADR-0009](../../docs/content/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic.md)).
+This is how the now-playing service lights the stand: it publishes the current
+cover, retained, and lightd follows it.
+
+- lightd still receives **image bytes and nothing else**. It does not learn
+  what the image is a cover of; the topic is a setting, not knowledge.
+- The topic is retained, so a lightd that restarts lights the room from the
+  current cover by itself.
+- Covers are handled one at a time and **the newest wins**: one that arrives
+  while another is being handled replaces any still waiting.
+- A cover that cannot be used — not an image, palette down — is logged and
+  ignored, and the stand keeps the last good scene.
+- The subscription is made again on every reconnect. The broker account needs
+  the topic granted for subscribe, and a refused subscription is silent.
 
 ## Running it
 
@@ -59,6 +78,7 @@ workload or a Pi. A `LIGHTD_*` variable, when set, wins.
 | `LIGHTD_ADDR` | `:8732` | listen address |
 | `LIGHTD_PALETTE_URL` | `http://127.0.0.1:8731` | palette service |
 | `LIGHTD_STAND_ID` | `lp-stand-01` | default stand |
+| `LIGHTD_COVER_TOPIC` | unset | a topic of cover images to light the stand from, relative to the prefix, e.g. `nowplaying/current/art` |
 | `LIGHTD_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | root of the topic tree |
 | `LIGHTD_MQTT_URL` | `tls://$MQTT_HOST:$MQTT_PORT`, else `tcp://127.0.0.1:1883` | the broker |
 | `LIGHTD_MQTT_CLIENT_ID` | `lightd` | must be unique on the broker; `eds-lightd` in production |

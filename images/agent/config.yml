@@ -1,0 +1,377 @@
+---
+# EdS agent Pi image: offline configuration.
+#
+# Runs against a mounted Raspberry Pi OS image - the substrate's base image,
+# which already has its automation user - with the root at chroot_root and the
+# boot partition at chroot_root/boot. The image does not boot and needs no
+# network of its own; apt runs in the chroot over the build host's.
+#
+# What it makes is in images/README.md. The three rules it holds to:
+#
+#   - Nothing secret is baked in. The agent's broker account, and a Wi-Fi key
+#     if the card is to have a second leg, arrive on the card's boot partition
+#     after flashing. The build fails if either is found in the image.
+#   - Nothing particular to one Pi is baked in either. Its name arrives the
+#     same way, so one image serves every agent Pi.
+#   - It may be a host on two networks, and it is a router for neither.
+#     Forwarding is off in the kernel and dropped in the firewall, and the
+#     build checks both.
+#
+# Run by images/build.sh.
+
+- name: Configure the EdS agent Pi image (offline)
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: true
+
+  vars:
+    chroot_root: "{{ chroot_root | default(omit) }}"
+
+    # Where build.sh checked the agent binary.
+    pi_eds_agent_inputs: "{{ pi_eds_agent_inputs | default(omit) }}"
+
+    # What a card calls itself until it is told otherwise. Its real name
+    # arrives with its settings.
+    pi_eds_agent_hostname: "eds-agent"
+
+    pi_eds_agent_packages:
+      - avahi-daemon   # Bonjour: how iTunes sees a remote asking to pair
+      - avahi-utils    # avahi-publish, which the agent's pairing uses
+      - nftables
+
+    pi_eds_agent_units:
+      - npagent.service
+      - eds-agent-import.service
+      - eds-agent-ssh-hostkeys.service
+
+  pre_tasks:
+    - name: Assert chroot_root and the inputs directory were given
+      ansible.builtin.assert:
+        that:
+          - chroot_root is defined
+          - chroot_root | length > 1
+          - pi_eds_agent_inputs is defined
+        fail_msg: "chroot_root and pi_eds_agent_inputs must be set by the Makefile"
+
+    - name: Look for a mounted root filesystem
+      ansible.builtin.stat:
+        path: "{{ chroot_root }}/etc/os-release"
+      register: pi_eds_agent_osrel
+
+    - name: Fail if the image is not mounted
+      ansible.builtin.assert:
+        that: pi_eds_agent_osrel.stat.exists
+        fail_msg: "No /etc/os-release at {{ chroot_root }}: is the image mounted?"
+
+    - name: Check the staged agent is an arm64 binary
+      ansible.builtin.command:
+        cmd: "file -b {{ pi_eds_agent_inputs }}/npagent"
+      register: pi_eds_agent_file
+      changed_when: false
+      failed_when: "'ARM aarch64' not in pi_eds_agent_file.stdout"
+
+  tasks:
+    # ------------------------------------------------------------
+    # Identity
+    # ------------------------------------------------------------
+    - name: Set the hostname
+      ansible.builtin.copy:
+        dest: "{{ chroot_root }}/etc/hostname"
+        content: "{{ pi_eds_agent_hostname }}\n"
+        mode: "0644"
+
+    - name: Point the loopback name at the hostname
+      ansible.builtin.lineinfile:
+        path: "{{ chroot_root }}/etc/hosts"
+        regexp: '^127\.0\.1\.1\s'
+        line: "127.0.1.1\t{{ pi_eds_agent_hostname }}"
+
+    # ------------------------------------------------------------
+    # Packages
+    # ------------------------------------------------------------
+    - name: Update apt cache inside chroot
+      ansible.builtin.command:
+        cmd: "chroot {{ chroot_root }} /usr/bin/apt-get update"
+      changed_when: true
+
+    - name: Install Bonjour and the firewall inside chroot
+      ansible.builtin.command:
+        cmd: >-
+          chroot {{ chroot_root }} /usr/bin/apt-get install -y
+          {{ pi_eds_agent_packages | join(' ') }}
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      changed_when: true
+
+    - name: Clean apt cache inside chroot
+      ansible.builtin.command:
+        cmd: "chroot {{ chroot_root }} /usr/bin/apt-get clean"
+      changed_when: true
+
+    # ------------------------------------------------------------
+    # The agent
+    # ------------------------------------------------------------
+    # Its own user, with nothing but a directory for its pairing. It needs no
+    # privilege: it dials two things and listens on nothing while it runs.
+    - name: Create the agent's user
+      ansible.builtin.command:
+        cmd: >-
+          chroot {{ chroot_root }} useradd --system --user-group --no-create-home
+          --home-dir /var/lib/eds-npagent --shell /usr/sbin/nologin npagent
+      register: pi_eds_agent_useradd
+      changed_when: pi_eds_agent_useradd.rc == 0
+      failed_when: pi_eds_agent_useradd.rc not in [0, 9]  # 9 = exists
+
+    - name: Create the settings directory
+      ansible.builtin.file:
+        path: "{{ chroot_root }}/etc/eds"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create the agent's own directory
+      ansible.builtin.command:
+        cmd: "chroot {{ chroot_root }} install -d -o npagent -g npagent -m 0700 /var/lib/eds-npagent"
+      changed_when: true
+
+    - name: Install the agent
+      ansible.builtin.copy:
+        src: "{{ pi_eds_agent_inputs }}/npagent"
+        dest: "{{ chroot_root }}/usr/local/bin/npagent"
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install the image's own tools
+      ansible.builtin.copy:
+        src: "files/{{ item.src }}"
+        dest: "{{ chroot_root }}{{ item.dest }}"
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - {src: eds-agent-import, dest: /usr/local/sbin/eds-agent-import}
+        - {src: eds-agent-pair, dest: /usr/local/bin/eds-agent-pair}
+        - {src: eds-agent-status, dest: /usr/local/bin/eds-agent-status}
+
+    - name: Install units and configuration
+      ansible.builtin.copy:
+        src: "files/{{ item.src }}"
+        dest: "{{ chroot_root }}{{ item.dest }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - {src: npagent.service, dest: /etc/systemd/system/npagent.service}
+        - {src: eds-agent-import.service, dest: /etc/systemd/system/eds-agent-import.service}
+        - {src: eds-agent-ssh-hostkeys.service, dest: /etc/systemd/system/eds-agent-ssh-hostkeys.service}
+        - {src: 90-eds-agent.conf, dest: /etc/sysctl.d/90-eds-agent.conf}
+        - {src: motd, dest: /etc/motd}
+
+    # ------------------------------------------------------------
+    # Two networks, kept apart
+    # ------------------------------------------------------------
+    - name: Install the firewall rules
+      ansible.builtin.copy:
+        src: files/nftables.conf
+        dest: "{{ chroot_root }}/etc/nftables.conf"
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Find the firewall's unit
+      ansible.builtin.stat:
+        path: "{{ chroot_root }}/usr/lib/systemd/system/nftables.service"
+      register: pi_eds_agent_nft_unit
+
+    - name: Fail if the firewall's unit is missing
+      ansible.builtin.assert:
+        that: pi_eds_agent_nft_unit.stat.exists
+        fail_msg: "nftables.service is not in the image; the Pi would boot with no firewall"
+
+    # nftables.service is wanted by sysinit, not multi-user: the rules are in
+    # place before any interface comes up.
+    - name: Make sure the sysinit wants directory exists
+      ansible.builtin.file:
+        path: "{{ chroot_root }}/etc/systemd/system/sysinit.target.wants"
+        state: directory
+        mode: "0755"
+
+    - name: Enable the firewall
+      ansible.builtin.file:
+        src: /usr/lib/systemd/system/nftables.service
+        dest: "{{ chroot_root }}/etc/systemd/system/sysinit.target.wants/nftables.service"
+        state: link
+        force: true
+
+    # Bonjour answers and advertises on the second leg only. The site's IoT
+    # segment has no use for this Pi's name, and a remote asking to pair is
+    # none of its business.
+    - name: Keep Bonjour off the site
+      community.general.ini_file:
+        path: "{{ chroot_root }}/etc/avahi/avahi-daemon.conf"
+        section: server
+        option: allow-interfaces
+        value: wlan0
+        # avahi reads the key up to the "=", spaces and all: "allow-interfaces "
+        # is not a key it knows, and it refuses to start over it. The first
+        # card was built without this line, and Bonjour never came up.
+        no_extra_spaces: true
+        mode: "0644"
+
+    - name: Read the Bonjour setting back
+      ansible.builtin.command:
+        cmd: "grep -c '^allow-interfaces=wlan0$' {{ chroot_root }}/etc/avahi/avahi-daemon.conf"
+      changed_when: false
+
+    # ------------------------------------------------------------
+    # Clock
+    # ------------------------------------------------------------
+    # UTC, so the agent's log lines and the broker's agree without anyone
+    # having to know which summer time the image was built in.
+    - name: Set the timezone to UTC
+      ansible.builtin.file:
+        src: /usr/share/zoneinfo/Etc/UTC
+        dest: "{{ chroot_root }}/etc/localtime"
+        state: link
+        force: true
+
+    - name: Name the timezone
+      ansible.builtin.copy:
+        dest: "{{ chroot_root }}/etc/timezone"
+        content: "Etc/UTC\n"
+        mode: "0644"
+
+    # ------------------------------------------------------------
+    # Units
+    # ------------------------------------------------------------
+    - name: Enable the image's units
+      ansible.builtin.file:
+        src: "/etc/systemd/system/{{ item }}"
+        dest: "{{ chroot_root }}/etc/systemd/system/multi-user.target.wants/{{ item }}"
+        state: link
+        force: true
+      loop: "{{ pi_eds_agent_units }}"
+
+    # ------------------------------------------------------------
+    # SSH, for the site's automation
+    # ------------------------------------------------------------
+    - name: Ensure SSH is enabled on first boot (Raspberry Pi OS boot flag)
+      ansible.builtin.file:
+        path: "{{ chroot_root }}/boot/ssh"
+        state: touch
+        mode: "0644"
+
+    - name: Find the SSH unit
+      ansible.builtin.stat:
+        path: "{{ chroot_root }}/usr/lib/systemd/system/ssh.service"
+      register: pi_eds_agent_ssh_unit
+
+    - name: Enable SSH
+      when: pi_eds_agent_ssh_unit.stat.exists
+      ansible.builtin.file:
+        src: /usr/lib/systemd/system/ssh.service
+        dest: "{{ chroot_root }}/etc/systemd/system/multi-user.target.wants/ssh.service"
+        state: link
+        force: true
+
+    # Every card would otherwise present the SSH identity of the image it was
+    # flashed from. eds-agent-ssh-hostkeys.service makes new ones on first boot.
+    - name: Remove the SSH host keys the image was built with
+      ansible.builtin.shell:
+        cmd: "rm -f {{ chroot_root }}/etc/ssh/ssh_host_*"
+      changed_when: true
+
+    # ------------------------------------------------------------
+    # What the card is, and how to finish it
+    # ------------------------------------------------------------
+    - name: Take the agent's checksum
+      ansible.builtin.stat:
+        path: "{{ chroot_root }}/usr/local/bin/npagent"
+        checksum_algorithm: sha256
+      register: pi_eds_agent_agent
+
+    - name: Record what this image is
+      ansible.builtin.copy:
+        dest: "{{ chroot_root }}/etc/eds-agent-release"
+        mode: "0644"
+        content: |
+          Image: eds-pi-agent
+          Build Date: {{ ansible_date_time.iso8601 }}
+          Source: {{ pi_eds_agent_source | default('unknown') }}
+          npagent sha256: {{ pi_eds_agent_agent.stat.checksum }}
+
+    - name: Leave a note on the boot partition
+      ansible.builtin.copy:
+        dest: "{{ chroot_root }}/boot/eds-agent.txt"
+        mode: "0644"
+        content: |
+          EdS agent Pi, built {{ ansible_date_time.date }}.
+
+          This card carries no secret and no name. To finish it, create a
+          folder here called  eds-agent  holding any of:
+
+            hostname             what this card calls itself
+            npagent.env          the agent's settings (broker, account, source id)
+            deevnet-root-ca.pem  the CA the broker's certificate is verified against
+            wifi.conf            only for a second network leg:
+                                 SSID=<network>
+                                 PSK=<its key>
+                                 COUNTRY=US
+
+          The EdS repository writes them for you: deploy/relay, `make card`.
+          They are imported at the next boot and deleted from this partition.
+
+    # ------------------------------------------------------------
+    # The rules, checked
+    # ------------------------------------------------------------
+    - name: Look for anything secret in the image
+      ansible.builtin.shell:
+        cmd: >-
+          ls {{ chroot_root }}/etc/eds/npagent.env
+          {{ chroot_root }}/etc/NetworkManager/system-connections/eds-home.nmconnection
+          {{ chroot_root }}/var/lib/eds-npagent/itunes-pairing.json
+          {{ chroot_root }}/boot/eds-agent 2>/dev/null; true
+      register: pi_eds_agent_secrets
+      changed_when: false
+
+    - name: Fail if a secret was baked in
+      ansible.builtin.assert:
+        that: pi_eds_agent_secrets.stdout | length == 0
+        fail_msg: "The image holds settings that must only arrive on the card: {{ pi_eds_agent_secrets.stdout_lines }}"
+
+    - name: Read the forwarding setting back
+      ansible.builtin.command:
+        cmd: "grep -c '^net.ipv4.ip_forward = 0$' {{ chroot_root }}/etc/sysctl.d/90-eds-agent.conf"
+      register: pi_eds_agent_forwarding
+      changed_when: false
+
+    - name: Read the firewall's forward policy back
+      ansible.builtin.shell:
+        cmd: "grep -A2 'chain forward' {{ chroot_root }}/etc/nftables.conf | grep -c 'policy drop'"
+      register: pi_eds_agent_forward_policy
+      changed_when: false
+
+    - name: Fail if the Pi could route
+      ansible.builtin.assert:
+        that:
+          - pi_eds_agent_forwarding.stdout == "1"
+          - pi_eds_agent_forward_policy.stdout == "1"
+        fail_msg: "Forwarding is not off in both the kernel settings and the firewall"
+
+    # The rules are parsed by the build host's nft, which has to agree they
+    # are rules at all. A typo here is a Pi that boots with no firewall.
+    - name: Check the firewall rules parse
+      ansible.builtin.command:
+        cmd: "nft -c -f {{ chroot_root }}/etc/nftables.conf"
+      changed_when: false
+
+    # The base image is the substrate's and brings its automation user, which
+    # is how the Pi is reached once it is in the rack. If it is missing, this
+    # was not built on that base.
+    - name: Check the automation user is still there
+      ansible.builtin.command:
+        cmd: "grep -c '^a_autoprov:' {{ chroot_root }}/etc/passwd"
+      changed_when: false

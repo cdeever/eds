@@ -129,8 +129,9 @@ resource "deevnet_iot_broker_account" "lightd" {
     "lightd/status",      # its own liveness
   ]
   subscribe = [
-    "lightstand/+/status", # a stand's presence
-    "lightstand/+/state",  # and what it is currently showing
+    "lightstand/+/status",    # a stand's presence
+    "lightstand/+/state",     # and what it is currently showing
+    "nowplaying/current/art", # the current cover, which it lights the stand from (ADR-0009)
   ]
 }
 
@@ -159,4 +160,61 @@ resource "deevnet_iot_broker_account" "lp_stand_01" {
   subscribe = [
     "lightstand/lp-stand-01/scene",
   ]
+}
+
+# --- Now playing (ADR-0006) --------------------------------------------------
+#
+# Drivers each report one player; nowplayd picks the current track. Three kinds
+# of account, each granted only its own side of the contract:
+#
+#   a driver   publishes its own source's three topics, and reads nothing
+#   nowplayd   reads every source, and publishes the current track
+#   lightd     reads the current cover, above
+#
+# The broker does not report a publish or a subscription it refuses, so what
+# is granted here has to match what the programs use, to the character.
+# deploy/relay/card.sh checks the relay's side before it writes a card.
+
+# nowplayd, on the services workload.
+#
+# The subscription is one filter covering every source, and it is granted as
+# that filter: a subscription is matched against what was granted as a whole,
+# so granting the three topics separately would not admit it.
+resource "deevnet_iot_broker_account" "nowplayd" {
+  tenant = deevnet_tenant.eds.name
+  name   = "nowplayd"
+
+  publish = [
+    "nowplaying/current",     # the one current track
+    "nowplaying/current/art", # its cover
+    "nowplaying/status",      # its own liveness
+  ]
+  subscribe = [
+    "nowplaying/source/+/+", # every driver's state, presence and cover
+  ]
+}
+
+# The relay's agent, on the Pi with a leg on the home LAN (ADR-0010).
+#
+# No `device`: the Pi is the substrate's own host, in its inventory, not a
+# device this tenant registered - and an account with a device may only belong
+# to one in trust class `iot`, which is for firmware its owner controls. So
+# this is a workload-style account used from the site's IoT segment. It also
+# means the relay cannot publish under log/, which only a device may.
+#
+# One source today. A second driver on the same Pi - MusicBee - adds its own
+# three topics here.
+#
+# CAREFUL: replacing this resource issues a NEW password, and the relay stops
+# reporting until its card is rewritten (deploy/relay, `make card`).
+resource "deevnet_iot_broker_account" "np_relay" {
+  tenant = deevnet_tenant.eds.name
+  name   = "np-relay"
+
+  publish = [
+    "nowplaying/source/itunes/state",
+    "nowplaying/source/itunes/status",
+    "nowplaying/source/itunes/art",
+  ]
+  subscribe = []
 }

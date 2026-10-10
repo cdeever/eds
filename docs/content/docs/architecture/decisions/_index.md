@@ -79,7 +79,8 @@ and incidents under the same names. To keep the two apart:
 | [0008](0008-nowplayd-arbitrates-and-enriches/) | 2026-10-10 | nowplayd picks the current track and guarantees title, album and art | {{< adr-status "Accepted" >}} |
 | [0009](0009-lightd-takes-covers-from-a-topic/) | 2026-10-10 | lightd takes covers from a topic as a second input | {{< adr-status "Accepted" >}} |
 | [0010](0010-home-lan-relay/) | 2026-10-10 | Home-LAN drivers reach the broker through a dual-homed mobile Pi | {{< adr-status "Accepted" >}} |
-| [0011](0011-itunes-by-remote-pairing/) | 2026-10-10 | iTunes is read by remote pairing, the way the phone remote does it | {{< adr-status "Proposed" >}} |
+| [0011](0011-itunes-by-remote-pairing/) | 2026-10-10 | iTunes is read by remote pairing, the way the phone remote does it | {{< adr-status "Accepted" >}} |
 | [0012](0012-spotify-by-web-api/) | 2026-10-10 | Spotify is read from the account, through the Web API | {{< adr-status "Proposed" >}} |
 | [0013](0013-musicbee-by-remote-protocol/) | 2026-10-10 | MusicBee is read through the MusicBee Remote plugin's protocol | {{< adr-status "Proposed" >}} |
 | [0014](0014-tidal-by-lastfm/) | 2026-10-10 | TIDAL is read through Last.fm, because nothing better is offered | {{< adr-status "Proposed" >}} |
+| [0015](0015-eds-builds-its-own-pi-images/) | 2026-10-10 | EdS builds its own Pi images, on the substrate's base; a relay is an agent Pi with a second leg | {{< adr-status "Accepted" >}} |

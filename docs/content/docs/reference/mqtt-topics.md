@@ -15,6 +15,9 @@ The topic prefix defaults to `eds` and must match on both sides — `lightd`'s
 | `eds/lightstand/<id>/state` | device → broker | yes | what it is rendering now |
 | `eds/lightd/status` | lightd → broker | yes (LWT) | the publisher's presence |
 | `eds/log/<id>` | device → broker | no | the stand's key events, for the log store |
+| `eds/nowplaying/source/<id>/…` | a driver → nowplayd | yes | what one player is doing; see [Now Playing](../now-playing/) |
+| `eds/nowplaying/current` | nowplayd → subscribers | yes | the one current track |
+| `eds/nowplaying/current/art` | nowplayd → subscribers | yes | its cover, as image bytes; lightd lights the stand from it |
 
 ## The log topic
 

@@ -1,0 +1,39 @@
+# EdS now-playing agent: follows the players it can reach and reports to the
+# Deevnet broker.
+#
+# It does not start until two things exist, and neither is in the image:
+# its settings, which arrive on the card's boot partition (eds-agent-import),
+# and its pairing with iTunes, which a person makes once (eds-agent-pair).
+[Unit]
+Description=EdS now-playing agent
+Documentation=https://github.com/cdeever/eds/tree/main/services/nowplaying
+After=network-online.target nftables.service
+Wants=network-online.target
+ConditionPathExists=/etc/eds/npagent.env
+ConditionPathExists=/var/lib/eds-npagent/itunes-pairing.json
+
+[Service]
+User=npagent
+Group=npagent
+EnvironmentFile=/etc/eds/npagent.env
+Environment=NP_STATE_DIR=/var/lib/eds-npagent
+ExecStart=/usr/local/bin/npagent run
+# A player that has gone away is retried inside the agent. This is for the
+# agent itself going down - and for a player that has forgotten the pairing,
+# which no amount of retrying fixes, so it is not hurried.
+Restart=on-failure
+RestartSec=30
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/eds-npagent
+
+[Install]
+WantedBy=multi-user.target

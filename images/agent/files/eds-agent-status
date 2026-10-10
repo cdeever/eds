@@ -1,0 +1,64 @@
+#!/bin/bash
+# eds-agent-status - is each part of this agent Pi where it should be?
+#
+# A card with a second leg (a relay) is checked on both; one without is told
+# so and not failed for it.
+#
+# Prints what it finds and exits non-zero if anything is wrong, so it serves
+# as a check as well as a look.
+bad=0
+ok()   { printf '  ok    %s\n' "$*"; }
+fail() { printf '  FAIL  %s\n' "$*"; bad=1; }
+note() { printf '        %s\n' "$*"; }
+
+env_value() { sudo grep -m1 -E "^$1=" /etc/eds/npagent.env 2>/dev/null | cut -d= -f2-; }
+
+echo "$(hostname): Deevnet side (eth0)"
+if ip -4 -o addr show eth0 2>/dev/null | grep -q inet; then
+    ok "address $(ip -4 -o addr show eth0 | awk '{print $4}')"
+else
+    fail "eth0 has no address"
+fi
+if ip route show default | grep -q 'dev eth0'; then ok "default route is on eth0"; else fail "default route is not on eth0: $(ip route show default | head -1)"; fi
+
+echo "Second leg (wlan0)"
+if ! sudo test -f /etc/NetworkManager/system-connections/eds-home.nmconnection; then
+    note "none configured: this card has its wired leg only"
+else
+    if ip -4 -o addr show wlan0 2>/dev/null | grep -q inet; then
+        ok "address $(ip -4 -o addr show wlan0 | awk '{print $4}') on '$(nmcli -g GENERAL.CONNECTION device show wlan0 2>/dev/null)'"
+    else
+        fail "wlan0 has no address (journalctl -u eds-agent-import; nmcli device)"
+    fi
+fi
+if ip route show default | grep -q 'dev wlan0'; then fail "wlan0 carries a default route"; else ok "no default route on wlan0"; fi
+
+echo "Not a router"
+[[ "$(cat /proc/sys/net/ipv4/ip_forward)" == "0" ]] && ok "forwarding is off" || fail "forwarding is ON"
+if sudo nft list chain inet eds_agent forward 2>/dev/null | grep -q 'policy drop'; then ok "firewall drops forwarded packets"; else fail "firewall is not loaded"; fi
+
+echo "Broker"
+url="$(env_value NP_MQTT_URL)"
+if [[ -z "$url" ]]; then
+    fail "no agent settings in /etc/eds/npagent.env"
+else
+    hostport="${url#*://}"; host="${hostport%:*}"; port="${hostport##*:}"
+    if timeout 5 bash -c "</dev/tcp/$host/$port" 2>/dev/null; then ok "$host:$port reachable"; else fail "$host:$port not reachable"; fi
+    [[ -s /etc/eds/deevnet-root-ca.pem ]] && ok "broker CA present" || fail "broker CA missing"
+fi
+
+echo "Player"
+pairing=/var/lib/eds-npagent/itunes-pairing.json
+if sudo test -s "$pairing"; then
+    phost="$(sudo grep -o '"host": *"[^"]*"' "$pairing" | cut -d'"' -f4)"
+    ok "paired with $phost"
+    if timeout 5 bash -c "</dev/tcp/$phost/3689" 2>/dev/null; then ok "$phost:3689 reachable"; else fail "$phost:3689 not reachable"; fi
+else
+    fail "not paired: run eds-agent-pair"
+fi
+
+echo "Agent"
+if systemctl is-active --quiet npagent; then ok "npagent is running"; else fail "npagent is $(systemctl is-active npagent)"; fi
+sudo journalctl -u npagent -n 3 --no-pager -o cat 2>/dev/null | cut -c1-150 | while read -r line; do note "$line"; done
+
+exit $bad

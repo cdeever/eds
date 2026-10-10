@@ -1,0 +1,21 @@
+# Takes this card's settings off its boot partition, once, and removes them.
+#
+# The image carries no secret and no identity. The agent's broker account, the
+# broker's CA, the card's name, and - for a card with a second leg - a Wi-Fi
+# key are written to the card's boot partition after it is flashed, and this
+# moves them to where they are read, readable only by what reads them. It runs on every boot, so new settings can be delivered the same
+# way, and does nothing when there are none.
+[Unit]
+Description=EdS agent: import settings from the boot partition
+After=NetworkManager.service local-fs.target
+Wants=NetworkManager.service
+Before=npagent.service
+ConditionDirectoryNotEmpty=/boot/firmware/eds-agent
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/eds-agent-import
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
