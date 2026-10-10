@@ -1,0 +1,15 @@
+{{- /*
+  An ADR's status as a coloured badge, so the decision index can be read at a
+  glance: what is settled, what is still waiting on evidence, what was retired.
+    orange: Proposed     - written down, not yet safe to build on
+    green:  Accepted     - decided; act on it
+    grey:   Superseded, Deprecated - kept for the history, not to act on
+  Usage: {{< adr-status "Accepted" >}}
+*/ -}}
+{{- $st := .Get 0 -}}
+{{- $colours := dict "Proposed" "orange" "Accepted" "green" "Superseded" "grey" "Deprecated" "grey" -}}
+{{- $c := index $colours $st -}}
+{{- if not $c -}}
+  {{- errorf "adr-status: unknown status %q in %s - use Proposed, Accepted, Superseded or Deprecated" $st .Position -}}
+{{- end -}}
+<span class="status-badge inc-{{ $c }}">{{ $st }}</span>

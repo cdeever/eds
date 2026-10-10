@@ -30,12 +30,12 @@ cover image ──▶ lightd ──▶ palette ──▶ lightd ──▶  mqtt 
 The broker is `mqtt.mobile.deevnet.net` on the substrate's IoT Backend segment,
 not a tenant VM.
 MQTT clients always dial the broker, so whichever segment holds it must accept
-inbound — and the tenant fabric has no inbound path by design (ADR-0001,
-ADR-0003). IoT Backend is the segment already defined to accept exactly this.
+inbound — and the tenant fabric has no inbound path by design (Deevnet ADR-0001,
+Deevnet ADR-0003). IoT Backend is the segment already defined to accept exactly this.
 
 ## Substrate
 
 EdS runs as a tenant on [deevnet](https://github.com/deevnet/deevnet-docs).
-Unlike the reference pattern in ADR-0006, where the repository *is* the tenant,
+Unlike the reference pattern in Deevnet ADR-0006, where the repository *is* the tenant,
 the EdS tenant lives inside this monorepo as `infra/deevnet-tenant-eds` so the
 application and the infrastructure it runs on stay in one place.

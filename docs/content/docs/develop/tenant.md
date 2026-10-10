@@ -7,7 +7,7 @@ weight: 3
 
 The EdS tenant as code: its overlay network, its workload and its DNS records,
 rebuildable from scratch against the substrate without a substrate commit
-(ADR-0006).
+(Deevnet ADR-0006).
 
 | | |
 |---|---|
@@ -20,18 +20,18 @@ rebuildable from scratch against the substrate without a substrate commit
 ## Status: written, never applied
 
 `terraform validate`d against the real module, with derived addressing checked
-against ADR-0002. It has **not** been planned or applied, and three things must
+against Deevnet ADR-0002. It has **not** been planned or applied, and three things must
 happen first:
 
 1. **Allocate index 1** in `deevnet-tenant-factory`'s `TENANTS.md`.
-2. **Onboard the tenant**: egress (ADR-0003) and DNS zones plus a TSIG key
-   (ADR-0004).
+2. **Onboard the tenant**: egress (Deevnet ADR-0003) and DNS zones plus a TSIG key
+   (Deevnet ADR-0004).
 3. **Issue the fabric attachment**: `make tenant-attachment TENANT=$(pwd)` in
    the factory, which writes `fabric.auto.tfvars`.
 
-## Divergence from ADR-0006
+## Divergence from Deevnet ADR-0006
 
-ADR-0006's pattern is that the repository *is* the tenant — a standalone
+Deevnet ADR-0006's pattern is that the repository *is* the tenant — a standalone
 `deevnet-tenant-<name>` repository with the deevnet repositories as siblings.
 This tenant instead lives two directories inside the EdS monorepo, so that the
 application and the infrastructure it runs on stay in one place.
@@ -48,7 +48,7 @@ make plan DEEVNET_ROOT=/path/to/checkouts   # if yours live elsewhere
 ## State and pins
 
 State is **not** in this repository; it lives in the substrate's state store
-(ADR-0007) under `tenants/eds/terraform.tfstate`, which also provides the
+(Deevnet ADR-0007) under `tenants/eds/terraform.tfstate`, which also provides the
 locking a repository cannot.
 
 `.terraform.lock.hcl` **is** committed. A module pinned by tag with providers

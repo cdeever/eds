@@ -1,0 +1,16 @@
+{{- /*
+  Status of one incident action or follow-up, as a coloured badge. Shares its
+  colours with inc-status.
+    red:    Open
+    orange: In Progress (actions), Scheduled (follow-ups)
+    green:  Done
+    grey:   Declined - deliberately not done, with the reason written down
+  Usage: {{< action-status "In Progress" >}}
+*/ -}}
+{{- $st := .Get 0 -}}
+{{- $colours := dict "Open" "red" "In Progress" "orange" "Scheduled" "orange" "Done" "green" "Declined" "grey" -}}
+{{- $c := index $colours $st -}}
+{{- if not $c -}}
+  {{- errorf "action-status: unknown status %q in %s - use Open, In Progress, Scheduled, Done or Declined" $st .Position -}}
+{{- end -}}
+<span class="status-badge inc-{{ $c }}">{{ $st }}</span>

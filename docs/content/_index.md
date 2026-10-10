@@ -44,4 +44,12 @@ identification, playback, personality.
     <h3>Reference</h3>
     <p>The contracts: HTTP APIs, the scene descriptor, MQTT topics.</p>
   </a>
+  <a class="section-card" href="docs/architecture/decisions/">
+    <h3>Decisions</h3>
+    <p>Why it is built this way, and what was turned down. Read before reopening a question.</p>
+  </a>
+  <a class="section-card" href="docs/changes/">
+    <h3>Changes and Incidents</h3>
+    <p>What was changed on something running, and what happened.</p>
+  </a>
 </div>

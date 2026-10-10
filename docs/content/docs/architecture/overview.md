@@ -22,7 +22,7 @@ tenant VM, and the stand sits on the **IoT** segment (VLAN 30).
 That placement is forced rather than preferred. MQTT clients always dial the
 broker — the ESP32 initiates, never the reverse — so whichever segment holds
 the broker must accept **inbound**. The tenant fabric has no inbound path by
-design: ADR-0003 delivered egress only, and ADR-0001's central promise is that
+design: Deevnet ADR-0003 delivered egress only, and Deevnet ADR-0001's central promise is that
 the core router never learns tenant address space. IoT Backend is the segment
 already defined to accept exactly this, with `mqtt01` named in the model as its
 typical inhabitant.

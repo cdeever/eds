@@ -142,8 +142,8 @@ The broker lives on the substrate's IoT Backend segment (VLAN 35), and lightd
 connects outbound to it from the EdS tenant.
 
 MQTT clients always dial the broker, so whichever segment holds it must accept
-inbound — and the tenant fabric has no inbound path by design (ADR-0001,
-ADR-0003). IoT Backend is the segment already defined to accept exactly this,
+inbound — and the tenant fabric has no inbound path by design (Deevnet ADR-0001,
+Deevnet ADR-0003). IoT Backend is the segment already defined to accept exactly this,
 with the broker named in the model as its typical inhabitant. Putting the broker
 on a tenant VM would have meant inventing an inbound path to tenant address
 space, which is an ADR, not a config change.
