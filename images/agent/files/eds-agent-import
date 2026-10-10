@@ -1,0 +1,134 @@
+#!/bin/bash
+# eds-agent-import - move this card's settings from its boot partition to
+# where they are read, then remove them from the boot partition.
+#
+# The boot partition is FAT: anything on it is readable by whoever holds the
+# card, and by every process on the Pi. So the settings rest there only
+# between the card being written and its next boot.
+#
+# Four files, each optional, in /boot/firmware/eds-agent/:
+#
+#   hostname             what this card calls itself
+#   npagent.env          the agent's settings, as an environment file
+#   deevnet-root-ca.pem  the CA the broker's certificate is verified against
+#   wifi.conf            SSID=, PSK=, COUNTRY=   a second network to join
+#
+# wifi.conf is what makes a card a relay: a Pi whose players are on a network
+# the broker is not. Without it the Pi has its wired leg and nothing else.
+#
+# Nothing here is executed. hostname and wifi.conf are read for named values
+# and everything else in them is ignored; the other two are copied as data.
+set -euo pipefail
+
+DROP=/boot/firmware/eds-agent
+CONN=/etc/NetworkManager/system-connections/eds-home.nmconnection
+log() { echo "eds-agent-import: $*"; }
+
+# value KEY FILE - the text after the first "KEY=" line, CR and quotes removed.
+value() {
+    local line
+    line="$(grep -m1 -E "^$1=" "$2" 2>/dev/null || true)"
+    line="${line#*=}"
+    line="${line%$'\r'}"
+    line="${line%\"}"; line="${line#\"}"
+    printf '%s' "$line"
+}
+
+imported=0
+
+if [[ -f "$DROP/hostname" ]]; then
+    name="$(head -n1 "$DROP/hostname" | tr -d '\r[:space:]')"
+    # A hostname and nothing else: it goes into /etc/hosts and a prompt.
+    if [[ "$name" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
+        hostnamectl set-hostname "$name"
+        sed -i "s/^127\.0\.1\.1[[:space:]].*/127.0.1.1\t$name/" /etc/hosts
+        rm -f "$DROP/hostname"
+        log "hostname set to $name"
+        imported=1
+    else
+        log "hostname is not a valid name; left in place"
+    fi
+fi
+
+if [[ -f "$DROP/wifi.conf" ]]; then
+    ssid="$(value SSID "$DROP/wifi.conf")"
+    psk="$(value PSK "$DROP/wifi.conf")"
+    country="$(value COUNTRY "$DROP/wifi.conf")"
+    [[ "$country" =~ ^[A-Z]{2}$ ]] || country=US
+
+    if [[ -z "$ssid" || ${#psk} -lt 8 || ${#psk} -gt 63 ]]; then
+        log "wifi.conf needs SSID= and a PSK= of 8 to 63 characters; left in place"
+    else
+        # The radio is blocked until a country is set, and stays blocked
+        # across boots until something says otherwise.
+        raspi-config nonint do_wifi_country "$country" >/dev/null 2>&1 || true
+        rfkill unblock wifi 2>/dev/null || true
+
+        # Written directly rather than with nmcli, which would put the key on
+        # a command line for every process to read.
+        #
+        # never-default and the two ignore-auto settings are what keep this a
+        # leg and not a route: the Pi reaches the home subnet it is on, and
+        # nothing else, through it. Its default route and its DNS stay on the
+        # wired side.
+        umask 077
+        cat > "$CONN.new" <<CONNECTION
+[connection]
+id=eds-home
+type=wifi
+interface-name=wlan0
+autoconnect=true
+
+[wifi]
+mode=infrastructure
+ssid=$ssid
+
+[wifi-security]
+key-mgmt=wpa-psk
+psk=$psk
+
+[ipv4]
+method=auto
+never-default=true
+ignore-auto-dns=true
+ignore-auto-routes=true
+
+[ipv6]
+method=disabled
+CONNECTION
+        mv "$CONN.new" "$CONN"
+        chmod 600 "$CONN"
+        nmcli connection reload >/dev/null 2>&1 || true
+        nmcli connection up eds-home >/dev/null 2>&1 || true
+        rm -f "$DROP/wifi.conf"
+        log "second leg: Wi-Fi '$ssid' (country $country)"
+        imported=1
+    fi
+fi
+
+if [[ -f "$DROP/deevnet-root-ca.pem" ]]; then
+    if grep -q 'BEGIN CERTIFICATE' "$DROP/deevnet-root-ca.pem"; then
+        install -o root -g root -m 0644 "$DROP/deevnet-root-ca.pem" /etc/eds/deevnet-root-ca.pem
+        rm -f "$DROP/deevnet-root-ca.pem"
+        log "broker CA installed"
+        imported=1
+    else
+        log "deevnet-root-ca.pem is not a PEM certificate; left in place"
+    fi
+fi
+
+if [[ -f "$DROP/npagent.env" ]]; then
+    # Readable by the agent and by nobody else: it holds the broker password.
+    install -o root -g npagent -m 0640 "$DROP/npagent.env" /etc/eds/npagent.env
+    rm -f "$DROP/npagent.env"
+    log "agent settings installed"
+    imported=1
+fi
+
+# An emptied directory is removed, so the unit's condition is false next boot.
+rmdir "$DROP" 2>/dev/null || true
+sync
+
+if [[ $imported -eq 1 ]]; then
+    systemctl try-restart npagent.service 2>/dev/null || true
+fi

@@ -1,0 +1,33 @@
+#!/bin/bash
+# eds-agent-pair - pair this Pi's agent with iTunes, once.
+#
+# Advertises a remote on the players' network and prints a four-digit code to
+# type into iTunes. The pairing is kept in the agent's own directory, and the
+# agent starts as soon as it exists.
+set -euo pipefail
+
+if [[ $EUID -ne 0 ]]; then
+    exec sudo "$0" "$@"
+fi
+
+# The firewall admits exactly this port from the second leg.
+export NP_PAIR_PORT=3690
+export NP_STATE_DIR=/var/lib/eds-npagent
+export NP_REMOTE_NAME="${NP_REMOTE_NAME:-EdS}"
+
+# Not `set -e` for this one: the agent should start whenever a pairing exists,
+# including when the tool paired and then stumbled on something afterwards.
+set +e
+runuser -u npagent -- env NP_PAIR_PORT="$NP_PAIR_PORT" NP_STATE_DIR="$NP_STATE_DIR" \
+    NP_REMOTE_NAME="$NP_REMOTE_NAME" /usr/local/bin/npagent pair
+paired=$?
+set -e
+
+if [[ ! -s "$NP_STATE_DIR/itunes-pairing.json" ]]; then
+    echo "Not paired." >&2
+    exit "${paired:-1}"
+fi
+
+systemctl restart npagent.service
+echo
+echo "The agent is starting. Check it with: eds-agent-status"

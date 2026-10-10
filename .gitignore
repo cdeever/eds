@@ -53,6 +53,15 @@ firmware/*/test/host/run-tests
 # that does not exist, and never the firmware's.
 **/certs/*.pem
 
+# The relay's image, fetched from the Builder to be flashed. Not secret - it
+# carries none - but it is 8 GB of someone else's build output.
+deploy/relay/*.img
+deploy/relay/*.img.xz
+deploy/relay/*.img.xz.sha256
+# Only ever on the Builder, where images are built; here in case one is not.
+images/out/
+images/inputs/
+
 # Hugo (docs/). The theme is a submodule; public/ and resources/ are build
 # output, and .hugo_build.lock is a transient held only while hugo runs.
 public/
