@@ -156,6 +156,140 @@ func TestPresenceIsAnnouncedAndWithdrawn(t *testing.T) {
 	}
 }
 
+func TestCoverTopicIsUnderThePrefix(t *testing.T) {
+	if got := CoverTopic("eds", "nowplaying/current/art"); got != "eds/nowplaying/current/art" {
+		t.Errorf("cover topic = %q", got)
+	}
+}
+
+// publishRaw puts bytes on a topic from a client of its own, the way
+// nowplayd would.
+func publishRaw(t *testing.T, url, topic string, payload []byte, retained bool) {
+	t.Helper()
+	opts := mqtt.NewClientOptions().AddBroker(url).
+		SetClientID("test-pub-" + time.Now().Format("150405.000000"))
+	client := mqtt.NewClient(opts)
+	if token := client.Connect(); !token.WaitTimeout(5*time.Second) || token.Error() != nil {
+		t.Fatalf("publisher connect: %v", token.Error())
+	}
+	defer client.Disconnect(100)
+	if token := client.Publish(topic, 1, retained, payload); !token.WaitTimeout(5*time.Second) || token.Error() != nil {
+		t.Fatalf("publish: %v", token.Error())
+	}
+}
+
+// The cover is retained for the same reason the scene is. A lightd that
+// starts, or restarts, after the cover was published must still light the
+// room from it rather than wait for the next album.
+func TestRetainedCoverReachesALateSubscriber(t *testing.T) {
+	url := testBroker(t)
+	prefix := "edstest-cover-retain"
+	topic := CoverTopic(prefix, "nowplaying/current/art")
+
+	publishRaw(t, url, topic, []byte("COVERBYTES"), true)
+
+	sub, err := Connect(Config{URL: url, ClientID: "lightd-test-cover-retain", TopicPrefix: prefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		clearRetained(t, url, topic)
+		clearRetained(t, url, StatusTopic(prefix))
+		sub.Close()
+	})
+
+	got := make(chan []byte, 8)
+	if err := sub.SubscribeCovers("nowplaying/current/art", func(image []byte) { got <- image }); err != nil {
+		t.Fatal(err)
+	}
+
+	if cover := await(t, got, "retained cover"); string(cover) != "COVERBYTES" {
+		t.Errorf("cover = %q", cover)
+	}
+}
+
+func TestCoversKeepArrivingAndAnEmptyOneIsNotACover(t *testing.T) {
+	url := testBroker(t)
+	prefix := "edstest-cover-live"
+	topic := CoverTopic(prefix, "nowplaying/current/art")
+
+	sub, err := Connect(Config{URL: url, ClientID: "lightd-test-cover-live", TopicPrefix: prefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		clearRetained(t, url, StatusTopic(prefix))
+		sub.Close()
+	})
+
+	got := make(chan []byte, 8)
+	if err := sub.SubscribeCovers("nowplaying/current/art", func(image []byte) { got <- image }); err != nil {
+		t.Fatal(err)
+	}
+
+	publishRaw(t, url, topic, []byte("FIRST"), false)
+	if cover := await(t, got, "first cover"); string(cover) != "FIRST" {
+		t.Errorf("cover = %q", cover)
+	}
+
+	// Clearing a retained topic publishes nothing-at-all, which must not be
+	// handed on as an image. The cover after it shows the subscription lived.
+	publishRaw(t, url, topic, []byte{}, false)
+	publishRaw(t, url, topic, []byte("SECOND"), false)
+	if cover := await(t, got, "second cover"); string(cover) != "SECOND" {
+		t.Errorf("cover = %q, want SECOND - the empty message was handed on", cover)
+	}
+}
+
+// When covers arrive faster than they can be handled, the newest must win and
+// the handler must never work through a backlog of covers already gone.
+func TestASlowHandlerSeesTheNewestCoverNotABacklog(t *testing.T) {
+	url := testBroker(t)
+	prefix := "edstest-cover-burst"
+	topic := CoverTopic(prefix, "nowplaying/current/art")
+
+	sub, err := Connect(Config{URL: url, ClientID: "lightd-test-cover-burst", TopicPrefix: prefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		clearRetained(t, url, StatusTopic(prefix))
+		sub.Close()
+	})
+
+	release := make(chan struct{})
+	got := make(chan []byte, 16)
+	first := true
+	if err := sub.SubscribeCovers("nowplaying/current/art", func(image []byte) {
+		got <- image
+		if first {
+			first = false
+			<-release // hold the first one while the burst arrives
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	publishRaw(t, url, topic, []byte("A"), false)
+	if cover := await(t, got, "the cover being handled"); string(cover) != "A" {
+		t.Fatalf("cover = %q", cover)
+	}
+	for _, c := range []string{"B", "C", "D", "E"} {
+		publishRaw(t, url, topic, []byte(c), false)
+	}
+	time.Sleep(300 * time.Millisecond) // let the burst reach the client
+	close(release)
+
+	if cover := await(t, got, "the newest cover"); string(cover) != "E" {
+		t.Errorf("after the burst the handler got %q, want E", cover)
+	}
+	select {
+	case extra := <-got:
+		t.Errorf("the handler was also given %q: a backlog was kept", extra)
+	case <-time.After(300 * time.Millisecond):
+	}
+}
+
 // clearRetained removes a retained message so a rerun starts clean.
 func clearRetained(t *testing.T, url, topic string) {
 	t.Helper()

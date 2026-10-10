@@ -76,6 +76,11 @@ func goodPalette() *palette.Response {
 
 func newTestServer(t *testing.T, ex Extractor, pub *fakePublisher) http.Handler {
 	t.Helper()
+	return newServer(t, ex, pub).Routes()
+}
+
+func newServer(t *testing.T, ex Extractor, pub *fakePublisher) *Server {
+	t.Helper()
 	return New(Options{
 		Extractor:    ex,
 		Publisher:    pub,
@@ -83,7 +88,7 @@ func newTestServer(t *testing.T, ex Extractor, pub *fakePublisher) http.Handler 
 		DefaultStand: "lp-stand-01",
 		Swatches:     6,
 		Scene:        scene.DefaultOptions(),
-	}).Routes()
+	})
 }
 
 func TestHealthz(t *testing.T) {
@@ -375,4 +380,106 @@ func TestConcurrentPublishesAreSafe(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+// --- the cover topic ---------------------------------------------------------
+
+// A cover from the topic and the same cover over HTTP must light the room the
+// same way. That they share one path is the design; this is what holds it to
+// that.
+func TestApplyCoverPublishesWhatHTTPWould(t *testing.T) {
+	viaHTTP := &fakePublisher{}
+	req := httptest.NewRequest(http.MethodPost, "/v1/cover", strings.NewReader("COVER"))
+	rec := httptest.NewRecorder()
+	newTestServer(t, &fakeExtractor{resp: goodPalette()}, viaHTTP).ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("http status = %d", rec.Code)
+	}
+
+	ex := &fakeExtractor{resp: goodPalette()}
+	viaTopic := &fakePublisher{}
+	if err := newServer(t, ex, viaTopic).ApplyCover(context.Background(), []byte("COVER")); err != nil {
+		t.Fatal(err)
+	}
+
+	if viaTopic.count() != 1 {
+		t.Fatalf("published %d scenes, want 1", viaTopic.count())
+	}
+	if viaTopic.stand != "lp-stand-01" {
+		t.Errorf("stand = %q, want the default", viaTopic.stand)
+	}
+	if string(ex.gotImage) != "COVER" || ex.gotN != 6 {
+		t.Errorf("extractor received %q with n=%d", ex.gotImage, ex.gotN)
+	}
+	if string(viaTopic.payloads[0]) != string(viaHTTP.payloads[0]) {
+		t.Errorf("topic scene %s differs from http scene %s", viaTopic.payloads[0], viaHTTP.payloads[0])
+	}
+}
+
+// What the topic delivered is what GET /v1/scene reports, so "why is the
+// stand that colour" has one answer whichever input set it.
+func TestApplyCoverIsVisibleAsLastScene(t *testing.T) {
+	srv := newServer(t, &fakeExtractor{resp: goodPalette()}, &fakePublisher{})
+	if err := srv.ApplyCover(context.Background(), []byte("COVER")); err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/scene", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body)
+	}
+}
+
+// A cover that cannot be used must leave the room alone. Nothing is published,
+// so the stand keeps the last good scene.
+func TestApplyCoverIgnoresWhatItCannotUse(t *testing.T) {
+	cases := map[string]struct {
+		image []byte
+		ex    *fakeExtractor
+		pub   *fakePublisher
+	}{
+		"empty": {
+			image: nil,
+			ex:    &fakeExtractor{resp: goodPalette()},
+			pub:   &fakePublisher{},
+		},
+		"not an image": {
+			image: []byte("NOTANIMAGE"),
+			ex: &fakeExtractor{err: &palette.StatusError{
+				StatusCode: http.StatusBadRequest, Status: "400 Bad Request",
+			}},
+			pub: &fakePublisher{},
+		},
+		"palette down": {
+			image: []byte("COVER"),
+			ex:    &fakeExtractor{err: errors.New("connection refused")},
+			pub:   &fakePublisher{},
+		},
+		"larger than an upload may be": {
+			image: make([]byte, maxUpload+1),
+			ex:    &fakeExtractor{resp: goodPalette()},
+			pub:   &fakePublisher{},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			err := newServer(t, tc.ex, tc.pub).ApplyCover(context.Background(), tc.image)
+			if err == nil {
+				t.Error("expected an error")
+			}
+			if tc.pub.count() != 0 {
+				t.Errorf("published %d scenes for a cover it could not use", tc.pub.count())
+			}
+		})
+	}
+}
+
+func TestApplyCoverReportsPublishFailure(t *testing.T) {
+	pub := &fakePublisher{err: errors.New("broker: timed out")}
+	err := newServer(t, &fakeExtractor{resp: goodPalette()}, pub).ApplyCover(context.Background(), []byte("COVER"))
+	if err == nil || !strings.Contains(err.Error(), "timed out") {
+		t.Errorf("err = %v, want the publish failure", err)
+	}
 }

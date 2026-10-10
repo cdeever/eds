@@ -78,6 +78,8 @@ curl -X POST http://localhost:8732/v1/scene \
 curl 'http://localhost:8732/v1/scene?stand=lp-stand-01'   # what was last sent
 ```
 
-`POST /v1/cover` is deliberately the interface the future album cover resolver
-will call, so nothing built here gets thrown away when it arrives — it just
-gains a second caller.
+`POST /v1/cover` was built as the interface an album cover resolver would
+call. It arrived as a topic instead: with `LIGHTD_COVER_TOPIC` set, lightd
+subscribes and runs each image it receives down the same path
+([ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/)).
+It still sees only image bytes.
