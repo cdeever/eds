@@ -12,6 +12,7 @@ This is a monorepo. Each project below is a distinct piece of that system.
 | [`firmware/lp-stand`](firmware/lp-stand) | C / ESP-IDF | The LP jacket stand: MQTT subscriber driving an addressable RGB strip |
 | [`infra/deevnet-tenant-eds`](infra/deevnet-tenant-eds) | Terraform | The EdS tenant on the deevnet Proxmox substrate |
 | [`deploy`](deploy) | Make, systemd | palette and lightd as containers on the tenant's workload |
+| [`docs`](docs) | Hugo | The developer and user guide, published to [cdeever.github.io/eds](https://cdeever.github.io/eds/) |
 
 ## The first vertical
 
