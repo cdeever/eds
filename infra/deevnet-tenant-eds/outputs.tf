@@ -101,7 +101,26 @@ output "console_broker" {
 
 output "console_url" {
   description = "Where the console is, from the site's trusted networks."
-  value       = "http://${deevnet_dns_record.console.fqdn}/"
+  value       = "https://${deevnet_certificate.console.fqdn}/"
+}
+
+output "console_tls" {
+  description = "The console's key and certificate. deploy/ writes them to the workload. The key is the secret."
+  sensitive   = true
+  value = {
+    key       = tls_private_key.console.private_key_pem
+    fullchain = deevnet_certificate.console.fullchain_pem
+  }
+}
+
+output "console_certificate" {
+  description = "When the console's certificate expires, and when a plan begins to renew it."
+  value = {
+    names       = deevnet_certificate.console.dns_names
+    serial      = deevnet_certificate.console.serial
+    not_after   = deevnet_certificate.console.not_after
+    renew_after = deevnet_certificate.console.renew_after
+  }
 }
 
 output "np_relay_broker" {

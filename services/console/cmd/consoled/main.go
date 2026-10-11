@@ -69,6 +69,21 @@ func run(logger *slog.Logger) error {
 		}
 	}
 
+	// Read before anything is connected: a certificate that cannot be served
+	// with is a reason to stop at once, not after the broker has answered.
+	var identity *web.Identity
+	certFile, keyFile := env("CONSOLE_TLS_CERT_FILE", ""), env("CONSOLE_TLS_KEY_FILE", "")
+	switch {
+	case (certFile == "") != (keyFile == ""):
+		return errors.New("CONSOLE_TLS_CERT_FILE and CONSOLE_TLS_KEY_FILE go together: one is set and the other is not")
+	case certFile != "":
+		id, err := web.LoadIdentity(certFile, keyFile, time.Now())
+		if err != nil {
+			return err
+		}
+		identity = &id
+	}
+
 	picture := view.New(prefix)
 	server := &web.Server{
 		View:    picture,
@@ -103,22 +118,42 @@ func run(logger *slog.Logger) error {
 	logger.Info("connected to broker", "url", cfg.URL, "topics", len(view.Topics(prefix)), "status", status)
 
 	addr := env("CONSOLE_ADDR", ":8080")
-	httpServer := &http.Server{
-		Addr:              addr,
-		Handler:           server.Handler(),
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		IdleTimeout:       2 * time.Minute,
-		// No write timeout: a viewer's request is meant never to end.
-		MaxHeaderBytes: 16 << 10,
+	// One server in the clear, or two: with a certificate the page is served
+	// over TLS, and the plain port only sends people there.
+	servers := []*http.Server{httpServer(addr, server.Handler())}
+	serve := []func(*http.Server) error{(*http.Server).ListenAndServe}
+
+	if identity != nil {
+		id := *identity
+		tlsAddr := env("CONSOLE_TLS_ADDR", ":443")
+		server.Secure = true
+		secure := httpServer(tlsAddr, server.Handler())
+		secure.TLSConfig = id.TLSConfig()
+		servers = []*http.Server{secure, httpServer(addr, web.ToHTTPS(id.Name))}
+		serve = []func(*http.Server) error{
+			func(s *http.Server) error { return s.ListenAndServeTLS("", "") },
+			(*http.Server).ListenAndServe,
+		}
+
+		left := time.Until(id.NotAfter)
+		logger.Info("serving over TLS", "addr", tlsAddr, "name", id.Name, "names", id.Names,
+			"chain", id.Chain, "expires", id.NotAfter.UTC().Format("2006-01-02"), "days_left", int(left.Hours()/24))
+		// The certificate is renewed by a person applying and deploying.
+		// Nothing does it for them, so this is said every time it starts.
+		if left < 30*24*time.Hour {
+			logger.Warn("the certificate is close to expiring; apply the tenant's configuration and deploy again",
+				"days_left", int(left.Hours()/24))
+		}
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	failed := make(chan error, 1)
-	go func() { failed <- httpServer.ListenAndServe() }()
-	logger.Info("listening", "addr", addr, "version", version)
+	failed := make(chan error, len(servers))
+	for i, s := range servers {
+		go func() { failed <- serve[i](s) }()
+		logger.Info("listening", "addr", s.Addr, "version", version)
+	}
 
 	select {
 	case err := <-failed:
@@ -129,8 +164,23 @@ func run(logger *slog.Logger) error {
 	// Viewers hold requests open for ever, so they are not waited for.
 	closing, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if err := httpServer.Shutdown(closing); err != nil && !errors.Is(err, context.DeadlineExceeded) {
-		return err
+	for _, s := range servers {
+		if err := s.Shutdown(closing); err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
+		_ = s.Close()
 	}
-	return httpServer.Close()
+	return nil
+}
+
+func httpServer(addr string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+		// No write timeout: a viewer's request is meant never to end.
+		MaxHeaderBytes: 16 << 10,
+	}
 }

@@ -14,3 +14,4 @@ bookCollapseSection: true
 | CHG-0004 | 2026-10-11 | [Spotify on the Agent Pi](0004-spotify-on-the-agent-pi/) | Deployment | {{< status-badge "complete" "Complete" >}} |
 | CHG-0005 | 2026-10-11 | [The Agent Reports Its Events](0005-the-agent-reports-its-events/) | Deployment | {{< status-badge "complete" "Complete" >}} |
 | CHG-0006 | 2026-10-11 | [The Console](0006-the-console/) | Deployment | {{< status-badge "active" "In progress" >}} |
+| CHG-0007 | 2026-10-11 | [The Console Over TLS](0007-the-console-over-tls/) | Deployment | {{< status-badge "complete" "Complete" >}} |

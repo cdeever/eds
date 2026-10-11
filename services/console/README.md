@@ -80,6 +80,8 @@ Environment only. Each broker setting falls back to the platform's name from
 | `CONSOLE_MQTT_CA_FILE` | `$MQTT_CA_FILE` | the Deevnet Root CA |
 | `CONSOLE_MQTT_INSECURE` | `false` | bring-up only; anything but a boolean is an error |
 | `CONSOLE_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | one topic level |
+| `CONSOLE_TLS_CERT_FILE` / `CONSOLE_TLS_KEY_FILE` | none | a certificate with its chain, and its key. Set together, the page is served over TLS and `CONSOLE_ADDR` only redirects to it |
+| `CONSOLE_TLS_ADDR` | `:443` | where TLS is served |
 | `CONSOLE_DASHBOARD_URL` | none | where "Events in Grafana" goes; left out of the page if not a web address |
 | `CONSOLE_DOCS_URL` | this project's docs site | where "Decisions and records" goes |
 
@@ -94,6 +96,13 @@ Environment only. Each broker setting falls back to the platform's name from
   bytes. An SVG is a document and can carry script; it is refused.
 - **The page loads nothing from anywhere else**, and a content policy says
   so. There are no inline styles or scripts for it to make an exception for.
-- **No login and no TLS.** Acceptable for a page that only looks, on the
-  site's trusted networks. Not acceptable for a page with controls.
+- **TLS when it is given a certificate.** With `CONSOLE_TLS_CERT_FILE` and
+  `CONSOLE_TLS_KEY_FILE` the page is served over TLS, the plain port sends
+  every request to the name the certificate is for (not the name the request
+  used), and a browser is told to stay for a day. The certificate is read
+  once, at start; a renewed one is put in place and the console restarted. A
+  certificate that has expired, or names nothing, stops it before it connects
+  to anything. It warns at every start once fewer than thirty days remain.
+- **No login.** Acceptable for a page that only looks, on the site's trusted
+  networks. Not acceptable for a page with controls.
 - **Viewers are capped at 64.** Each is a request that never ends.

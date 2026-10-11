@@ -74,3 +74,8 @@ resources/
 # is not a secret under PKCE, but it names one person's app, and the device
 # names are one household's.
 deploy/relay/spotify.conf
+
+# The console's key and certificate, written from the tenant's state by
+# `make -C deploy tls-files`. The key is a secret.
+deploy/tls/
+*.key

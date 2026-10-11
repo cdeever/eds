@@ -7,7 +7,8 @@ weight: 18
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}} — until it has been seen in a browser on the site |
+| **Status** | {{< adr-status "Proposed" >}} — until it has been seen in a browser on the site, with a track changing |
+| **Amended** | 2026-10-11, before it was accepted: served over TLS, not in the clear. When this was written nothing on the site would certify a name a tenant serves; Deevnet ADR-0037 has since given tenants a CA to ask. [CHG-0007](/docs/changes/2026/0007-the-console-over-tls/) |
 | **Date** | 2026-10-11 |
 | **Scope** | Where a person looks to see what EdS is doing: what is playing, what the stand is showing, and whether the parts are up. |
 | **Related** | [ADR-0005](/docs/architecture/decisions/0005-device-events-over-mqtt/), [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), [ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/), [ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/) |
@@ -67,9 +68,13 @@ bus and serves one page.
   by a port of the firmware's effects. It shows the colours as sent, before
   gamma, which is what the wire format is for
   ([ADR-0002](/docs/architecture/decisions/0002-gamma-in-firmware/)).
-- **It is reached at `console.eds.mobile.deevnet.net`**, plain HTTP, from the
-  site's trusted and management networks. The workload's own firewall admits
-  the one port. Nothing on the guest or IoT networks, or outside, can reach a
+- **It is reached at `https://console.eds.mobile.deevnet.net/`**, from the
+  site's trusted and management networks. Its certificate is from the site's
+  Tenant Service CA and chains to the Deevnet Root CA, which the browsers that
+  open it already trust. The key is the tenant's own: made in its Terraform,
+  held in its state and on its workload, and sent nowhere. The plain port only
+  sends people to the secure one. The workload's own firewall admits the two
+  ports. Nothing on the guest or IoT networks, or outside, can reach a
   workload at all.
 - Grafana stays what it is good at: the events, over time.
 
@@ -86,7 +91,12 @@ bus and serves one page.
   is no login. That is acceptable for a page that only looks, on a network
   that already carries the same information unencrypted to anyone with the
   Grafana login; it is not acceptable for a page with controls.
-- Plain HTTP, because the platform issues no certificates to tenants yet.
+- **The certificate lasts a year and a person renews it.** A plan shows the
+  renewal from sixty days before, and the console warns each time it starts
+  inside thirty. A console nobody applies for a year is refused by every
+  browser, and says why in its log.
+- A certificate cannot be withdrawn. If the key is lost, a new one is made
+  and the old certificate stays valid until it expires.
 - The first port on the workload opened to anything but SSH. It is opened by
   the deployment, and a rebuilt workload gets it back with everything else.
 - "Recently played" is what the console has seen since it started. The

@@ -46,6 +46,10 @@ type Server struct {
 	// keeps a proxy or a sleeping laptop from deciding the request is dead.
 	Heartbeat time.Duration
 
+	// Secure is set when this handler is served over TLS. A browser that has
+	// reached the page that way is then told to keep doing so.
+	Secure bool
+
 	mu      sync.Mutex
 	viewers map[chan struct{}]struct{}
 }
@@ -132,6 +136,12 @@ func (s *Server) Handler() http.Handler {
 				"base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
+		if s.Secure {
+			// A day, and this name only. Long enough that a browser does not
+			// try plain HTTP again tomorrow; short enough that a certificate
+			// left to expire does not lock the page away for a year.
+			h.Set("Strict-Transport-Security", "max-age=86400")
+		}
 
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			h.Set("Allow", "GET, HEAD")
@@ -221,4 +231,34 @@ func (s *Server) cover(w http.ResponseWriter, r *http.Request) {
 	// Named by the hash of its own bytes: it can never be a different image.
 	w.Header().Set("Cache-Control", "private, max-age=86400, immutable")
 	_, _ = w.Write(image)
+}
+
+// ToHTTPS is what the plain port answers once the console is served over
+// TLS: every request is sent to the same path at https://name.
+//
+// The name is the one the certificate is for, not the one the request used.
+// A browser sent by its own Host header would follow anything that pointed a
+// name at this address, and would arrive at a certificate that does not match
+// it anyway.
+//
+// /healthz still answers here, so a check that knows nothing of certificates
+// can tell the process is up.
+func ToHTTPS(name string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" {
+			_, _ = w.Write([]byte("ok\n"))
+			return
+		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "the console only looks", http.StatusMethodNotAllowed)
+			return
+		}
+		target := "https://" + name + r.URL.EscapedPath()
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		http.Redirect(w, r, target, http.StatusPermanentRedirect)
+	})
 }
