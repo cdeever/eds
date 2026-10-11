@@ -7,7 +7,7 @@ weight: 12
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}} — until the driver has run against the account; see [What would settle it](#what-would-settle-it) |
+| **Status** | {{< adr-status "Accepted" >}} 2026-10-11, once the driver had run against the account; two observations are still wanted, under [What would settle it](#what-would-settle-it) |
 | **Date** | 2026-10-10 |
 | **Scope** | How the Spotify driver learns what is playing. |
 | **Amended** | 2026-10-11, before it was accepted: where the driver runs, how it is authorized, which devices count, and that it takes no artwork. The text below is the amended decision; [What changed](#what-changed-on-2026-10-11) lists the differences |
@@ -102,12 +102,20 @@ anything played in a private session are reported as `stopped`.
 ## What would settle it
 
 1. A development-mode app owned by the account gets `/v1/me/player` with
-   the two playback scopes. **2026-10-11: authorized, and refused.** The
-   authorization completed and a token was issued; every request then came
-   back `403 Active premium subscription required for the owner of the app`.
-2. Playback on the desktop client, and on the phone, appears within a poll.
-3. What the API returns during a private session.
-4. How it behaves at ten-second polling over a day: any `429`.
+   the two playback scopes. **Settled 2026-10-11.** An app owned by an account
+   without Premium was authorized and then refused every request with `403
+   Active premium subscription required for the owner of the app`. One owned
+   by the Premium account was answered at once.
+2. Playback on the desktop client appears within a poll, and playback on the
+   phone is told apart from it. **Settled 2026-10-11.** Four tracks on the
+   named computer were each reported; moving playback to the phone was
+   reported as `stopped`
+   ([CHG-0004](/docs/changes/2026/0004-spotify-on-the-agent-pi/)).
+3. What the API returns during a private session. *Not yet observed.* The
+   driver treats the device's private-session flag as `stopped`; whether
+   Spotify sends the track at all in that case is unknown.
+4. How it behaves at ten-second polling over a day: any `429`. *Not yet
+   observed.*
 
 ## Sources
 

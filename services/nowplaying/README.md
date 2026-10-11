@@ -25,7 +25,7 @@ The design, and what was turned down, is recorded:
 
 ## Status
 
-**Deployed end to end for iTunes: the agent on its Pi, nowplayd on the workload, and the stand following the cover.**
+**Deployed end to end: the agent on its Pi following iTunes and Spotify, nowplayd on the workload, and the stand following iTunes's covers.**
 
 | | |
 |---|---|
@@ -38,7 +38,7 @@ The design, and what was turned down, is recorded:
 | the agent Pi | running as a relay on `dv02rpi002p01`: paired with iTunes on the home LAN and publishing to the real broker ([`images`](../../images), [`deploy/relay`](../../deploy/relay)) |
 | broker accounts | declared and checked against the real broker (`eds-nowplayd`, `eds-np-relay`) |
 | `nowplayd` on the workload | deployed ([`deploy`](../../deploy)). An album change in iTunes reaches the stand in about a second |
-| `spotifyauth`, `driver/spotify` | unit-tested against a stand-in for Spotify. Authorized against the real account on 2026-10-11; **not yet seen reporting a track**: Spotify refused every request because the app's owner had no Premium subscription ([CHG-0004](../../docs/content/docs/changes/2026/0004-spotify-on-the-agent-pi.md)) |
+| `spotifyauth`, `driver/spotify` | unit-tested against a stand-in for Spotify. Running on the agent Pi against the real account since 2026-10-11: tracks on the named computer are reported within a poll, playback on the phone is not, and the stand does not follow either ([CHG-0004](../../docs/content/docs/changes/2026/0004-spotify-on-the-agent-pi.md)) |
 | the agent with two drivers | running on the Pi: each driver has its own connection and presence, and iTunes reports while Spotify is not set up |
 
 ## The iTunes driver
@@ -145,6 +145,9 @@ current, paused: "paused on B" is more use than silence.
 - Pausing is not doing something. A source cannot become current by stopping.
 - A driver that dies leaves "playing" retained on the broker. Its last will is
   what takes it out.
+- With nothing playing, a paused track comes before a source with nothing
+  loaded, whichever reported last. A driver that starts up and says
+  "stopped" does not take the place of a track paused elsewhere.
 - "Most recent" is judged by nowplayd's own clock, because drivers run on
   different machines. The one exception is start-up, when every source's
   retained state arrives at once: then the senders' own times decide, held to

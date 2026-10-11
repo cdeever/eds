@@ -147,6 +147,18 @@ func TestPausingDoesNotMakeASourceCurrent(t *testing.T) {
 	})
 }
 
+// Seen on 2026-10-11: the Spotify driver started, reported that nothing was
+// playing, and displaced the track paused in iTunes.
+func TestASourceWithNothingLoadedDoesNotDisplaceAPausedTrack(t *testing.T) {
+	run(t, []step{
+		{"itunes starts", update(state("itunes", contract.Playing, "A")), "itunes", "A", contract.Playing, true},
+		{"itunes pauses", update(state("itunes", contract.Paused, "A")), "itunes", "A", contract.Paused, true},
+		{"spotify reports nothing", update(state("spotify", contract.Stopped, "")), "itunes", "A", contract.Paused, false},
+		{"spotify starts", update(state("spotify", contract.Playing, "B")), "spotify", "B", contract.Playing, true},
+		{"spotify stops", update(state("spotify", contract.Stopped, "")), "itunes", "A", contract.Paused, true},
+	})
+}
+
 // A driver that dies leaves its last state retained on the broker saying
 // "playing". Its last will is what says otherwise.
 func TestASourceThatGoesOfflineStopsCounting(t *testing.T) {
