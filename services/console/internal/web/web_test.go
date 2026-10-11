@@ -244,3 +244,55 @@ func TestTooManyViewersAreTurnedAway(t *testing.T) {
 		t.Fatalf("got %d", resp.StatusCode)
 	}
 }
+
+func TestOverTLSABrowserIsToldToStay(t *testing.T) {
+	plain, ts := site(t)
+	if resp, _ := get(t, ts.URL+"/"); resp.Header.Get("Strict-Transport-Security") != "" {
+		t.Error("a page served in the clear claims to be secure")
+	}
+	plain.Secure = true
+	resp, _ := get(t, ts.URL+"/")
+	if got := resp.Header.Get("Strict-Transport-Security"); got != "max-age=86400" {
+		t.Errorf("Strict-Transport-Security = %q", got)
+	}
+}
+
+// The plain port sends everyone to the name the certificate is for, whatever
+// name they came by.
+func TestThePlainPortSendsEveryoneToTheCertificatesName(t *testing.T) {
+	ts := httptest.NewServer(ToHTTPS("console.eds.mobile.deevnet.net"))
+	defer ts.Close()
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+
+	for path, want := range map[string]string{
+		"/":                      "https://console.eds.mobile.deevnet.net/",
+		"/api/state":             "https://console.eds.mobile.deevnet.net/api/state",
+		"/api/cover/abc?x=1&y=2": "https://console.eds.mobile.deevnet.net/api/cover/abc?x=1&y=2",
+		"//evil.example/":        "https://console.eds.mobile.deevnet.net//evil.example/",
+	} {
+		req, _ := http.NewRequest(http.MethodGet, ts.URL+path, nil)
+		// Whatever the browser thought it was talking to.
+		req.Host = "evil.example"
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusPermanentRedirect || resp.Header.Get("Location") != want {
+			t.Errorf("%s: %d to %q, want %q", path, resp.StatusCode, resp.Header.Get("Location"), want)
+		}
+	}
+
+	if resp, body := get(t, ts.URL+"/healthz"); resp.StatusCode != http.StatusOK || !strings.Contains(body, "ok") {
+		t.Errorf("healthz on the plain port: %d", resp.StatusCode)
+	}
+	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/", strings.NewReader("{}"))
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("POST on the plain port: %d", resp.StatusCode)
+	}
+}
