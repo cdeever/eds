@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
+	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 )
 
 // Common is what both programs need: the broker and the topic prefix.
@@ -131,6 +132,8 @@ type Nowplayd struct {
 	// whoever is calling, and one refuses callers that give none.
 	UserAgent     string
 	LookupTimeout time.Duration
+	// Coverless names sources that are reported without a cover (ADR-0016).
+	Coverless []string
 }
 
 // LoadNowplayd builds nowplayd's configuration.
@@ -150,6 +153,15 @@ func LoadNowplayd(version string) (Nowplayd, error) {
 
 	if cfg.LookupTimeout, err = Duration("NP_LOOKUP_TIMEOUT", 10*time.Second, time.Second, time.Minute); err != nil {
 		return cfg, err
+	}
+
+	// A name here that could not be a source is a typo, and a typo here is a
+	// source that lights the room when it was meant not to.
+	cfg.Coverless = List("NP_COVERLESS_SOURCES", "")
+	for _, source := range cfg.Coverless {
+		if !contract.ValidSourceID(source) {
+			return cfg, fmt.Errorf("config: NP_COVERLESS_SOURCES names %q, which cannot be a source", source)
+		}
 	}
 	return cfg, nil
 }

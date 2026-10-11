@@ -1,0 +1,21 @@
+[Unit]
+Description=EdS nowplayd (container)
+Wants=network-online.target
+After=network-online.target
+
+# kit.env names the broker and the tenant. It also carries lightd's login,
+# which nowplayd-broker.env overrides with nowplayd's own: an NP_* setting wins
+# over the kit's name for the same thing.
+[Service]
+Environment=IMAGE=localhost/eds-nowplayd:latest
+ExecStartPre=-/usr/bin/podman rm -f eds-nowplayd
+ExecStart=/usr/bin/podman run --rm --name eds-nowplayd --network host \
+  --env-file /opt/eds/kit.env --env-file /opt/eds/nowplayd.env --env-file /opt/eds/nowplayd-broker.env \
+  -v /opt/eds/deevnet-root-ca.pem:/kit/deevnet-root-ca.pem:ro -e MQTT_CA_FILE=/kit/deevnet-root-ca.pem \
+  ${IMAGE}
+ExecStop=/usr/bin/podman stop -t 10 eds-nowplayd
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

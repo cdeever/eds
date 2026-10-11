@@ -1,26 +1,40 @@
 # deploy
 
-`palette` and `lightd` as containers on the eds `services` workload, under
-systemd. This is the tenant guide's *Deploy Your App* pattern: images built
+`palette`, `lightd` and `nowplayd` as containers on the eds `services`
+workload, under systemd. This is the tenant guide's *Deploy Your App* pattern: images built
 here and copied over SSH, settings from the tenant's `kit.env`, no registry
 and no operator.
 
 ```bash
-make deploy     # first time, or onto a replaced workload: images, kit.env, units, start
-make ship       # a new version of either service: build, copy, restart
-make logs       # follow both
+make deploy     # first time, or onto a replaced workload: images, settings, units, start
+make ship       # a new version of any service: build, copy, restart
+make logs       # follow all three
 ```
 
-Needs Podman, SSH to `tenant@services.eds.mobile.deevnet.net` with a key in
-the tenant's `ssh_keys`, and `infra/deevnet-tenant-eds/.backend.env` (the state
-store's credentials, where `kit.env` is read from).
+Needs a container tool, SSH to `tenant@services.eds.mobile.deevnet.net` with a
+key in the tenant's `ssh_keys`, and `infra/deevnet-tenant-eds/.backend.env`
+(the state store's credentials, where the settings are read from).
+
+**No container tool on this machine?** Add `WHERE=builder`:
+
+```bash
+make deploy WHERE=builder
+```
+
+The images are then built on the Builder, from a copy of `services/`, and
+loaded onto the workload from there. Settings and units still go from this
+machine: nothing secret is sent to the Builder. `CONTAINER=docker` uses Docker
+in place of Podman where that is what there is.
 
 | On the workload | |
 |---|---|
 | `eds-palette.service` | `localhost/eds-palette`, port 8731 |
 | `eds-lightd.service` | `localhost/eds-lightd`, port 8732; starts after palette |
+| `eds-nowplayd.service` | `localhost/eds-nowplayd`; no port, it only dials out |
 | `/opt/eds/kit.env` | secret, 0600: lightd's broker login and the tenant's tokens |
 | `/opt/eds/lightd.env` | lightd's own settings; overrides `kit.env` |
+| `/opt/eds/nowplayd.env` | nowplayd's own settings |
+| `/opt/eds/nowplayd-broker.env` | secret, 0600: nowplayd's broker login. `kit.env` carries one login, lightd's, so nowplayd's is generated beside it |
 | `/opt/eds/deevnet-root-ca.pem` | the Deevnet Root CA, which the broker's certificate is checked against |
 
 Both run with host networking, and the workload's firewall admits only SSH, so
@@ -33,3 +47,25 @@ curl --data-binary @jacket.jpg -H 'Content-Type: image/jpeg' http://localhost:87
 ```
 
 A replaced workload comes back empty; `make deploy` puts everything back.
+
+## What follows what
+
+```
+agent Pi ──▶ eds/nowplaying/source/… ──▶ nowplayd ──▶ eds/nowplaying/current/art ──▶ lightd ──▶ the stand
+```
+
+`nowplayd` decides what is playing and publishes its cover; `lightd` lights the
+stand from that cover (`LIGHTD_COVER_TOPIC` in `lightd.env`). Neither calls the
+other: they meet at the broker.
+
+Everything restarts together on a `make ship`, and both services were written
+for it:
+
+- `lightd` is handed the retained cover the moment it subscribes, which is
+  before `palette` is listening. It tries again for up to half a minute rather
+  than drop a cover that will not be sent twice.
+- `nowplayd` may be handed a source's state before the cover that state names.
+  It waits two seconds for the cover rather than look one up.
+
+To see what a cover produced: `make logs`, and `lightd`'s `published scene`
+line carries each colour and its share of the strip.

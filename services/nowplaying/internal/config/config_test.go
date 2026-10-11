@@ -95,6 +95,8 @@ func TestInvalidValuesStopTheProgram(t *testing.T) {
 		"a timeout that is not one":      {"NP_LOOKUP_TIMEOUT": "ten"},
 		"a timeout of nothing":           {"NP_LOOKUP_TIMEOUT": "0s"},
 		"a timeout of an hour":           {"NP_LOOKUP_TIMEOUT": "1h"},
+		"a coverless source misspelt":    {"NP_COVERLESS_SOURCES": "Spotify"},
+		"a coverless wildcard":           {"NP_COVERLESS_SOURCES": "itunes,+"},
 	}
 	for name, env := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -105,5 +107,18 @@ func TestInvalidValuesStopTheProgram(t *testing.T) {
 				t.Error("expected an error")
 			}
 		})
+	}
+}
+
+func TestCoverlessSources(t *testing.T) {
+	cfg, err := LoadNowplayd("0.1")
+	if err != nil || len(cfg.Coverless) != 0 {
+		t.Fatalf("by default every source has its cover: %v, %v", cfg.Coverless, err)
+	}
+
+	t.Setenv("NP_COVERLESS_SOURCES", " spotify , tidal")
+	cfg, err = LoadNowplayd("0.1")
+	if err != nil || len(cfg.Coverless) != 2 || cfg.Coverless[0] != "spotify" || cfg.Coverless[1] != "tidal" {
+		t.Errorf("coverless = %v, %v", cfg.Coverless, err)
 	}
 }

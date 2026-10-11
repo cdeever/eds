@@ -16,23 +16,8 @@ import (
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/dacp"
+	"github.com/cdeever/eds/services/nowplaying/internal/driver"
 )
-
-// Update is one thing for the agent to publish.
-type Update struct {
-	State contract.State
-	// Cover is set when the cover changed with this state, and is the image
-	// the state's Art names. It is published before the state.
-	Cover []byte
-}
-
-// Sink receives what the driver sees.
-type Sink interface {
-	// Online reports whether the player can be reached. A driver is online
-	// when it has a session with its player, not merely when it is running.
-	Online(online bool)
-	Publish(Update)
-}
 
 // Player is the part of the protocol client the driver uses.
 type Player interface {
@@ -48,7 +33,7 @@ type Driver struct {
 	Kind   string // "itunes" or "music"
 	GUID   string // the pairing
 	Player Player
-	Sink   Sink
+	Sink   driver.Sink
 	Logger *slog.Logger
 
 	// CoverSize is the largest cover asked for, in pixels. palette works
@@ -138,7 +123,7 @@ func (d *Driver) report(ctx context.Context, status dacp.Status) error {
 		// One cover per album, fetched when the album changes. The player's
 		// album id says so when it has one; a stream has none, and then the
 		// track has to stand in.
-		update := Update{}
+		update := driver.Update{}
 		if state.Track != nil {
 			album := albumKey(status, state)
 			if album != lastAlbum {

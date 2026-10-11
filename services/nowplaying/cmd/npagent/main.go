@@ -36,6 +36,7 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/config"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/dacp"
+	"github.com/cdeever/eds/services/nowplaying/internal/driver"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver/itunes"
 )
 
@@ -402,7 +403,7 @@ func (s *busSink) announce() {
 	}
 }
 
-func (s *busSink) Publish(u itunes.Update) {
+func (s *busSink) Publish(u driver.Update) {
 	// The cover first: whoever reads the state must find the image it names.
 	if u.Cover != nil {
 		if err := s.bus.Publish(contract.SourceArtTopic(s.prefix, s.source), u.Cover, true); err != nil {

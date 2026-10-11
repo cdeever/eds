@@ -12,6 +12,7 @@ import (
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/dacp"
+	"github.com/cdeever/eds/services/nowplaying/internal/driver"
 )
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -72,7 +73,7 @@ func (s *script) Artwork(context.Context, int) ([]byte, error) {
 
 type sink struct {
 	mu      sync.Mutex
-	updates []Update
+	updates []driver.Update
 	online  []bool
 }
 
@@ -82,7 +83,7 @@ func (s *sink) Online(v bool) {
 	s.online = append(s.online, v)
 }
 
-func (s *sink) Publish(u Update) {
+func (s *sink) Publish(u driver.Update) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.updates = append(s.updates, u)

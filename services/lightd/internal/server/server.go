@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cdeever/eds/services/lightd/internal/broker"
 	"github.com/cdeever/eds/services/lightd/internal/palette"
@@ -87,6 +88,16 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// describe renders a scene's palette for a log line: each colour as hex with
+// its share of the strip, largest first as the scene has them.
+func describe(sc scene.Scene) string {
+	parts := make([]string, 0, len(sc.Palette))
+	for _, c := range sc.Palette {
+		parts = append(parts, fmt.Sprintf("#%02x%02x%02x %.0f%%", c.RGB[0], c.RGB[1], c.RGB[2], c.Weight*100))
+	}
+	return strings.Join(parts, ", ")
+}
+
 // coverError says which kind of failure a cover met, in the terms HTTP has
 // for it. The topic input has no caller to tell, but logs the same words.
 type coverError struct {
@@ -131,6 +142,10 @@ func (s *Server) cover(ctx context.Context, image []byte, stand string, swatches
 		"stand", stand,
 		"effect", built.Effect,
 		"colors", len(built.Palette),
+		// Which colours, not only how many. Only the latest scene is kept on
+		// the broker, so this line is the one record of what a cover produced
+		// - and "what did it pick for that sleeve?" is the tuning question.
+		"palette", describe(built),
 		"background_dropped", extracted.BackgroundDropped,
 		"fallback", extracted.Fallback,
 	)
@@ -196,6 +211,40 @@ func (s *Server) ApplyCover(ctx context.Context, image []byte) error {
 		return failed
 	}
 	return nil
+}
+
+// Temporary reports whether a cover failed for a reason that may pass: palette
+// or the broker not answering. An image that palette rejected, or one with
+// nothing in it to light a room from, will fail the same way every time.
+func Temporary(err error) bool {
+	var failed *coverError
+	return errors.As(err, &failed) && failed.status == http.StatusBadGateway
+}
+
+// ApplyCoverRetrying is ApplyCover for a cover that will not be sent again.
+//
+// Over HTTP a caller who gets a 502 can try again. A cover from the topic has
+// no caller: it is retained, it arrives once when lightd subscribes, and if it
+// is dropped the stand shows the wrong record until the album changes. And
+// the moment lightd subscribes is the moment it has just started - which, on
+// a workload where everything restarts together, is the moment palette is
+// least likely to be answering yet.
+//
+// So a temporary failure is tried again, up to attempts times, wait apart. A
+// failure that is not temporary is returned at once.
+func (s *Server) ApplyCoverRetrying(ctx context.Context, image []byte, attempts int, wait time.Duration) error {
+	var err error
+	for attempt := 1; ; attempt++ {
+		if err = s.ApplyCover(ctx, image); err == nil || !Temporary(err) || attempt >= attempts {
+			return err
+		}
+		s.opts.Logger.Info("cover not applied yet; trying again", "attempt", attempt, "of", attempts, "error", err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(wait):
+		}
+	}
 }
 
 // handleScene publishes a scene supplied directly. This is how the stand gets

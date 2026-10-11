@@ -13,14 +13,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 
-	"github.com/cdeever/eds/services/nowplaying/internal/arbiter"
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
 	"github.com/cdeever/eds/services/nowplaying/internal/config"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/current"
+	"github.com/cdeever/eds/services/nowplaying/internal/hub"
 	"github.com/cdeever/eds/services/nowplaying/internal/resolve"
 )
 
@@ -84,66 +83,7 @@ func run(logger *slog.Logger) error {
 		}
 	}
 
-	var (
-		mu     sync.Mutex
-		arb    = arbiter.New(nil)
-		covers = make(map[string]*current.Image) // by source
-	)
-
-	handle := func(msg bus.Message) {
-		id, kind, ok := contract.ParseSourceTopic(cfg.Prefix, msg.Topic)
-		if !ok {
-			return
-		}
-
-		mu.Lock()
-		defer mu.Unlock()
-
-		var (
-			winner  *contract.State
-			changed bool
-		)
-		switch kind {
-		case "state":
-			st, err := contract.Decode(msg.Payload)
-			if err != nil {
-				// Ignored, and the source's last good state stands - the
-				// same answer the firmware gives a scene it cannot render.
-				logger.Warn("ignored a state", "source", id, "error", err)
-				return
-			}
-			if st.Source != id {
-				// The topic is what the broker checked; the payload is only
-				// what the sender wrote. They have to agree.
-				logger.Warn("ignored a state claiming another source", "topic", msg.Topic, "claims", st.Source)
-				return
-			}
-			winner, changed = arb.Update(st)
-
-		case "status":
-			winner, changed = arb.Presence(id, string(msg.Payload) == contract.Online)
-
-		case "art":
-			if image := current.NewImage(msg.Payload); image != nil {
-				covers[id] = image
-			} else {
-				delete(covers, id)
-			}
-			// A cover is not a decision, but it may be the one the current
-			// track was waiting for.
-			winner = arb.Current()
-			changed = winner != nil && winner.Source == id
-		}
-
-		if !changed {
-			return
-		}
-		d := decision{winner: winner}
-		if winner != nil {
-			d.cover = covers[winner.Source]
-		}
-		submit(d)
-	}
+	sources := hub.New(cfg.Prefix, func(d hub.Decision) { submit(decision{winner: d.Winner, cover: d.Cover}) }, logger)
 
 	client, err := bus.Connect(bus.Config{
 		URL:                cfg.Broker.URL,
@@ -154,7 +94,7 @@ func run(logger *slog.Logger) error {
 		InsecureSkipVerify: cfg.Broker.InsecureSkipVerify,
 		Timeout:            cfg.Broker.Timeout,
 		StatusTopics:       []string{contract.StatusTopic(cfg.Prefix)},
-	}, []string{contract.AllSourcesTopic(cfg.Prefix)}, handle)
+	}, []string{contract.AllSourcesTopic(cfg.Prefix)}, sources.Handle)
 	if err != nil {
 		return err
 	}
@@ -167,12 +107,21 @@ func run(logger *slog.Logger) error {
 		"catalogues", cfg.Catalogues,
 	)
 
+	coverless := make(map[string]bool, len(cfg.Coverless))
+	for _, source := range cfg.Coverless {
+		coverless[source] = true
+	}
+	if len(coverless) > 0 {
+		logger.Info("reporting these sources without a cover", "sources", cfg.Coverless)
+	}
+
 	publisher := &current.Publisher{
-		Bus:      client,
-		Resolver: resolver,
-		Prefix:   cfg.Prefix,
-		Timeout:  cfg.LookupTimeout,
-		Logger:   logger,
+		Bus:       client,
+		Resolver:  resolver,
+		Coverless: coverless,
+		Prefix:    cfg.Prefix,
+		Timeout:   cfg.LookupTimeout,
+		Logger:    logger,
 	}
 
 	for {

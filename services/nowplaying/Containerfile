@@ -1,0 +1,19 @@
+# nowplayd - what is playing, decided and completed.
+#
+# A static binary on distroless, like lightd: no shell, no package manager, a
+# non-root user. The image's CA roots matter here for more than the broker:
+# nowplayd asks public catalogues for covers over HTTPS. Settings are all
+# environment - see the README - and on Deevnet most come from kit.env.
+#
+# Only nowplayd is in the image. The agent runs on a Pi, not here.
+FROM docker.io/library/golang:1.25 AS build
+ARG VERSION=dev
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/nowplayd ./cmd/nowplayd
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/nowplayd /nowplayd
+ENTRYPOINT ["/nowplayd"]
