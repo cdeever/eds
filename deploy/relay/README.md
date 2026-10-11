@@ -63,6 +63,18 @@ one holder. With no devices named yet, the Pi prints the account's devices
 run it again. `make spotify AGAIN=1` authorizes afresh, which is needed every
 six months.
 
+### Turning it off, and on
+
+```bash
+make drivers DRIVERS=itunes           # Spotify off
+make drivers DRIVERS=itunes,spotify   # and on again
+```
+
+It changes one line of the Pi's settings and restarts the agent. A driver
+that is off asks its player nothing and reads as offline on the bus. Its
+authorization stays on the Pi for when it is turned back on. **Spotify is
+off at present** (CHG-0011).
+
 ## Changing a Pi in service
 
 ```bash

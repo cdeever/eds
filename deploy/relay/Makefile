@@ -21,7 +21,7 @@ NP    := $(REPO)/services/nowplaying
 # Where the flashed card's boot partition is mounted. macOS names it bootfs.
 BOOT ?= /Volumes/bootfs
 
-.PHONY: help image fetch card push spotify status pair logs
+.PHONY: help image fetch card push spotify drivers status pair logs
 
 help:
 	@echo "relay - the now-playing agent on $(PI)"
@@ -33,6 +33,8 @@ help:
 	@echo "  status  eds-agent-status on the Pi"
 	@echo "  pair    pair the agent with iTunes; prints a code to type in"
 	@echo "  spotify authorize the agent for Spotify in a browser here, and hand it to the Pi"
+	@echo "  drivers which players the Pi follows: DRIVERS=itunes turns Spotify off,"
+	@echo "          DRIVERS=itunes,spotify turns it back on"
 	@echo "  logs    follow the agent on the Pi"
 	@echo
 	@echo "In order, for a new card: image, fetch, flash it, card, boot it, status, pair."
@@ -65,6 +67,15 @@ push:
 spotify:
 	$(MAKE) -C $(NP) build
 	@BUILDER="$(BUILDER)" PI="$(PI)" NPAGENT="$(NP)/bin/npagent" AGAIN="$(AGAIN)" ./spotify.sh
+
+# The off switch for a driver, and the on switch. It changes one line of the
+# Pi's settings and restarts the agent. Nothing else is touched: a driver
+# turned off keeps its pairing or its authorization, and has it when turned
+# back on. The settings file holds the broker password and is never printed.
+drivers:
+	@case "$(DRIVERS)" in itunes|spotify|itunes,spotify|spotify,itunes) ;; \
+		*) echo "DRIVERS must be itunes, spotify, or itunes,spotify" >&2; exit 2;; esac
+	ssh $(BUILDER) "ssh a_autoprov@$(PI) 'sudo sed -i -e \"/^NP_DRIVERS=/d\" -e \"\\\$$a NP_DRIVERS=$(DRIVERS)\" /etc/eds/npagent.env && sudo systemctl restart npagent && sleep 3 && systemctl is-active npagent && sudo grep ^NP_DRIVERS= /etc/eds/npagent.env'"
 
 # The Pi is reached through the Builder, as the site's automation reaches it:
 # it admits SSH on its wired side only, to the automation user.

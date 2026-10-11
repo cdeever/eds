@@ -106,7 +106,10 @@ with an EdS playbook applied offline. Do not add EdS images to the substrate's
 written to a flashed card by `deploy/relay` (`make card`). "The relay" is an
 agent Pi given a second network leg, not a separate image. The Pi is reached
 through builder as `a_autoprov` (`make -C deploy/relay status|pair|logs`);
-`make push` updates a Pi in service, `make spotify` authorizes it for Spotify.
+`make push` updates a Pi in service, `make spotify` authorizes it for Spotify,
+`make drivers DRIVERS=…` chooses which drivers it runs. **Spotify is turned
+off there for now** (CHG-0011): the Pi runs `itunes` only. Everything it
+needs is kept; `DRIVERS=itunes,spotify` turns it back on.
 
 Integration tests are gated on `NP_TEST_BROKER`. This Makefile runs on macOS
 (make 3.81, `/bin/bash`); the lightd and palette ones hardcode `/usr/bin/bash`
