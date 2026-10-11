@@ -179,13 +179,21 @@ The stand follows what is playing: the agent Pi reports iTunes to the broker,
 deploys all four services (the Mac has no container tool; the Builder builds).
 
 The console (`services/console`, ADR-0018) is the page a person looks at:
-`http://console.eds.mobile.deevnet.net/`. It subscribes to the bus and serves
+`https://console.eds.mobile.deevnet.net/`. It subscribes to the bus and serves
 what it heard. **It only looks**: its broker account reads and publishes only
 its own presence, and it answers only `GET`. Adding a control is a decision to
 record first, not a handler to add. Its subscriptions (`view.Topics`) and the
 account in `main.tf` are one list kept in two places; the broker refuses a
 mismatch silently. `internal/web/static/effects.js` is a port of the
 firmware's `effects.c` - change one, change the other.
+
+The console's certificate is from the site's Tenant Service CA (Deevnet
+ADR-0037), declared in the tenant's Terraform as `deevnet_certificate.console`.
+**Its key is made there, lives in the tenant's state and in gitignored
+`deploy/tls/`, and must never be committed or sent anywhere but the
+workload.** It expires 2027-10-11 and nothing renews it but a person: `make
+plan` shows the renewal from sixty days before; apply, then `make -C deploy
+units`. Replacing the key does not revoke the old certificate.
 
 lightd has a second input for covers: with `LIGHTD_COVER_TOPIC` set it
 subscribes to that topic and runs each image down the same path as

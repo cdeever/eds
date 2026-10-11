@@ -24,7 +24,7 @@ VERSION   ?= $(shell git -C $(REPO) describe --always --dirty 2>/dev/null || ech
 SERVICES := eds-palette eds-lightd eds-nowplayd eds-console
 UNITS    := $(addsuffix .service,$(SERVICES))
 
-.PHONY: help images load kit-env broker-env ship units deploy restart status logs clean
+.PHONY: help images load kit-env broker-env tls-files ship units deploy restart status logs clean
 
 help:
 	@echo "deploy - palette, lightd, nowplayd and the console onto $(HOST)"
@@ -34,6 +34,7 @@ help:
 	@echo "  ship     build and copy the images, then restart (a new version)"
 	@echo "  load     copy the built images to the workload"
 	@echo "  kit-env  write kit.env and each service's broker login from the tenant's Terraform outputs"
+	@echo "  tls-files  write the console's key and certificate from the tenant's Terraform outputs"
 	@echo "  units    copy the settings, deevnet-root-ca.pem and the units; start"
 	@echo "  restart  restart the services"
 	@echo "  status   systemd status of each"
@@ -92,19 +93,30 @@ broker-env:
 		terraform -chdir=$(INFRA) output -json console_broker | python3 -c 'import json,sys; a=json.load(sys.stdin); print("CONSOLE_MQTT_USERNAME=%s\nCONSOLE_MQTT_PASSWORD=%s" % (a["username"], a["password"]))' > console-broker.env
 	@echo "wrote console-broker.env (secret, gitignored)"
 
+# Secret: the console's key. It was made in the tenant's state and has been
+# nowhere else; the certificate beside it is public. tls/ is gitignored.
+tls-files:
+	@mkdir -p tls && chmod 700 tls
+	@umask 077; set -a; . $(INFRA)/.backend.env; set +a; \
+		terraform -chdir=$(INFRA) output -json console_tls | python3 -c 'import json,sys; t=json.load(sys.stdin); open("tls/console.key","w").write(t["key"]); open("tls/console.crt","w").write(t["fullchain"])'
+	@openssl x509 -in tls/console.crt -noout -subject -enddate | sed 's/^/  /'
+	@echo "wrote tls/console.key and tls/console.crt (the key is secret; both gitignored)"
+
 ship: images
 	$(MAKE) load
 	ssh $(HOST) sudo systemctl restart $(SERVICES)
 
-units: kit-env
+units: kit-env tls-files
 	ssh $(HOST) 'sudo install -d -m 0755 /opt/eds && mkdir -p ~/eds-deploy'
-	scp kit.env lightd.env nowplayd.env nowplayd-broker.env console.env console-broker.env $(INFRA)/deevnet-root-ca.pem $(UNITS) $(HOST):eds-deploy/
+	scp kit.env lightd.env nowplayd.env nowplayd-broker.env console.env console-broker.env $(INFRA)/deevnet-root-ca.pem tls/console.key tls/console.crt $(UNITS) $(HOST):eds-deploy/
 	ssh $(HOST) 'cd ~/eds-deploy && \
 		sudo install -m 0600 kit.env lightd.env nowplayd.env nowplayd-broker.env console.env console-broker.env /opt/eds/ && \
 		sudo install -m 0644 deevnet-root-ca.pem /opt/eds/ && \
+		sudo install -d -m 0700 -o 65532 -g 65532 /opt/eds/tls && \
+		sudo install -m 0400 -o 65532 -g 65532 console.key console.crt /opt/eds/tls/ && \
 		sudo install -m 0644 $(UNITS) /etc/systemd/system/ && \
 		cd && rm -rf ~/eds-deploy && \
-		sudo firewall-cmd --quiet --permanent --add-service=http && sudo firewall-cmd --quiet --reload && \
+		sudo firewall-cmd --quiet --permanent --add-service=http --add-service=https && sudo firewall-cmd --quiet --reload && \
 		sudo systemctl daemon-reload && sudo systemctl enable $(SERVICES) && \
 		sudo systemctl restart $(SERVICES)'
 
@@ -123,3 +135,4 @@ logs:
 
 clean:
 	rm -f kit.env nowplayd-broker.env console-broker.env
+	rm -rf tls

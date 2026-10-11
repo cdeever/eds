@@ -18,8 +18,14 @@ terraform {
 
   required_providers {
     deevnet = {
-      source  = "deevnet/deevnet"
-      version = "~> 0.5"
+      source = "deevnet/deevnet"
+      # 0.7 is the first with deevnet_certificate.
+      version = "~> 0.7"
+    }
+    # The console's key and its signing request: see the certificate below.
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
     }
     # The stands' dashboard: see dashboards.tf.
     grafana = {
@@ -67,11 +73,45 @@ resource "deevnet_dns_record" "lightd" {
   address = deevnet_workload.services.address
 }
 
-# The one a person types: http://console.eds.<site zone>/ (ADR-0018).
+# The one a person types: https://console.eds.<site zone>/ (ADR-0018).
 resource "deevnet_dns_record" "console" {
   tenant  = deevnet_tenant.eds.name
   name    = "console"
   address = deevnet_workload.services.address
+}
+
+# The console's server certificate, from the site's Tenant Service CA
+# (Deevnet ADR-0037). It chains to the Deevnet Root CA, which the browsers
+# that open the console already trust.
+#
+# The key is made here and never leaves this tenant: it is in this tenant's
+# state and on its workload, and only a signing request goes to the Deevnet
+# API. The request is read for its key alone, so its subject is a label for
+# whoever reads this, not what the certificate will say.
+#
+# CAREFUL: replacing the key replaces the certificate, and the old one is not
+# revoked - it stays valid until it expires, wherever the old key still is.
+#
+# It lasts a year. From sixty days before it expires `make plan` shows this
+# resource changing; apply, then `make -C deploy units` puts the new one on
+# the workload. Nothing does that for you: plan at least every ten months.
+resource "tls_private_key" "console" {
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P256"
+}
+
+resource "tls_cert_request" "console" {
+  private_key_pem = tls_private_key.console.private_key_pem
+
+  subject {
+    common_name = "console"
+  }
+}
+
+resource "deevnet_certificate" "console" {
+  tenant  = deevnet_tenant.eds.name
+  name    = deevnet_dns_record.console.name
+  csr_pem = tls_cert_request.console.cert_request_pem
 }
 
 # The Wi-Fi credential EdS's devices are flashed with (Deevnet ADR-0012 §3, Deevnet CHG-0013).

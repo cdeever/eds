@@ -50,15 +50,22 @@ A replaced workload comes back empty; `make deploy` puts everything back.
 
 ## The console is the one thing reachable
 
-The console serves a page at `http://console.eds.mobile.deevnet.net/`, on
-port 80. `make units` opens `http` in the workload's own firewall, which
-otherwise admits SSH and nothing else. The substrate lets the site's trusted
+The console serves a page at `https://console.eds.mobile.deevnet.net/`; port
+80 only redirects there. `make units` opens `http` and `https` in the
+workload's own firewall, which otherwise admits SSH and nothing else. The substrate lets the site's trusted
 and management networks reach a workload; the guest and IoT networks, and
 anything outside, cannot. The page only looks
 ([ADR-0018](../docs/content/docs/architecture/decisions/0018-a-console-of-eds-own.md)).
 
 It runs as a user who is not root, with every capability dropped but the one
 that lets it bind a low port, on a read-only filesystem.
+
+**Its key and certificate come from the tenant's state.** `make tls-files`
+writes them to `tls/`, which is ignored, and `make units` installs them on the
+workload owned by the container's user and readable by no one else. The
+certificate is the site's Tenant Service CA's (Deevnet ADR-0037) and lasts a
+year. To renew: `make -C ../infra/deevnet-tenant-eds plan` shows it from sixty
+days before; apply, then `make units`.
 
 ## What follows what
 
