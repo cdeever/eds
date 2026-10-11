@@ -439,6 +439,58 @@ static void test_event_is_the_line_the_store_expects(void)
     CHECK(well_formed(line), "not well formed: %s", line);
 }
 
+// The dashboard draws the stand from this line, so its shape is a contract
+// with a query, not only something to read.
+static void test_scene_event_says_what_is_showing(void)
+{
+    lp_scene_t scene = {.effect = LP_EFFECT_BREATHE, .speed = 0.3f, .brightness = 0.8f, .palette_len = 3};
+    scene.palette[0] = (lp_swatch_t){{0xc9, 0x00, 0x27}, 0.652f};
+    scene.palette[1] = (lp_swatch_t){{0xac, 0x00, 0x30}, 0.218f};
+    scene.palette[2] = (lp_swatch_t){{0x24, 0x00, 0x0c}, 0.13f};
+
+    char extra[224];
+    size_t len = lp_scene_event_fields(&scene, extra, sizeof(extra));
+    const char *want = "\"effect\":\"breathe\",\"colors\":3,\"brightness\":0.80,\"speed\":0.30,"
+                       "\"palette\":\"#c90027 65%, #ac0030 22%, #24000c 13%\"";
+    CHECK(strcmp(extra, want) == 0, "got %s", extra);
+    CHECK(len == strlen(want), "length %zu, fields are %zu", len, strlen(extra));
+
+    // And it is still an event once it is in one.
+    char line[LP_EVENT_LINE_LEN];
+    CHECK(lp_event_format(line, sizeof(line), LP_EVENT_INFO, "scene.applied", "Showing breathe in 3 colours",
+                          1, 0, extra) > 0,
+          "the event did not fit");
+    CHECK(well_formed(line), "not well formed: %s", line);
+}
+
+static void test_scene_event_fits_the_largest_scene(void)
+{
+    lp_scene_t scene = {.effect = LP_EFFECT_BREATHE, .speed = 1.0f, .brightness = 1.0f,
+                        .palette_len = LP_MAX_COLORS};
+    for (size_t i = 0; i < LP_MAX_COLORS; i++) {
+        scene.palette[i] = (lp_swatch_t){{0xff, 0xff, 0xff}, 1.0f};
+    }
+    char extra[224];
+    CHECK(lp_scene_event_fields(&scene, extra, sizeof(extra)) > 0, "eight colours did not fit");
+
+    char line[LP_EVENT_LINE_LEN];
+    size_t len = lp_event_format(line, sizeof(line), LP_EVENT_INFO, "scene.applied",
+                                 "Showing breathe in 8 colours", 4294967295LL * 1000, 99999, extra);
+    CHECK(len > 0, "the largest scene does not fit in an event");
+    CHECK(well_formed(line), "not well formed: %s", line);
+}
+
+static void test_scene_event_that_does_not_fit_is_empty(void)
+{
+    lp_scene_t scene;
+    lp_scene_default(&scene);
+    char small[40] = "left over";
+    CHECK(lp_scene_event_fields(&scene, small, sizeof(small)) == 0, "claimed to fit");
+    CHECK(small[0] == '\0', "left a partial fragment: %s", small);
+    CHECK(lp_scene_event_fields(NULL, small, sizeof(small)) == 0, "NULL scene");
+    CHECK(lp_scene_event_fields(&scene, NULL, 0) == 0, "NULL buffer");
+}
+
 static void test_event_levels_have_names(void)
 {
     CHECK(strcmp(lp_event_level_name(LP_EVENT_INFO), "info") == 0, "info");
@@ -576,6 +628,9 @@ int main(void)
         {"render survives timestamp wrap", test_render_survives_timestamp_wrap},
         {"render is defensive", test_render_is_defensive},
         {"event is the line the store expects", test_event_is_the_line_the_store_expects},
+        {"scene event says what is showing", test_scene_event_says_what_is_showing},
+        {"scene event fits the largest scene", test_scene_event_fits_the_largest_scene},
+        {"scene event that does not fit is empty", test_scene_event_that_does_not_fit_is_empty},
         {"event levels have names", test_event_levels_have_names},
         {"event reports drops only when there were some",
          test_event_reports_drops_only_when_there_were_some},

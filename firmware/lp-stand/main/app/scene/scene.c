@@ -1,5 +1,6 @@
 #include "scene.h"
 
+#include <stdio.h>
 #include <string.h>
 
 static const char *const effect_names[LP_EFFECT_COUNT] = {
@@ -89,4 +90,52 @@ bool lp_scene_validate(lp_scene_t *scene)
         scene->palette[i].weight /= total;
     }
     return true;
+}
+
+size_t lp_scene_event_fields(const lp_scene_t *scene, char *dst, size_t cap)
+{
+    if (dst == NULL || cap == 0) {
+        return 0;
+    }
+    dst[0] = '\0';
+    if (scene == NULL) {
+        return 0;
+    }
+
+    size_t count = scene->palette_len > LP_MAX_COLORS ? LP_MAX_COLORS : scene->palette_len;
+    int n = snprintf(dst, cap, "\"effect\":\"%s\",\"colors\":%u,\"brightness\":%.2f,\"speed\":%.2f,\"palette\":\"",
+                     lp_effect_name(scene->effect), (unsigned)count, (double)scene->brightness,
+                     (double)scene->speed);
+    if (n < 0 || (size_t)n >= cap) {
+        dst[0] = '\0';
+        return 0;
+    }
+    size_t used = (size_t)n;
+
+    for (size_t i = 0; i < count; i++) {
+        const lp_swatch_t *sw = &scene->palette[i];
+        // Rounded to a whole percent: this is for reading and drawing, and
+        // the shares need not add up to exactly 100.
+        int share = (int)(sw->weight * 100.0f + 0.5f);
+        if (share < 0) {
+            share = 0;
+        } else if (share > 100) {
+            share = 100;
+        }
+        n = snprintf(dst + used, cap - used, "%s#%02x%02x%02x %d%%", i == 0 ? "" : ", ", sw->rgb.r,
+                     sw->rgb.g, sw->rgb.b, share);
+        if (n < 0 || (size_t)n >= cap - used) {
+            dst[0] = '\0';
+            return 0;
+        }
+        used += (size_t)n;
+    }
+
+    if (used + 2 > cap) {
+        dst[0] = '\0';
+        return 0;
+    }
+    dst[used++] = '"';
+    dst[used] = '\0';
+    return used;
 }

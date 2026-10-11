@@ -9,7 +9,7 @@ weight: 5
 |---|---|
 | **Date** | 2026-10-11 |
 | **Change type** | Deployment |
-| **Status** | {{< status-badge "active" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-11 |
 | **Systems** | the `eds` tenant's device registry and the `np-relay` broker account; the agent Pi `dv02rpi002p01` |
 | **How** | `terraform apply -target`; `make -C deploy/relay push`; one line added to the Pi's settings |
 | **Risk** | Low. Most likely to go wrong: giving the account a device replaces it and reissues its password, which would silence both drivers |
@@ -97,6 +97,9 @@ the agent restarted. A card written from now on carries it already.
 | 16:19 | 2, 3 | Pushed, the setting added, the agent restarted. It logged `reporting events topic=eds/log/np-relay`, then made its three connections; the broker accepted all of them. Both drivers came online. |
 | 16:20 | — | Read back from the log store, from the desk: `agent.started`, `driver.online` for each driver, `track.paused` for the track loaded in iTunes and `track.stopped` for Spotify, each under device `np-relay`. |
 | 16:20 | 2 | Pushed again: a track event's message was `published`, which says nothing on a dashboard. It is now the sentence a person would read, `paused: Artist - Title [Album]`. |
+| 16:24–16:26 | — | Four tracks played. Each arrived in the log store as `track.playing` with its sentence, and is listed under *What played*. |
+| 16:2x | — | The image rebuilt and fetched, its checksum verified. |
+| 16:3x | 2 | Pushed once more: the sentence now says where a track played, `playing on Spotify: Artist - Title [Album]`, and the event carries the player's name as `player`. The source was already a field, and not in the line a person reads. |
 | 16:2x | — | A *What played* panel added to the dashboard, above the rest, and the event panel renamed *Device events* now that it holds more than the stand's. |
 
 ### Departures from the plan
@@ -112,9 +115,5 @@ the agent restarted. A card written from now on carries it already.
 
 ## Follow-ups
 
-- [ ] `track.playing` has not yet been seen arriving: nothing has been played
-  since the agent was restarted. The events that have arrived took the same
-  path.
-- [ ] Rebuild the image, so that a card flashed from it reports its events.
 - [ ] What the agent reports when iTunes quits or the PC sleeps is now
   visible without SSH, and still has not been watched.
