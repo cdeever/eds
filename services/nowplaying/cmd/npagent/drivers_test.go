@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cdeever/eds/services/nowplaying/internal/bus"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver"
 )
@@ -182,5 +183,70 @@ func TestAPlayEventSaysWhereItPlayed(t *testing.T) {
 		if got := sentence(state); got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
+	}
+}
+
+// --- commands (ADR-0020) -----------------------------------------------------
+
+func TestACommandOnTheBusIsCarriedOut(t *testing.T) {
+	var done []contract.Command
+	handle := commander(context.Background(), quiet, "itunes", func(_ context.Context, c contract.Command) error {
+		done = append(done, c)
+		return nil
+	})
+
+	handle(bus.Message{Topic: "eds/nowplaying/source/itunes/command",
+		Payload: []byte(`{"v":1,"command":"next","from":"cover-screen-01"}`)})
+
+	if len(done) != 1 || done[0].Command != contract.Next || done[0].From != "cover-screen-01" {
+		t.Errorf("carried out %+v", done)
+	}
+}
+
+// What must never reach the player: a command the broker kept, and anything
+// that is not one.
+func TestWhatTheAgentWillNotCarryOut(t *testing.T) {
+	for name, msg := range map[string]bus.Message{
+		"a retained command": {Payload: []byte(`{"v":1,"command":"next"}`), Retained: true},
+		"an unknown command": {Payload: []byte(`{"v":1,"command":"shuffle"}`)},
+		"another version":    {Payload: []byte(`{"v":2,"command":"next"}`)},
+		"not a command":      {Payload: []byte("online")},
+		"nothing":            {},
+	} {
+		t.Run(name, func(t *testing.T) {
+			handle := commander(context.Background(), quiet, "itunes", func(context.Context, contract.Command) error {
+				t.Error("carried out")
+				return nil
+			})
+			handle(msg)
+		})
+	}
+}
+
+// A command is given a short while and no longer, and one that fails does
+// not take the agent with it.
+func TestACommandIsGivenADeadline(t *testing.T) {
+	handle := commander(context.Background(), quiet, "itunes", func(ctx context.Context, _ contract.Command) error {
+		deadline, ok := ctx.Deadline()
+		if !ok || time.Until(deadline) > commandTimeout {
+			t.Errorf("deadline = %v, %v", deadline, ok)
+		}
+		return errors.New("the player is asleep")
+	})
+	handle(bus.Message{Payload: []byte(`{"v":1,"command":"play_pause"}`)})
+}
+
+// Only a driver that can do something about a command listens for one.
+func TestOnlyTheITunesDriverTakesCommands(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("NP_ITUNES_HOST", "")
+
+	j, err := spotifyJob(quiet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if j.command != nil {
+		t.Error("the Spotify driver takes commands: its authorization only reads (ADR-0016)")
 	}
 }

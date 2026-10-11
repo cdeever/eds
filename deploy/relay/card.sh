@@ -75,6 +75,19 @@ missing = [t for t in wanted if t not in account["publish"]]
 if missing:
     sys.exit("the relay account was not granted: %s\ngranted: %s" % (missing, account["publish"]))
 
+# Commands run the other way, to the one driver that takes them (ADR-0020).
+# A subscription the account was not granted is refused just as quietly, but
+# the agent does without it: it reports what is playing all the same, and
+# says in its log that it cannot hear. So this warns, and the card is written.
+commanded = [d for d in drivers if d == "itunes"]
+unheard = ["eds/nowplaying/source/%s/command" % d for d in commanded
+           if "eds/nowplaying/source/%s/command" % d not in account.get("subscribe", [])]
+if unheard:
+    sys.stderr.write("warning: the relay account may not subscribe to %s, so the agent will report\n"
+                     "         what is playing but not act on play, pause, next or volume.\n"
+                     "         Apply infra/deevnet-tenant-eds; the agent needs nothing new after that\n"
+                     "         but a restart.\n" % unheard)
+
 print("NP_MQTT_URL=tls://%s:%d" % (broker["host"], int(broker["port"])))
 print("NP_MQTT_USERNAME=%s" % account["username"])
 print("NP_MQTT_PASSWORD=%s" % account["password"])

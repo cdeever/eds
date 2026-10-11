@@ -24,7 +24,10 @@ All under the tenant's prefix, `eds/`.
 | `nowplaying/source/<id>/art` | a driver | yes | the cover, as image bytes |
 | `nowplaying/current` | nowplayd | yes | the one current track |
 | `nowplaying/current/art` | nowplayd | yes | its cover, as image bytes |
+| `nowplaying/current/art/small` | nowplayd | yes | the same cover, small: a baseline JPEG, 240 pixels on its longer side |
 | `nowplaying/current/look` | nowplayd | yes | whether that cover's album has a look of its own |
+| `nowplaying/command` | a controller | **never** | a button press, for whatever is current |
+| `nowplaying/source/<id>/command` | nowplayd | **never** | that press, passed to the current source |
 | `nowplaying/status` | nowplayd | yes (last will) | `online` / `offline` |
 
 `<id>` names one driver deployment, such as `itunes-den`. It is lowercase
@@ -34,8 +37,10 @@ digit.
 **Subscribers read `nowplaying/current` and nothing else.** The source topics
 are the drivers' side of the contract.
 
-**Everything is retained**, for the reason the scene is: a program that starts
-later must find the state of the world waiting for it.
+**Everything that describes the world is retained**, for the reason the scene
+is: a program that starts later must find the state of the world waiting for
+it. A command is the exception, and is never retained: see
+[Commands](#commands).
 
 ## The state message
 
@@ -142,6 +147,57 @@ what `lightd` does.
 - The same image is not published twice running.
 - When playback pauses or stops, the cover topic is left as it is.
 
+## The small cover
+
+Not every subscriber can use a cover as published: it may be 600 pixels, a
+PNG or a progressive JPEG, and several hundred kilobytes. Beside each cover
+nowplayd publishes a small one on `nowplaying/current/art/small`
+([ADR-0020](/docs/architecture/decisions/0020-a-touch-screen-that-can-change-what-plays/)).
+
+- A **baseline JPEG**, three components, scaled so its longer side is exactly
+  240 pixels. A cover that is not square stays not square.
+- At most 32 KB. Quality is lowered until it fits.
+- Published after the cover and before the state that names it.
+- **An empty message means this cover has no small form**: it could not be
+  read, or could not be made to fit. A subscriber holding the album before's
+  drops it.
+- When no cover is published at all, this topic is left as it is, like the
+  cover topic. A subscriber must find `art` in `current` before showing it.
+- It has no hash of its own in `current`. `art.sha256` is the full cover's.
+
+## Commands
+
+A controller can ask for something of whatever is playing
+([ADR-0020](/docs/architecture/decisions/0020-a-touch-screen-that-can-change-what-plays/)).
+It publishes to `nowplaying/command`:
+
+```json
+{"v":1,"command":"next","from":"cover-screen-01"}
+```
+
+| Field | |
+|---|---|
+| `v` | `1`. Another version is refused |
+| `command` | `play_pause`, `next`, `previous`, `volume_up` or `volume_down`. Anything else is refused |
+| `from` | optional: who sent it, for the logs. Not trusted for anything |
+
+nowplayd passes the message, unchanged, to `nowplaying/source/<id>/command`
+for the source of the current track. A controller knows no source and no
+player.
+
+- **A command is never retained, and a retained one is ignored.** A command
+  the broker kept would be carried out again by every program that connected
+  afterwards.
+- **Send it only while connected, and do not queue it.** A command is for
+  now. The cover screen sends at QoS 0 for this reason.
+- With no current source the command is dropped. A paused track keeps its
+  source, so `play_pause` resumes it.
+- **Not every source takes commands.** iTunes does. Spotify does not: its
+  driver reads nothing. A command sent while it is current goes nowhere, and
+  nothing says so.
+- `volume_up` and `volume_down` move the player's volume five points in a
+  hundred. There is no ceiling.
+
 ## Rules for a driver
 
 1. Publish `online` to your status topic on connect, and make `offline` your
@@ -152,3 +208,6 @@ what `lightd` does.
    does not make you current.
 4. Report what the player says. Do not look anything up: that is nowplayd's
    job, and it does it once for everyone.
+5. A driver that can carry out commands subscribes to its own command topic
+   and to nothing else. It ignores a retained one, and it keeps reporting if
+   the subscription is refused.

@@ -10,6 +10,7 @@ weight: 6
 | **Status** | {{< adr-status "Accepted" >}} |
 | **Date** | 2026-10-10 |
 | **Scope** | How EdS learns what is playing across several players, and how that knowledge reaches whatever reacts to it. |
+| **Extended by** | [ADR-0020](/docs/architecture/decisions/0020-a-touch-screen-that-can-change-what-plays/): a controller may send a command for the current track, and a driver that can carry one out reads its own command topic |
 | **Related** | [ADR-0003](/docs/architecture/decisions/0003-broker-is-the-substrates/), [ADR-0007](/docs/architecture/decisions/0007-drivers-are-portable-go/), [ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/), and one record per player: [0011](/docs/architecture/decisions/0011-itunes-by-remote-pairing/), [0012](/docs/architecture/decisions/0012-spotify-by-web-api/), [0013](/docs/architecture/decisions/0013-musicbee-by-remote-protocol/), [0014](/docs/architecture/decisions/0014-tidal-by-lastfm/) |
 
 ---

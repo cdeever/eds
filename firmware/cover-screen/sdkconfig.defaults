@@ -1,0 +1,27 @@
+# Defaults that make a fresh checkout build into something that runs.
+
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=4096
+
+# The panel is polled for a touch every 20 ms; the default 100 Hz tick would
+# make that two ticks with nothing to spare either side.
+CONFIG_FREERTOS_HZ=1000
+
+# The WiFi handler runs on the system event task and formats an event for the
+# log there. The 2304-byte default was sized for handlers that only set a flag.
+CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
+
+# A cover arrives in pieces this size. Larger means fewer pieces, and the
+# buffer is allocated twice over, in and out, from a heap with little spare.
+CONFIG_MQTT_BUFFER_SIZE=4096
+
+# Recover rather than sulk: an unattended screen should come back on its own.
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=y
+
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# The two OTA slots in partitions.csv need 3.25MB, so the 2MB default cannot
+# hold the table. Declared here rather than left to menuconfig: a flash size
+# smaller than the partition table is a build failure, not a preference.
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y

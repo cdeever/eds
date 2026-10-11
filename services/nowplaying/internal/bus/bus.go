@@ -42,6 +42,19 @@ type Config struct {
 	// online when it can reach its player, and says so itself.
 	WillTopic string
 
+	// OptionalTopics are subscribed to as well, each by itself, and a broker
+	// that refuses one does not stop the program: it is reported to
+	// OnRefused and the connection carries on without it.
+	//
+	// They are for what a program can do without. A grant is made in one
+	// place and the program that uses it deployed from another, in whichever
+	// order; an agent that would not report what is playing because it had
+	// not yet been allowed to hear commands would be the worse fault.
+	OptionalTopics []string
+	// OnRefused is told of each optional topic the broker would not grant,
+	// on every connection. It runs on a goroutine of its own.
+	OnRefused func(topic string, err error)
+
 	// OnConnect is called after every connection, the first and each
 	// reconnect, once presence is announced and subscriptions are made. A
 	// program whose last will has just fired uses it to say what is true now.
@@ -78,7 +91,7 @@ func Connect(cfg Config, topics []string, handle func(Message)) (*Bus, error) {
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 10 * time.Second
 	}
-	if len(topics) > 0 && handle == nil {
+	if len(topics)+len(cfg.OptionalTopics) > 0 && handle == nil {
 		return nil, fmt.Errorf("bus: subscriptions need a handler")
 	}
 
@@ -119,24 +132,41 @@ func Connect(cfg Config, topics []string, handle func(Message)) (*Bus, error) {
 			// made once is gone after the first reconnect. Making them
 			// again here also brings every retained message back, which is
 			// how a restarted program learns the state of the world.
-			if len(topics) == 0 {
+			var required mqtt.Token
+			if len(topics) > 0 {
+				filters := make(map[string]byte, len(topics))
+				for _, topic := range topics {
+					filters[topic] = 1
+				}
+				required = c.SubscribeMultiple(filters, onMessage)
+			}
+			// One request each, so that a refusal names the topic refused.
+			optional := make(map[string]mqtt.Token, len(cfg.OptionalTopics))
+			for _, topic := range cfg.OptionalTopics {
+				optional[topic] = c.Subscribe(topic, 1, onMessage)
+			}
+			if required == nil && len(optional) == 0 {
 				first.Do(func() { subscribed <- nil })
 				if cfg.OnConnect != nil {
 					go cfg.OnConnect()
 				}
 				return
 			}
-			filters := make(map[string]byte, len(topics))
-			for _, topic := range topics {
-				filters[topic] = 1
-			}
-			token := c.SubscribeMultiple(filters, onMessage)
 			go func() {
 				var err error
-				if !token.WaitTimeout(cfg.Timeout) {
-					err = fmt.Errorf("bus: timed out subscribing")
-				} else if token.Error() != nil {
-					err = fmt.Errorf("bus: subscribe: %w", token.Error())
+				if required != nil {
+					if !required.WaitTimeout(cfg.Timeout) {
+						err = fmt.Errorf("bus: timed out subscribing")
+					} else if required.Error() != nil {
+						err = fmt.Errorf("bus: subscribe: %w", required.Error())
+					}
+				}
+				// Waited for, so that Connect returns with them in place
+				// where they were granted; never an error of Connect's.
+				for topic, token := range optional {
+					if refused := refusal(token, topic, cfg.Timeout); refused != nil && cfg.OnRefused != nil {
+						cfg.OnRefused(topic, refused)
+					}
 				}
 				first.Do(func() { subscribed <- err })
 				if err == nil && cfg.OnConnect != nil {
@@ -197,6 +227,27 @@ func Connect(cfg Config, topics []string, handle func(Message)) (*Bus, error) {
 		return nil, fmt.Errorf("bus: timed out subscribing on %s", cfg.URL)
 	}
 	return b, nil
+}
+
+// subackFailure is what a broker answers a subscription it will not make.
+const subackFailure = 0x80
+
+// refusal reports why a subscription was not made, or nil if it was. The
+// client library calls a subscription the broker refused a success: the
+// refusal is in the answer's return code, which has to be looked at.
+func refusal(token mqtt.Token, topic string, timeout time.Duration) error {
+	if !token.WaitTimeout(timeout) {
+		return fmt.Errorf("bus: timed out subscribing to %s", topic)
+	}
+	if err := token.Error(); err != nil {
+		return fmt.Errorf("bus: subscribe %s: %w", topic, err)
+	}
+	if sub, ok := token.(*mqtt.SubscribeToken); ok {
+		if code, answered := sub.Result()[topic]; answered && code == subackFailure {
+			return fmt.Errorf("bus: the broker refused a subscription to %s: this account was not granted it", topic)
+		}
+	}
+	return nil
 }
 
 func buildTLS(cfg Config) (*tls.Config, error) {

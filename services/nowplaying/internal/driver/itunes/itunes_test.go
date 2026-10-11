@@ -3,6 +3,7 @@ package itunes
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -31,6 +32,41 @@ type script struct {
 	coverCalls int
 	logins     int
 	playing    uint64 // album id of the status last handed out
+
+	pressed   []string // the buttons, in the order they were pressed
+	volume    int
+	volumeErr error
+}
+
+func (s *script) press(what string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.pressed = append(s.pressed, what)
+	return nil
+}
+
+func (s *script) PlayPause(context.Context) error { return s.press("playpause") }
+func (s *script) Next(context.Context) error      { return s.press("next") }
+func (s *script) Previous(context.Context) error  { return s.press("previous") }
+
+func (s *script) Volume(context.Context) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.volume, s.volumeErr
+}
+
+func (s *script) SetVolume(_ context.Context, volume int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.volume = volume
+	s.pressed = append(s.pressed, fmt.Sprintf("volume=%d", volume))
+	return nil
+}
+
+func (s *script) presses() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.pressed...)
 }
 
 func (s *script) Login(context.Context, string) error {
@@ -360,3 +396,138 @@ func (q *quietPlayer) Wait(ctx context.Context, _ uint32) (dacp.Status, error) {
 	return dacp.Status{}, ctx.Err()
 }
 func (q *quietPlayer) Artwork(context.Context, int) ([]byte, error) { return nil, nil }
+func (q *quietPlayer) PlayPause(context.Context) error              { return nil }
+func (q *quietPlayer) Next(context.Context) error                   { return nil }
+func (q *quietPlayer) Previous(context.Context) error               { return nil }
+func (q *quietPlayer) Volume(context.Context) (int, error)          { return 0, nil }
+func (q *quietPlayer) SetVolume(context.Context, int) error         { return nil }
+
+// --- commands (ADR-0020) -----------------------------------------------------
+
+// live starts a driver against a player that holds its first status for as
+// long as the test runs, and returns once the driver has a session.
+func live(t *testing.T, p *script) *Driver {
+	t.Helper()
+	out := &sink{}
+	d := &Driver{Source: "itunes", GUID: "X", Player: p, Sink: out, Logger: quiet}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		_ = d.Run(ctx)
+		close(done)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		<-done
+	})
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		out.mu.Lock()
+		online := len(out.online) > 0 && out.online[len(out.online)-1]
+		out.mu.Unlock()
+		if online {
+			return d
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("the driver never had a session")
+	return nil
+}
+
+func command(name string) contract.Command {
+	return contract.Command{V: contract.Version, Command: name, From: "test"}
+}
+
+func TestEachCommandPressesItsButton(t *testing.T) {
+	p := &script{volume: 50, statuses: []dacp.Status{st(1, true, false, "A", "One", "Album", abba, 231000)}}
+	d := live(t, p)
+
+	for _, name := range []string{contract.PlayPause, contract.Next, contract.Previous, contract.VolumeUp, contract.VolumeDown, contract.VolumeDown} {
+		if err := d.Command(context.Background(), command(name)); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+
+	want := []string{"playpause", "next", "previous", "volume=55", "volume=50", "volume=45"}
+	got := p.presses()
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("pressed %v, want %v", got, want)
+	}
+}
+
+// The volume stops at its ends, and a press against an end asks the player
+// for nothing.
+func TestTheVolumeStopsAtItsEnds(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		from    int
+		command string
+		want    []string
+	}{
+		{"nearly full", 98, contract.VolumeUp, []string{"volume=100"}},
+		{"full", 100, contract.VolumeUp, nil},
+		{"nearly silent", 3, contract.VolumeDown, []string{"volume=0"}},
+		{"silent", 0, contract.VolumeDown, nil},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			p := &script{volume: c.from, statuses: []dacp.Status{st(1, true, false, "A", "One", "Album", abba, 231000)}}
+			d := live(t, p)
+			if err := d.Command(context.Background(), command(c.command)); err != nil {
+				t.Fatal(err)
+			}
+			if got := p.presses(); fmt.Sprint(got) != fmt.Sprint(c.want) {
+				t.Errorf("pressed %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+// A volume the player will not report is not guessed at.
+func TestAVolumeThatCannotBeReadIsNotSet(t *testing.T) {
+	p := &script{volumeErr: errors.New("no"), statuses: []dacp.Status{st(1, true, false, "A", "One", "Album", abba, 231000)}}
+	d := live(t, p)
+	if err := d.Command(context.Background(), command(contract.VolumeUp)); err == nil {
+		t.Error("a volume was set from nothing")
+	}
+	if got := p.presses(); len(got) != 0 {
+		t.Errorf("pressed %v", got)
+	}
+}
+
+// With no session there is nothing to press, and the command is not kept.
+func TestACommandWithNoSessionIsRefused(t *testing.T) {
+	p := &script{}
+	d := &Driver{Source: "itunes", GUID: "X", Player: p, Sink: &sink{}, Logger: quiet}
+	if err := d.Command(context.Background(), command(contract.Next)); !errors.Is(err, ErrNoSession) {
+		t.Errorf("err = %v", err)
+	}
+
+	// And again once a session has come and gone.
+	p2 := &script{statuses: []dacp.Status{st(1, true, false, "A", "One", "Album", abba, 231000)},
+		end: &dacp.StatusError{Code: http.StatusForbidden, Status: "403 Forbidden"}}
+	d2 := &Driver{Source: "itunes", GUID: "X", Player: p2, Sink: &sink{}, Logger: quiet}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := d2.Run(ctx); !errors.Is(err, ErrUnpaired) {
+		t.Fatalf("Run ended with %v", err)
+	}
+	if err := d2.Command(context.Background(), command(contract.Next)); !errors.Is(err, ErrNoSession) {
+		t.Errorf("after the session ended, err = %v", err)
+	}
+	if got := append(p.presses(), p2.presses()...); len(got) != 0 {
+		t.Errorf("pressed %v", got)
+	}
+}
+
+func TestAnUnknownCommandPressesNothing(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, true, false, "A", "One", "Album", abba, 231000)}}
+	d := live(t, p)
+	if err := d.Command(context.Background(), contract.Command{V: 1, Command: "eject"}); err == nil {
+		t.Error("an unknown command was carried out")
+	}
+	if got := p.presses(); len(got) != 0 {
+		t.Errorf("pressed %v", got)
+	}
+}

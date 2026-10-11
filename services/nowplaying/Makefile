@@ -72,11 +72,11 @@ run: build broker
 # second terminal shows them arriving. Piping the bytes through a filter
 # instead does not survive the first JPEG.
 broker-watch:
-	mosquitto_sub -h 127.0.0.1 -p $(BROKER_PORT) -t '$(PREFIX)/#' -T '$(PREFIX)/nowplaying/current/art' -T '$(PREFIX)/nowplaying/source/+/art' -v
+	mosquitto_sub -h 127.0.0.1 -p $(BROKER_PORT) -t '$(PREFIX)/#' -T '$(PREFIX)/nowplaying/current/art' -T '$(PREFIX)/nowplaying/current/art/small' -T '$(PREFIX)/nowplaying/source/+/art' -v
 
 .PHONY: broker-watch-art
 broker-watch-art:
-	mosquitto_sub -h 127.0.0.1 -p $(BROKER_PORT) -t '$(PREFIX)/nowplaying/current/art' -t '$(PREFIX)/nowplaying/source/+/art' -F '%t  (%l bytes)'
+	mosquitto_sub -h 127.0.0.1 -p $(BROKER_PORT) -t '$(PREFIX)/nowplaying/current/art' -t '$(PREFIX)/nowplaying/current/art/small' -t '$(PREFIX)/nowplaying/source/+/art' -F '%t  (%l bytes)'
 
 clean:
 	rm -rf "$(BIN_DIR)"

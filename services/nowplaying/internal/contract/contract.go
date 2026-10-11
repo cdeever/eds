@@ -183,7 +183,10 @@ const (
 //	<prefix>/nowplaying/source/<id>/art      image bytes, retained
 //	<prefix>/nowplaying/current              the one current track, retained
 //	<prefix>/nowplaying/current/art          its cover, retained
+//	<prefix>/nowplaying/current/art/small    the same cover, small, retained
 //	<prefix>/nowplaying/status               nowplayd's own presence
+//	<prefix>/nowplaying/command              what a controller wants, never retained
+//	<prefix>/nowplaying/source/<id>/command  the same, for one driver, never retained
 func SourceStateTopic(prefix, id string) string {
 	return prefix + "/nowplaying/source/" + id + "/state"
 }
@@ -204,6 +207,83 @@ func AllSourcesTopic(prefix string) string {
 func CurrentTopic(prefix string) string    { return prefix + "/nowplaying/current" }
 func CurrentArtTopic(prefix string) string { return prefix + "/nowplaying/current/art" }
 func StatusTopic(prefix string) string     { return prefix + "/nowplaying/status" }
+
+// CurrentSmallArtTopic carries the cover on CurrentArtTopic again, made small
+// enough for a subscriber that cannot take the original: a baseline JPEG that
+// fits a small square (ADR-0020). An empty payload means the current cover
+// has no small form, and the one a subscriber holds is not it.
+func CurrentSmallArtTopic(prefix string) string { return prefix + "/nowplaying/current/art/small" }
+
+// CommandTopic is where a controller says what it wants of whatever is
+// playing (ADR-0020). It names no source, because a controller does not know
+// one: nowplayd passes the command to the source that is current.
+func CommandTopic(prefix string) string { return prefix + "/nowplaying/command" }
+
+// SourceCommandTopic is where one driver hears commands meant for its player.
+func SourceCommandTopic(prefix, id string) string {
+	return prefix + "/nowplaying/source/" + id + "/command"
+}
+
+// What a controller may ask for. The list is short on purpose: it is what a
+// hand reaches for while a record plays, and each is something every player
+// worth a driver can do.
+const (
+	PlayPause  = "play_pause"
+	Next       = "next"
+	Previous   = "previous"
+	VolumeUp   = "volume_up"
+	VolumeDown = "volume_down"
+)
+
+// Command is one request to change what a player is doing (ADR-0020).
+//
+// A command is a moment, not a state, and that sets it apart from everything
+// else on this bus: it is never retained, and a receiver handed a retained one
+// drops it. A "next" kept by the broker would skip a track each time its
+// reader reconnected.
+type Command struct {
+	V       int    `json:"v"`
+	Command string `json:"command"`
+	// From names the controller, for whoever reads the logs. Nothing is
+	// decided by it: the broker's grant is what says who may command.
+	From string `json:"from,omitempty"`
+}
+
+// Validate reports the first thing wrong with a command.
+func (c Command) Validate() error {
+	if c.V != Version {
+		return fmt.Errorf("contract: version %d, this program speaks %d", c.V, Version)
+	}
+	switch c.Command {
+	case PlayPause, Next, Previous, VolumeUp, VolumeDown:
+		return nil
+	}
+	return fmt.Errorf("contract: unknown command %q", c.Command)
+}
+
+// EncodeCommand stamps the version and marshals. A command that would not
+// pass Validate is not sent.
+func EncodeCommand(c Command) ([]byte, error) {
+	c.V = Version
+	if err := c.Validate(); err != nil {
+		return nil, err
+	}
+	return json.Marshal(c)
+}
+
+// DecodeCommand parses and validates a command from the bus. An unknown
+// command is refused, not guessed at: the nearest known one is still the
+// wrong thing to do to someone's music.
+func DecodeCommand(payload []byte) (Command, error) {
+	var c Command
+	if err := json.Unmarshal(payload, &c); err != nil {
+		return Command{}, fmt.Errorf("contract: not a command: %w", err)
+	}
+	if err := c.Validate(); err != nil {
+		return Command{}, err
+	}
+	return c, nil
+}
 
 // CurrentLookTopic carries the look of the cover on CurrentArtTopic, when its
 // album has one of its own (ADR-0019).
@@ -233,7 +313,9 @@ func EncodeLook(look, art string) ([]byte, error) {
 }
 
 // ParseSourceTopic splits a source topic into the source's id and which of
-// its three topics this is: "state", "status" or "art".
+// the three topics a driver reports on this is: "state", "status" or "art".
+// A source's command topic is not one of them and is not ok: it runs the
+// other way, and whoever reads the sources has nothing to learn from it.
 func ParseSourceTopic(prefix, topic string) (id, kind string, ok bool) {
 	rest, found := strings.CutPrefix(topic, prefix+"/nowplaying/source/")
 	if !found {

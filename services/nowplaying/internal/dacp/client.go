@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 )
 
@@ -58,7 +59,9 @@ type Client struct {
 	Port int
 	HTTP *http.Client
 
-	session uint64
+	// Read by the request that waits and, since a remote can also be asked
+	// to do something (ADR-0020), by commands sent while it waits.
+	session atomic.Uint64
 }
 
 // NewClient builds a client. Requests carry no overall timeout, because the
@@ -154,7 +157,7 @@ func (c *Client) Login(ctx context.Context, guid string) error {
 	if !ok {
 		return fmt.Errorf("dacp: unreadable session id")
 	}
-	c.session = session
+	c.session.Store(session)
 	return nil
 }
 
@@ -174,7 +177,7 @@ func (c *Client) Wait(ctx context.Context, revision uint32) (Status, error) {
 }
 
 func (c *Client) status(ctx context.Context, revision uint32) (Status, error) {
-	items, err := c.get(ctx, fmt.Sprintf("ctrl-int/1/playstatusupdate?revision-number=%d&session-id=%d", revision, c.session))
+	items, err := c.get(ctx, fmt.Sprintf("ctrl-int/1/playstatusupdate?revision-number=%d&session-id=%d", revision, c.session.Load()))
 	if err != nil {
 		return Status{}, err
 	}
@@ -220,7 +223,7 @@ func parseStatus(items []Item) Status {
 func (c *Client) Artwork(ctx context.Context, size int) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	body, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/nowplayingartwork?mw=%d&mh=%d&session-id=%d", size, size, c.session), 8<<20)
+	body, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/nowplayingartwork?mw=%d&mh=%d&session-id=%d", size, size, c.session.Load()), 8<<20)
 	if err != nil {
 		return nil, err
 	}
@@ -228,4 +231,57 @@ func (c *Client) Artwork(ctx context.Context, size int) ([]byte, error) {
 		return nil, nil
 	}
 	return body, nil
+}
+
+// --- commands (ADR-0020) -----------------------------------------------------
+//
+// What the phone remote's buttons send. Each is its own short request, made
+// beside the one that waits: the player serves a remote more than one
+// connection, which is how the phone manages to skip a track while it is
+// waiting to hear that the track changed.
+
+// PlayPause pauses what is playing, or resumes what is paused.
+func (c *Client) PlayPause(ctx context.Context) error { return c.press(ctx, "playpause") }
+
+// Next skips to the next track.
+func (c *Client) Next(ctx context.Context) error { return c.press(ctx, "nextitem") }
+
+// Previous goes back: to the start of this track, or to the one before it,
+// as the player sees fit.
+func (c *Client) Previous(ctx context.Context) error { return c.press(ctx, "previtem") }
+
+func (c *Client) press(ctx context.Context, button string) error {
+	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/%s?session-id=%d", button, c.session.Load()), 1<<20)
+	return err
+}
+
+// Volume is how loud the player is, 0 to 100.
+func (c *Client) Volume(ctx context.Context) (int, error) {
+	items, err := c.get(ctx, fmt.Sprintf("ctrl-int/1/getproperty?properties=dmcp.volume&session-id=%d", c.session.Load()))
+	if err != nil {
+		return 0, err
+	}
+	answer, ok := Find(items, "cmgt")
+	if !ok {
+		return 0, fmt.Errorf("dacp: no properties in the answer")
+	}
+	volume, ok := Find(answer.Children, "cmvo")
+	if !ok {
+		return 0, fmt.Errorf("dacp: the player did not say how loud it is")
+	}
+	n, ok := volume.Uint()
+	if !ok || n > 100 {
+		return 0, fmt.Errorf("dacp: unreadable volume")
+	}
+	return int(n), nil
+}
+
+// SetVolume sets how loud the player is, 0 to 100.
+func (c *Client) SetVolume(ctx context.Context, volume int) error {
+	if volume < 0 || volume > 100 {
+		return fmt.Errorf("dacp: volume %d is not between 0 and 100", volume)
+	}
+	// Written the way the remote writes it, as a float.
+	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/setproperty?dmcp.volume=%d.000000&session-id=%d", volume, c.session.Load()), 1<<20)
+	return err
 }

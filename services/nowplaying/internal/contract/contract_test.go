@@ -213,3 +213,81 @@ func TestTopics(t *testing.T) {
 		}
 	}
 }
+
+// --- commands (ADR-0020) -------------------------------------------------------
+
+func TestTheCommandWireFormIsWhatTheReferencePageSays(t *testing.T) {
+	got, err := EncodeCommand(Command{Command: PlayPause, From: "cover-screen-01"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"v":1,"command":"play_pause","from":"cover-screen-01"}`
+	if string(got) != want {
+		t.Errorf("wire form changed:\n got %s\nwant %s", got, want)
+	}
+
+	got, err = EncodeCommand(Command{Command: Next})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != `{"v":1,"command":"next"}` {
+		t.Errorf("a command from no one in particular: %s", got)
+	}
+}
+
+func TestEveryCommandRoundTrips(t *testing.T) {
+	for _, name := range []string{PlayPause, Next, Previous, VolumeUp, VolumeDown} {
+		payload, err := EncodeCommand(Command{Command: name})
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		back, err := DecodeCommand(payload)
+		if err != nil || back.Command != name || back.V != Version {
+			t.Errorf("%s came back as %+v, %v", name, back, err)
+		}
+	}
+}
+
+func TestDecodeRefusesWhatIsNotACommand(t *testing.T) {
+	for name, payload := range map[string]string{
+		"not json":           `next`,
+		"empty":              ``,
+		"an unknown command": `{"v":1,"command":"shuffle"}`,
+		"no command":         `{"v":1}`,
+		"a later version":    `{"v":2,"command":"next"}`,
+		"no version":         `{"command":"next"}`,
+		"a state":            `{"v":1,"source":"itunes","state":"playing","changed_at":"2026-10-10T16:00:00Z"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := DecodeCommand([]byte(payload)); err == nil {
+				t.Error("accepted")
+			}
+		})
+	}
+	if _, err := EncodeCommand(Command{Command: "eject"}); err == nil {
+		t.Error("an unknown command was encoded")
+	}
+}
+
+func TestACommandMayCarryFieldsThisProgramDoesNotKnow(t *testing.T) {
+	if _, err := DecodeCommand([]byte(`{"v":1,"command":"volume_up","by":3}`)); err != nil {
+		t.Errorf("an unknown field was refused: %v", err)
+	}
+}
+
+// A source's command topic runs towards the driver. Whoever reads the sources
+// subscribes to a filter that matches it, and must find nothing in it.
+func TestACommandTopicIsNotSomethingASourceReports(t *testing.T) {
+	if _, _, ok := ParseSourceTopic("eds", SourceCommandTopic("eds", "itunes")); ok {
+		t.Error("a command topic was read as a source's report")
+	}
+	if got := SourceCommandTopic("eds", "itunes"); got != "eds/nowplaying/source/itunes/command" {
+		t.Errorf("source command topic = %q", got)
+	}
+	if got := CommandTopic("eds"); got != "eds/nowplaying/command" {
+		t.Errorf("command topic = %q", got)
+	}
+	if got := CurrentSmallArtTopic("eds"); got != "eds/nowplaying/current/art/small" {
+		t.Errorf("small cover topic = %q", got)
+	}
+}
