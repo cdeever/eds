@@ -335,21 +335,47 @@ function draw(page) {
 
 // --- staying current -------------------------------------------------------------
 
+// The console sends a beat every 15 seconds when it has nothing else to say.
+// A stream that has been silent for longer than a few of them is dead, though
+// the browser may not know it: a laptop that slept, or a connection dropped
+// somewhere in between, leaves a stream that looks open and says nothing.
+const QUIET_TOO_LONG_MS = 40000;
+
+let stream = null;
+let heard = 0;
+
 function listen() {
   const live = $("live");
-  const stream = new EventSource("api/events");
-  stream.onopen = () => { live.className = "live on"; live.textContent = "live"; };
+  if (stream) stream.close();
+  heard = performance.now();
+  stream = new EventSource("api/events");
+  stream.onopen = () => { heard = performance.now(); live.className = "live on"; live.textContent = "live"; };
   stream.onmessage = (event) => {
+    heard = performance.now();
     try {
       draw(JSON.parse(event.data));
     } catch (problem) {
       console.error("could not draw what was sent", problem);
     }
   };
+  stream.addEventListener("beat", () => { heard = performance.now(); });
   // The browser reconnects by itself. What is on the page stays, marked as
   // possibly old, which is the truth.
   stream.onerror = () => { live.className = "live off"; live.textContent = "lost the console; trying again"; };
 }
 
+function checkStream() {
+  if (performance.now() - heard < QUIET_TOO_LONG_MS) return;
+  const live = $("live");
+  live.className = "live off";
+  live.textContent = "nothing heard for a while; reconnecting";
+  listen();
+}
+
 listen();
+setInterval(checkStream, 5000);
+// Coming back to the tab, or back onto the network, is when a dead stream is
+// most likely and least welcome: check at once and do not wait for the timer.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkStream(); });
+window.addEventListener("online", listen);
 requestAnimationFrame(paint);

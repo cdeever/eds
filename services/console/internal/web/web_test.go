@@ -208,6 +208,34 @@ func TestAViewerIsSentThePictureAndThenEachChange(t *testing.T) {
 	}
 }
 
+// An idle viewer is sent a beat it can hear. A comment would keep the request
+// open and tell the page nothing, and a page that hears nothing cannot tell a
+// quiet console from a dead connection.
+func TestAnIdleViewerHearsABeat(t *testing.T) {
+	s, _ := site(t)
+	s.Heartbeat = 20 * time.Millisecond
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/api/events", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	lines := bufio.NewReader(resp.Body)
+	for {
+		line, err := lines.ReadString('\n')
+		if err != nil {
+			t.Fatalf("the stream ended before a beat: %v", err)
+		}
+		if strings.TrimSpace(line) == "event: beat" {
+			return
+		}
+	}
+}
+
 func TestViewersAreCountedOutAsWellAsIn(t *testing.T) {
 	s, ts := site(t)
 	ctx, cancel := context.WithCancel(context.Background())

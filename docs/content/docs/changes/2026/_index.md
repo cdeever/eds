@@ -17,4 +17,4 @@ bookCollapseSection: true
 | CHG-0007 | 2026-10-11 | [The Console Over TLS](0007-the-console-over-tls/) | Deployment | {{< status-badge "complete" "Complete" >}} |
 | CHG-0008 | 2026-10-11 | [The Stand Reports Its Colours](0008-the-stand-reports-its-colours/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
 | CHG-0009 | 2026-10-11 | [Two Effects for the Accents](0009-two-effects-for-the-accents/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
-| CHG-0010 | 2026-10-11 | [A Look for One Album, and a Strip of Eighteen](0010-a-look-for-one-album-and-a-strip-of-eighteen/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0010 | 2026-10-11 | [A Look for One Album, and a Strip of Eighteen](0010-a-look-for-one-album-and-a-strip-of-eighteen/) | Upgrade | {{< status-badge "complete" "Complete" >}} |

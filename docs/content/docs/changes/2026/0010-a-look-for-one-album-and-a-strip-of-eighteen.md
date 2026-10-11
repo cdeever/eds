@@ -9,7 +9,7 @@ weight: 10
 |---|---|
 | **Date** | 2026-10-11 |
 | **Change type** | Upgrade |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-11 |
 | **Systems** | the `eds` tenant: two broker accounts gain a topic; `eds-nowplayd`, `eds-lightd` and `eds-console` on the `services` workload; `lp-stand-01`, over USB |
 | **How** | `terraform apply`; `make -C firmware/lp-stand build flash`; `make -C deploy deploy WHERE=builder` |
 | **Risk** | Low. Most likely to go wrong: a grant that does not match the topic, which the broker refuses without saying so and which leaves every album lit from its cover as before |
@@ -88,4 +88,40 @@ length is `LP_LED_COUNT` and `CONSOLE_STRIP_LEDS`.
 
 ## Outcome
 
-_To be filled in as it runs._
+| When (UTC) | What happened |
+|---|---|
+| 19:43 | Host tests passed, 5421 checks. Built with `LP_LED_COUNT=18` and flashed. The stand restarted as `9d39658`, rejoined and applied the retained scene. |
+| 19:45 | Deployed. `lightd` logged `listening for looks topic=eds/nowplaying/current/look spectrum=sweep`. The console's page carried `strip_leds: 18`. The album paused in iTunes was *Dark Side Of The Moon*, and it was lit from its cover: the grants were not in yet. |
+| 19:47 | The plan showed the `lightd` and `nowplayd` accounts updated in place, one topic each, nothing replaced. Applied by the tenant's owner. `lightd` and `nowplayd` restarted. |
+| 19:49 | A track from *Dark Side Of The Moon* played in iTunes. `lightd` published `look=spectrum effect=sweep colors=6`, and the stand applied it 0.3 s after the agent reported the track: `Showing sweep in 6 colours`, red to violet, 17% each. |
+| 20:37 | *Abacab* played next: lit from its cover, `chase` in three colours. Back to *Dark Side Of The Moon* at 20:38: the spectrum again. Back to *Abacab*: its cover again. A look did not outlive its album in either direction. |
+
+Every check under Verification holds, from the logs and the stand's own
+reports. No LEDs are attached, so nobody has seen the spectrum on a strip.
+
+### Departures from the plan
+
+- **The apply came after the deployment, not before.** For two minutes
+  `nowplayd` published looks the broker refused without saying so. Nothing
+  was lit wrongly; the album was lit as it would have been yesterday.
+- **The tag on this copy has no leading "The".** The rule allows for it, and
+  it matched.
+- **The console's page went stale after sitting idle, and this was fixed
+  here.** With iTunes paused for three quarters of an hour, the page did not
+  show the next track for half a minute, and a reload took as long. The
+  services were not late: each track was on the bus and on the stand within
+  a second of the agent reporting it. The page's stream had died without the
+  browser knowing, and the page had no way to notice, because the console's
+  keep-alive was a comment a page cannot see. The keep-alive is now an event
+  every 15 seconds, and a page that hears nothing for 40 reconnects, as it
+  does on coming back to the tab or the network. That the stream was dead is
+  inferred from the timings, not observed.
+
+## Follow-ups
+
+- [ ] Look at `spectrum` on real LEDs, as `sweep` and as `morph`
+  (`LIGHTD_SPECTRUM_EFFECT`), and say which it should be. That settles
+  [ADR-0019](/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own/).
+- [ ] Leave the console open and idle for an hour, then change the track:
+  the page should follow within a few seconds, with no reload.
+- [ ] The console is told the strip's length. The stand could report it.
