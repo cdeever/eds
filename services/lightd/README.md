@@ -23,6 +23,13 @@ stand ([ADR-0009](../../docs/content/docs/architecture/decisions/0009-lightd-tak
 This is how the now-playing service lights the stand: it publishes the current
 cover, retained, and lightd follows it.
 
+- With `LIGHTD_LOOK_TOPIC` set as well, a cover may come with a word: the
+  name of a look, and the hash of the cover it belongs to
+  ([ADR-0019](../../docs/content/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own.md)).
+  A cover with a look lightd knows is sent as that look's preset scene and
+  the extractor is not asked. The one look is `spectrum`: six colours, red to
+  violet, in equal shares, moved by `LIGHTD_SPECTRUM_EFFECT`. The presets are
+  in `internal/scene/looks.go`. lightd does not learn which album it is for.
 - lightd still receives **image bytes and nothing else**. It does not learn
   what the image is a cover of; the topic is a setting, not knowledge.
 - The topic is retained, so a lightd that restarts lights the room from the
@@ -86,6 +93,8 @@ workload or a Pi. A `LIGHTD_*` variable, when set, wins.
 | `LIGHTD_PALETTE_URL` | `http://127.0.0.1:8731` | palette service |
 | `LIGHTD_STAND_ID` | `lp-stand-01` | default stand |
 | `LIGHTD_COVER_TOPIC` | unset | a topic of cover images to light the stand from, relative to the prefix, e.g. `nowplaying/current/art` |
+| `LIGHTD_LOOK_TOPIC` | unset | a topic that says which covers have a look of their own, e.g. `nowplaying/current/look`. Needs `LIGHTD_COVER_TOPIC` |
+| `LIGHTD_SPECTRUM_EFFECT` | `sweep` | how the `spectrum` look moves: `sweep`, the rainbow round the strip, or `morph`, each colour in turn. Anything else stops the daemon |
 | `LIGHTD_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | root of the topic tree |
 | `LIGHTD_MQTT_URL` | `tls://$MQTT_HOST:$MQTT_PORT`, else `tcp://127.0.0.1:1883` | the broker |
 | `LIGHTD_MQTT_CLIENT_ID` | `lightd` | must be unique on the broker; `eds-lightd` in production |

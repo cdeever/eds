@@ -7,7 +7,9 @@
 import { label, position, start } from "./clock.js";
 import { periodMs, render as renderStrip, validate } from "./effects.js";
 
-const LEDS = 60; // CONFIG_LP_LED_COUNT's default; the picture, not a count of the real strip
+// How many LEDs the strip is drawn with. The page is told; this is only what
+// is drawn before it has been.
+let leds = 18;
 const $ = (id) => document.getElementById(id);
 
 const PLAYERS = { itunes: "iTunes", music: "Music", spotify: "Spotify", musicbee: "MusicBee", tidal: "TIDAL" };
@@ -251,10 +253,10 @@ function paint(t) {
     if (!scene) continue;
 
     // Without motion the strip is shown at one moment: the top of a breath.
-    const pixels = renderStrip(scene, still.matches ? periodMs(scene.speed) / 4 : t, LEDS);
-    const pitch = width / LEDS, gap = Math.min(3, pitch * 0.22);
+    const pixels = renderStrip(scene, still.matches ? periodMs(scene.speed) / 4 : t, leds);
+    const pitch = width / leds, gap = Math.min(6, pitch * 0.18);
     const top = height * 0.28, tall = height * 0.44;
-    for (let i = 0; i < LEDS; i++) {
+    for (let i = 0; i < leds; i++) {
       const colour = `rgb(${pixels[i][0]},${pixels[i][1]},${pixels[i][2]})`;
       ctx.shadowColor = colour;
       ctx.shadowBlur = height * 0.34;
@@ -323,6 +325,7 @@ function drawFrame(page) {
 }
 
 function draw(page) {
+  if (Number.isInteger(page.strip_leds) && page.strip_leds > 0 && page.strip_leds <= 300) leds = page.strip_leds;
   drawNow(page);
   drawStands(page);
   drawSources(page);

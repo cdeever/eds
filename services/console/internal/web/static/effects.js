@@ -12,7 +12,7 @@ const PERIOD_FAST_MS = 1000;
 const BREATHE_FLOOR = 0.25;
 const SWEEP_BLEND = 0.06;
 const MORPH_BLEND = 0.45;
-const CHASE_MIN_WIDTH = 0.08;
+const CHASE_MIN_WIDTH = 0.12;
 const CHASE_MAX_WIDTH = 0.3;
 const MAX_COLORS = 8;
 

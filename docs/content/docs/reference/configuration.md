@@ -17,12 +17,14 @@ container without knowing which.
 | `LIGHTD_PALETTE_URL` | `http://127.0.0.1:8731` | palette service |
 | `LIGHTD_STAND_ID` | `lp-stand-01` | default stand |
 | `LIGHTD_COVER_TOPIC` | unset | a topic of cover images to light the stand from, relative to the prefix, e.g. `nowplaying/current/art` |
+| `LIGHTD_LOOK_TOPIC` | unset | a topic that says which covers have a look of their own, e.g. `nowplaying/current/look`. Needs `LIGHTD_COVER_TOPIC` |
+| `LIGHTD_SPECTRUM_EFFECT` | `sweep` | how the `spectrum` look moves: `sweep`, the rainbow round the strip, or `morph`, each colour in turn. Anything else stops the daemon |
 | `LIGHTD_TOPIC_PREFIX` | `eds` | root of the topic tree |
 | `LIGHTD_MQTT_URL` | `tcp://127.0.0.1:1883` | `tls://mqtt01…:8883` in production |
 | `LIGHTD_MQTT_USERNAME` / `_PASSWORD` | — | broker credentials |
 | `LIGHTD_MQTT_CA_FILE` | — | CA for the broker's certificate |
 | `LIGHTD_MQTT_INSECURE` | `false` | bring-up only; never with a real cert |
-| `LIGHTD_EFFECT` | `breathe` | default effect |
+| `LIGHTD_EFFECT` | `breathe` | default effect: `solid`, `breathe`, `sweep`, `morph` or `chase` |
 | `LIGHTD_SPEED` / `LIGHTD_BRIGHTNESS` | `0.4` / `0.8` | |
 | `LIGHTD_SWATCHES` | `6` | swatches requested from palette |
 | `LIGHTD_MIN_CHROMA` | `0.05` | below this a swatch is a grey |
@@ -63,6 +65,7 @@ a `CONSOLE_*` variable wins.
 | `CONSOLE_MQTT_CA_FILE` | `$MQTT_CA_FILE` | the Deevnet Root CA |
 | `CONSOLE_MQTT_INSECURE` | `false` | bring-up only |
 | `CONSOLE_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | one topic level |
+| `CONSOLE_STRIP_LEDS` | `18` | how many LEDs the page draws for a stand, 1 to 300. The firmware's `LP_LED_COUNT`, which nothing on the bus reports |
 | `CONSOLE_DASHBOARD_URL` | none | where the page's link to Grafana goes |
 | `CONSOLE_DOCS_URL` | this site | where the page's link to these records goes |
 

@@ -2,6 +2,7 @@ package current
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -35,7 +36,20 @@ func (f *fakeBus) Publish(topic string, payload []byte, retained bool) error {
 	return nil
 }
 
+// take returns what was published since the last take, without the looks:
+// every cover is told whether it has one (ADR-0019), and the tests that are
+// about covers and states are not about that. takeAll is for those that are.
 func (f *fakeBus) take() []published {
+	var out []published
+	for _, p := range f.takeAll() {
+		if p.topic != contract.CurrentLookTopic("eds") {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func (f *fakeBus) takeAll() []published {
 	out := f.sent
 	f.sent = nil
 	return out
@@ -479,5 +493,135 @@ func TestOtherSourcesAreUnaffectedByTheList(t *testing.T) {
 	_, _, _ = coverless(bus, res, "spotify").Publish(context.Background(), from("tidal", "One", "Album"), nil)
 	if got := bus.take(); len(got) != 2 {
 		t.Errorf("published %d messages for a source not on the list, want cover and state", len(got))
+	}
+}
+
+// --- looks (ADR-0019) -------------------------------------------------------------
+
+func lookOf(t *testing.T, p published) contract.Look {
+	t.Helper()
+	var l contract.Look
+	if err := json.Unmarshal(p.payload, &l); err != nil {
+		t.Fatalf("look %q: %v", p.payload, err)
+	}
+	return l
+}
+
+// onAlbum is a track playing, naming the cover its source published.
+func onAlbum(album string, cover *Image) *contract.State {
+	return &contract.State{V: 1, Source: "itunes", Player: "itunes", State: contract.Playing,
+		Track: &contract.Track{Title: "Time", Artist: "Pink Floyd", Album: album}, ChangedAt: at,
+		Art: &contract.Art{SHA256: cover.SHA256}}
+}
+
+func spectrumFor(album string) func(contract.Track) string {
+	return func(t contract.Track) string {
+		if t.Album == album {
+			return "spectrum"
+		}
+		return ""
+	}
+}
+
+// A look is published for its cover, by hash, and before it: whoever lights
+// the room from the cover should already know.
+func TestALookGoesOutBeforeTheCoverItBelongsTo(t *testing.T) {
+	bus := &fakeBus{}
+	p := publisher(bus, nil)
+	p.Looks = spectrumFor("The Dark Side of the Moon")
+	cover := NewImage(pngA)
+
+	if _, _, err := p.Publish(context.Background(), onAlbum("The Dark Side of the Moon", cover), cover); err != nil {
+		t.Fatal(err)
+	}
+	sent := bus.takeAll()
+	if len(sent) != 3 || sent[0].topic != "eds/nowplaying/current/look" ||
+		sent[1].topic != "eds/nowplaying/current/art" || sent[2].topic != "eds/nowplaying/current" {
+		t.Fatalf("sent %d: %+v", len(sent), topicsOf(sent))
+	}
+	look := lookOf(t, sent[0])
+	if look.V != 1 || look.Look != "spectrum" || look.Art != cover.SHA256 || !sent[0].retained {
+		t.Fatalf("look %+v retained=%v", look, sent[0].retained)
+	}
+}
+
+func topicsOf(sent []published) []string {
+	var out []string
+	for _, s := range sent {
+		out = append(out, s.topic)
+	}
+	return out
+}
+
+// The album after a special one must not inherit its look. Its cover gets a
+// message that says it has none.
+func TestTheNextAlbumIsToldItHasNoLook(t *testing.T) {
+	bus := &fakeBus{}
+	p := publisher(bus, nil)
+	p.Looks = spectrumFor("The Dark Side of the Moon")
+	p.Publish(context.Background(), onAlbum("The Dark Side of the Moon", NewImage(pngA)), NewImage(pngA))
+	bus.takeAll()
+
+	next := NewImage(pngB)
+	p.Publish(context.Background(), onAlbum("Wish You Were Here", next), next)
+	sent := bus.takeAll()
+	if len(sent) == 0 || sent[0].topic != "eds/nowplaying/current/look" {
+		t.Fatalf("sent %v", topicsOf(sent))
+	}
+	if look := lookOf(t, sent[0]); look.Look != "" || look.Art != next.SHA256 {
+		t.Fatalf("look %+v, want none for the new cover", look)
+	}
+}
+
+// Every cover gets one, the first included: a retained look from before a
+// restart must not outlive the cover it was for.
+func TestAnOrdinaryCoverIsToldItHasNoLookToo(t *testing.T) {
+	bus := &fakeBus{}
+	p := publisher(bus, nil)
+	cover := NewImage(pngA)
+	p.Publish(context.Background(), onAlbum("Bloodshot", cover), cover)
+	sent := bus.takeAll()
+	if sent[0].topic != "eds/nowplaying/current/look" {
+		t.Fatalf("sent %v", topicsOf(sent))
+	}
+	if look := lookOf(t, sent[0]); look.Look != "" || look.Art != cover.SHA256 {
+		t.Fatalf("look %+v", look)
+	}
+}
+
+func TestTheSameLookForTheSameCoverIsNotPublishedTwice(t *testing.T) {
+	bus := &fakeBus{}
+	p := publisher(bus, nil)
+	p.Looks = spectrumFor("The Dark Side of the Moon")
+	cover := NewImage(pngA)
+	p.Publish(context.Background(), onAlbum("The Dark Side of the Moon", cover), cover)
+	bus.takeAll()
+
+	// The next track on the album: the same cover, the same look.
+	next := onAlbum("The Dark Side of the Moon", cover)
+	next.Track.Title = "Money"
+	p.Publish(context.Background(), next, cover)
+	for _, s := range bus.takeAll() {
+		if s.topic != "eds/nowplaying/current" {
+			t.Errorf("republished %s", s.topic)
+		}
+	}
+}
+
+// A source reported without its cover publishes none, so there is nothing for
+// a look to belong to, and the room is left as it was (ADR-0016).
+func TestACoverlessSourceGetsNoLook(t *testing.T) {
+	bus := &fakeBus{}
+	p := publisher(bus, nil)
+	p.Looks = spectrumFor("The Dark Side of the Moon")
+	p.Coverless = map[string]bool{"spotify": true}
+
+	st := onAlbum("The Dark Side of the Moon", NewImage(pngA))
+	st.Source, st.Player = "spotify", "spotify"
+	p.Publish(context.Background(), st, NewImage(pngA))
+	for _, s := range bus.takeAll() {
+		if s.topic != "eds/nowplaying/current" {
+			t.Errorf("published %s for a coverless source", s.topic)
+		}
 	}
 }

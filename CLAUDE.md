@@ -201,6 +201,16 @@ subscribes to that topic and runs each image down the same path as
 `POST /v1/cover` (ADR-0009). It still sees only image bytes. Do not teach it
 about tracks or albums; that knowledge stays on the other side of the topic.
 
+A few albums have a look of their own (ADR-0019). `nowplayd` holds the list
+(`internal/looks`) and publishes a look's **name** with the hash of the cover
+it belongs to; `lightd` holds what the name looks like
+(`internal/scene/looks.go`) and sends it as an ordinary scene. Add an album on
+the music side and a preset on the light side; never an album name in lightd,
+never a colour in nowplayd.
+
+The stand has 18 LEDs: `LP_LED_COUNT` in the firmware, `CONSOLE_STRIP_LEDS`
+on the console, which is told and cannot find out.
+
 ### MQTT topics
 
 | Topic | Direction | Retained |
@@ -209,6 +219,7 @@ about tracks or albums; that knowledge stays on the other side of the topic.
 | `eds/lightstand/<id>/status` | device → broker | yes (LWT) |
 | `eds/lightstand/<id>/state` | device → broker | yes |
 | `eds/lightd/status` | lightd → broker | yes (LWT) |
+| `eds/nowplaying/current/look` | nowplayd → lightd | yes |
 | `eds/console/status` | console → broker | yes (LWT) |
 | `eds/log/<id>` | device or agent Pi → broker → log bridge | no |
 

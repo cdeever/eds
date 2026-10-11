@@ -313,3 +313,25 @@ func TestEveryPictureSaysWhenItWasSent(t *testing.T) {
 		t.Fatalf("now = %v (%v) in %s", got.Now, err, body)
 	}
 }
+
+// The stand does not say how many LEDs it has, so the page is told.
+func TestThePageIsToldHowManyLEDsToDraw(t *testing.T) {
+	s, ts := site(t)
+	count := func() int {
+		_, body := get(t, ts.URL+"/api/state")
+		var got struct {
+			StripLEDs int `json:"strip_leds"`
+		}
+		if err := json.Unmarshal([]byte(body), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got.StripLEDs
+	}
+	if n := count(); n != 18 {
+		t.Errorf("by default %d LEDs, want the firmware's 18", n)
+	}
+	s.StripLEDs = 60
+	if n := count(); n != 60 {
+		t.Errorf("told 60, drew %d", n)
+	}
+}

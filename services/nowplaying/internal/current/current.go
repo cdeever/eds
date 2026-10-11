@@ -68,10 +68,14 @@ type Publisher struct {
 	// the source's own image, because a catalogue's cover would light the
 	// room just the same.
 	Coverless map[string]bool
-	Prefix    string
-	Timeout   time.Duration // for one catalogue lookup
-	Logger    *slog.Logger
-	Now       func() time.Time
+	// Looks names the look of the album a track is on, or "" (ADR-0019). Nil
+	// means no album has one. It is published beside the cover, for the
+	// cover: a look is something a cover has.
+	Looks   func(contract.Track) string
+	Prefix  string
+	Timeout time.Duration // for one catalogue lookup
+	Logger  *slog.Logger
+	Now     func() time.Time
 
 	// What was last put on the bus, so nothing is published twice. Retained
 	// messages mean a subscriber that reconnects gets the same cover again
@@ -79,6 +83,9 @@ type Publisher struct {
 	// that is already the right colour.
 	lastState *contract.State
 	lastArt   string
+	// The look last published, and the cover it was for.
+	lastLook, lastLookArt string
+	lookSent              bool
 }
 
 // Publish puts the current track on the bus. winner is the arbiter's choice,
@@ -95,6 +102,28 @@ func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSou
 	out, cover := p.complete(ctx, winner, fromSource)
 	sent := false
 
+	// The look before the cover it belongs to. Whoever lights a room from the
+	// cover then already knows whether this one has a look of its own, and
+	// does not light it twice. The order is a courtesy, not a guarantee: the
+	// message names its cover, so a subscriber that gets them the other way
+	// round still pairs them.
+	if cover != nil {
+		look := ""
+		if p.Looks != nil && out.Track != nil {
+			look = p.Looks(*out.Track)
+		}
+		if !p.lookSent || look != p.lastLook || cover.SHA256 != p.lastLookArt {
+			payload, err := contract.EncodeLook(look, cover.SHA256)
+			if err != nil {
+				return out, false, err
+			}
+			if err := p.Bus.Publish(contract.CurrentLookTopic(p.Prefix), payload, true); err != nil {
+				return out, false, err
+			}
+			p.lastLook, p.lastLookArt, p.lookSent = look, cover.SHA256, true
+			sent = true
+		}
+	}
 	if cover != nil && cover.SHA256 != p.lastArt {
 		if err := p.Bus.Publish(contract.CurrentArtTopic(p.Prefix), cover.Bytes, true); err != nil {
 			return out, false, err

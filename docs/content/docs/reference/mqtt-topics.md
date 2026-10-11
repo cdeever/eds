@@ -19,6 +19,7 @@ The topic prefix defaults to `eds` and must match on both sides — `lightd`'s
 | `eds/nowplaying/source/<id>/…` | a driver → nowplayd | yes | what one player is doing; see [Now Playing](../now-playing/) |
 | `eds/nowplaying/current` | nowplayd → subscribers | yes | the one current track |
 | `eds/nowplaying/current/art` | nowplayd → subscribers | yes | its cover, as image bytes; lightd lights the stand from it |
+| `eds/nowplaying/current/look` | nowplayd → lightd | yes | whether that cover's album has a look of its own, by name; see [Now Playing](../now-playing/#looks) |
 
 ## The log topic
 

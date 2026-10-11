@@ -31,8 +31,14 @@ type Config struct {
 	// CoverTopic, when set, is a topic of cover images to light the stand
 	// from, relative to the topic prefix. Empty means HTTP is the only input.
 	CoverTopic string
-	Broker     broker.Config
-	Scene      scene.Options
+	// LookTopic, when set, is a topic that says whether the cover on
+	// CoverTopic has a look of its own (ADR-0019). Empty means every cover is
+	// lit from its own colours.
+	LookTopic string
+	// Looks are the choices a look leaves open.
+	Looks  scene.LookOptions
+	Broker broker.Config
+	Scene  scene.Options
 }
 
 // Load builds a Config from the environment, applying defaults.
@@ -44,6 +50,8 @@ func Load() (Config, error) {
 		PaletteURL: env("LIGHTD_PALETTE_URL", "http://127.0.0.1:8731"),
 		StandID:    env("LIGHTD_STAND_ID", "lp-stand-01"),
 		CoverTopic: env("LIGHTD_COVER_TOPIC", ""),
+		LookTopic:  env("LIGHTD_LOOK_TOPIC", ""),
+		Looks:      scene.LookOptions{SpectrumEffect: env("LIGHTD_SPECTRUM_EFFECT", scene.SpectrumEffects[0])},
 		Broker: broker.Config{
 			URL:      env("LIGHTD_MQTT_URL", kitBrokerURL()),
 			ClientID: env("LIGHTD_MQTT_CLIENT_ID", "lightd"),
@@ -94,6 +102,16 @@ func (c Config) validate() error {
 	case strings.HasPrefix(c.CoverTopic, "/") || strings.ContainsAny(c.CoverTopic, "#+$"):
 		return fmt.Errorf("config: LIGHTD_COVER_TOPIC must be one topic relative to the prefix, "+
 			"with no leading / and no wildcards, got %q", c.CoverTopic)
+	case strings.HasPrefix(c.LookTopic, "/") || strings.ContainsAny(c.LookTopic, "#+$"):
+		return fmt.Errorf("config: LIGHTD_LOOK_TOPIC must be one topic relative to the prefix, "+
+			"with no leading / and no wildcards, got %q", c.LookTopic)
+	// A look is a look of a cover. Without covers there is nothing for one to
+	// belong to, and saying so beats a subscription that never does anything.
+	case c.LookTopic != "" && c.CoverTopic == "":
+		return fmt.Errorf("config: LIGHTD_LOOK_TOPIC is set, but LIGHTD_COVER_TOPIC is not: a look belongs to a cover")
+	case scene.ValidSpectrumEffect(c.Looks.SpectrumEffect) != nil:
+		return fmt.Errorf("config: LIGHTD_SPECTRUM_EFFECT must be one of %v, got %q",
+			scene.SpectrumEffects, c.Looks.SpectrumEffect)
 	case c.Swatches < 1 || c.Swatches > 16:
 		return fmt.Errorf("config: LIGHTD_SWATCHES must be 1-16, got %d", c.Swatches)
 	case c.Scene.Brightness < 0 || c.Scene.Brightness > 1:

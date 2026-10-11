@@ -41,8 +41,8 @@ type Config struct {
 	Timeout     time.Duration
 }
 
-// MQTT is a connected publisher, and optionally a subscriber to one topic of
-// cover images.
+// MQTT is a connected publisher, and optionally a subscriber to a topic of
+// cover images and to one that says whether a cover has a look of its own.
 type MQTT struct {
 	client  mqtt.Client
 	prefix  string
@@ -51,6 +51,8 @@ type MQTT struct {
 	mu         sync.Mutex
 	coverTopic string
 	covers     chan []byte
+	lookTopic  string
+	looks      chan []byte
 }
 
 // SceneTopic is where a stand listens for what to render.
@@ -171,12 +173,76 @@ func (m *MQTT) SubscribeCovers(name string, handle func(image []byte)) error {
 	return nil
 }
 
+// SubscribeLooks delivers each message on a topic under the prefix that says
+// whether the current cover has a look of its own (ADR-0019), the retained
+// one first. It stays subscribed across reconnects.
+//
+// Like covers, looks are handled one at a time off the client's goroutine,
+// and only the newest waits: an old look is about a cover that has gone.
+func (m *MQTT) SubscribeLooks(name string, handle func(payload []byte)) error {
+	if name == "" || handle == nil {
+		return fmt.Errorf("broker: a look subscription needs a topic and a handler")
+	}
+
+	m.mu.Lock()
+	if m.looks != nil {
+		m.mu.Unlock()
+		return fmt.Errorf("broker: already subscribed to looks on %s", m.lookTopic)
+	}
+	m.lookTopic = CoverTopic(m.prefix, name)
+	m.looks = make(chan []byte, 1)
+	looks, topic := m.looks, m.lookTopic
+	m.mu.Unlock()
+
+	go func() {
+		for payload := range looks {
+			handle(payload)
+		}
+	}()
+
+	token := m.client.Subscribe(topic, 1, m.onLook)
+	if !token.WaitTimeout(m.timeout) {
+		return fmt.Errorf("broker: timed out subscribing to %s", topic)
+	}
+	if err := token.Error(); err != nil {
+		return fmt.Errorf("broker: subscribe %s: %w", topic, err)
+	}
+	return nil
+}
+
 func (m *MQTT) resubscribe(c mqtt.Client) {
 	m.mu.Lock()
-	topic := m.coverTopic
+	cover, look := m.coverTopic, m.lookTopic
 	m.mu.Unlock()
-	if topic != "" {
-		c.Subscribe(topic, 1, m.onCover)
+	if cover != "" {
+		c.Subscribe(cover, 1, m.onCover)
+	}
+	if look != "" {
+		c.Subscribe(look, 1, m.onLook)
+	}
+}
+
+// onLook runs on the client's goroutine, so it only hands the message on.
+func (m *MQTT) onLook(_ mqtt.Client, msg mqtt.Message) {
+	if len(msg.Payload()) == 0 {
+		return
+	}
+	latest(m.looks, append([]byte(nil), msg.Payload()...))
+}
+
+// latest puts v in a slot of one, replacing whatever was waiting there.
+func latest(slot chan []byte, v []byte) {
+	select {
+	case slot <- v:
+	default:
+		select {
+		case <-slot:
+		default:
+		}
+		select {
+		case slot <- v:
+		default:
+		}
 	}
 }
 

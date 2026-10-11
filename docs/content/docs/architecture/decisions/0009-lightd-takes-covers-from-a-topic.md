@@ -10,6 +10,7 @@ weight: 9
 | **Status** | {{< adr-status "Accepted" >}} |
 | **Date** | 2026-10-10 |
 | **Scope** | How the current track's cover reaches `lightd`. |
+| **Extended by** | [ADR-0019](/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own/): a cover may arrive with the name of a look, which `lightd` draws in place of the cover's own colours |
 | **Related** | [ADR-0002](/docs/architecture/decisions/0002-gamma-in-firmware/), [ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/) |
 
 ---

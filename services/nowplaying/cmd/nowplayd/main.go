@@ -20,6 +20,7 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/current"
 	"github.com/cdeever/eds/services/nowplaying/internal/hub"
+	"github.com/cdeever/eds/services/nowplaying/internal/looks"
 	"github.com/cdeever/eds/services/nowplaying/internal/resolve"
 )
 
@@ -119,6 +120,7 @@ func run(logger *slog.Logger) error {
 		Bus:       client,
 		Resolver:  resolver,
 		Coverless: coverless,
+		Looks:     looks.For,
 		Prefix:    cfg.Prefix,
 		Timeout:   cfg.LookupTimeout,
 		Logger:    logger,
