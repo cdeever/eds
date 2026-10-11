@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/cdeever/eds/services/lightd/internal/palette"
 	"github.com/cdeever/eds/services/lightd/internal/scene"
@@ -481,5 +483,123 @@ func TestApplyCoverReportsPublishFailure(t *testing.T) {
 	err := newServer(t, &fakeExtractor{resp: goodPalette()}, pub).ApplyCover(context.Background(), []byte("COVER"))
 	if err == nil || !strings.Contains(err.Error(), "timed out") {
 		t.Errorf("err = %v, want the publish failure", err)
+	}
+}
+
+// flaky is a palette that is not answering yet, then is.
+type flaky struct {
+	fakeExtractor
+	failures int
+	err      error
+	calls    int
+}
+
+func (f *flaky) Extract(ctx context.Context, image []byte, n int) (*palette.Response, error) {
+	f.calls++
+	if f.calls <= f.failures {
+		return nil, f.err
+	}
+	return f.fakeExtractor.Extract(ctx, image, n)
+}
+
+// Found by deploying: everything on the workload restarts together, the
+// retained cover arrives milliseconds after lightd subscribes, and palette is
+// not listening yet. The cover is not sent again, so it must not be dropped.
+func TestARetainedCoverOutlastsPaletteStartingUp(t *testing.T) {
+	ex := &flaky{fakeExtractor: fakeExtractor{resp: goodPalette()}, failures: 3, err: errors.New("connection refused")}
+	pub := &fakePublisher{}
+
+	err := newServer(t, ex, pub).ApplyCoverRetrying(context.Background(), []byte("COVER"), 10, time.Millisecond)
+	if err != nil {
+		t.Fatalf("the cover was given up on: %v", err)
+	}
+	if ex.calls != 4 || pub.count() != 1 {
+		t.Errorf("%d attempts, %d scenes published; want 4 and 1", ex.calls, pub.count())
+	}
+}
+
+func TestACoverThatWillNeverWorkIsNotRetried(t *testing.T) {
+	ex := &flaky{failures: 99, err: &palette.StatusError{StatusCode: http.StatusBadRequest, Status: "400 Bad Request"}}
+	err := newServer(t, ex, &fakePublisher{}).ApplyCoverRetrying(context.Background(), []byte("NOTANIMAGE"), 10, time.Millisecond)
+	if err == nil || Temporary(err) {
+		t.Errorf("err = %v", err)
+	}
+	if ex.calls != 1 {
+		t.Errorf("a rejected image was tried %d times", ex.calls)
+	}
+}
+
+func TestRetryingGivesUpEventually(t *testing.T) {
+	ex := &flaky{failures: 99, err: errors.New("connection refused")}
+	err := newServer(t, ex, &fakePublisher{}).ApplyCoverRetrying(context.Background(), []byte("COVER"), 4, time.Millisecond)
+	if err == nil || !Temporary(err) {
+		t.Errorf("err = %v, want the outage", err)
+	}
+	if ex.calls != 4 {
+		t.Errorf("%d attempts, want 4", ex.calls)
+	}
+}
+
+func TestRetryingStopsWhenToldTo(t *testing.T) {
+	ex := &flaky{failures: 99, err: errors.New("connection refused")}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+
+	started := time.Now()
+	err := newServer(t, ex, &fakePublisher{}).ApplyCoverRetrying(ctx, []byte("COVER"), 100, time.Hour)
+	if err == nil || time.Since(started) > 2*time.Second {
+		t.Errorf("err = %v after %s", err, time.Since(started))
+	}
+}
+
+// A failed publish is an outage too: the broker may be back in a moment.
+func TestWhatCountsAsTemporary(t *testing.T) {
+	outage := newServer(t, &fakeExtractor{err: errors.New("connection refused")}, &fakePublisher{}).
+		ApplyCover(context.Background(), []byte("COVER"))
+	noBroker := newServer(t, &fakeExtractor{resp: goodPalette()}, &fakePublisher{err: errors.New("timed out")}).
+		ApplyCover(context.Background(), []byte("COVER"))
+	rejected := newServer(t, &fakeExtractor{err: &palette.StatusError{StatusCode: 400, Status: "400"}}, &fakePublisher{}).
+		ApplyCover(context.Background(), []byte("X"))
+	empty := newServer(t, &fakeExtractor{resp: goodPalette()}, &fakePublisher{}).ApplyCover(context.Background(), nil)
+
+	if !Temporary(outage) || !Temporary(noBroker) {
+		t.Error("an outage was not called temporary")
+	}
+	if Temporary(rejected) || Temporary(empty) || Temporary(nil) {
+		t.Error("something permanent was called temporary")
+	}
+}
+
+// Only the latest scene is kept on the broker, so the log line is the one
+// record of what a cover produced. It has to say which colours, not only how
+// many: found by wanting to know, and having to ask for an album to be played
+// again.
+func TestThePublishedSceneIsLoggedWithItsColours(t *testing.T) {
+	var out strings.Builder
+	srv := New(Options{
+		Extractor: &fakeExtractor{resp: goodPalette()}, Publisher: &fakePublisher{},
+		TopicPrefix: "eds", DefaultStand: "lp-stand-01", Swatches: 6, Scene: scene.DefaultOptions(),
+		Logger: slog.New(slog.NewTextHandler(&out, nil)),
+	})
+	if err := srv.ApplyCover(context.Background(), []byte("COVER")); err != nil {
+		t.Fatal(err)
+	}
+
+	line := out.String()
+	if !strings.Contains(line, "palette=") || strings.Count(line, "#") != 2 || !strings.Contains(line, "60%") || !strings.Contains(line, "40%") {
+		t.Errorf("the log line does not name the colours and their shares: %s", line)
+	}
+}
+
+func TestDescribe(t *testing.T) {
+	got := describe(scene.Scene{Palette: []scene.Color{
+		{RGB: [3]uint8{201, 0, 39}, Weight: 0.6466},
+		{RGB: [3]uint8{36, 0, 12}, Weight: 0.1291},
+	}})
+	if got != "#c90027 65%, #24000c 13%" {
+		t.Errorf("describe = %q", got)
+	}
+	if describe(scene.Scene{}) != "" {
+		t.Error("an empty palette described as something")
 	}
 }

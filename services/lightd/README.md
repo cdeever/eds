@@ -29,8 +29,15 @@ cover, retained, and lightd follows it.
   current cover by itself.
 - Covers are handled one at a time and **the newest wins**: one that arrives
   while another is being handled replaces any still waiting.
-- A cover that cannot be used — not an image, palette down — is logged and
-  ignored, and the stand keeps the last good scene.
+- A cover that cannot be used is logged and ignored, and the stand keeps the
+  last good scene. But one that failed for a reason that may pass — palette or
+  the broker not answering — is tried again for up to half a minute first. A
+  cover from the topic is not sent twice, and the moment lightd subscribes is
+  the moment it has just started, which on a workload where everything
+  restarts together is when palette is least likely to be up.
+- Each scene is logged with its colours and their shares
+  (`palette="#c90027 65%, …"`). Only the latest scene is kept on the broker,
+  so that line is the record of what a cover produced.
 - The subscription is made again on every reconnect. The broker account needs
   the topic granted for subscribe, and a refused subscription is silent.
 

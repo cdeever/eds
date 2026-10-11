@@ -64,11 +64,12 @@ func run(logger *slog.Logger) error {
 	if cfg.CoverTopic != "" {
 		topic := broker.CoverTopic(cfg.Broker.TopicPrefix, cfg.CoverTopic)
 		err := publisher.SubscribeCovers(cfg.CoverTopic, func(image []byte) {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			// Long enough to outlast palette starting beside it; a cover that
+			// still cannot be applied after that is given up on, the last
+			// scene stays up, and the next cover gets its own chance.
+			ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 			defer cancel()
-			if err := covers.ApplyCover(ctx, image); err != nil {
-				// Not fatal, and not retried: the last scene stays up, and
-				// the next cover gets its own chance.
+			if err := covers.ApplyCoverRetrying(ctx, image, 10, 3*time.Second); err != nil {
 				logger.Warn("ignored a cover", "topic", topic, "bytes", len(image), "error", err)
 			}
 		})
