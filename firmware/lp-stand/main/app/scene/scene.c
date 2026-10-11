@@ -7,6 +7,8 @@ static const char *const effect_names[LP_EFFECT_COUNT] = {
     [LP_EFFECT_SOLID] = "solid",
     [LP_EFFECT_BREATHE] = "breathe",
     [LP_EFFECT_SWEEP] = "sweep",
+    [LP_EFFECT_MORPH] = "morph",
+    [LP_EFFECT_CHASE] = "chase",
 };
 
 lp_effect_t lp_effect_from_name(const char *name)

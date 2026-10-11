@@ -54,9 +54,11 @@ page, and that is a decision to record first.
 
 `internal/web/static/effects.js` is a port of
 `firmware/lp-stand/main/app/effects/effects.c`, and of the validation in
-`scene.c`. If an effect changes in the firmware it has to change here, or the
+`scene.c`: all five effects. If an effect changes in the firmware it has to change here, or the
 page draws a stand that does not exist. `internal/web/effects.test.mjs` asks
 the port the firmware's own questions (`make test`, where node is installed).
+The last of those tests holds the port to pixels printed from the firmware's
+own code built for the host; when an effect changes, print them again.
 `clock.js`, which works out the playing time, is tested beside it.
 
 Colours are drawn as sent, before gamma. That is what the wire format carries

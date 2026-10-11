@@ -36,6 +36,10 @@ typedef enum {
     LP_EFFECT_SOLID = 0,
     LP_EFFECT_BREATHE,
     LP_EFFECT_SWEEP,
+    // The two that use the accents: the colours of a cover that are not its
+    // dominant one.
+    LP_EFFECT_MORPH, // the whole strip, turning from one colour to the next
+    LP_EFFECT_CHASE, // the accents travelling round over the dominant colour
     LP_EFFECT_COUNT,
 } lp_effect_t;
 
