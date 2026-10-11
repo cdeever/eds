@@ -87,8 +87,14 @@ Ordered so that each step is safe without the ones after it.
 
 | When (UTC) | What happened |
 |---|---|
+| 22:52 | The board's whole flash was read to `firmware/cover-screen/backup/factory-20261011-185251.bin`, 4,194,304 bytes. It had been running the maker's LVGL demonstration, built on ESP-IDF 4.3. |
+| 22:58 | The tenant was planned: 2 to add (the screen's device and account), 2 to change in place (`nowplayd`, `np-relay`), 0 to destroy. Nothing replaced. The apply was not run from the session that planned it. |
+| 22:59 | The firmware (`cfad098`) was flashed. The board started without a fault: the panel and the touch controller both answered, it reported itself not provisioned, and it began trying `DVNTM-IOT` with no key. What is on the panel has not been looked at yet. |
 
 ### Departures from the plan
+
+- The tenant was planned before the board was flashed, because the board's
+  serial port was busy with the backup. Nothing was applied out of order.
 
 ## Follow-ups
 
