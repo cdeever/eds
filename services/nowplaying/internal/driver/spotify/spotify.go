@@ -26,6 +26,7 @@ import (
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver"
+	"github.com/cdeever/eds/services/nowplaying/internal/events"
 	"github.com/cdeever/eds/services/nowplaying/internal/spotifyauth"
 )
 
@@ -149,7 +150,8 @@ func (d *Driver) Run(ctx context.Context) error {
 		case errors.As(err, &forbidden):
 			// Offline at once, and not hurried: this is not the internet
 			// having a moment.
-			d.logger().Error("spotify refuses to say what is playing", "error", err, "asking_again_in", forbiddenWait)
+			d.logger().Error("spotify refuses to say what is playing", events.Key, "spotify.refused",
+				"error", err, "asking_again_in", forbiddenWait)
 			if online {
 				online = false
 				d.Sink.Online(false)
@@ -328,7 +330,7 @@ func (d *Driver) counts(device string) bool {
 func (d *Driver) warnIfExpiring() {
 	left := d.Tokens.Token().Expires().Sub(d.now())
 	if left < 14*24*time.Hour {
-		d.logger().Warn("the spotify authorization is ending; authorize again",
+		d.logger().Warn("the spotify authorization is ending; authorize again", events.Key, "spotify.authorization_ending",
 			"days_left", int(left.Hours()/24), "ends", d.Tokens.Token().Expires().Format("2006-01-02"))
 	}
 }

@@ -39,6 +39,7 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/dacp"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver"
+	"github.com/cdeever/eds/services/nowplaying/internal/events"
 )
 
 func main() {
@@ -93,6 +94,8 @@ Settings, from the environment:
   NP_STATE_DIR    where the pairing and the authorization are kept
                   (default: the user config directory)
   NP_MQTT_*, NP_TOPIC_PREFIX   the broker, as for nowplayd
+  NP_LOG_DEVICE   the device this agent is registered as; set, its key events
+                  go to the tenant's log store as well as the journal
 
  iTunes
   NP_REMOTE_NAME  the name iTunes shows while pairing (default: EdS)
@@ -393,6 +396,7 @@ type busSink struct {
 
 	mu     sync.Mutex
 	online bool
+	said   bool // whether presence has been logged at all yet
 }
 
 // Online publishes the driver's presence. It is the driver's to say, not the
@@ -400,9 +404,19 @@ type busSink struct {
 // healthy its link to the broker is.
 func (s *busSink) Online(online bool) {
 	s.mu.Lock()
-	s.online = online
+	changed := s.online != online || !s.said
+	s.online, s.said = online, true
 	s.mu.Unlock()
 	s.announce()
+
+	// Said once per change, not once per call: drivers repeat themselves.
+	switch {
+	case !changed:
+	case online:
+		s.logger.Info("driver is online", events.Key, "driver.online")
+	default:
+		s.logger.Warn("driver is offline", events.Key, "driver.offline")
+	}
 }
 
 // announce says what is true now. It is also what runs after a reconnect,
@@ -441,11 +455,32 @@ func (s *busSink) Publish(u driver.Update) {
 		return
 	}
 
-	attrs := []any{"state", u.State.State, "cover_bytes", len(u.Cover)}
+	// What a person would call it: a track playing, paused, or nothing.
+	attrs := []any{events.Key, "track." + string(u.State.State), "source", s.source,
+		"state", string(u.State.State), "cover_bytes", len(u.Cover)}
 	if u.State.Track != nil {
 		attrs = append(attrs, "artist", u.State.Track.Artist, "album", u.State.Track.Album, "title", u.State.Track.Title)
 	}
-	s.logger.Info("published", attrs...)
+	// The message is the sentence a person reads on the dashboard; the
+	// attributes are what a query filters on.
+	s.logger.Info(sentence(u.State), attrs...)
+}
+
+// sentence says what a state is, for people: "playing: Artist - Title [Album]".
+func sentence(st contract.State) string {
+	t := st.Track
+	if t == nil {
+		return string(st.State)
+	}
+	out := string(st.State) + ": "
+	if t.Artist != "" {
+		out += t.Artist + " - "
+	}
+	out += t.Title
+	if t.Album != "" {
+		out += " [" + t.Album + "]"
+	}
+	return out
 }
 
 // --- watch -------------------------------------------------------------------

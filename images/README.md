@@ -50,7 +50,7 @@ flashed, in a folder `eds-agent/`, imported at the next boot and deleted:
 | File | |
 |---|---|
 | `hostname` | what the card calls itself |
-| `npagent.env` | the agent's broker account, and which drivers it runs |
+| `npagent.env` | the agent's broker account, which drivers it runs, and the device name it reports its events under |
 | `deevnet-root-ca.pem` | the CA the broker's certificate is verified against |
 | `wifi.conf` | optional: a second network to join |
 

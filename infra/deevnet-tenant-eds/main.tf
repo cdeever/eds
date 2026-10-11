@@ -194,22 +194,31 @@ resource "deevnet_iot_broker_account" "nowplayd" {
   ]
 }
 
-# The relay's agent, on the Pi with a leg on the home LAN (ADR-0010).
+# The agent Pi, as a device of this tenant (ADR-0017).
 #
-# No `device`: the Pi is the substrate's own host, in its inventory, not a
-# device this tenant registered - and an account with a device may only belong
-# to one in trust class `iot`, which is for firmware its owner controls. So
-# this is a workload-style account used from the site's IoT segment. It also
-# means the relay cannot publish under log/, which only a device may.
+# The Pi is hardware the substrate knows, but what runs on it is EdS's own
+# image (ADR-0015): firmware its owner controls, which is what trust class
+# `iot` is for. Registering it is what lets its account publish under log/,
+# and so lets the agent report what it does beside the stand.
 #
-# One source today. A second driver on the same Pi - MusicBee - adds its own
-# three topics here.
+# As with the stand, the entry is an identity and carries no credential.
+resource "deevnet_iot_device" "np_relay" {
+  tenant      = deevnet_tenant.eds.name
+  name        = "np-relay"
+  trust_class = "iot"
+}
+
+# The agent's account, on the Pi with a leg on the home LAN (ADR-0010).
+#
+# One account for every driver on the Pi: each driver's three topics, and the
+# Pi's own log topic. A further driver - MusicBee - adds its three here.
 #
 # CAREFUL: replacing this resource issues a NEW password, and the relay stops
 # reporting until its card is rewritten (deploy/relay, `make card`).
 resource "deevnet_iot_broker_account" "np_relay" {
   tenant = deevnet_tenant.eds.name
   name   = "np-relay"
+  device = deevnet_iot_device.np_relay.name
 
   publish = [
     "nowplaying/source/itunes/state",
@@ -220,6 +229,7 @@ resource "deevnet_iot_broker_account" "np_relay" {
     "nowplaying/source/spotify/state",
     "nowplaying/source/spotify/status",
     "nowplaying/source/spotify/art",
+    "log/np-relay", # its own events, into the tenant's log store, as the stand's go
   ]
   subscribe = []
 }

@@ -11,12 +11,44 @@
   "refresh": "30s",
   "panels": [
     {
+      "type": "logs",
+      "title": "What played",
+      "description": "Each track the now-playing agent saw start, on iTunes or Spotify (ADR-0017). Spotify is reported and does not light the stand.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 9
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "instant",
+          "expr": "event:=\"track.playing\""
+        }
+      ]
+    },
+    {
       "type": "stat",
       "title": "Scenes shown",
       "description": "Scenes a stand accepted and started rendering in the selected period.",
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 9,
         "w": 4,
         "h": 4
       },
@@ -51,7 +83,7 @@
       "description": "Scenes a stand ignored. It keeps showing the last good one, so from the room this looks like nothing was sent.",
       "gridPos": {
         "x": 4,
-        "y": 0,
+        "y": 9,
         "w": 4,
         "h": 4
       },
@@ -86,7 +118,7 @@
       "description": "Times a stand started in the selected period.",
       "gridPos": {
         "x": 8,
-        "y": 0,
+        "y": 9,
         "w": 4,
         "h": 4
       },
@@ -121,7 +153,7 @@
       "description": "Times a stand connected to the broker. More than restarts means the connection dropped in between.",
       "gridPos": {
         "x": 12,
-        "y": 0,
+        "y": 9,
         "w": 4,
         "h": 4
       },
@@ -156,7 +188,7 @@
       "description": "Times a stand lost its WiFi network.",
       "gridPos": {
         "x": 16,
-        "y": 0,
+        "y": 9,
         "w": 4,
         "h": 4
       },
@@ -190,7 +222,7 @@
       "title": "Warnings and errors",
       "gridPos": {
         "x": 20,
-        "y": 0,
+        "y": 9,
         "w": 4,
         "h": 4
       },
@@ -224,7 +256,7 @@
       "title": "Events by kind",
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 13,
         "w": 24,
         "h": 8
       },
@@ -262,7 +294,7 @@
       "title": "WiFi signal",
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 21,
         "w": 12,
         "h": 8
       },
@@ -300,7 +332,7 @@
       "title": "Free memory",
       "gridPos": {
         "x": 12,
-        "y": 12,
+        "y": 21,
         "w": 12,
         "h": 8
       },
@@ -335,10 +367,10 @@
     },
     {
       "type": "logs",
-      "title": "Stand events",
+      "title": "Device events",
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 29,
         "w": 24,
         "h": 14
       },
@@ -362,7 +394,8 @@
           "queryType": "instant",
           "expr": "*"
         }
-      ]
+      ],
+      "description": "Everything the stands and the now-playing agent reported, newest first."
     }
   ]
 }

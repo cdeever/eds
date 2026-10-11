@@ -82,6 +82,10 @@ print("NP_MQTT_CA_FILE=/etc/eds/deevnet-root-ca.pem")
 print("NP_MQTT_CLIENT_ID=%s" % account["username"])
 print("NP_TOPIC_PREFIX=eds")
 print("NP_DRIVERS=%s" % ",".join(drivers))
+# Its events go to the log store only if its account may publish them.
+log = [t for t in account["publish"] if "/log/" in t]
+if log:
+    print("NP_LOG_DEVICE=%s" % log[0].rsplit("/", 1)[1])
 ' > "$drop/npagent.env"
 
 # macOS leaves its own files beside anything it writes to FAT.

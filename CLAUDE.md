@@ -190,13 +190,16 @@ about tracks or albums; that knowledge stays on the other side of the topic.
 | `eds/lightstand/<id>/status` | device → broker | yes (LWT) |
 | `eds/lightstand/<id>/state` | device → broker | yes |
 | `eds/lightd/status` | lightd → broker | yes (LWT) |
-| `eds/log/<id>` | device → broker → log bridge | no |
+| `eds/log/<id>` | device or agent Pi → broker → log bridge | no |
 
 `eds/log/<id>` is the substrate's shape, not EdS's: `<tenant>/log/<device>` is
 the one topic under `log/` a device account may publish, and the substrate's
 bridge carries it into the tenant's device log partition. The stand sends a few
 JSON events there (boot, network, scenes, health), not its serial log; the
-dashboard that reads them is `infra/deevnet-tenant-eds/dashboards/`.
+dashboard that reads them is `infra/deevnet-tenant-eds/dashboards/`. The agent
+Pi is a registered device too (`np-relay`, ADR-0017) and reports the same way:
+in `npagent`, a log line with an `event` attribute is also published there.
+Workloads (`lightd`, `nowplayd`) are not devices and cannot use this route.
 
 **Retention on `scene` is load-bearing, not an optimisation.** A stand that
 reboots pulls the current scene down instead of sitting dark mid-album. There is
