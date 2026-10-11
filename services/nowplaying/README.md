@@ -169,6 +169,20 @@ current, paused: "paused on B" is more use than silence.
   retained state arrives at once: then the senders' own times decide, held to
   the present so a fast clock cannot win forever.
 
+## Albums with a look of their own
+
+A few albums are lit by something other than their cover's colours
+([ADR-0019](../../docs/content/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own.md)).
+The list is in `internal/looks`, matched on the artist and album the track
+already carries, and it is short on purpose: the one entry is *The Dark Side
+of the Moon*, whose look is `spectrum`.
+
+nowplayd publishes the look's **name** on `…/current/look`, retained, with
+the hash of the cover it belongs to, just before that cover. It says what an
+album is called and nothing about colours or effects: what `spectrum` looks
+like is lightd's. A cover whose album has no look gets a message that says
+so, so a look cannot outlive its album.
+
 ## What it guarantees
 
 While something is playing, `current` carries a **title, an album and art**,

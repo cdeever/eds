@@ -9,6 +9,7 @@ package contract
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -203,6 +204,33 @@ func AllSourcesTopic(prefix string) string {
 func CurrentTopic(prefix string) string    { return prefix + "/nowplaying/current" }
 func CurrentArtTopic(prefix string) string { return prefix + "/nowplaying/current/art" }
 func StatusTopic(prefix string) string     { return prefix + "/nowplaying/status" }
+
+// CurrentLookTopic carries the look of the cover on CurrentArtTopic, when its
+// album has one of its own (ADR-0019).
+func CurrentLookTopic(prefix string) string { return prefix + "/nowplaying/current/look" }
+
+// Look says whether a cover has a look of its own, and names it.
+//
+// It belongs to one cover, named by hash: a subscriber applies it to that
+// cover and to no other, so it does not matter which of the two messages
+// arrives first, and a look cannot land on the album after its own. A cover
+// with no look gets a message with none, which is how the look before it is
+// let go.
+type Look struct {
+	V int `json:"v"`
+	// Look is a name, or empty. What a name looks like is the subscriber's.
+	Look string `json:"look,omitempty"`
+	// Art is the SHA-256 of the cover this is for.
+	Art string `json:"art"`
+}
+
+// EncodeLook is a Look as it goes on the bus.
+func EncodeLook(look, art string) ([]byte, error) {
+	if art == "" {
+		return nil, errors.New("contract: a look belongs to a cover, and none was named")
+	}
+	return json.Marshal(Look{V: Version, Look: look, Art: art})
+}
 
 // ParseSourceTopic splits a source topic into the source's id and which of
 // its three topics this is: "state", "status" or "art".

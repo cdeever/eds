@@ -56,7 +56,8 @@ ESP32.
 
 ## Limiting count in firmware
 
-`LP_LED_COUNT` is compile-time — `main.c` declares `static lp_rgb_t
+`LP_LED_COUNT` is 18, the number that fit across the front of the stand. It
+is compile-time — `main.c` declares `static lp_rgb_t
 frame[LP_LED_COUNT]` — so changing it needs `menuconfig`, a rebuild and a
 reflash.
 

@@ -23,6 +23,10 @@ import (
 //go:embed static
 var static embed.FS
 
+// DefaultStripLEDs is the firmware's own default, CONFIG_LP_LED_COUNT: the
+// stand has room for eighteen across its front.
+const DefaultStripLEDs = 18
+
 // MaxViewers bounds how many browsers are held open at once. Each is a
 // request that never ends; this is a household's page, and a number far
 // above a household is something else holding connections.
@@ -42,9 +46,15 @@ type Server struct {
 	Version string
 	Logger  *slog.Logger
 
-	// Heartbeat is how often an idle viewer is sent a comment, which is what
-	// keeps a proxy or a sleeping laptop from deciding the request is dead.
+	// Heartbeat is how often an idle viewer is sent a `beat` event. It keeps
+	// anything in between from deciding the request is dead, and it is how
+	// the page knows the stream is alive: one that misses a few reconnects.
 	Heartbeat time.Duration
+
+	// StripLEDs is how many LEDs a stand's strip is drawn with. The stand
+	// does not report how many it has, so this is told what was built:
+	// CONFIG_LP_LED_COUNT in the firmware. Zero is DefaultStripLEDs.
+	StripLEDs int
 
 	// Now is the clock. Nil is the wall clock.
 	Now func() time.Time
@@ -62,6 +72,8 @@ type page struct {
 	view.Snapshot
 	Links   Links  `json:"links"`
 	Version string `json:"version,omitempty"`
+	// StripLEDs is how many LEDs the strip is drawn with.
+	StripLEDs int `json:"strip_leds"`
 	// Now is the server's clock when this was sent. The page counts a
 	// playing track on from it, so the viewer's own clock is never compared
 	// with the one that stamped the track.
@@ -80,7 +92,11 @@ func (s *Server) page() page {
 	if s.Now != nil {
 		now = s.Now
 	}
-	return page{Snapshot: s.View.Snapshot(), Links: links, Version: s.Version, Now: now().UTC()}
+	leds := s.StripLEDs
+	if leds <= 0 {
+		leds = DefaultStripLEDs
+	}
+	return page{Snapshot: s.View.Snapshot(), Links: links, Version: s.Version, StripLEDs: leds, Now: now().UTC()}
 }
 
 func safeLink(u string) bool {
@@ -210,7 +226,7 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 
 	heartbeat := s.Heartbeat
 	if heartbeat <= 0 {
-		heartbeat = 25 * time.Second
+		heartbeat = 15 * time.Second
 	}
 	tick := time.NewTicker(heartbeat)
 	defer tick.Stop()
@@ -224,7 +240,9 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		case <-tick.C:
-			if _, err := fmt.Fprint(w, ": still here\n\n"); err != nil {
+			// An event, not a comment: a page cannot see a comment, and it
+			// is by hearing these that it knows the stream is not dead.
+			if _, err := fmt.Fprint(w, "event: beat\ndata: {}\n\n"); err != nil {
 				return
 			}
 			flusher.Flush()

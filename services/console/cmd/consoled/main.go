@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -84,11 +85,21 @@ func run(logger *slog.Logger) error {
 		identity = &id
 	}
 
+	leds := web.DefaultStripLEDs
+	if raw, ok := os.LookupEnv("CONSOLE_STRIP_LEDS"); ok {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 || n > 300 {
+			return fmt.Errorf("CONSOLE_STRIP_LEDS=%q is not a number of LEDs, 1 to 300", raw)
+		}
+		leds = n
+	}
+
 	picture := view.New(prefix)
 	server := &web.Server{
-		View:    picture,
-		Version: version,
-		Logger:  logger,
+		View:      picture,
+		StripLEDs: leds,
+		Version:   version,
+		Logger:    logger,
 		Links: web.Links{
 			Dashboard: env("CONSOLE_DASHBOARD_URL", ""),
 			Docs:      env("CONSOLE_DOCS_URL", "https://cdeever.github.io/eds/"),

@@ -18,7 +18,11 @@ menu "LP jacket stand"
         config LP_LED_COUNT
             int "Number of LEDs"
             range 1 300
-            default 60
+            default 18
+            help
+                How many LEDs the strip has. The stand built has room for
+                18 across its front. The console draws the same number
+                (CONSOLE_STRIP_LEDS); if this changes, change that.
 
         config LP_LED_GPIO
             int "Data GPIO"

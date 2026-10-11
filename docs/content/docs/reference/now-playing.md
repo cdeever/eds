@@ -24,6 +24,7 @@ All under the tenant's prefix, `eds/`.
 | `nowplaying/source/<id>/art` | a driver | yes | the cover, as image bytes |
 | `nowplaying/current` | nowplayd | yes | the one current track |
 | `nowplaying/current/art` | nowplayd | yes | its cover, as image bytes |
+| `nowplaying/current/look` | nowplayd | yes | whether that cover's album has a look of its own |
 | `nowplaying/status` | nowplayd | yes (last will) | `online` / `offline` |
 
 `<id>` names one driver deployment, such as `itunes-den`. It is lowercase
@@ -88,6 +89,35 @@ held, which belongs to an earlier track. A subscriber that wants the cover of
 the track that is playing must find `art` in `current` and match its
 `sha256`; one that only follows `current/art`, as the stand does, is not
 moved by Spotify at all.
+
+## Looks
+
+A few albums are lit by something other than their cover's colours
+([ADR-0019](/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own/)).
+`nowplayd` says which, beside every cover it publishes, and before it:
+
+```json
+{"v":1,"look":"spectrum","art":"<sha256 of the cover>"}
+```
+
+| Field | |
+|---|---|
+| `v` | `1`. Another version is refused |
+| `look` | the look's name; left out when the album has none |
+| `art` | the SHA-256 of the cover this is about, as in `current` |
+
+A look belongs to the cover it names and to no other, so the two messages
+can arrive in either order. What a name looks like is `lightd`'s to say; a
+name it does not know is the same as none.
+
+The one album with a look is *The Dark Side of the Moon*, `spectrum`. It is
+matched on the track's own tags: an album that starts with that title, the
+leading "The" or not, by an artist that includes Pink Floyd. A remaster with
+its year in brackets matches; a copy tagged some other way does not, and is
+lit from its cover.
+
+Nothing is said about a look when no cover is published, so a source reported
+without its cover never has one.
 
 When no source is reporting at all, `current` is
 `{"v":1,"state":"stopped","changed_at":"…"}`, with no `source` and no `track`.

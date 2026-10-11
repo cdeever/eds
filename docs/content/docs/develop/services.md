@@ -82,4 +82,6 @@ curl 'http://localhost:8732/v1/scene?stand=lp-stand-01'   # what was last sent
 call. It arrived as a topic instead: with `LIGHTD_COVER_TOPIC` set, lightd
 subscribes and runs each image it receives down the same path
 ([ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/)).
-It still sees only image bytes.
+It still sees only image bytes, and with `LIGHTD_LOOK_TOPIC` a name for the
+few covers whose album has a look of its own
+([ADR-0019](/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own/)).

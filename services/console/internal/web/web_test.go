@@ -208,6 +208,34 @@ func TestAViewerIsSentThePictureAndThenEachChange(t *testing.T) {
 	}
 }
 
+// An idle viewer is sent a beat it can hear. A comment would keep the request
+// open and tell the page nothing, and a page that hears nothing cannot tell a
+// quiet console from a dead connection.
+func TestAnIdleViewerHearsABeat(t *testing.T) {
+	s, _ := site(t)
+	s.Heartbeat = 20 * time.Millisecond
+	ts := httptest.NewServer(s.Handler())
+	defer ts.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/api/events", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	lines := bufio.NewReader(resp.Body)
+	for {
+		line, err := lines.ReadString('\n')
+		if err != nil {
+			t.Fatalf("the stream ended before a beat: %v", err)
+		}
+		if strings.TrimSpace(line) == "event: beat" {
+			return
+		}
+	}
+}
+
 func TestViewersAreCountedOutAsWellAsIn(t *testing.T) {
 	s, ts := site(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -311,5 +339,27 @@ func TestEveryPictureSaysWhenItWasSent(t *testing.T) {
 	var got struct{ Now time.Time }
 	if err := json.Unmarshal([]byte(body), &got); err != nil || !got.Now.Equal(at) {
 		t.Fatalf("now = %v (%v) in %s", got.Now, err, body)
+	}
+}
+
+// The stand does not say how many LEDs it has, so the page is told.
+func TestThePageIsToldHowManyLEDsToDraw(t *testing.T) {
+	s, ts := site(t)
+	count := func() int {
+		_, body := get(t, ts.URL+"/api/state")
+		var got struct {
+			StripLEDs int `json:"strip_leds"`
+		}
+		if err := json.Unmarshal([]byte(body), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got.StripLEDs
+	}
+	if n := count(); n != 18 {
+		t.Errorf("by default %d LEDs, want the firmware's 18", n)
+	}
+	s.StripLEDs = 60
+	if n := count(); n != 60 {
+		t.Errorf("told 60, drew %d", n)
 	}
 }

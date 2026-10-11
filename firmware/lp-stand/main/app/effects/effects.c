@@ -24,9 +24,11 @@
 #define MORPH_BLEND 0.45f
 
 // Chase: how much of the strip an accent covers is its share of the cover,
-// plus enough that the smallest is more than a single LED, and never so much
-// that the background stops being one.
-#define CHASE_MIN_WIDTH 0.08f
+// plus enough that the smallest is a couple of LEDs wide on a strip of
+// eighteen, and never so much that the background stops being one. Narrower
+// than about two LEDs, a soft-edged patch does not glide between them: it
+// dims to nearly nothing halfway and reads as a twinkle.
+#define CHASE_MIN_WIDTH 0.12f
 #define CHASE_MAX_WIDTH 0.30f
 
 // M_PI is a POSIX extension, not ISO C, and is absent under a strict -std=c11.

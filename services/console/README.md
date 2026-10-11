@@ -92,6 +92,7 @@ Environment only. Each broker setting falls back to the platform's name from
 | `CONSOLE_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | one topic level |
 | `CONSOLE_TLS_CERT_FILE` / `CONSOLE_TLS_KEY_FILE` | none | a certificate with its chain, and its key. Set together, the page is served over TLS and `CONSOLE_ADDR` only redirects to it |
 | `CONSOLE_TLS_ADDR` | `:443` | where TLS is served |
+| `CONSOLE_STRIP_LEDS` | `18` | how many LEDs the page draws for a stand, 1 to 300. The firmware's `LP_LED_COUNT`, which nothing on the bus reports |
 | `CONSOLE_DASHBOARD_URL` | none | where "Events in Grafana" goes; left out of the page if not a web address |
 | `CONSOLE_DOCS_URL` | this project's docs site | where "Decisions and records" goes |
 

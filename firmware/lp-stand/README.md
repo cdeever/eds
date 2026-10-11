@@ -84,6 +84,11 @@ accent and back, giving each a turn that is half by its weight and half equal.
 `chase` keeps the dominant colour as the ground and sends each accent round
 over it as a soft-edged patch, alternate ones in opposite directions.
 
+The strip is 18 LEDs (`LP_LED_COUNT`), the number that fit across the front
+of the stand. `chase` is sized for it: the smallest patch is about two LEDs
+wide, because a soft-edged patch narrower than that does not glide from one
+LED to the next. It dims to nearly nothing halfway and reads as a twinkle.
+
 **Time is taken to the whole millisecond before it is divided.** A float
 holds a millisecond count exactly for about four and a half hours. An
 animation timed from `(float)t_ms` moves in steps that grow with uptime, and

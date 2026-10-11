@@ -176,9 +176,10 @@ resource "deevnet_iot_broker_account" "lightd" {
     "lightd/status",      # its own liveness
   ]
   subscribe = [
-    "lightstand/+/status",    # a stand's presence
-    "lightstand/+/state",     # and what it is currently showing
-    "nowplaying/current/art", # the current cover, which it lights the stand from (ADR-0009)
+    "lightstand/+/status",     # a stand's presence
+    "lightstand/+/state",      # and what it is currently showing
+    "nowplaying/current/art",  # the current cover, which it lights the stand from (ADR-0009)
+    "nowplaying/current/look", # whether that cover has a look of its own (ADR-0019)
   ]
 }
 
@@ -232,9 +233,10 @@ resource "deevnet_iot_broker_account" "nowplayd" {
   name   = "nowplayd"
 
   publish = [
-    "nowplaying/current",     # the one current track
-    "nowplaying/current/art", # its cover
-    "nowplaying/status",      # its own liveness
+    "nowplaying/current",      # the one current track
+    "nowplaying/current/art",  # its cover
+    "nowplaying/current/look", # whether that cover's album has a look of its own (ADR-0019)
+    "nowplaying/status",       # its own liveness
   ]
   subscribe = [
     "nowplaying/source/+/+", # every driver's state, presence and cover

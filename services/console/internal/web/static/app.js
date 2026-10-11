@@ -7,7 +7,9 @@
 import { label, position, start } from "./clock.js";
 import { periodMs, render as renderStrip, validate } from "./effects.js";
 
-const LEDS = 60; // CONFIG_LP_LED_COUNT's default; the picture, not a count of the real strip
+// How many LEDs the strip is drawn with. The page is told; this is only what
+// is drawn before it has been.
+let leds = 18;
 const $ = (id) => document.getElementById(id);
 
 const PLAYERS = { itunes: "iTunes", music: "Music", spotify: "Spotify", musicbee: "MusicBee", tidal: "TIDAL" };
@@ -251,10 +253,10 @@ function paint(t) {
     if (!scene) continue;
 
     // Without motion the strip is shown at one moment: the top of a breath.
-    const pixels = renderStrip(scene, still.matches ? periodMs(scene.speed) / 4 : t, LEDS);
-    const pitch = width / LEDS, gap = Math.min(3, pitch * 0.22);
+    const pixels = renderStrip(scene, still.matches ? periodMs(scene.speed) / 4 : t, leds);
+    const pitch = width / leds, gap = Math.min(6, pitch * 0.18);
     const top = height * 0.28, tall = height * 0.44;
-    for (let i = 0; i < LEDS; i++) {
+    for (let i = 0; i < leds; i++) {
       const colour = `rgb(${pixels[i][0]},${pixels[i][1]},${pixels[i][2]})`;
       ctx.shadowColor = colour;
       ctx.shadowBlur = height * 0.34;
@@ -323,6 +325,7 @@ function drawFrame(page) {
 }
 
 function draw(page) {
+  if (Number.isInteger(page.strip_leds) && page.strip_leds > 0 && page.strip_leds <= 300) leds = page.strip_leds;
   drawNow(page);
   drawStands(page);
   drawSources(page);
@@ -332,21 +335,47 @@ function draw(page) {
 
 // --- staying current -------------------------------------------------------------
 
+// The console sends a beat every 15 seconds when it has nothing else to say.
+// A stream that has been silent for longer than a few of them is dead, though
+// the browser may not know it: a laptop that slept, or a connection dropped
+// somewhere in between, leaves a stream that looks open and says nothing.
+const QUIET_TOO_LONG_MS = 40000;
+
+let stream = null;
+let heard = 0;
+
 function listen() {
   const live = $("live");
-  const stream = new EventSource("api/events");
-  stream.onopen = () => { live.className = "live on"; live.textContent = "live"; };
+  if (stream) stream.close();
+  heard = performance.now();
+  stream = new EventSource("api/events");
+  stream.onopen = () => { heard = performance.now(); live.className = "live on"; live.textContent = "live"; };
   stream.onmessage = (event) => {
+    heard = performance.now();
     try {
       draw(JSON.parse(event.data));
     } catch (problem) {
       console.error("could not draw what was sent", problem);
     }
   };
+  stream.addEventListener("beat", () => { heard = performance.now(); });
   // The browser reconnects by itself. What is on the page stays, marked as
   // possibly old, which is the truth.
   stream.onerror = () => { live.className = "live off"; live.textContent = "lost the console; trying again"; };
 }
 
+function checkStream() {
+  if (performance.now() - heard < QUIET_TOO_LONG_MS) return;
+  const live = $("live");
+  live.className = "live off";
+  live.textContent = "nothing heard for a while; reconnecting";
+  listen();
+}
+
 listen();
+setInterval(checkStream, 5000);
+// Coming back to the tab, or back onto the network, is when a dead stream is
+// most likely and least welcome: check at once and do not wait for the timer.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkStream(); });
+window.addEventListener("online", listen);
 requestAnimationFrame(paint);

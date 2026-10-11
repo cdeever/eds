@@ -57,6 +57,7 @@ func run(logger *slog.Logger) error {
 		DefaultStand: cfg.StandID,
 		Swatches:     cfg.Swatches,
 		Scene:        cfg.Scene,
+		Looks:        cfg.Looks,
 		Logger:       logger,
 	})
 	handler := covers.Routes()
@@ -77,6 +78,21 @@ func run(logger *slog.Logger) error {
 			return err
 		}
 		logger.Info("listening for covers", "topic", topic)
+	}
+
+	if cfg.LookTopic != "" {
+		topic := broker.CoverTopic(cfg.Broker.TopicPrefix, cfg.LookTopic)
+		err := publisher.SubscribeLooks(cfg.LookTopic, func(payload []byte) {
+			ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+			defer cancel()
+			if err := covers.ApplyLook(ctx, payload); err != nil {
+				logger.Warn("ignored a look", "topic", topic, "error", err)
+			}
+		})
+		if err != nil {
+			return err
+		}
+		logger.Info("listening for looks", "topic", topic, "spectrum", cfg.Looks.SpectrumEffect)
 	}
 
 	httpServer := &http.Server{

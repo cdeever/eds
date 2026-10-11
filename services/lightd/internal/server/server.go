@@ -9,6 +9,8 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,7 +43,9 @@ type Options struct {
 	DefaultStand string
 	Swatches     int
 	Scene        scene.Options
-	Logger       *slog.Logger
+	// Looks are the choices a look leaves open (ADR-0019).
+	Looks  scene.LookOptions
+	Logger *slog.Logger
 }
 
 // Server publishes scenes in response to HTTP requests.
@@ -50,6 +54,33 @@ type Server struct {
 
 	mu   sync.RWMutex
 	last map[string]scene.Scene
+
+	// The cover from the topic, and the look said to belong to a cover. They
+	// arrive separately and in either order, so each is kept, and the room is
+	// lit from the pair (ADR-0019).
+	held heldCover
+	// early is a look that arrived before its cover. It is kept until that
+	// cover comes, and never applied to the one held meanwhile.
+	early  coverLook
+	render sync.Mutex // one lighting of the room at a time
+}
+
+// heldCover is the cover the stand is, or is about to be, lit from.
+type heldCover struct {
+	image []byte
+	sha   string
+	// look is the look named for this cover, or "" for none.
+	look string
+	// lit says a scene for this cover has gone out; shown is the look it went
+	// out with, or "" for the cover's own colours.
+	lit   bool
+	shown string
+}
+
+// coverLook is the last word on whether a cover has a look of its own.
+type coverLook struct {
+	name string
+	art  string // the SHA-256 of the cover it is for
 }
 
 // New builds a Server.
@@ -206,10 +237,111 @@ func (s *Server) ApplyCover(ctx context.Context, image []byte) error {
 		return fmt.Errorf("cover is %d bytes; the most accepted is %d", len(image), maxUpload)
 	}
 
-	_, failed := s.cover(ctx, image, s.opts.DefaultStand, s.opts.Swatches, "", "topic")
-	if failed != nil {
+	sum := sha256.Sum256(image)
+	sha := hex.EncodeToString(sum[:])
+
+	s.mu.Lock()
+	if s.held.sha != sha {
+		s.held = heldCover{image: image, sha: sha}
+		if s.early.art == sha {
+			s.held.look = s.early.name
+		}
+	}
+	s.mu.Unlock()
+	return s.light(ctx)
+}
+
+// ApplyLook takes the word on whether a cover has a look of its own
+// (ADR-0019): a name, or none, and the hash of the cover it is for.
+//
+// The look and its cover come on two topics and in either order. So this only
+// records what was said, and then lights the room from whatever pair it now
+// holds. A look for a cover that is not the one held changes nothing in the
+// room: it is early, and is kept for its cover, or late, and its cover has
+// gone. The cover held keeps the look it has until its own is said again.
+func (s *Server) ApplyLook(ctx context.Context, payload []byte) error {
+	var said struct {
+		V    int    `json:"v"`
+		Look string `json:"look"`
+		Art  string `json:"art"`
+	}
+	if err := json.Unmarshal(payload, &said); err != nil {
+		return fmt.Errorf("a look that cannot be read: %w", err)
+	}
+	switch {
+	case said.V != scene.ContractVersion:
+		return fmt.Errorf("a look of version %d; this reads version %d", said.V, scene.ContractVersion)
+	case said.Art == "":
+		return errors.New("a look that names no cover")
+	}
+
+	s.mu.Lock()
+	if s.held.sha == said.Art {
+		s.held.look = said.Look
+	} else {
+		s.early = coverLook{name: said.Look, art: said.Art}
+	}
+	s.mu.Unlock()
+	return s.light(ctx)
+}
+
+// light makes the stand show what the held cover should look like now: its
+// look, if one was named for it and is known here, else its own colours. It
+// does nothing when that is already what was sent, so the look and the cover
+// arriving in either order light the room once where they can, and a look
+// repeated lights it not at all.
+func (s *Server) light(ctx context.Context) error {
+	s.render.Lock()
+	defer s.render.Unlock()
+
+	s.mu.RLock()
+	held := s.held
+	s.mu.RUnlock()
+	if held.image == nil {
+		return nil
+	}
+
+	want := ""
+	var preset scene.Scene
+	if held.look != "" {
+		if sc, known := scene.Look(held.look, s.opts.Scene, s.opts.Looks); known {
+			want, preset = held.look, sc
+		} else {
+			// Said once per cover: this runs again when the cover is retried.
+			if !held.lit {
+				s.opts.Logger.Warn("a cover came with a look this does not know; lighting it from its own colours",
+					"look", held.look)
+			}
+		}
+	}
+	if held.lit && held.shown == want {
+		return nil
+	}
+
+	if want != "" {
+		// A look needs nothing from the cover but its arrival. The extractor
+		// is not asked, and being down does not matter.
+		if err := s.publish(s.opts.DefaultStand, preset); err != nil {
+			return &coverError{http.StatusBadGateway, err}
+		}
+		s.opts.Logger.Info("published scene",
+			"via", "topic",
+			"stand", s.opts.DefaultStand,
+			"look", want,
+			"effect", preset.Effect,
+			"colors", len(preset.Palette),
+			"palette", describe(preset),
+		)
+	} else if _, failed := s.cover(ctx, held.image, s.opts.DefaultStand, s.opts.Swatches, "", "topic"); failed != nil {
 		return failed
 	}
+
+	s.mu.Lock()
+	// Only if it is still the cover held: a newer one may have come meanwhile.
+	if s.held.sha == held.sha {
+		s.held.lit, s.held.shown = true, want
+	}
+	s.mu.Unlock()
 	return nil
 }
 
