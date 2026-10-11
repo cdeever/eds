@@ -21,6 +21,7 @@ builds the monorepo as a whole; work inside one project directory at a time.
 | `services/palette` | Python 3.11+ / FastAPI | `make venv test serve` |
 | `services/lightd` | Go 1.25 | `make check build run` |
 | `services/nowplaying` | Go 1.25 | `make check test-integration run` |
+| `services/console` | Go 1.25 + a static page | `make check run feed` |
 | `firmware/lp-stand` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
 | `infra/deevnet-tenant-eds` | Terraform | `make paths init plan apply` |
 | `images` | Ansible / shell | `make -C deploy/relay image fetch` (builds on builder) |
@@ -175,7 +176,16 @@ no image path), `GET /v1/scene` (last sent).
 The stand follows what is playing: the agent Pi reports iTunes to the broker,
 `nowplayd` on the workload publishes the current track and its cover, and
 `lightd` lights the stand from the cover. `make -C deploy deploy WHERE=builder`
-deploys all three services (the Mac has no container tool; the Builder builds).
+deploys all four services (the Mac has no container tool; the Builder builds).
+
+The console (`services/console`, ADR-0018) is the page a person looks at:
+`http://console.eds.mobile.deevnet.net/`. It subscribes to the bus and serves
+what it heard. **It only looks**: its broker account reads and publishes only
+its own presence, and it answers only `GET`. Adding a control is a decision to
+record first, not a handler to add. Its subscriptions (`view.Topics`) and the
+account in `main.tf` are one list kept in two places; the broker refuses a
+mismatch silently. `internal/web/static/effects.js` is a port of the
+firmware's `effects.c` - change one, change the other.
 
 lightd has a second input for covers: with `LIGHTD_COVER_TOPIC` set it
 subscribes to that topic and runs each image down the same path as
@@ -190,6 +200,7 @@ about tracks or albums; that knowledge stays on the other side of the topic.
 | `eds/lightstand/<id>/status` | device → broker | yes (LWT) |
 | `eds/lightstand/<id>/state` | device → broker | yes |
 | `eds/lightd/status` | lightd → broker | yes (LWT) |
+| `eds/console/status` | console → broker | yes (LWT) |
 | `eds/log/<id>` | device or agent Pi → broker → log bridge | no |
 
 `eds/log/<id>` is the substrate's shape, not EdS's: `<tenant>/log/<device>` is

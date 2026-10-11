@@ -49,6 +49,23 @@ A value that cannot be used stops the program.
 | `NP_CONTACT` | this repository's URL | goes in the User-Agent sent to catalogues |
 | `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)). `spotify` on the workload, which is what keeps the stand from following it |
 
+## console
+
+Environment only. On the workload the broker's settings come from `kit.env`;
+a `CONSOLE_*` variable wins.
+
+| Variable | Default | |
+|---|---|---|
+| `CONSOLE_ADDR` | `:8080` | where it listens; `:80` on the workload |
+| `CONSOLE_MQTT_URL` | `tls://$MQTT_HOST:$MQTT_PORT`, else `tcp://127.0.0.1:1883` | broker |
+| `CONSOLE_MQTT_CLIENT_ID` | `eds-console` | must be unique on the broker |
+| `CONSOLE_MQTT_USERNAME` / `CONSOLE_MQTT_PASSWORD` | `$MQTT_USERNAME` / `$MQTT_PASSWORD` | the console names its own login |
+| `CONSOLE_MQTT_CA_FILE` | `$MQTT_CA_FILE` | the Deevnet Root CA |
+| `CONSOLE_MQTT_INSECURE` | `false` | bring-up only |
+| `CONSOLE_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | one topic level |
+| `CONSOLE_DASHBOARD_URL` | none | where the page's link to Grafana goes |
+| `CONSOLE_DOCS_URL` | this site | where the page's link to these records goes |
+
 ## lp-stand
 
 Build-time settings live in `idf.py menuconfig` under *LP jacket stand*:

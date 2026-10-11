@@ -14,6 +14,7 @@ The topic prefix defaults to `eds` and must match on both sides — `lightd`'s
 | `eds/lightstand/<id>/status` | device → broker | yes (LWT) | `online` / `offline` |
 | `eds/lightstand/<id>/state` | device → broker | yes | what it is rendering now |
 | `eds/lightd/status` | lightd → broker | yes (LWT) | the publisher's presence |
+| `eds/console/status` | console → broker | yes (LWT) | the console's presence; the only thing it publishes |
 | `eds/log/<id>` | device or agent Pi → broker | no | key events, for the log store: the stand's, and the now-playing agent's (`np-relay`) |
 | `eds/nowplaying/source/<id>/…` | a driver → nowplayd | yes | what one player is doing; see [Now Playing](../now-playing/) |
 | `eds/nowplaying/current` | nowplayd → subscribers | yes | the one current track |

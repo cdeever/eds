@@ -25,6 +25,7 @@ fabric.auto.tfvars
 # Not secret: lightd's own settings on the workload (kit.env stays ignored).
 !deploy/lightd.env
 !deploy/nowplayd.env
+!deploy/console.env
 secrets.*
 
 # ESP-IDF (build/ is already covered above).

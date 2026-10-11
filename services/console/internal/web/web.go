@@ -1,0 +1,224 @@
+// Package web serves the console's one page and keeps it current.
+//
+// The page is static files compiled into the binary, plus three things the
+// server answers: the picture as JSON, the same picture pushed whenever it
+// changes, and the cover the stand is lit from. Everything is read-only;
+// there is nothing here that changes anything (ADR-0018).
+package web
+
+import (
+	"embed"
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"log/slog"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/cdeever/eds/services/console/internal/view"
+)
+
+//go:embed static
+var static embed.FS
+
+// MaxViewers bounds how many browsers are held open at once. Each is a
+// request that never ends; this is a household's page, and a number far
+// above a household is something else holding connections.
+const MaxViewers = 64
+
+// Links are the places the page points to. Each is used only if it is an
+// http or https address.
+type Links struct {
+	Dashboard string `json:"dashboard,omitempty"`
+	Docs      string `json:"docs,omitempty"`
+}
+
+// Server serves the page for one View.
+type Server struct {
+	View    *view.View
+	Links   Links
+	Version string
+	Logger  *slog.Logger
+
+	// Heartbeat is how often an idle viewer is sent a comment, which is what
+	// keeps a proxy or a sleeping laptop from deciding the request is dead.
+	Heartbeat time.Duration
+
+	mu      sync.Mutex
+	viewers map[chan struct{}]struct{}
+}
+
+// page is what the browser is given.
+type page struct {
+	view.Snapshot
+	Links   Links  `json:"links"`
+	Version string `json:"version,omitempty"`
+}
+
+func (s *Server) page() page {
+	links := Links{}
+	if safeLink(s.Links.Dashboard) {
+		links.Dashboard = s.Links.Dashboard
+	}
+	if safeLink(s.Links.Docs) {
+		links.Docs = s.Links.Docs
+	}
+	return page{Snapshot: s.View.Snapshot(), Links: links, Version: s.Version}
+}
+
+func safeLink(u string) bool {
+	return strings.HasPrefix(u, "https://") || strings.HasPrefix(u, "http://")
+}
+
+// Changed tells every viewer the picture is new. It never waits: a viewer
+// that has not yet taken the last change is told once, not twice.
+func (s *Server) Changed() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for viewer := range s.viewers {
+		select {
+		case viewer <- struct{}{}:
+		default:
+		}
+	}
+}
+
+func (s *Server) join() (chan struct{}, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.viewers) >= MaxViewers {
+		return nil, false
+	}
+	if s.viewers == nil {
+		s.viewers = map[chan struct{}]struct{}{}
+	}
+	viewer := make(chan struct{}, 1)
+	s.viewers[viewer] = struct{}{}
+	return viewer, true
+}
+
+func (s *Server) leave(viewer chan struct{}) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.viewers, viewer)
+}
+
+// Handler is the whole site.
+func (s *Server) Handler() http.Handler {
+	files, err := fs.Sub(static, "static")
+	if err != nil {
+		panic(err) // the directory is compiled in; this cannot fail at run time
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("GET /", http.FileServerFS(files))
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok\n"))
+	})
+	mux.HandleFunc("GET /api/state", s.state)
+	mux.HandleFunc("GET /api/events", s.events)
+	mux.HandleFunc("GET /api/cover/{sha}", s.cover)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		// The page loads its own script, style and pictures and nothing
+		// else, and nothing may frame it. Track names come from players and
+		// catalogues; they are put on the page as text, and this is what
+		// holds if that is ever got wrong.
+		h.Set("Content-Security-Policy",
+			"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; "+
+				"base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "no-referrer")
+
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			h.Set("Allow", "GET, HEAD")
+			http.Error(w, "the console only looks", http.StatusMethodNotAllowed)
+			return
+		}
+		if !strings.HasPrefix(r.URL.Path, "/api/cover/") {
+			// The picture changes; only a cover, named by its own hash, is
+			// worth a browser keeping.
+			h.Set("Cache-Control", "no-store")
+		}
+		mux.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) state(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(s.page())
+}
+
+// events holds the request open and writes the picture each time it changes,
+// starting with how it is now.
+func (s *Server) events(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "this connection cannot be held open", http.StatusInternalServerError)
+		return
+	}
+	viewer, ok := s.join()
+	if !ok {
+		http.Error(w, "too many viewers", http.StatusServiceUnavailable)
+		return
+	}
+	defer s.leave(viewer)
+
+	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	send := func() bool {
+		data, err := json.Marshal(s.page())
+		if err != nil {
+			return false
+		}
+		// One line: JSON escapes a newline inside a string, so the event
+		// cannot be ended early by a track's title.
+		if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
+			return false
+		}
+		flusher.Flush()
+		return true
+	}
+	if !send() {
+		return
+	}
+
+	heartbeat := s.Heartbeat
+	if heartbeat <= 0 {
+		heartbeat = 25 * time.Second
+	}
+	tick := time.NewTicker(heartbeat)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-viewer:
+			if !send() {
+				return
+			}
+		case <-tick.C:
+			if _, err := fmt.Fprint(w, ": still here\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+		}
+	}
+}
+
+func (s *Server) cover(w http.ResponseWriter, r *http.Request) {
+	image, mime, ok := s.View.Cover(r.PathValue("sha"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", mime)
+	// Named by the hash of its own bytes: it can never be a different image.
+	w.Header().Set("Cache-Control", "private, max-age=86400, immutable")
+	_, _ = w.Write(image)
+}

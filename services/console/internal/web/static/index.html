@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>EdS</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="mark">EdS</span>
+      <span class="tag">what is playing, and what the room is doing about it</span>
+    </div>
+    <ul class="pills" id="pills" aria-label="Parts of EdS and whether they are up"></ul>
+  </header>
+
+  <main>
+    <section class="now" aria-labelledby="title">
+      <div class="cover" id="cover">
+        <img id="cover-img" alt="" hidden>
+        <div class="cover-empty" id="cover-empty"></div>
+      </div>
+      <div class="track">
+        <p class="where" id="where"></p>
+        <h1 id="title">Listening…</h1>
+        <p class="artist" id="artist"></p>
+        <p class="album" id="album"></p>
+        <p class="note" id="cover-note"></p>
+      </div>
+    </section>
+
+    <section id="stands" aria-label="Light stands"></section>
+
+    <div class="columns">
+      <section class="panel" aria-labelledby="players-h">
+        <h2 id="players-h">Players</h2>
+        <ul class="rows" id="sources"></ul>
+      </section>
+      <section class="panel" aria-labelledby="recent-h">
+        <h2 id="recent-h">Recently played</h2>
+        <ol class="rows" id="recent"></ol>
+        <p class="fine">Since the console last started. The whole history is in the log store.</p>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <span class="live" id="live">connecting</span>
+    <nav id="links" aria-label="Elsewhere"></nav>
+    <span class="fine" id="version"></span>
+  </footer>
+
+  <noscript><p class="noscript">This page draws itself with JavaScript, and has none to run.</p></noscript>
+</body>
+</html>

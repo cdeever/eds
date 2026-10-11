@@ -88,6 +88,22 @@ output "nowplayd_broker" {
   }
 }
 
+output "console_broker" {
+  description = "The console's MQTT credential. deploy/ writes it to the workload beside kit.env."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.console.username
+    password  = deevnet_iot_broker_account.console.password
+    publish   = deevnet_iot_broker_account.console.granted_publish
+    subscribe = deevnet_iot_broker_account.console.granted_subscribe
+  }
+}
+
+output "console_url" {
+  description = "Where the console is, from the site's trusted networks."
+  value       = "http://${deevnet_dns_record.console.fqdn}/"
+}
+
 output "np_relay_broker" {
   description = "The relay agent's MQTT credential. deploy/relay writes it to a flashed card."
   sensitive   = true
