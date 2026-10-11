@@ -1,75 +1,118 @@
-# Deploy palette and lightd to the eds services workload.
+# Deploy palette, lightd and nowplayd to the eds services workload.
 #
-# The Deploy Your App pattern: build the images here, copy them over SSH, and
-# run them under systemd with kit.env. No registry and no operator. A replaced
+# The Deploy Your App pattern: build the images, copy them over SSH, and run
+# them under systemd with kit.env. No registry and no operator. A replaced
 # workload comes back empty, and `make deploy` puts everything back.
 #
 # Plain recipes, one shell per line: macOS ships GNU make 3.81.
 SHELL := /bin/bash
 
 HOST  ?= tenant@services.eds.mobile.deevnet.net
-INFRA := $(CURDIR)/../infra/deevnet-tenant-eds
-SVC   := $(CURDIR)/../services
+REPO  := $(CURDIR)/..
+INFRA := $(REPO)/infra/deevnet-tenant-eds
+SVC   := $(REPO)/services
 
-.PHONY: help images load kit-env ship units deploy restart status logs clean
+# The container tool that builds the images. Where there is none - a Mac with
+# no podman - `make WHERE=builder …` builds and loads from the Builder instead,
+# which has one and can reach the workload.
+CONTAINER ?= podman
+WHERE     ?= local
+BUILDER   ?= cdeever@builder
+BUILD_DIR ?= /srv/eds-deploy-build
+VERSION   ?= $(shell git -C $(REPO) describe --always --dirty 2>/dev/null || echo dev)
+
+SERVICES := eds-palette eds-lightd eds-nowplayd
+UNITS    := $(addsuffix .service,$(SERVICES))
+
+.PHONY: help images load kit-env broker-env ship units deploy restart status logs clean
 
 help:
-	@echo "deploy - palette and lightd onto $(HOST)"
+	@echo "deploy - palette, lightd and nowplayd onto $(HOST)"
 	@echo
-	@echo "  deploy   everything: images, kit.env, units, start"
-	@echo "  images   build both images for linux/amd64"
+	@echo "  deploy   everything: images, settings, units, start"
+	@echo "  images   build the three images for linux/amd64"
 	@echo "  ship     build and copy the images, then restart (a new version)"
 	@echo "  load     copy the built images to the workload"
-	@echo "  kit-env  write kit.env from the tenant's Terraform outputs"
-	@echo "  units    copy kit.env, lightd.env, deevnet-root-ca.pem and the units; start"
-	@echo "  restart  restart both services"
-	@echo "  status   systemd status of both"
-	@echo "  logs     follow both services' logs"
+	@echo "  kit-env  write kit.env and nowplayd-broker.env from the tenant's Terraform outputs"
+	@echo "  units    copy the settings, deevnet-root-ca.pem and the units; start"
+	@echo "  restart  restart the services"
+	@echo "  status   systemd status of each"
+	@echo "  logs     follow the services' logs"
+	@echo
+	@echo "No container tool here? Add WHERE=builder: images are built on, and loaded"
+	@echo "from, $(BUILDER). Settings and units still go from this machine."
+
+ifeq ($(WHERE),builder)
+
+# Only what a build needs goes to the Builder: the services' sources and this
+# Makefile. No settings, no secrets.
+images:
+	ssh $(BUILDER) 'mkdir -p $(BUILD_DIR)/deploy'
+	rsync -a --delete --exclude .venv/ --exclude bin/ --exclude __pycache__/ --exclude '._*' --exclude .DS_Store --exclude .pytest_cache/ $(SVC)/ $(BUILDER):$(BUILD_DIR)/services/
+	rsync -a Makefile $(BUILDER):$(BUILD_DIR)/deploy/Makefile
+	ssh $(BUILDER) 'make -C $(BUILD_DIR)/deploy images VERSION=$(VERSION)'
+
+load:
+	ssh $(BUILDER) 'make -C $(BUILD_DIR)/deploy load HOST=$(HOST)'
+
+else
 
 images:
-	podman build --platform linux/amd64 -t localhost/eds-palette:latest $(SVC)/palette
-	podman build --platform linux/amd64 -t localhost/eds-lightd:latest $(SVC)/lightd
+	$(CONTAINER) build --platform linux/amd64 -t localhost/eds-palette:latest $(SVC)/palette
+	$(CONTAINER) build --platform linux/amd64 -t localhost/eds-lightd:latest $(SVC)/lightd
+	$(CONTAINER) build --platform linux/amd64 --build-arg VERSION=$(VERSION) -t localhost/eds-nowplayd:latest -f $(SVC)/nowplaying/Containerfile $(SVC)/nowplaying
 
-# Secret: it holds lightd's broker password and the tenant's log tokens.
-# Read from the tenant's state, which lives in the state store.
-kit-env:
+# One image per archive: a multi-image `podman save` without
+# --multi-image-archive loads back as ONE image under every tag.
+load:
+	$(CONTAINER) save localhost/eds-palette:latest | ssh $(HOST) sudo podman load
+	$(CONTAINER) save localhost/eds-lightd:latest | ssh $(HOST) sudo podman load
+	$(CONTAINER) save localhost/eds-nowplayd:latest | ssh $(HOST) sudo podman load
+
+endif
+
+# Secret: kit.env holds lightd's broker password and the tenant's log tokens,
+# and nowplayd-broker.env holds nowplayd's. Both are read from the tenant's
+# state, which lives in the state store, and neither is committed.
+kit-env: broker-env
 	@umask 077; set -a; . $(INFRA)/.backend.env; set +a; \
 		terraform -chdir=$(INFRA) output -raw kit_env > kit.env
 	@echo "wrote kit.env (secret, gitignored)"
 
+# kit.env carries one login, lightd's. A second service on the same workload
+# names its own beside it.
+broker-env:
+	@umask 077; set -a; . $(INFRA)/.backend.env; set +a; \
+		terraform -chdir=$(INFRA) output -json nowplayd_broker | python3 -c 'import json,sys; a=json.load(sys.stdin); print("NP_MQTT_USERNAME=%s\nNP_MQTT_PASSWORD=%s" % (a["username"], a["password"]))' > nowplayd-broker.env
+	@echo "wrote nowplayd-broker.env (secret, gitignored)"
+
 ship: images
 	$(MAKE) load
-	ssh $(HOST) sudo systemctl restart eds-palette eds-lightd
+	ssh $(HOST) sudo systemctl restart $(SERVICES)
 
 units: kit-env
 	ssh $(HOST) 'sudo install -d -m 0755 /opt/eds && mkdir -p ~/eds-deploy'
-	scp kit.env lightd.env $(INFRA)/deevnet-root-ca.pem eds-palette.service eds-lightd.service $(HOST):eds-deploy/
+	scp kit.env lightd.env nowplayd.env nowplayd-broker.env $(INFRA)/deevnet-root-ca.pem $(UNITS) $(HOST):eds-deploy/
 	ssh $(HOST) 'cd ~/eds-deploy && \
-		sudo install -m 0600 kit.env lightd.env /opt/eds/ && \
+		sudo install -m 0600 kit.env lightd.env nowplayd.env nowplayd-broker.env /opt/eds/ && \
 		sudo install -m 0644 deevnet-root-ca.pem /opt/eds/ && \
-		sudo install -m 0644 eds-palette.service eds-lightd.service /etc/systemd/system/ && \
+		sudo install -m 0644 $(UNITS) /etc/systemd/system/ && \
 		cd && rm -rf ~/eds-deploy && \
-		sudo systemctl daemon-reload && sudo systemctl enable eds-palette eds-lightd && \
-		sudo systemctl restart eds-palette eds-lightd'
+		sudo systemctl daemon-reload && sudo systemctl enable $(SERVICES) && \
+		sudo systemctl restart $(SERVICES)'
 
 deploy: images
 	$(MAKE) load
 	$(MAKE) units
 
-# One image per archive: a two-image `podman save` without
-# --multi-image-archive loads back as ONE image under both tags.
-load:
-	podman save localhost/eds-palette:latest | ssh $(HOST) sudo podman load
-	podman save localhost/eds-lightd:latest | ssh $(HOST) sudo podman load
-
 restart:
-	ssh $(HOST) sudo systemctl restart eds-palette eds-lightd
+	ssh $(HOST) sudo systemctl restart $(SERVICES)
 
 status:
-	ssh $(HOST) systemctl --no-pager status eds-palette eds-lightd
+	ssh $(HOST) systemctl --no-pager status $(SERVICES)
 
 logs:
-	ssh $(HOST) sudo journalctl -f -u eds-palette -u eds-lightd
+	ssh $(HOST) sudo journalctl -f $(addprefix -u ,$(SERVICES))
 
 clean:
-	rm -f kit.env
+	rm -f kit.env nowplayd-broker.env
