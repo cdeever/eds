@@ -17,7 +17,8 @@ set -euo pipefail
 
 INFRA="${INFRA:?set INFRA to the tenant directory}"
 BOOT="${BOOT:-/Volumes/bootfs}"
-SOURCE_ID="${SOURCE_ID:-itunes}"
+# The drivers this card runs. Each is also what it reports as on the bus.
+DRIVERS="${DRIVERS:-itunes,spotify}"
 PI_HOSTNAME="${PI_HOSTNAME:?set PI_HOSTNAME to what the card should call itself}"
 
 if [[ ! -f "$BOOT/eds-agent.txt" ]]; then
@@ -54,17 +55,22 @@ cp "$INFRA/deevnet-root-ca.pem" "$drop/deevnet-root-ca.pem"
 
 # The agent's account, straight from the tenant's state to the card.
 ( set -a; . "$INFRA/.backend.env"; set +a
-  terraform -chdir="$INFRA" output -json ) | SOURCE_ID="$SOURCE_ID" python3 -c '
+  terraform -chdir="$INFRA" output -json ) | DRIVERS="$DRIVERS" python3 -c '
 import json, os, sys
 out = {k: v["value"] for k, v in json.load(sys.stdin).items()}
 for need in ("broker", "np_relay_broker"):
     if need not in out:
         sys.exit("the tenant has no output %r: apply infra/deevnet-tenant-eds first" % need)
-broker, account, source = out["broker"], out["np_relay_broker"], os.environ["SOURCE_ID"]
+broker, account = out["broker"], out["np_relay_broker"]
+drivers = [d.strip() for d in os.environ["DRIVERS"].split(",") if d.strip()]
+unknown = [d for d in drivers if d not in ("itunes", "spotify")]
+if unknown or not drivers:
+    sys.exit("DRIVERS must name itunes, spotify or both; got %r" % os.environ["DRIVERS"])
 
 # The broker drops a publish to a topic that was not granted, and says
 # nothing. Better to refuse here than to boot an agent that reports to no one.
-wanted = ["eds/nowplaying/source/%s/%s" % (source, kind) for kind in ("state", "status", "art")]
+wanted = ["eds/nowplaying/source/%s/%s" % (driver, kind)
+          for driver in drivers for kind in ("state", "status", "art")]
 missing = [t for t in wanted if t not in account["publish"]]
 if missing:
     sys.exit("the relay account was not granted: %s\ngranted: %s" % (missing, account["publish"]))
@@ -75,8 +81,7 @@ print("NP_MQTT_PASSWORD=%s" % account["password"])
 print("NP_MQTT_CA_FILE=/etc/eds/deevnet-root-ca.pem")
 print("NP_MQTT_CLIENT_ID=%s" % account["username"])
 print("NP_TOPIC_PREFIX=eds")
-print("NP_SOURCE_ID=%s" % source)
-print("NP_PLAYER=itunes")
+print("NP_DRIVERS=%s" % ",".join(drivers))
 ' > "$drop/npagent.env"
 
 # macOS leaves its own files beside anything it writes to FAT.

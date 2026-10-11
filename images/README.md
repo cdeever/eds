@@ -50,7 +50,7 @@ flashed, in a folder `eds-agent/`, imported at the next boot and deleted:
 | File | |
 |---|---|
 | `hostname` | what the card calls itself |
-| `npagent.env` | the agent's broker account and source id |
+| `npagent.env` | the agent's broker account, and which drivers it runs |
 | `deevnet-root-ca.pem` | the CA the broker's certificate is verified against |
 | `wifi.conf` | optional: a second network to join |
 
@@ -73,8 +73,9 @@ the running Pi.
 ### On the Pi
 
 ```
-eds-agent-status     each leg, the broker, the player, the agent; non-zero if anything is wrong
+eds-agent-status     each leg, the broker, each driver, the agent; non-zero if anything is wrong
 eds-agent-pair       pair with iTunes, once; prints a code to type in
+eds-agent-spotify    install a Spotify authorization or the devices that count; list the account's devices
 journalctl -u npagent -f
 ```
 

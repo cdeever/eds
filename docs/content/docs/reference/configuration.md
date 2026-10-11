@@ -47,6 +47,7 @@ A value that cannot be used stops the program.
 | `NP_CATALOGUES` | `deezer,itunes,musicbrainz` | where a missing album or cover is looked up, in order; empty switches lookups off |
 | `NP_LOOKUP_TIMEOUT` | `10s` | for one catalogue request |
 | `NP_CONTACT` | this repository's URL | goes in the User-Agent sent to catalogues |
+| `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)). `spotify` on the workload, which is what keeps the stand from following it |
 
 ## lp-stand
 

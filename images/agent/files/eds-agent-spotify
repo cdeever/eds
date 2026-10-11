@@ -1,0 +1,84 @@
+#!/bin/bash
+# eds-agent-spotify - give this Pi's agent what it needs to follow Spotify.
+#
+#   eds-agent-spotify token   < spotify-token.json
+#   eds-agent-spotify devices < a line of device names, separated by commas
+#   eds-agent-spotify list      the account's devices, as Spotify names them
+#   eds-agent-spotify forget
+#
+# Both arrive on standard input, so neither is ever on a command line, and a
+# device called "Someone's PC" needs no quoting on the way here.
+#
+# The authorization itself is made on a machine with a browser (npagent
+# spotify-auth); a Pi has none. The file is then moved here, not copied:
+# Spotify may replace the refresh token on any use, and the copy left behind
+# would be the one that stopped working - or the one that stopped this one.
+set -euo pipefail
+
+if [[ $EUID -ne 0 ]]; then
+    exec sudo "$0" "$@"
+fi
+
+STATE=/var/lib/eds-npagent
+TOKEN="$STATE/spotify-token.json"
+DEVICES=/etc/eds/npagent-spotify.env
+
+case "${1:-}" in
+token)
+    new="$(mktemp "$STATE/.spotify-token.XXXXXX")"
+    trap 'rm -f "$new"' EXIT
+    head -c 8192 > "$new"
+    # Read as data, for the two values that have to be there. Nothing is run.
+    if ! grep -q '"refresh_token": *"[^"]\+"' "$new" || ! grep -q '"client_id": *"[0-9a-f]\+"' "$new"; then
+        echo "That is not an authorization file from npagent spotify-auth." >&2
+        exit 2
+    fi
+    chown npagent:npagent "$new"
+    chmod 0600 "$new"
+    mv "$new" "$TOKEN"
+    trap - EXIT
+    echo "Authorization installed."
+    ;;
+devices)
+    IFS= read -r names || true
+    names="${names%$'\r'}"
+    if [[ -z "${names// /}" ]]; then
+        echo "No device names given." >&2
+        exit 2
+    fi
+    if [[ "$names" =~ [[:cntrl:]] ]]; then
+        echo "A device name with a control character in it is not a device name." >&2
+        exit 2
+    fi
+    # systemd reads this file: inside double quotes, a backslash and a double
+    # quote are the only two characters that mean anything.
+    names="${names//\\/\\\\}"
+    names="${names//\"/\\\"}"
+    umask 027
+    printf 'NP_SPOTIFY_DEVICES="%s"\n' "$names" > "$DEVICES.new"
+    chown root:npagent "$DEVICES.new"
+    mv "$DEVICES.new" "$DEVICES"
+    echo "Devices that count: $names"
+    ;;
+list)
+    # As the agent's own user, against the agent's own file: there is one
+    # holder of this authorization, and this is it.
+    exec runuser -u npagent -- env NP_STATE_DIR="$STATE" \
+        NP_SPOTIFY_DEVICES="$(grep -m1 '^NP_SPOTIFY_DEVICES=' "$DEVICES" 2>/dev/null | cut -d= -f2- | sed 's/^"//; s/"$//')" \
+        /usr/local/bin/npagent spotify-devices
+    ;;
+forget)
+    rm -f "$TOKEN" "$DEVICES"
+    echo "Forgotten here. The app still appears under the account's connected apps at"
+    echo "spotify.com/account/apps until it is removed there."
+    ;;
+*)
+    sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//' >&2
+    exit 2
+    ;;
+esac
+
+if [[ -s "$TOKEN" && -s "$DEVICES" ]] || [[ "${1:-}" == forget ]]; then
+    systemctl restart npagent.service
+    echo "The agent is restarting. Check it with: eds-agent-status"
+fi

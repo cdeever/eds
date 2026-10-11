@@ -155,6 +155,7 @@
         - {src: eds-agent-import, dest: /usr/local/sbin/eds-agent-import}
         - {src: eds-agent-pair, dest: /usr/local/bin/eds-agent-pair}
         - {src: eds-agent-status, dest: /usr/local/bin/eds-agent-status}
+        - {src: eds-agent-spotify, dest: /usr/local/bin/eds-agent-spotify}
 
     - name: Install units and configuration
       ansible.builtin.copy:

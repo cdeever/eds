@@ -268,6 +268,39 @@ func TestAReplacedRefreshTokenIsWrittenBack(t *testing.T) {
 	}
 }
 
+// Two runs of the agent can hold one authorization: the service, and a person
+// listing the account's devices. Whichever refreshes second must use what the
+// first was given, not what it read when it started.
+func TestATokenReplacedByAnotherRunIsPickedUp(t *testing.T) {
+	s := &tokens{body: `{"access_token":"AT","expires_in":3600}`}
+	src, path, _ := source(t, s)
+
+	other := src.Token()
+	other.RefreshToken = "RT-from-the-other-run"
+	if err := Save(path, other); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := src.Access(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.forms[0].Get("refresh_token"); got != "RT-from-the-other-run" {
+		t.Fatalf("refreshed with %q, which Spotify would have refused", got)
+	}
+
+	// A file for some other app is not this authorization, and is left alone.
+	stranger := other
+	stranger.ClientID, stranger.RefreshToken = "another-app", "RT-stranger"
+	if err := Save(path, stranger); err != nil {
+		t.Fatal(err)
+	}
+	src.Invalidate()
+	_, _ = src.Access(context.Background())
+	if got := s.forms[1].Get("refresh_token"); got != "RT-from-the-other-run" {
+		t.Fatalf("refreshed with %q", got)
+	}
+}
+
 func TestWithNoReplacementTheOldRefreshTokenStands(t *testing.T) {
 	s := &tokens{body: `{"access_token":"AT","expires_in":3600}`}
 	src, path, _ := source(t, s)
@@ -285,5 +318,66 @@ func TestInvalidateForcesARefresh(t *testing.T) {
 	_, _ = src.Access(context.Background())
 	if len(s.forms) != 2 {
 		t.Errorf("refreshed %d times, want 2", len(s.forms))
+	}
+}
+
+// --- the callback ---------------------------------------------------------------
+
+func callback(t *testing.T, handler http.Handler, target string) *httptest.ResponseRecorder {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+	return rec
+}
+
+func TestACallbackWithTheWrongStateIsRefusedAndChangesNothing(t *testing.T) {
+	done := make(chan Callback, 4)
+	h := CallbackHandler("the-state", done)
+
+	for _, target := range []string{
+		"/callback?code=stolen&state=another-state",
+		"/callback?code=stolen",
+		"/callback?error=access_denied&state=another-state",
+		"/elsewhere?code=stolen&state=the-state",
+	} {
+		if rec := callback(t, h, target); rec.Code < 400 {
+			t.Fatalf("%s was answered %d", target, rec.Code)
+		}
+	}
+	if len(done) != 0 {
+		t.Fatalf("a refused request ended the wait: %+v", <-done)
+	}
+
+	// And the real one still works afterwards.
+	if rec := callback(t, h, "/callback?code=the-code&state=the-state"); rec.Code != http.StatusOK {
+		t.Fatalf("the real callback was answered %d", rec.Code)
+	}
+	if got := <-done; got.Code != "the-code" || got.Err != nil {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestACallbackIsAnsweredOnce(t *testing.T) {
+	done := make(chan Callback, 4)
+	h := CallbackHandler("the-state", done)
+	callback(t, h, "/callback?code=first&state=the-state")
+	if rec := callback(t, h, "/callback?code=second&state=the-state"); rec.Code < 400 {
+		t.Fatalf("a second answer was accepted: %d", rec.Code)
+	}
+	if got := <-done; got.Code != "first" || len(done) != 0 {
+		t.Fatalf("got %+v with %d more waiting", got, len(done))
+	}
+}
+
+func TestARefusalInTheBrowserIsReported(t *testing.T) {
+	done := make(chan Callback, 1)
+	rec := callback(t, CallbackHandler("the-state", done), "/callback?error=access_denied&state=the-state")
+	got := <-done
+	if got.Err == nil || got.Code != "" || !strings.Contains(got.Err.Error(), "access_denied") {
+		t.Fatalf("got %+v", got)
+	}
+	// What the request said is not written into the page.
+	if strings.Contains(rec.Body.String(), "access_denied") {
+		t.Fatalf("the page repeats the request: %q", rec.Body.String())
 	}
 }

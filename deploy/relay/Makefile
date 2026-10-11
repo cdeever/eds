@@ -21,7 +21,7 @@ NP    := $(REPO)/services/nowplaying
 # Where the flashed card's boot partition is mounted. macOS names it bootfs.
 BOOT ?= /Volumes/bootfs
 
-.PHONY: help image fetch card status pair logs
+.PHONY: help image fetch card push spotify status pair logs
 
 help:
 	@echo "relay - the now-playing agent on $(PI)"
@@ -29,8 +29,10 @@ help:
 	@echo "  image   cross-compile the agent and build the image on the Builder"
 	@echo "  fetch   copy the built image here, and check its checksum"
 	@echo "  card    write this card's settings to its boot partition (BOOT=$(BOOT))"
+	@echo "  push    update the agent, its unit and its tools on the running Pi"
 	@echo "  status  eds-agent-status on the Pi"
 	@echo "  pair    pair the agent with iTunes; prints a code to type in"
+	@echo "  spotify authorize the agent for Spotify in a browser here, and hand it to the Pi"
 	@echo "  logs    follow the agent on the Pi"
 	@echo
 	@echo "In order, for a new card: image, fetch, flash it, card, boot it, status, pair."
@@ -52,6 +54,17 @@ fetch:
 # Interactive: it asks for the home Wi-Fi key. Nothing it writes is kept here.
 card:
 	@INFRA="$(INFRA)" BOOT="$(BOOT)" PI_HOSTNAME="$(firstword $(subst ., ,$(PI)))" ./card.sh
+
+# No reflash: the same files the image is built from, onto the Pi as it runs.
+push:
+	$(MAKE) -C $(NP) build-arm64
+	@BUILDER="$(BUILDER)" PI="$(PI)" REPO="$(REPO)" ./push.sh
+
+# Interactive: a browser opens for Agree to be clicked. AGAIN=1 authorizes
+# afresh when the Pi already holds one.
+spotify:
+	$(MAKE) -C $(NP) build
+	@BUILDER="$(BUILDER)" PI="$(PI)" NPAGENT="$(NP)/bin/npagent" AGAIN="$(AGAIN)" ./spotify.sh
 
 # The Pi is reached through the Builder, as the site's automation reaches it:
 # it admits SSH on its wired side only, to the automation user.

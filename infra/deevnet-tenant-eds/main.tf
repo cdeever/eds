@@ -215,6 +215,11 @@ resource "deevnet_iot_broker_account" "np_relay" {
     "nowplaying/source/itunes/state",
     "nowplaying/source/itunes/status",
     "nowplaying/source/itunes/art",
+    # Spotify is reported without a cover (ADR-0016); the art topic is granted
+    # so that changing that decision is not also a change to this account.
+    "nowplaying/source/spotify/state",
+    "nowplaying/source/spotify/status",
+    "nowplaying/source/spotify/art",
   ]
   subscribe = []
 }

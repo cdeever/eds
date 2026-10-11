@@ -35,10 +35,39 @@ Eject the card, put it in `dv02rpi002p01`, connect its Ethernet to the IoT
 segment, power it on, and give it a minute.
 
 ```bash
-make status    # every check should say ok, except "not paired"
+make status    # every check should say ok; a driver not yet set up is noted
 make pair      # prints a four-digit code; type it into iTunes
+make spotify   # a browser opens here for Agree; the authorization goes to the Pi
 make status    # now all of it
 make logs      # the agent, as it publishes
+```
+
+## Spotify
+
+`make spotify` needs `spotify.conf` in this directory, which it writes a
+template of the first time and which is **not committed**:
+
+```
+SPOTIFY_CLIENT_ID=<the Client ID of the app at developer.spotify.com>
+SPOTIFY_DEVICES=<the devices that count, as Spotify names them, with commas>
+```
+
+The app must be owned by an account with Premium, use the Web API, and have
+the redirect URI `http://127.0.0.1:8898/callback` exactly. Its client secret
+is not used.
+
+The authorization is made here, where there is a browser, and **moved** to
+the Pi: Spotify may replace the token whenever it is used, so there can be
+one holder. With no devices named yet, the Pi prints the account's devices
+(Spotify lists only those with Spotify open); name the ones in the room and
+run it again. `make spotify AGAIN=1` authorizes afresh, which is needed every
+six months.
+
+## Changing a Pi in service
+
+```bash
+make push      # the agent, its unit and its tools, onto the running Pi
+make image fetch   # afterwards, so the next card flashed is not older than the Pi
 ```
 
 ## Nothing secret is in the image

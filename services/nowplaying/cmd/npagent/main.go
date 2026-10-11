@@ -1,13 +1,16 @@
 // Command npagent runs now-playing drivers.
 //
-// One driver exists so far, for iTunes and the Music app (ADR-0011). It pairs
-// with the player the way a phone remote does and reports each change the
-// player pushes.
+// There are two. The one for iTunes and the Music app (ADR-0011) pairs with
+// the player the way a phone remote does and reports each change the player
+// pushes. The one for Spotify (ADR-0012) asks Spotify's servers what an
+// account is playing. NP_DRIVERS chooses which run.
 //
-//	npagent pair     advertise as a remote and wait for the code to be typed
-//	npagent run      follow the player and publish to the bus
-//	npagent watch    follow the player and print, publishing nothing
-//	npagent forget   discard the stored pairing
+//	npagent run              follow the players and publish to the bus
+//	npagent watch            follow the players and print, publishing nothing
+//	npagent pair             iTunes: advertise as a remote and wait for the code
+//	npagent forget           iTunes: discard the stored pairing
+//	npagent spotify-auth     Spotify: authorize in a browser, once
+//	npagent spotify-devices  Spotify: list the account's devices by name
 package main
 
 import (
@@ -33,11 +36,9 @@ import (
 	"log/slog"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
-	"github.com/cdeever/eds/services/nowplaying/internal/config"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/dacp"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver"
-	"github.com/cdeever/eds/services/nowplaying/internal/driver/itunes"
 )
 
 func main() {
@@ -59,12 +60,19 @@ func main() {
 		err = watch(ctx)
 	case "forget":
 		err = forget()
+	case "spotify-auth":
+		err = spotifyAuth(ctx)
+	case "spotify-devices":
+		err = spotifyDevices(ctx)
 	default:
 		usage()
 		os.Exit(2)
 	}
 	if err != nil && !errors.Is(err, context.Canceled) {
 		fmt.Fprintln(os.Stderr, "npagent:", err)
+		if errors.Is(err, errNothingRunning) {
+			os.Exit(exitNotConfigured)
+		}
 		os.Exit(1)
 	}
 }
@@ -72,20 +80,32 @@ func main() {
 func usage() {
 	fmt.Fprintln(os.Stderr, `usage: npagent <command>
 
-  pair     advertise as a remote and wait for its code to be typed into iTunes
-  run      follow the player and publish what it does to the bus
-  watch    follow the player and print what it does, publishing nothing
-  forget   discard the stored pairing
+  run              follow the players and publish what they do to the bus
+  watch            follow the players and print what they do, publishing nothing
+
+  pair             iTunes: advertise as a remote and wait for its code to be typed
+  forget           iTunes: discard the stored pairing
+  spotify-auth     Spotify: authorize in a browser on this machine, once
+  spotify-devices  Spotify: list the account's devices, to choose which count
 
 Settings, from the environment:
-  NP_STATE_DIR    where the pairing is kept (default: the user config directory)
+  NP_DRIVERS      which drivers run: itunes, spotify, or both (default: itunes)
+  NP_STATE_DIR    where the pairing and the authorization are kept
+                  (default: the user config directory)
+  NP_MQTT_*, NP_TOPIC_PREFIX   the broker, as for nowplayd
+
+ iTunes
   NP_REMOTE_NAME  the name iTunes shows while pairing (default: EdS)
   NP_ITUNES_HOST  the player's address, to skip what pairing recorded
   NP_ITUNES_PORT  the player's port (default 3689)
   NP_PAIR_PORT    the port the player calls back to while pairing (default: any)
-  NP_SOURCE_ID    what this deployment is called on the bus (default: itunes)
+  NP_SOURCE_ID    what the iTunes driver is called on the bus (default: itunes)
   NP_PLAYER       itunes or music (default: itunes)
-  NP_MQTT_*, NP_TOPIC_PREFIX   the broker, as for nowplayd`)
+
+ Spotify
+  NP_SPOTIFY_DEVICES    the devices whose playback counts, by name, with commas
+  NP_SPOTIFY_INTERVAL   how often Spotify is asked (default 10s, at least 5s)
+  NP_SPOTIFY_CLIENT_ID  the app's client id; needed by spotify-auth only`)
 }
 
 // --- state -------------------------------------------------------------------
@@ -428,65 +448,9 @@ func (s *busSink) Publish(u driver.Update) {
 	s.logger.Info("published", attrs...)
 }
 
-func run(ctx context.Context) error {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-
-	p, err := player()
-	if err != nil {
-		return err
-	}
-
-	source := config.Str("NP_SOURCE_ID", "itunes")
-	if !contract.ValidSourceID(source) {
-		return fmt.Errorf("NP_SOURCE_ID=%q cannot name a source: lowercase letters, digits and hyphens", source)
-	}
-	kind := config.Str("NP_PLAYER", "itunes")
-	if kind != "itunes" && kind != "music" {
-		return fmt.Errorf("NP_PLAYER=%q: itunes or music", kind)
-	}
-
-	common, err := config.LoadCommon("eds-npagent-" + source)
-	if err != nil {
-		return err
-	}
-
-	sink := &busSink{prefix: common.Prefix, source: source, logger: logger}
-
-	cfg := common.Broker
-	// Presence is the driver's to announce, so nothing is announced for it
-	// automatically; the will covers the case where it cannot speak.
-	cfg.WillTopic = contract.SourceStatusTopic(common.Prefix, source)
-	cfg.OnConnect = sink.announce
-
-	client, err := bus.Connect(cfg, nil, nil)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	sink.bus = client
-
-	logger.Info("connected to broker", "url", cfg.URL,
-		"state", contract.SourceStateTopic(common.Prefix, source), "player", fmt.Sprintf("%s:%d", p.Host, p.Port))
-
-	driver := &itunes.Driver{
-		Source: source,
-		Kind:   kind,
-		GUID:   p.GUID,
-		Player: dacp.NewClient(p.Host, p.Port),
-		Sink:   sink,
-		Logger: logger,
-	}
-	err = driver.Run(ctx)
-	if errors.Is(err, context.Canceled) {
-		logger.Info("shutting down")
-		return nil
-	}
-	return err
-}
-
 // --- watch -------------------------------------------------------------------
 
-func watch(ctx context.Context) error {
+func watchITunes(ctx context.Context) error {
 	p, err := player()
 	if err != nil {
 		return err

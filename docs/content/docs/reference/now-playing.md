@@ -80,6 +80,15 @@ The exception is honest rather than hidden: when no catalogue has the album or
 the cover, `current` is published **without** it. A track with no cover is
 still the track that is playing.
 
+**A source can be reported without its cover on purpose**
+([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
+Spotify is. While it is current, `current` names the track with no `art`,
+nothing is published to `current/art`, and that topic keeps the last cover it
+held, which belongs to an earlier track. A subscriber that wants the cover of
+the track that is playing must find `art` in `current` and match its
+`sha256`; one that only follows `current/art`, as the stand does, is not
+moved by Spotify at all.
+
 When no source is reporting at all, `current` is
 `{"v":1,"state":"stopped","changed_at":"…"}`, with no `source` and no `track`.
 

@@ -10,6 +10,7 @@ weight: 8
 | **Status** | {{< adr-status "Accepted" >}} |
 | **Date** | 2026-10-10 |
 | **Scope** | What turns several sources' states into one current track, and who is responsible for the fields subscribers rely on. |
+| **Extended by** | [ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/): a source can be named as reported without its cover, and then the promise of art does not apply to it |
 | **Related** | [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), [ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/) |
 
 ---

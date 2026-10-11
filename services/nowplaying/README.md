@@ -38,6 +38,8 @@ The design, and what was turned down, is recorded:
 | the agent Pi | running as a relay on `dv02rpi002p01`: paired with iTunes on the home LAN and publishing to the real broker ([`images`](../../images), [`deploy/relay`](../../deploy/relay)) |
 | broker accounts | declared and checked against the real broker (`eds-nowplayd`, `eds-np-relay`) |
 | `nowplayd` on the workload | deployed ([`deploy`](../../deploy)). An album change in iTunes reaches the stand in about a second |
+| `spotifyauth`, `driver/spotify` | unit-tested against a stand-in for Spotify. Authorized against the real account on 2026-10-11; **not yet seen reporting a track**: Spotify refused every request because the app's owner had no Premium subscription ([CHG-0004](../../docs/content/docs/changes/2026/0004-spotify-on-the-agent-pi.md)) |
+| the agent with two drivers | running on the Pi: each driver has its own connection and presence, and iTunes reports while Spotify is not set up |
 
 ## The iTunes driver
 
@@ -64,6 +66,44 @@ player's own library.
   sleeping PC is told from a quiet evening.
 - A player that no longer knows the pairing is not retried: someone has to
   pair again.
+
+## The Spotify driver
+
+Spotify has nothing local to pair with. The driver asks Spotify's servers what
+the account is playing, every ten seconds
+([ADR-0012](../../docs/content/docs/architecture/decisions/0012-spotify-by-web-api.md)).
+
+```bash
+NP_SPOTIFY_CLIENT_ID=… bin/npagent spotify-auth   # a browser opens; click Agree, once
+bin/npagent spotify-devices                       # the account's devices, by name
+NP_DRIVERS=spotify NP_SPOTIFY_DEVICES="Study PC" bin/npagent watch
+```
+
+- **It asks to read playback and nothing else**, by PKCE, so the app's secret
+  is never used. The app's redirect URI must be exactly
+  `http://127.0.0.1:8898/callback`.
+- **Only named devices count.** Playback anywhere else on the account is
+  reported as `stopped`. So are advertisements, podcast episodes, and
+  anything in a private session.
+- **It never asks for a picture.** Spotify is reported without its cover, and
+  the stand does not follow it
+  ([ADR-0016](../../docs/content/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover.md)).
+- **The authorization has one holder.** Spotify may replace the refresh token
+  whenever it is used, and the old one stops working. Authorize on a desk,
+  then move the file to where the driver runs; `deploy/relay` does this.
+- **It ends after six months** whatever is done with it. The driver warns
+  from two weeks before, and when it ends reports itself offline and stops.
+- **The app's owner needs Premium.** Without it Spotify answers `403` and
+  says why; the driver reports itself offline and asks again every five
+  minutes.
+
+## More than one driver
+
+`NP_DRIVERS=itunes,spotify` runs both in one agent. Each has its own
+connection to the broker, because a connection has one last will and each
+driver's presence is its own. A driver that is missing what it needs - a
+pairing, an authorization - is reported offline and the other runs. With
+nothing able to run the agent exits 78, which its unit does not restart.
 
 Settings are in `npagent`'s usage text (`bin/npagent`).
 
@@ -153,6 +193,7 @@ be used stops the program.
 | `NP_CATALOGUES` | `deezer,itunes,musicbrainz` | where to look, in order; empty switches lookups off |
 | `NP_LOOKUP_TIMEOUT` | `10s` | for one catalogue request; 1s to 1m |
 | `NP_CONTACT` | this repository's URL | goes in the User-Agent; catalogues require a way to reach the caller |
+| `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](../../docs/content/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover.md)). `spotify` on the workload, which is what keeps the stand from following it |
 
 ## Things worth knowing
 

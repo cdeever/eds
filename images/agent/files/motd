@@ -8,7 +8,8 @@
   Settings arrive on the card's boot partition, in eds-agent/, and are
   imported and removed at boot:   journalctl -u eds-agent-import
 
-    eds-agent-status     each leg, the broker, the player, the agent
+    eds-agent-status     each leg, the broker, each driver, the agent
     eds-agent-pair       pair with iTunes (once; prints a code to type in)
+    eds-agent-spotify    Spotify: the authorization, and the devices that count
     journalctl -u npagent -f
 

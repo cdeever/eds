@@ -47,15 +47,52 @@ else
     [[ -s /etc/eds/deevnet-root-ca.pem ]] && ok "broker CA present" || fail "broker CA missing"
 fi
 
-echo "Player"
-pairing=/var/lib/eds-npagent/itunes-pairing.json
-if sudo test -s "$pairing"; then
-    phost="$(sudo grep -o '"host": *"[^"]*"' "$pairing" | cut -d'"' -f4)"
-    ok "paired with $phost"
-    if timeout 5 bash -c "</dev/tcp/$phost/3689" 2>/dev/null; then ok "$phost:3689 reachable"; else fail "$phost:3689 not reachable"; fi
-else
-    fail "not paired: run eds-agent-pair"
+# A driver that was never set up is noted, not failed: a card may be here for
+# one player only. One that was set up and is not working is a failure.
+drivers="$(env_value NP_DRIVERS)"; drivers="${drivers:-itunes,spotify}"
+configured=0
+
+if [[ ",$drivers," == *",itunes,"* ]]; then
+    echo "iTunes"
+    pairing=/var/lib/eds-npagent/itunes-pairing.json
+    if sudo test -s "$pairing"; then
+        configured=1
+        phost="$(sudo grep -o '"host": *"[^"]*"' "$pairing" | cut -d'"' -f4)"
+        ok "paired with $phost"
+        if timeout 5 bash -c "</dev/tcp/$phost/3689" 2>/dev/null; then ok "$phost:3689 reachable"; else fail "$phost:3689 not reachable"; fi
+    else
+        note "not paired: eds-agent-pair"
+    fi
 fi
+
+if [[ ",$drivers," == *",spotify,"* ]]; then
+    echo "Spotify"
+    token=/var/lib/eds-npagent/spotify-token.json
+    if sudo test -s "$token"; then
+        configured=1
+        # The date only. Nothing else in that file is for showing.
+        granted="$(sudo grep -o '"authorized_at": *"[^"]*"' "$token" | cut -d'"' -f4 | cut -c1-10)"
+        ends="$(date -u -d "$granted + 180 days" +%Y-%m-%d 2>/dev/null)"
+        left=$(( ( $(date -u -d "$ends" +%s 2>/dev/null || echo 0) - $(date -u +%s) ) / 86400 ))
+        if (( left < 0 )); then fail "authorization ended $ends: authorize again (make spotify, on the desk)"
+        elif (( left < 14 )); then ok "authorized until $ends - $left days left: authorize again soon"
+        else ok "authorized until $ends"; fi
+
+        if sudo test -s /etc/eds/npagent-spotify.env; then
+            ok "devices that count: $(sudo grep -m1 '^NP_SPOTIFY_DEVICES=' /etc/eds/npagent-spotify.env | cut -d= -f2-)"
+        else
+            fail "no devices named, so no playback counts"
+        fi
+        if timeout 5 bash -c "</dev/tcp/api.spotify.com/443" 2>/dev/null; then ok "api.spotify.com:443 reachable"; else fail "api.spotify.com:443 not reachable"; fi
+        # Spotify refusing is not something a port check shows.
+        refused="$(sudo journalctl -u npagent -b --no-pager -o cat 2>/dev/null | grep 'driver=spotify' | tail -1 | grep -o 'spotify answered[^"]*' | cut -c1-110)"
+        [[ -n "$refused" ]] && fail "$refused"
+    else
+        note "not authorized: make spotify, on the desk"
+    fi
+fi
+
+(( configured )) || fail "no driver is set up"
 
 echo "Agent"
 if systemctl is-active --quiet npagent; then ok "npagent is running"; else fail "npagent is $(systemctl is-active npagent)"; fi
