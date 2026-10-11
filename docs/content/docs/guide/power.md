@@ -47,6 +47,41 @@ ESP32.
 
 ## Wiring
 
+One 5 V supply runs both the strip and the board:
+
+```
+5 V supply (+) ──┬── strip +5V
+                 └──▶|── ESP32 5V / VIN pin
+                    1N5817, stripe towards the board
+
+5 V supply (−) ──┬── strip GND
+                 └── ESP32 GND pin
+
+ESP32 GPIO 18 ──[330–470 Ω]── strip DIN
+```
+
+**Data is GPIO 18.** That is `LP_LED_GPIO`, whose default is 18; it is changed
+in `menuconfig` under Strip → Data GPIO. It is the only GPIO the strip needs:
+a WS2812 has no clock line.
+
+Branch at the supply or at the strip's input, so the strip's current does not
+pass through the board. The board takes its 5 V on the pin labelled 5V, VIN or
+VBUS, which feeds the onboard regulator. **Never the 3V3 pin.**
+
+For the stand's 18 LEDs the worst case is 18 × 61 mA, about 1.1 A, plus the
+board: a **5 V 2 A** supply covers it with room to spare.
+
+**The diode is for reflashing in place.** With USB plugged in and the supply
+off, the strip would otherwise draw from the USB port, backwards through the
+board's 5 V pin. The diode lets current into the board and none out, so USB
+powers the board alone. Use a Schottky (1N5817 to 1N5819): it drops about
+0.3 V, which still leaves the regulator enough. A 1N4001 drops too much.
+
+It does not protect the other direction. What keeps the supply out of the USB
+port is the devkit's own diode between the port and the 5 V pin, which most
+have. On a board without one, lift the wire from the 5 V pin before plugging
+USB in and leave ground attached.
+
 - **330–470 Ω in series on the data line**, at the ESP32 end.
 - **1000 µF across 5 V and ground** at the strip input, to absorb the inrush
   when many LEDs switch at once.
