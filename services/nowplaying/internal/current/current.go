@@ -57,10 +57,21 @@ func NewImage(data []byte) *Image {
 type Publisher struct {
 	Bus      Bus
 	Resolver Resolver // nil: never look anything up
-	Prefix   string
-	Timeout  time.Duration // for one catalogue lookup
-	Logger   *slog.Logger
-	Now      func() time.Time
+
+	// Coverless names sources whose tracks are published without a cover:
+	// none taken from the source, and none looked up. The track is still the
+	// current track, and says so; it simply has no picture (ADR-0016).
+	//
+	// It is how a source is reported without lighting the stand. lightd
+	// reacts to a cover arriving and to nothing else, so a current track with
+	// no cover leaves the room as it was. The lookup is refused as well as
+	// the source's own image, because a catalogue's cover would light the
+	// room just the same.
+	Coverless map[string]bool
+	Prefix    string
+	Timeout   time.Duration // for one catalogue lookup
+	Logger    *slog.Logger
+	Now       func() time.Time
 
 	// What was last put on the bus, so nothing is published twice. Retained
 	// messages mean a subscriber that reconnects gets the same cover again
@@ -123,6 +134,10 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 	}
 	track := *winner.Track
 	out.Track = &track
+
+	if p.Coverless[winner.Source] {
+		return out, nil
+	}
 
 	// The player's own cover is the right cover, and nothing is looked up
 	// when it is there. It counts only if it is the one this state names: a

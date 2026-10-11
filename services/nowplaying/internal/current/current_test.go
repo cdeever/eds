@@ -364,3 +364,120 @@ func TestNewImage(t *testing.T) {
 		t.Errorf("jpeg = %+v", j)
 	}
 }
+
+// --- sources reported without a cover (ADR-0016) -------------------------------
+
+func coverless(bus *fakeBus, r Resolver, sources ...string) *Publisher {
+	p := publisher(bus, r)
+	p.Coverless = map[string]bool{}
+	for _, s := range sources {
+		p.Coverless[s] = true
+	}
+	return p
+}
+
+func from(source, title, album string) *contract.State {
+	st := playing(title, album)
+	st.Source, st.Player = source, source
+	return st
+}
+
+// The track is reported, truthfully and in full, and nothing is published
+// that could light a room: no cover from the source, none from a catalogue.
+func TestACoverlessSourceIsReportedWithNoPicture(t *testing.T) {
+	bus := &fakeBus{}
+	res := &fakeResolver{result: resolve.Result{Album: "X", Cover: &resolve.Cover{Image: jpeg, From: "deezer"}}}
+	p := coverless(bus, res, "spotify")
+
+	// Even if the source sent a cover, and names it.
+	own := NewImage(pngA)
+	st := from("spotify", "So What", "Kind of Blue")
+	st.Art = &contract.Art{SHA256: own.SHA256}
+
+	out, sent, err := p.Publish(context.Background(), st, own)
+	if err != nil || !sent {
+		t.Fatalf("sent=%v err=%v", sent, err)
+	}
+
+	got := bus.take()
+	if len(got) != 1 || got[0].topic != "eds/nowplaying/current" {
+		t.Fatalf("published %d messages; something went to the cover topic", len(got))
+	}
+	state := decode(t, got[0])
+	if state.Art != nil || out.Art != nil {
+		t.Errorf("the state names a cover: %+v", state.Art)
+	}
+	if state.Source != "spotify" || state.Track.Title != "So What" || state.Track.Album != "Kind of Blue" || state.State != contract.Playing {
+		t.Errorf("the track was not reported in full: %+v %+v", state, state.Track)
+	}
+	if len(res.asked) != 0 {
+		t.Error("a catalogue was asked about a coverless source")
+	}
+}
+
+// The sequence that matters in the room: iTunes, then Spotify, then iTunes on
+// another album. The cover topic sees the first and the third and nothing in
+// between, so a stand that follows it holds through Spotify.
+func TestTheCoverTopicHoldsThroughACoverlessSource(t *testing.T) {
+	bus := &fakeBus{}
+	p := coverless(bus, &fakeResolver{err: resolve.ErrNotFound}, "spotify")
+
+	first := NewImage(pngA)
+	a := from("itunes", "One", "First Album")
+	a.Art = &contract.Art{SHA256: first.SHA256}
+	_, _, _ = p.Publish(context.Background(), a, first)
+
+	_, _, _ = p.Publish(context.Background(), from("spotify", "Two", "Other"), nil)
+
+	second := NewImage(pngB)
+	c := from("itunes", "Three", "Second Album")
+	c.Art = &contract.Art{SHA256: second.SHA256}
+	_, _, _ = p.Publish(context.Background(), c, second)
+
+	var covers, states []string
+	for _, m := range bus.take() {
+		if m.topic == "eds/nowplaying/current/art" {
+			covers = append(covers, string(m.payload))
+		} else {
+			states = append(states, decode(t, m).Track.Title)
+		}
+	}
+	if len(covers) != 2 || covers[0] != string(pngA) || covers[1] != string(pngB) {
+		t.Errorf("the cover topic saw %d covers, want exactly the two iTunes ones", len(covers))
+	}
+	if len(states) != 3 || states[1] != "Two" {
+		t.Errorf("current was %v, want all three tracks reported", states)
+	}
+}
+
+// Going back to the same iTunes album after Spotify: its cover is still the
+// one on the topic, so it is not sent again and the room is not repainted.
+func TestReturningToTheSameAlbumAfterACoverlessSourceDoesNotRepaint(t *testing.T) {
+	bus := &fakeBus{}
+	p := coverless(bus, nil, "spotify")
+
+	cover := NewImage(pngA)
+	a := from("itunes", "One", "Album")
+	a.Art = &contract.Art{SHA256: cover.SHA256}
+	_, _, _ = p.Publish(context.Background(), a, cover)
+	_, _, _ = p.Publish(context.Background(), from("spotify", "Two", "Other"), nil)
+	bus.take()
+
+	b := from("itunes", "One", "Album")
+	b.Art = &contract.Art{SHA256: cover.SHA256}
+	_, _, _ = p.Publish(context.Background(), b, cover)
+
+	got := bus.take()
+	if len(got) != 1 || got[0].topic != "eds/nowplaying/current" {
+		t.Errorf("published %d messages; the same cover was sent again", len(got))
+	}
+}
+
+func TestOtherSourcesAreUnaffectedByTheList(t *testing.T) {
+	bus := &fakeBus{}
+	res := &fakeResolver{result: resolve.Result{Cover: &resolve.Cover{Image: jpeg, From: "deezer"}}}
+	_, _, _ = coverless(bus, res, "spotify").Publish(context.Background(), from("tidal", "One", "Album"), nil)
+	if got := bus.take(); len(got) != 2 {
+		t.Errorf("published %d messages for a source not on the list, want cover and state", len(got))
+	}
+}

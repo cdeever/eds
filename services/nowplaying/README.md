@@ -25,7 +25,7 @@ The design, and what was turned down, is recorded:
 
 ## Status
 
-**The iTunes driver is deployed and reporting. nowplayd is built and tested, and not yet deployed.**
+**Deployed end to end for iTunes: the agent on its Pi, nowplayd on the workload, and the stand following the cover.**
 
 | | |
 |---|---|
@@ -37,7 +37,7 @@ The design, and what was turned down, is recorded:
 | `npagent` | paired with iTunes 12.13.10.3 on Windows and run end to end on a development broker: iTunes → driver → nowplayd → lightd → scene ([ADR-0011](../../docs/content/docs/architecture/decisions/0011-itunes-by-remote-pairing.md)) |
 | the agent Pi | running as a relay on `dv02rpi002p01`: paired with iTunes on the home LAN and publishing to the real broker ([`images`](../../images), [`deploy/relay`](../../deploy/relay)) |
 | broker accounts | declared and checked against the real broker (`eds-nowplayd`, `eds-np-relay`) |
-| `nowplayd` on the workload | not deployed. Until it is, nothing acts on what a driver reports |
+| `nowplayd` on the workload | deployed ([`deploy`](../../deploy)). An album change in iTunes reaches the stand in about a second |
 
 ## The iTunes driver
 
@@ -131,6 +131,10 @@ whichever driver reported it.
   than withheld.
 - The cover is published **before** the state that names it, and never twice
   running: the next track on the same album does not repaint the room.
+- A source's state and its cover are two messages, and a broker handing over
+  retained messages promises no order. A state that names a cover nowplayd
+  does not yet hold is **held for up to two seconds** for it, rather than
+  completed from a catalogue and then corrected.
 
 ## Configuration
 
