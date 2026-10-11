@@ -86,4 +86,4 @@ and incidents under the same names. To keep the two apart:
 | [0015](0015-eds-builds-its-own-pi-images/) | 2026-10-10 | EdS builds its own Pi images, on the substrate's base; a relay is an agent Pi with a second leg | {{< adr-status "Accepted" >}} |
 | [0016](0016-a-source-can-be-reported-without-its-cover/) | 2026-10-11 | A source can be reported without its cover, and Spotify is: known, and not lit | {{< adr-status "Accepted" >}} |
 | [0017](0017-an-agent-pi-is-a-registered-device/) | 2026-10-11 | An agent Pi is a registered device, and reports its events like one | {{< adr-status "Accepted" >}} |
-| [0018](0018-a-console-of-eds-own/) | 2026-10-11 | EdS has a console of its own, fed from the bus, and it only looks | {{< adr-status "Proposed" >}} |
+| [0018](0018-a-console-of-eds-own/) | 2026-10-11 | EdS has a console of its own, fed from the bus, and it only looks | {{< adr-status "Accepted" >}} |

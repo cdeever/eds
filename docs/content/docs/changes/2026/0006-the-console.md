@@ -9,7 +9,7 @@ weight: 6
 |---|---|
 | **Date** | 2026-10-11 |
 | **Change type** | Deployment |
-| **Status** | {{< status-badge "active" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-11 |
 | **Systems** | the `eds` tenant: a new broker account and a DNS name; the `services` workload: a new `eds-console`, and its firewall |
 | **How** | `terraform apply`; `make -C deploy deploy WHERE=builder` |
 | **Risk** | Low. Nothing existing is changed except by being restarted. Most likely to go wrong: the console unable to bind port 80 as a user who is not root |
@@ -87,8 +87,8 @@ Builds four images on the Builder, loads them, writes the settings, opens
 
 ## Outcome
 
-**Not complete**: it is running and has been checked from the desk. It has
-not yet been looked at by a person in a browser, with a track changing.
+Complete. It ran and was checked from the desk on the day; its owner then
+watched it in a browser with tracks changing, which was the last check.
 
 | When (UTC) | Step | What happened |
 |---|---|---|
@@ -106,13 +106,13 @@ not yet been looked at by a person in a browser, with a track changing.
 
 ## Follow-ups
 
-- [ ] A person looks at it, and changes the track while it is open
+- [x] A person looks at it, and changes the track while it is open
   ([ADR-0018](/docs/architecture/decisions/0018-a-console-of-eds-own/),
-  *What would settle it*).
-- [ ] The stand plugged back in, to see it go from offline to drawn.
+  *What would settle it*). Done 2026-10-11.
+- [x] The stand plugged back in, to see it go from offline to drawn: it is
+  back on the network and shown online.
 - [ ] Covers are sent to the browser at the size the player gave them.
 - [ ] Recently played starts empty at each restart. It could be filled from
   the log store, which has the history.
-- [ ] The stand's firmware reports its palette in `scene.applied` as of
-  [CHG-0005](/docs/changes/2026/0005-the-agent-reports-its-events/)'s day, and
-  has not been flashed with it.
+- [x] The stand's firmware reports its palette in `scene.applied`: flashed in
+  [CHG-0008](/docs/changes/2026/0008-the-stand-reports-its-colours/).

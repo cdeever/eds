@@ -120,8 +120,8 @@ against the desk's trust store, not by a person looking at a browser.
 
 - [ ] **Renew before 2027-10-11.** `make -C infra/deevnet-tenant-eds plan`
   shows it from 2027-08-12; apply, then `make -C deploy units`.
-- [ ] A person opens it in a browser
+- [x] A person opens it in a browser
   ([ADR-0018](/docs/architecture/decisions/0018-a-console-of-eds-own/), *What
-  would settle it*).
+  would settle it*). Done 2026-10-11.
 - [ ] `lightd` and `palette` are still served in the clear, on the workload
   only. Nothing off the workload calls them.

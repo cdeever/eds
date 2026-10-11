@@ -40,6 +40,13 @@ page, and that is a decision to record first.
   of the firmware's effects. It is a picture of the scene, not a measurement
   of the LEDs. Whether the stand took the scene is its own `state` and
   presence, which the page also shows.
+- **The playing time** counts on from what the bus said: where playback was
+  when the track or the play state last changed, plus the time since, by the
+  server's clock and the page's own stopwatch. The viewer's clock is not
+  used. **It does not know about a seek.** Dragging the playhead changes
+  neither the track nor the play state, so nothing is reported, and the count
+  is wrong by the size of the jump until the next pause, resume or track. It
+  never runs past the end of the track.
 - **Recently played** is what the console has seen since it started. The
   history that lasts is in the tenant's log store.
 
@@ -50,6 +57,7 @@ page, and that is a decision to record first.
 `scene.c`. If an effect changes in the firmware it has to change here, or the
 page draws a stand that does not exist. `internal/web/effects.test.mjs` asks
 the port the firmware's own questions (`make test`, where node is installed).
+`clock.js`, which works out the playing time, is tested beside it.
 
 Colours are drawn as sent, before gamma. That is what the wire format carries
 on purpose ([ADR-0002](../../docs/content/docs/architecture/decisions/0002-gamma-in-firmware.md)).

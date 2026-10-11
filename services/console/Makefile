@@ -36,7 +36,7 @@ test: test-js
 # nothing else here needs one.
 test-js:
 	@if command -v node >/dev/null; then node --test internal/web/; \
-	else echo "node is not installed: the effects' tests were NOT run"; fi
+	else echo "node is not installed: the effects' and the clock's tests were NOT run"; fi
 
 check: fmt vet test
 
