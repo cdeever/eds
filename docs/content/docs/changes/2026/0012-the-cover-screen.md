@@ -90,6 +90,11 @@ Ordered so that each step is safe without the ones after it.
 | 22:52 | The board's whole flash was read to `firmware/cover-screen/backup/factory-20261011-185251.bin`, 4,194,304 bytes. It had been running the maker's LVGL demonstration, built on ESP-IDF 4.3. |
 | 22:58 | The tenant was planned: 2 to add (the screen's device and account), 2 to change in place (`nowplayd`, `np-relay`), 0 to destroy. Nothing replaced. The apply was not run from the session that planned it. |
 | 22:59 | The firmware (`cfad098`) was flashed. The board started without a fault: the panel and the touch controller both answered, it reported itself not provisioned, and it began trying `DVNTM-IOT` with no key. What is on the panel has not been looked at yet. |
+| 23:05 | Its owner looked: the record, the right way up, the mark red. Seven presses on the five buttons each read within about 20 pixels of where the button is drawn, on the default touch settings. Nothing was changed. |
+| 23:28 | The tenant was applied: 2 added, 2 changed, 0 destroyed. The substrate granted `eds/nowplaying/source/+/command` to publish, wildcard and all. |
+| 23:30 | The services were deployed from the Builder. All four came back active. `nowplayd` connected, named its command topic, and published the track playing: Genesis, *Abacab*, from iTunes. |
+| 23:30 | The agent was pushed to the Pi: `installed efcb197; npagent is active`. |
+| 23:31 | The screen was provisioned. It joined `DVNTM-IOT` as 10.20.30.205, connected to the broker over TLS 1.4 seconds later, read the current track as playing with a cover, and received a small cover of 8,504 bytes. The decoder reported no fault. |
 
 ### Departures from the plan
 
