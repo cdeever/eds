@@ -185,7 +185,8 @@ its own presence, and it answers only `GET`. Adding a control is a decision to
 record first, not a handler to add. Its subscriptions (`view.Topics`) and the
 account in `main.tf` are one list kept in two places; the broker refuses a
 mismatch silently. `internal/web/static/effects.js` is a port of the
-firmware's `effects.c` - change one, change the other.
+firmware's `effects.c` - change one, change the other. A console test holds
+the port to pixels printed from the firmware's own code.
 
 The console's certificate is from the site's Tenant Service CA (Deevnet
 ADR-0037), declared in the tenant's Terraform as `deevnet_certificate.console`.

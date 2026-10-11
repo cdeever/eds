@@ -71,12 +71,23 @@ retained scene moments after subscribing is the normal case, not an edge one.
 
 ### Effects
 
-`solid`, `breathe`, `sweep` — deliberately few, because adding one means
-reflashing every stand.
+`solid`, `breathe`, `sweep`, `morph`, `chase` — deliberately few, because
+adding one means reflashing every stand.
 
 `sweep` lays the palette out in proportion to the weights lightd sent, so a
 colour covering 60% of the sleeve covers 60% of the strip, and cross-fades at
 the seams: hard edges on a diffused strip look like a fault in the diffuser.
+
+`morph` and `chase` use the accents, the colours of a cover that are not its
+dominant one. `morph` turns the whole strip from the dominant colour to each
+accent and back, giving each a turn that is half by its weight and half equal.
+`chase` keeps the dominant colour as the ground and sends each accent round
+over it as a soft-edged patch, alternate ones in opposite directions.
+
+**Time is taken to the whole millisecond before it is divided.** A float
+holds a millisecond count exactly for about four and a half hours. An
+animation timed from `(float)t_ms` moves in steps that grow with uptime, and
+after a week advances in jumps. There is a test that renders five weeks in.
 
 An **unknown effect name falls back to `solid`** rather than being refused. A
 publisher that learns a new effect before the stands do is expected; a lit stand

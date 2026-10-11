@@ -17,6 +17,18 @@
 // edges on a diffused strip look like a fault in the diffuser.
 #define SWEEP_BLEND 0.06f
 
+// Morph gives each colour a turn at the whole strip. How long a turn lasts is
+// half by the colour's share of the cover and half equal, so the dominant
+// colour is on longest and a 4% accent still gets to be seen. The last part of
+// each turn is spent turning into the next colour.
+#define MORPH_BLEND 0.45f
+
+// Chase: how much of the strip an accent covers is its share of the cover,
+// plus enough that the smallest is more than a single LED, and never so much
+// that the background stops being one.
+#define CHASE_MIN_WIDTH 0.08f
+#define CHASE_MAX_WIDTH 0.30f
+
 // M_PI is a POSIX extension, not ISO C, and is absent under a strict -std=c11.
 // Defining it here keeps the module free of feature-test-macro guesswork.
 #define LP_TWO_PI 6.28318530717958647692f
@@ -26,12 +38,26 @@ static float period_ms(float speed)
     return PERIOD_SLOW_MS + (PERIOD_FAST_MS - PERIOD_SLOW_MS) * speed;
 }
 
+// phase_in returns where in a cycle of `period` milliseconds t_ms falls, as
+// 0..1.
+//
+// The remainder is taken on the integer. A float holds a millisecond count
+// exactly only up to about four and a half hours; past that, taking the
+// remainder of (float)t_ms moves in steps that grow with uptime, and after a
+// week an animation advances in jumps of tens of milliseconds.
+static float phase_in(uint32_t t_ms, float period)
+{
+    uint32_t whole = (uint32_t)(period + 0.5f);
+    if (whole == 0) {
+        return 0.0f;
+    }
+    return (float)(t_ms % whole) / (float)whole;
+}
+
 // phase01 returns where in the animation cycle t_ms falls, as 0..1.
 static float phase01(uint32_t t_ms, float speed)
 {
-    float period = period_ms(speed);
-    float phase = fmodf((float)t_ms, period) / period;
-    return phase < 0.0f ? phase + 1.0f : phase;
+    return phase_in(t_ms, period_ms(speed));
 }
 
 static uint8_t scale8(uint8_t value, float factor)
@@ -108,6 +134,79 @@ static lp_rgb_t sweep_color(const lp_scene_t *scene, float u)
     return scene->palette[0].rgb;
 }
 
+// smooth eases a 0..1 ramp in and out, so a change of colour has no moment
+// at which it visibly starts or stops.
+static float smooth(float t)
+{
+    if (t <= 0.0f) {
+        return 0.0f;
+    }
+    if (t >= 1.0f) {
+        return 1.0f;
+    }
+    return t * t * (3.0f - 2.0f * t);
+}
+
+// morph_color is the one colour the whole strip shows at `phase` (0..1 through
+// every colour and back to the first).
+static lp_rgb_t morph_color(const lp_scene_t *scene, float phase)
+{
+    const size_t n = scene->palette_len;
+    if (n < 2) {
+        return scene->palette[0].rgb;
+    }
+
+    float start = 0.0f;
+    for (size_t i = 0; i < n; i++) {
+        float turn = 0.5f / (float)n + 0.5f * scene->palette[i].weight;
+        if (phase < start + turn || i + 1 == n) {
+            float into = (phase - start) / turn;
+            float hold = 1.0f - MORPH_BLEND;
+            if (into <= hold) {
+                return scene->palette[i].rgb;
+            }
+            return mix(scene->palette[i].rgb, scene->palette[(i + 1) % n].rgb,
+                       smooth((into - hold) / MORPH_BLEND));
+        }
+        start += turn;
+    }
+    return scene->palette[0].rgb;
+}
+
+// chase_color is what position u (0..1 round the strip) shows when the lap
+// is at `phase`: the dominant colour, with each accent a soft-edged patch
+// travelling over it. Alternate accents go opposite ways, so they pass
+// through one another instead of marching in file.
+static lp_rgb_t chase_color(const lp_scene_t *scene, float u, float phase)
+{
+    lp_rgb_t color = scene->palette[0].rgb;
+    const size_t accents = scene->palette_len - 1;
+
+    for (size_t k = 0; k < accents; k++) {
+        const lp_swatch_t *accent = &scene->palette[k + 1];
+
+        float width = CHASE_MIN_WIDTH + accent->weight;
+        if (width > CHASE_MAX_WIDTH) {
+            width = CHASE_MAX_WIDTH;
+        }
+        float half = width * 0.5f;
+
+        float centre = (float)k / (float)accents + ((k % 2 == 0) ? phase : -phase);
+        centre -= floorf(centre);
+
+        // The short way round: the strip is a loop.
+        float distance = fabsf(u - centre);
+        if (distance > 0.5f) {
+            distance = 1.0f - distance;
+        }
+        if (distance < half) {
+            float amount = 0.5f + 0.5f * cosf(LP_TWO_PI * 0.5f * distance / half);
+            color = mix(color, accent->rgb, amount);
+        }
+    }
+    return color;
+}
+
 void lp_effects_render(const lp_scene_t *scene, uint32_t t_ms, lp_rgb_t *out, size_t count)
 {
     if (out == NULL || count == 0) {
@@ -134,6 +233,28 @@ void lp_effects_render(const lp_scene_t *scene, uint32_t t_ms, lp_rgb_t *out, si
         for (size_t i = 0; i < count; i++) {
             float u = (float)i / (float)count + offset;
             out[i] = dim(sweep_color(scene, u), brightness);
+        }
+        break;
+    }
+
+    case LP_EFFECT_MORPH: {
+        // A turn each, of about two of the scene's cycles: slow enough that
+        // the room changes colour, not flickers.
+        float loop = period_ms(scene->speed) * 2.0f * (float)scene->palette_len;
+        fill(out, count, dim(morph_color(scene, phase_in(t_ms, loop)), brightness));
+        break;
+    }
+
+    case LP_EFFECT_CHASE: {
+        // With nothing but a dominant colour there is nothing to chase.
+        if (scene->palette_len < 2) {
+            fill(out, count, dim(dominant, brightness));
+            break;
+        }
+        float phase = phase_in(t_ms, period_ms(scene->speed) * 2.0f);
+        for (size_t i = 0; i < count; i++) {
+            float u = (float)i / (float)count;
+            out[i] = dim(chase_color(scene, u, phase), brightness);
         }
         break;
     }

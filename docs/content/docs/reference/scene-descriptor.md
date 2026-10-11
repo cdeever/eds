@@ -24,7 +24,7 @@ The payload `lightd` publishes and the LP stand renders. It is a description of
 | Field | Type | Meaning |
 |---|---|---|
 | `v` | int | Contract version. Currently `1`. |
-| `effect` | string | `solid`, `breathe` or `sweep`. |
+| `effect` | string | `solid`, `breathe`, `sweep`, `morph` or `chase`. |
 | `speed` | float | `0..1` dial, not a frequency. |
 | `brightness` | float | `0..1`, applied before gamma on the device. |
 | `palette` | array | Colours already corrected for the strip, ranked by weight. |
@@ -57,6 +57,23 @@ Deliberately few, because adding one means reflashing every stand.
 : Lays the palette out in proportion to the weights, so a colour covering 60%
   of the sleeve covers 60% of the strip, and cross-fades at the seams. Hard
   edges on a diffused strip look like a fault in the diffuser.
+
+The last two use the **accents**: the colours of a cover that are not its
+dominant one.
+
+`morph`
+: The whole strip is one colour, turning from the dominant colour to each
+  accent in turn and back. A colour's turn is half by its weight and half
+  equal, so the dominant colour is on longest and a 4% accent is still seen.
+  The end of each turn is a glide into the next. One pass through every
+  colour takes two cycles for each colour in the palette.
+
+`chase`
+: The dominant colour fills the strip, and each accent is a soft-edged patch
+  travelling round over it, wider for a larger weight. Alternate accents go
+  opposite ways, so they pass through one another. One lap takes two cycles.
+
+With a palette of one colour, both show that colour.
 
 ## Speed
 

@@ -5,7 +5,7 @@
 // text, never as markup.
 
 import { label, position, start } from "./clock.js";
-import { render as renderStrip, validate } from "./effects.js";
+import { periodMs, render as renderStrip, validate } from "./effects.js";
 
 const LEDS = 60; // CONFIG_LP_LED_COUNT's default; the picture, not a count of the real strip
 const $ = (id) => document.getElementById(id);
@@ -164,9 +164,7 @@ function drawStands(page) {
       continue;
     }
 
-    what.textContent =
-      `${scene.effect} · brightness ${Math.round(scene.brightness * 100)}%` +
-      (scene.effect === "solid" ? "" : ` · one cycle every ${(6 - 5 * scene.speed).toFixed(1)} s`);
+    what.textContent = `${scene.effect} · brightness ${Math.round(scene.brightness * 100)}%` + pace(scene);
     card.canvas.setAttribute(
       "aria-label",
       `${stand.id} showing ${scene.effect} in ${scene.palette.map((s) => hex(s.rgb)).join(", ")}`,
@@ -174,7 +172,7 @@ function drawStands(page) {
 
     // Breathe and solid light the dominant colour alone. Marking it says
     // which of these is on the strip without another sentence.
-    const onlyFirst = scene.effect !== "sweep";
+    const onlyFirst = scene.effect === "solid" || scene.effect === "breathe";
     scene.palette.forEach((sw, i) => {
       const item = el("li", "swatch" + (onlyFirst && i === 0 ? " lit" : ""));
       const chip = el("i");
@@ -214,6 +212,20 @@ function drawStands(page) {
   if (first) document.documentElement.style.setProperty("--accent", accent(first.scene.palette[0].rgb));
 }
 
+// pace says how long the effect takes to come round, in the effect's own
+// terms: a breath, a lap, a turn through every colour.
+function pace(scene) {
+  const seconds = (ms) => `${(ms / 1000).toFixed(1)} s`;
+  const cycle = periodMs(scene.speed);
+  switch (scene.effect) {
+    case "breathe": return ` · a breath every ${seconds(cycle)}`;
+    case "sweep": return ` · once round every ${seconds(cycle)}`;
+    case "chase": return scene.palette.length > 1 ? ` · a lap every ${seconds(cycle * 2)}` : "";
+    case "morph": return scene.palette.length > 1 ? ` · through every colour in ${seconds(cycle * 2 * scene.palette.length)}` : "";
+    default: return "";
+  }
+}
+
 // accent is a colour from the scene made fit to be text on a dark page: a
 // cover's dominant colour is often nearly black.
 function accent(rgb) {
@@ -239,7 +251,7 @@ function paint(t) {
     if (!scene) continue;
 
     // Without motion the strip is shown at one moment: the top of a breath.
-    const pixels = renderStrip(scene, still.matches ? (6000 - 5000 * scene.speed) / 4 : t, LEDS);
+    const pixels = renderStrip(scene, still.matches ? periodMs(scene.speed) / 4 : t, LEDS);
     const pitch = width / LEDS, gap = Math.min(3, pitch * 0.22);
     const top = height * 0.28, tall = height * 0.44;
     for (let i = 0; i < LEDS; i++) {
