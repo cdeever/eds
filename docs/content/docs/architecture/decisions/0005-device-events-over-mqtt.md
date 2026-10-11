@@ -10,6 +10,7 @@ weight: 5
 | **Status** | {{< adr-status "Accepted" >}} |
 | **Date** | 2026-10-10 |
 | **Scope** | How an EdS device says what it is doing once the USB cable is gone, and how that is read. |
+| **Extended by** | [ADR-0017](/docs/architecture/decisions/0017-an-agent-pi-is-a-registered-device/): an agent Pi is registered as a device and reports the same way |
 | **Related** | [CHG-0001](/docs/changes/2026/0001-lp-stand-joins-its-tenant/), Deevnet ADR-0027 and CHG-0021 ([deevnet-docs](https://deevnet.github.io/deevnet-docs/)), [MQTT Topics](/docs/reference/mqtt-topics/) |
 
 ---

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/driver"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver/itunes"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver/spotify"
+	"github.com/cdeever/eds/services/nowplaying/internal/events"
 	"github.com/cdeever/eds/services/nowplaying/internal/spotifyauth"
 )
 
@@ -181,7 +183,7 @@ func supervise(ctx context.Context, logger *slog.Logger, jobs []job, sinks map[s
 	for _, j := range jobs {
 		sink := sinks[j.name]
 		if j.run == nil {
-			logger.Error("driver is not running", "driver", j.name, "reason", j.err)
+			logger.Warn("driver is not running", events.Key, "driver.not_set_up", "driver", j.name, "reason", j.err)
 			sink.Online(false)
 			continue
 		}
@@ -193,7 +195,7 @@ func supervise(ctx context.Context, logger *slog.Logger, jobs []job, sinks map[s
 				// It gave up while the agent is still wanted: something only
 				// a person can fix. Say so where it will be seen, both here
 				// and on the bus.
-				logger.Error("driver stopped", "driver", j.name, "reason", err)
+				logger.Error("driver stopped", events.Key, "driver.stopped", "driver", j.name, "reason", err)
 				sink.Online(false)
 			}
 		}(j)
@@ -208,17 +210,75 @@ func supervise(ctx context.Context, logger *slog.Logger, jobs []job, sinks map[s
 
 // --- run ---------------------------------------------------------------------
 
+// report sets the agent up to report its events to the tenant's log store,
+// if it has been told what it is called there. It returns the logger to use
+// either way, and a function that sends what is still waiting.
+//
+// A connection of its own, so that an event about a driver's connection does
+// not depend on that connection.
+func report(ctx context.Context, common config.Common, journal slog.Handler) (*slog.Logger, func(), error) {
+	device := config.Str("NP_LOG_DEVICE", "")
+	if device == "" {
+		return slog.New(journal), func() {}, nil
+	}
+	if !contract.ValidSourceID(device) {
+		return nil, nil, fmt.Errorf("NP_LOG_DEVICE=%q cannot name a device: lowercase letters, digits and hyphens", device)
+	}
+
+	cfg := common.Broker
+	cfg.ClientID = common.Broker.ClientID + "-log"
+	client, err := bus.Connect(cfg, nil, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("events: %w", err)
+	}
+
+	topic := events.Topic(common.Prefix, device)
+	reporter := events.New(func(payload []byte) error { return client.Publish(topic, payload, false) })
+
+	// It outlives ctx by one pass over its queue, so that the lines about
+	// stopping are sent before the connection is closed.
+	done := make(chan struct{})
+	go func() {
+		reporter.Run(ctx)
+		close(done)
+	}()
+	logger := slog.New(reporter.Handler(journal))
+	logger.Info("reporting events", "topic", topic)
+	return logger, func() {
+		<-done
+		client.Close()
+	}, nil
+}
+
 func run(ctx context.Context) error {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	journal := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})
+
+	common, err := config.LoadCommon("eds-npagent")
+	if err != nil {
+		return err
+	}
+	// Stopping is two steps: the drivers are told to stop, and only once they
+	// have is the reporter, so that what they say on the way out is sent.
+	reporting, stopReporting := context.WithCancel(context.Background())
+	logger, flush, err := report(reporting, common, journal)
+	if err != nil {
+		stopReporting()
+		return err
+	}
+	defer func() {
+		stopReporting()
+		flush()
+	}()
 
 	jobs, err := drivers(logger)
 	if err != nil {
 		return err
 	}
-	common, err := config.LoadCommon("eds-npagent")
-	if err != nil {
-		return err
+	names := make([]string, 0, len(jobs))
+	for _, j := range jobs {
+		names = append(names, j.name)
 	}
+	logger.Info("agent started", events.Key, "agent.started", "drivers", strings.Join(names, ","))
 
 	// A connection each. MQTT allows one last will per connection, and each
 	// driver's presence is its own: the broker has to be able to say "spotify
@@ -248,7 +308,7 @@ func run(ctx context.Context) error {
 
 	err = supervise(ctx, logger, jobs, sinks)
 	if err == nil {
-		logger.Info("shutting down")
+		logger.Info("shutting down", events.Key, "agent.stopping")
 	}
 	return err
 }

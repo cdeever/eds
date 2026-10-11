@@ -105,6 +105,22 @@ driver's presence is its own. A driver that is missing what it needs - a
 pairing, an authorization - is reported offline and the other runs. With
 nothing able to run the agent exits 78, which its unit does not restart.
 
+## What the agent reports about itself
+
+With `NP_LOG_DEVICE` set to the name the Pi is registered under, the agent
+publishes a few events to `<tenant>/log/<device>`, which the substrate carries
+into the tenant's log store, the same way the stand's go
+([ADR-0017](../../docs/content/docs/architecture/decisions/0017-an-agent-pi-is-a-registered-device.md)):
+`agent.started`, `driver.online` and `driver.offline`, `track.playing`,
+`track.paused` and `track.stopped` with the artist, album and title, and
+Spotify's refusals. They are on the tenant's dashboard under *What played*
+and *Device events*.
+
+A log line becomes an event by carrying an `event` attribute; the journal
+still has every line. Events wait in a queue and are dropped, and counted,
+before they hold a driver up. Without the setting nothing is reported, which
+is how the agent runs on a desk.
+
 Settings are in `npagent`'s usage text (`bin/npagent`).
 
 ## Running it
