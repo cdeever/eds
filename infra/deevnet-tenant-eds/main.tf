@@ -67,6 +67,13 @@ resource "deevnet_dns_record" "lightd" {
   address = deevnet_workload.services.address
 }
 
+# The one a person types: http://console.eds.<site zone>/ (ADR-0018).
+resource "deevnet_dns_record" "console" {
+  tenant  = deevnet_tenant.eds.name
+  name    = "console"
+  address = deevnet_workload.services.address
+}
+
 # The Wi-Fi credential EdS's devices are flashed with (Deevnet ADR-0012 §3, Deevnet CHG-0013).
 #
 # One key serves every device: the LP stand, and any later one. The substrate
@@ -191,6 +198,33 @@ resource "deevnet_iot_broker_account" "nowplayd" {
   ]
   subscribe = [
     "nowplaying/source/+/+", # every driver's state, presence and cover
+  ]
+}
+
+# The console, on the services workload (ADR-0018).
+#
+# It only looks: every topic it reads, and one it writes - its own presence.
+# Controls, when they come, are a change to this list and a decision first.
+#
+# Each subscription is granted as the filter the console uses, to the
+# character (services/console/internal/view, Topics).
+resource "deevnet_iot_broker_account" "console" {
+  tenant = deevnet_tenant.eds.name
+  name   = "console"
+
+  publish = [
+    "console/status",
+  ]
+  subscribe = [
+    "nowplaying/current",
+    "nowplaying/current/art",
+    "nowplaying/status",
+    "nowplaying/source/+/state",
+    "nowplaying/source/+/status",
+    "lightstand/+/scene",
+    "lightstand/+/state",
+    "lightstand/+/status",
+    "lightd/status",
   ]
 }
 

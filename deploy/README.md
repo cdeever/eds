@@ -1,14 +1,14 @@
 # deploy
 
-`palette`, `lightd` and `nowplayd` as containers on the eds `services`
-workload, under systemd. This is the tenant guide's *Deploy Your App* pattern: images built
+`palette`, `lightd`, `nowplayd` and the `console` as containers on the eds
+`services` workload, under systemd. This is the tenant guide's *Deploy Your App* pattern: images built
 here and copied over SSH, settings from the tenant's `kit.env`, no registry
 and no operator.
 
 ```bash
 make deploy     # first time, or onto a replaced workload: images, settings, units, start
 make ship       # a new version of any service: build, copy, restart
-make logs       # follow all three
+make logs       # follow all four
 ```
 
 Needs a container tool, SSH to `tenant@services.eds.mobile.deevnet.net` with a
@@ -47,6 +47,18 @@ curl --data-binary @jacket.jpg -H 'Content-Type: image/jpeg' http://localhost:87
 ```
 
 A replaced workload comes back empty; `make deploy` puts everything back.
+
+## The console is the one thing reachable
+
+The console serves a page at `http://console.eds.mobile.deevnet.net/`, on
+port 80. `make units` opens `http` in the workload's own firewall, which
+otherwise admits SSH and nothing else. The substrate lets the site's trusted
+and management networks reach a workload; the guest and IoT networks, and
+anything outside, cannot. The page only looks
+([ADR-0018](../docs/content/docs/architecture/decisions/0018-a-console-of-eds-own.md)).
+
+It runs as a user who is not root, with every capability dropped but the one
+that lets it bind a low port, on a read-only filesystem.
 
 ## What follows what
 

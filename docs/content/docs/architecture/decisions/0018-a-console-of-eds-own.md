@@ -1,0 +1,108 @@
+---
+title: "ADR-0018: A Console of EdS's Own"
+weight: 18
+---
+
+# ADR-0018: EdS Has a Console of Its Own, Fed From the Bus, and It Only Looks
+
+| | |
+|---|---|
+| **Status** | {{< adr-status "Proposed" >}} — until it has been seen in a browser on the site |
+| **Date** | 2026-10-11 |
+| **Scope** | Where a person looks to see what EdS is doing: what is playing, what the stand is showing, and whether the parts are up. |
+| **Related** | [ADR-0005](/docs/architecture/decisions/0005-device-events-over-mqtt/), [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), [ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/), [ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/) |
+
+---
+
+## Context
+
+What EdS is doing was visible in three places, none of them a picture: the
+tenant's Grafana dashboard, which lists events; `mosquitto_sub`; and the
+services' journals. The stand has no LEDs attached yet, so nothing at all
+showed its colours.
+
+A panel that drew the stand was tried in Grafana first. Grafana takes its
+colours from thresholds fixed in a dashboard and cannot colour anything from
+a value in the data. The way round that worked: the log query assembled an
+SVG, as a `data:` address, from the palette in the stand's own event, and a
+table showed it as an image. It worked, and it was a four-kilobyte query
+building markup by string formatting, in a tool that was being worked
+against.
+
+Everything such a picture needs is already on the bus, retained: the current
+track and its cover, the scene sent to each stand, and each part's presence.
+
+## Options considered
+
+**Draw it in Grafana**, as above. No new service. Limited to what a table of
+images can show, dependent on the stand reporting its palette in an event,
+and every change is another fight with the tool.
+
+**A page served by `lightd` or `nowplayd`.** No new service. But `lightd`
+knows nothing about tracks and `nowplayd` nothing about scenes
+([ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/)),
+and a page that shows both would teach one of them the other's business.
+
+**A service of its own that subscribes to the bus and serves a page.** One
+more thing to run. It reads the same two contracts every other subscriber
+does and needs nothing from any other service.
+
+## Decision
+
+A new service, **`console`**, on the tenant workload. It subscribes to the
+bus and serves one page.
+
+- **It learns everything from the bus**: `nowplaying/current` and its cover,
+  each source's state and presence, each stand's scene, state and presence,
+  and the services' presence. It calls no other service and no other service
+  calls it. Because those topics are retained, a restarted console knows the
+  state of the world at once.
+- **It only looks.** Its broker account is granted subscriptions, and one
+  topic to publish: its own presence. It cannot change a scene or a track.
+  Controls are expected later and are a decision of their own: they change
+  what this account may publish, and who may reach the page.
+- **The browser is pushed changes** over one long-lived request (server-sent
+  events), not polled.
+- **The stand is drawn in the browser** from the scene descriptor, animated
+  by a port of the firmware's effects. It shows the colours as sent, before
+  gamma, which is what the wire format is for
+  ([ADR-0002](/docs/architecture/decisions/0002-gamma-in-firmware/)).
+- **It is reached at `console.eds.mobile.deevnet.net`**, plain HTTP, from the
+  site's trusted and management networks. The workload's own firewall admits
+  the one port. Nothing on the guest or IoT networks, or outside, can reach a
+  workload at all.
+- Grafana stays what it is good at: the events, over time.
+
+## Consequences
+
+- There is one place to look, and it shows the stand before the stand has
+  LEDs.
+- **The effects are now written a fourth time**: firmware, and a browser.
+  A change to an effect in the firmware has to be made in the console too,
+  or the picture lies. The console says which scene it is drawing, not what
+  the LEDs are doing; only the stand's own `state` and presence say that it
+  took the scene.
+- **Anyone on the site's trusted networks can see what is playing.** There
+  is no login. That is acceptable for a page that only looks, on a network
+  that already carries the same information unencrypted to anyone with the
+  Grafana login; it is not acceptable for a page with controls.
+- Plain HTTP, because the platform issues no certificates to tenants yet.
+- The first port on the workload opened to anything but SSH. It is opened by
+  the deployment, and a rebuilt workload gets it back with everything else.
+- "Recently played" is what the console has seen since it started. The
+  durable history is the log store's
+  ([ADR-0017](/docs/architecture/decisions/0017-an-agent-pi-is-a-registered-device/)).
+- While Spotify plays, the console shows a track with no cover beside a stand
+  lit from an earlier one, and says so
+  ([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
+- The Grafana panels that drew the stand were not kept. The stand's
+  `scene.applied` event still gained its palette and speed, which is the
+  record of what each stand was sent.
+
+## What would settle it
+
+1. The page, in a browser on the site, shows the track playing, its cover,
+   and the stand in the colours `lightd` logged for it.
+2. A track change reaches the page without a reload.
+3. A restart of the console, and of the broker connection, leaves the page
+   correct.
