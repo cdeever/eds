@@ -128,6 +128,35 @@ h1 {
 }
 .artist { margin: 12px 0 0; font-size: 1.3rem; color: var(--text); overflow-wrap: anywhere; }
 .album { margin: 4px 0 0; font-size: 1.05rem; color: var(--muted); overflow-wrap: anywhere; }
+.playhead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  max-width: 460px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+.playhead[hidden] { display: none; }
+.playhead .elapsed { color: var(--text); min-width: 3.2ch; }
+.playhead .bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--panel-edge);
+  overflow: hidden;
+}
+.playhead .bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: background 1.2s ease;
+}
+.now.paused .playhead .bar i { background: var(--faint); }
+
 .note { margin: 18px 0 0; color: var(--faint); font-size: 0.9rem; max-width: 46ch; }
 .now.idle h1 { color: var(--muted); font-weight: 600; }
 

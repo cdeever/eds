@@ -46,6 +46,9 @@ type Server struct {
 	// keeps a proxy or a sleeping laptop from deciding the request is dead.
 	Heartbeat time.Duration
 
+	// Now is the clock. Nil is the wall clock.
+	Now func() time.Time
+
 	// Secure is set when this handler is served over TLS. A browser that has
 	// reached the page that way is then told to keep doing so.
 	Secure bool
@@ -59,6 +62,10 @@ type page struct {
 	view.Snapshot
 	Links   Links  `json:"links"`
 	Version string `json:"version,omitempty"`
+	// Now is the server's clock when this was sent. The page counts a
+	// playing track on from it, so the viewer's own clock is never compared
+	// with the one that stamped the track.
+	Now time.Time `json:"now"`
 }
 
 func (s *Server) page() page {
@@ -69,7 +76,11 @@ func (s *Server) page() page {
 	if safeLink(s.Links.Docs) {
 		links.Docs = s.Links.Docs
 	}
-	return page{Snapshot: s.View.Snapshot(), Links: links, Version: s.Version}
+	now := time.Now
+	if s.Now != nil {
+		now = s.Now
+	}
+	return page{Snapshot: s.View.Snapshot(), Links: links, Version: s.Version, Now: now().UTC()}
 }
 
 func safeLink(u string) bool {

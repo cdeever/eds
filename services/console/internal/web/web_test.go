@@ -47,6 +47,7 @@ func TestThePageAndItsFilesAreServed(t *testing.T) {
 		"/":           "<title>EdS</title>",
 		"/app.js":     "EventSource",
 		"/effects.js": "BREATHE_FLOOR",
+		"/clock.js":   "position_ms",
 		"/app.css":    "--accent",
 		"/icon.svg":   "<svg",
 		"/healthz":    "ok",
@@ -57,8 +58,10 @@ func TestThePageAndItsFilesAreServed(t *testing.T) {
 		}
 	}
 	// The effects' tests are beside the page, not part of it.
-	if resp, _ := get(t, ts.URL+"/effects.test.mjs"); resp.StatusCode != http.StatusNotFound {
-		t.Errorf("a test file is being served: %d", resp.StatusCode)
+	for _, name := range []string{"/effects.test.mjs", "/clock.test.mjs"} {
+		if resp, _ := get(t, ts.URL+name); resp.StatusCode != http.StatusNotFound {
+			t.Errorf("a test file is being served: %s %d", name, resp.StatusCode)
+		}
 	}
 }
 
@@ -294,5 +297,19 @@ func TestThePlainPortSendsEveryoneToTheCertificatesName(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("POST on the plain port: %d", resp.StatusCode)
+	}
+}
+
+// The page counts a playing track on from the server's clock, so every
+// picture has to say what time it was sent.
+func TestEveryPictureSaysWhenItWasSent(t *testing.T) {
+	s, ts := site(t)
+	at := time.Date(2026, 10, 11, 19, 5, 9, 944000000, time.UTC)
+	s.Now = func() time.Time { return at }
+
+	_, body := get(t, ts.URL+"/api/state")
+	var got struct{ Now time.Time }
+	if err := json.Unmarshal([]byte(body), &got); err != nil || !got.Now.Equal(at) {
+		t.Fatalf("now = %v (%v) in %s", got.Now, err, body)
 	}
 }

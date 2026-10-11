@@ -28,6 +28,11 @@ for part in nowplaying/status lightd/status nowplaying/source/itunes/status nowp
     pub "$part" -m online
 done
 
+# A track that began a little over a minute ago, so the page has something to
+# count on from.
+when="$(date -u -v-20S +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '20 seconds ago' +%Y-%m-%dT%H:%M:%SZ)"
+timing="\"position_ms\":61000,\"changed_at\":\"$when\","
+
 house='"track":{"title":"(Ain'"'"'t Nothin'"'"' but A) House Party","artist":"The J. Geils Band","album":"Bloodshot","duration_ms":298000}'
 reaper='"track":{"title":"(Don'"'"'t Fear) The Reaper","artist":"Blue Öyster Cult","album":"Agents Of Fortune","duration_ms":308000}'
 
@@ -35,12 +40,12 @@ case "$what" in
 itunes)
     pub nowplaying/source/itunes/state -m "{\"v\":1,\"source\":\"itunes\",\"player\":\"itunes\",\"state\":\"playing\",$house}"
     pub nowplaying/source/spotify/state -m '{"v":1,"source":"spotify","player":"spotify","state":"stopped"}'
-    pub nowplaying/current -m "{\"v\":1,\"source\":\"itunes\",\"player\":\"itunes\",\"state\":\"playing\",$house$art}"
+    pub nowplaying/current -m "{\"v\":1,\"source\":\"itunes\",\"player\":\"itunes\",\"state\":\"playing\",$timing$house$art}"
     ;;
 spotify)
     pub nowplaying/source/itunes/state -m "{\"v\":1,\"source\":\"itunes\",\"player\":\"itunes\",\"state\":\"paused\",$house}"
     pub nowplaying/source/spotify/state -m "{\"v\":1,\"source\":\"spotify\",\"player\":\"spotify\",\"state\":\"playing\",$reaper}"
-    pub nowplaying/current -m "{\"v\":1,\"source\":\"spotify\",\"player\":\"spotify\",\"state\":\"playing\",$reaper}"
+    pub nowplaying/current -m "{\"v\":1,\"source\":\"spotify\",\"player\":\"spotify\",\"state\":\"playing\",$timing$reaper}"
     ;;
 *)
     echo "usage: $0 [itunes|spotify] [cover.jpg]" >&2

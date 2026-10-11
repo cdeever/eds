@@ -4,6 +4,7 @@
 // Every word that came from a player or a catalogue is put on the page as
 // text, never as markup.
 
+import { label, position, start } from "./clock.js";
 import { render as renderStrip, validate } from "./effects.js";
 
 const LEDS = 60; // CONFIG_LP_LED_COUNT's default; the picture, not a count of the real strip
@@ -27,10 +28,39 @@ function pill(label, up) {
 }
 
 const hex = (rgb) => "#" + rgb.map((c) => c.toString(16).padStart(2, "0")).join("");
-const clock = (ms) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 const coverURL = (sha) => "api/cover/" + encodeURIComponent(sha);
 
 // --- what is playing -------------------------------------------------------------
+
+// What the playhead counts from, set each time a picture arrives.
+let playhead = null;
+
+// tick writes where playback is now. It runs a few times a second; the
+// seconds only change once in each.
+function tick() {
+  const ms = position(playhead, performance.now());
+  const row = $("playhead");
+  if (ms === null) {
+    row.hidden = true;
+    return;
+  }
+  row.hidden = false;
+  const text = label(ms);
+  if ($("elapsed").textContent !== text) $("elapsed").textContent = text;
+  const bar = $("bar");
+  if (playhead.duration) {
+    $("bar-fill").style.width = `${Math.min(100, (ms / playhead.duration) * 100)}%`;
+    bar.hidden = false;
+    bar.setAttribute("aria-valuemax", String(Math.round(playhead.duration / 1000)));
+    bar.setAttribute("aria-valuenow", String(Math.round(ms / 1000)));
+    bar.setAttribute("aria-valuetext", `${text} of ${label(playhead.duration)}`);
+    $("length").textContent = label(playhead.duration);
+  } else {
+    bar.hidden = true;
+    $("length").textContent = "";
+  }
+}
+setInterval(tick, 250);
 
 function drawNow(page) {
   const now = page.current;
@@ -39,6 +69,9 @@ function drawNow(page) {
   const img = $("cover-img");
 
   document.querySelector(".now").classList.toggle("idle", !live);
+  document.querySelector(".now").classList.toggle("paused", Boolean(live) && now.state === "paused");
+  playhead = start(now, page.now, performance.now());
+  tick();
 
   if (!live) {
     $("where").textContent = "";
@@ -55,7 +88,7 @@ function drawNow(page) {
   $("where").textContent = (now.state === "paused" ? "Paused on " : "Playing on ") + playerName(now);
   $("title").textContent = track.title || "(untitled)";
   $("artist").textContent = track.artist || track.album_artist || "";
-  $("album").textContent = [track.album, track.duration_ms ? clock(track.duration_ms) : ""].filter(Boolean).join(" · ");
+  $("album").textContent = track.album || "";
   document.title = `${track.title || "EdS"} · EdS`;
 
   // The cover held is the one the stand is lit from. It is this track's only

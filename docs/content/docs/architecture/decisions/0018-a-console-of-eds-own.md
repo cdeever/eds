@@ -7,7 +7,7 @@ weight: 18
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}} — until it has been seen in a browser on the site, with a track changing |
+| **Status** | {{< adr-status "Accepted" >}} 2026-10-11, once it had been watched in a browser on the site with tracks changing |
 | **Amended** | 2026-10-11, before it was accepted: served over TLS, not in the clear. When this was written nothing on the site would certify a name a tenant serves; Deevnet ADR-0037 has since given tenants a CA to ask. [CHG-0007](/docs/changes/2026/0007-the-console-over-tls/) |
 | **Date** | 2026-10-11 |
 | **Scope** | Where a person looks to see what EdS is doing: what is playing, what the stand is showing, and whether the parts are up. |
@@ -112,7 +112,11 @@ bus and serves one page.
 ## What would settle it
 
 1. The page, in a browser on the site, shows the track playing, its cover,
-   and the stand in the colours `lightd` logged for it.
-2. A track change reaches the page without a reload.
+   and the stand in the colours `lightd` logged for it. **Settled 2026-10-11:**
+   seen by its owner.
+2. A track change reaches the page without a reload. **Settled 2026-10-11:**
+   watched changing as tracks were played.
 3. A restart of the console, and of the broker connection, leaves the page
-   correct.
+   correct. **Settled 2026-10-11:** it has been redeployed four times, and
+   each time came up with the track, cover, sources and scene from the
+   retained messages alone. A dropped broker connection has not been forced.
