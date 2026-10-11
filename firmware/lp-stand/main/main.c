@@ -46,10 +46,10 @@ static void on_scene(const lp_scene_t *scene)
 
     lp_mqtt_publish_state(scene);
 
-    char extra[96];
-    snprintf(extra, sizeof(extra), "\"effect\":\"%s\",\"colors\":%u,\"brightness\":%.2f",
-             lp_effect_name(scene->effect), (unsigned)scene->palette_len, scene->brightness);
-    lp_event_log_with(LP_EVENT_INFO, "scene.applied", extra, "Showing %s in %u colours",
+    // Eight colours and the rest come to about 190 bytes.
+    char extra[224];
+    size_t described = lp_scene_event_fields(scene, extra, sizeof(extra));
+    lp_event_log_with(LP_EVENT_INFO, "scene.applied", described ? extra : NULL, "Showing %s in %u colours",
                       lp_effect_name(scene->effect), (unsigned)scene->palette_len);
 }
 

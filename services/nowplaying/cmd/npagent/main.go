@@ -457,7 +457,7 @@ func (s *busSink) Publish(u driver.Update) {
 
 	// What a person would call it: a track playing, paused, or nothing.
 	attrs := []any{events.Key, "track." + string(u.State.State), "source", s.source,
-		"state", string(u.State.State), "cover_bytes", len(u.Cover)}
+		"player", playerName(u.State), "state", string(u.State.State), "cover_bytes", len(u.Cover)}
 	if u.State.Track != nil {
 		attrs = append(attrs, "artist", u.State.Track.Artist, "album", u.State.Track.Album, "title", u.State.Track.Title)
 	}
@@ -466,13 +466,15 @@ func (s *busSink) Publish(u driver.Update) {
 	s.logger.Info(sentence(u.State), attrs...)
 }
 
-// sentence says what a state is, for people: "playing: Artist - Title [Album]".
+// sentence says what a state is, for people:
+// "playing on Spotify: Artist - Title [Album]".
 func sentence(st contract.State) string {
+	out := string(st.State) + " on " + playerName(st)
 	t := st.Track
 	if t == nil {
-		return string(st.State)
+		return out
 	}
-	out := string(st.State) + ": "
+	out += ": "
 	if t.Artist != "" {
 		out += t.Artist + " - "
 	}
@@ -481,6 +483,26 @@ func sentence(st contract.State) string {
 		out += " [" + t.Album + "]"
 	}
 	return out
+}
+
+// playerName is the player as its maker writes it. One this does not know is
+// called by its source id, which is at least what it is filed under.
+func playerName(st contract.State) string {
+	switch st.Player {
+	case "itunes":
+		return "iTunes"
+	case "music":
+		return "Music"
+	case "spotify":
+		return "Spotify"
+	case "musicbee":
+		return "MusicBee"
+	case "tidal":
+		return "TIDAL"
+	case "":
+		return st.Source
+	}
+	return st.Player
 }
 
 // --- watch -------------------------------------------------------------------

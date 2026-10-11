@@ -169,3 +169,18 @@ func TestDriversAreChosenByName(t *testing.T) {
 		t.Fatal("two drivers were allowed the same source id")
 	}
 }
+
+func TestAPlayEventSaysWhereItPlayed(t *testing.T) {
+	track := &contract.Track{Title: "Velcro Fly", Artist: "ZZ Top", Album: "Afterburner"}
+	cases := map[string]contract.State{
+		"playing on Spotify: ZZ Top - Velcro Fly [Afterburner]": {Source: "spotify", Player: "spotify", State: contract.Playing, Track: track},
+		"paused on iTunes: ZZ Top - Velcro Fly [Afterburner]":   {Source: "itunes", Player: "itunes", State: contract.Paused, Track: track},
+		"stopped on Spotify":             {Source: "spotify", Player: "spotify", State: contract.Stopped},
+		"playing on kitchen: Velcro Fly": {Source: "kitchen", State: contract.Playing, Track: &contract.Track{Title: "Velcro Fly"}},
+	}
+	for want, state := range cases {
+		if got := sentence(state); got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	}
+}

@@ -59,7 +59,7 @@ The agent reports a few events there, in the same shape as the stand's:
 | `agent.started`, `agent.stopping` | the agent itself |
 | `driver.online`, `driver.offline` | a driver gains or loses its player, once per change |
 | `driver.not_set_up`, `driver.stopped` | a driver is missing its pairing or authorization, or has given up |
-| `track.playing`, `track.paused`, `track.stopped` | a driver reports a change, with the source, artist, album and title |
+| `track.playing`, `track.paused`, `track.stopped` | a driver reports a change, with the source, the player by name, artist, album and title |
 | `spotify.refused`, `spotify.authorization_ending` | Spotify's own refusals and the six-month warning |
 
 A line becomes an event by being logged with an `event` attribute. The

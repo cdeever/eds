@@ -71,3 +71,12 @@ void lp_scene_default(lp_scene_t *scene);
 // and a stand that crashes on a malformed payload is a stand that needs
 // physical access to recover.
 bool lp_scene_validate(lp_scene_t *scene);
+
+// lp_scene_event_fields writes what a scene is as the extra fields of an
+// event: its effect, how many colours, brightness, speed, and the palette as
+// one string in the form the publisher logs it, "#c90027 65%, #ac0030 13%".
+//
+// These are the colours as they arrived, before gamma: what was intended, and
+// what a dashboard should draw. Returns the length written, or 0 if it does
+// not fit in cap bytes, in which case dst is an empty string.
+size_t lp_scene_event_fields(const lp_scene_t *scene, char *dst, size_t cap);
