@@ -88,15 +88,24 @@ make run                       # nowplayd on the dev broker, under edsdev/
 make broker-watch              # every edsdev/nowplaying topic; covers shown by size
 ```
 
-`bin/npagent pair|watch|run` is the iTunes driver; `make build-arm64` builds it
-for the agent Pi.
+`bin/npagent` runs the drivers `NP_DRIVERS` names (`itunes`, `spotify`), each
+with its own broker connection; `pair` and `spotify-auth` set each up once.
+`make build-arm64` builds it for the agent Pi.
+
+**The stand does not follow Spotify, on purpose** (ADR-0016). The Spotify
+driver never requests artwork, and `NP_COVERLESS_SOURCES=spotify` in
+`deploy/nowplayd.env` stops nowplayd publishing or looking up a cover for it.
+Do not "fix" the missing cover. The Spotify authorization asks for read-only
+scopes; do not widen them without a decision. The app's Client ID lives in
+gitignored `deploy/relay/spotify.conf` and is never committed.
 
 EdS's Pi images are its own (`images/`, ADR-0015): the substrate's base image
 with an EdS playbook applied offline. Do not add EdS images to the substrate's
 `deevnet-image-factory`. An image carries no secret and no hostname; those are
 written to a flashed card by `deploy/relay` (`make card`). "The relay" is an
 agent Pi given a second network leg, not a separate image. The Pi is reached
-through builder as `a_autoprov` (`make -C deploy/relay status|pair|logs`).
+through builder as `a_autoprov` (`make -C deploy/relay status|pair|logs`);
+`make push` updates a Pi in service, `make spotify` authorizes it for Spotify.
 
 Integration tests are gated on `NP_TEST_BROKER`. This Makefile runs on macOS
 (make 3.81, `/bin/bash`); the lightd and palette ones hardcode `/usr/bin/bash`

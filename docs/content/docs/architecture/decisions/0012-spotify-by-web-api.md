@@ -10,7 +10,8 @@ weight: 12
 | **Status** | {{< adr-status "Proposed" >}} — until the driver has run against the account; see [What would settle it](#what-would-settle-it) |
 | **Date** | 2026-10-10 |
 | **Scope** | How the Spotify driver learns what is playing. |
-| **Related** | [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), [ADR-0007](/docs/architecture/decisions/0007-drivers-are-portable-go/) |
+| **Amended** | 2026-10-11, before it was accepted: where the driver runs, how it is authorized, which devices count, and that it takes no artwork. The text below is the amended decision; [What changed](#what-changed-on-2026-10-11) lists the differences |
+| **Related** | [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), [ADR-0007](/docs/architecture/decisions/0007-drivers-are-portable-go/), [ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/) |
 
 ---
 
@@ -37,41 +38,73 @@ but it means impersonating a first-party client.
 
 ## Decision
 
-The Spotify driver polls `GET /v1/me/player` about every ten seconds, from
-the tenant workload, and honours `Retry-After`.
+The Spotify driver polls `GET /v1/me/player` every ten seconds and honours
+`Retry-After`. It runs **in the agent, on the agent Pi**, beside the iTunes
+driver.
 
-It is authorized once, by hand: a one-off command on the development machine
-runs the authorization-code flow against a loopback redirect
-(`http://127.0.0.1:PORT/callback`) and writes the refresh token to a
-gitignored file that deployment copies to the workload.
+**It is authorized once, by hand, with PKCE.** A command on a machine with a
+browser runs the authorization-code flow against a loopback redirect
+(`http://127.0.0.1:8898/callback`). PKCE needs no client secret, so the app's
+secret is never used or stored. The result is a refresh token in a file,
+which is *moved* to the Pi.
+
+**It asks to read playback and nothing else**: `user-read-playback-state` and
+`user-read-currently-playing`. Controlling playback is a further permission
+and is not asked for until something uses it.
+
+**Only named devices count.** The account plays wherever its owner is. The
+driver is told which devices are in the room (`NP_SPOTIFY_DEVICES`), and
+playback anywhere else is reported as `stopped`.
+
+**It reports a track, or nothing.** An advertisement, a podcast episode, and
+anything played in a private session are reported as `stopped`.
+
+**It takes no artwork.** The driver never requests an image
+([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
 
 ## Consequences
 
-- Nothing is installed on any PC, and playback on a phone or a speaker is
-  seen too.
-- It works wherever the rack has internet.
-- Album art arrives with the track, from Spotify.
-- **The owner needs Spotify Premium.** A development-mode app stops working
-  if it lapses.
+- Nothing is installed on any PC.
+- It works wherever the Pi has internet.
+- **The owner of the app needs Spotify Premium.** Without it every request is
+  refused with `403`, and the refusal says so. The driver reports itself
+  offline and asks again every five minutes; Spotify says a change of
+  subscription takes hours to be noticed.
 - **Authorization expires six months after it was granted**, and refreshing
-  does not extend it. On `invalid_grant` the driver reports that on its
-  status topic and stops, rather than retrying; re-authorizing is a recorded
-  change.
-- The refresh token is a secret the workload holds in a file. The workload is
-  rebuilt empty, so it is redeployed from the development machine's copy.
+  does not extend it. The driver warns in its log from two weeks before. On
+  `invalid_grant` it reports itself offline and stops, rather than retrying;
+  re-authorizing is `make spotify` again.
+- **The refresh token has one holder.** Spotify may replace it on any refresh,
+  and the one it replaced stops working. That is why the driver is on the Pi,
+  whose disk persists, and not on the workload, which is rebuilt empty; and
+  why the file is moved from the desk, not copied.
+- The app's Client ID is not a secret under PKCE. It still names one person's
+  app, and this repository is public, so it is kept out of it.
 - Track changes are seen up to one poll interval late.
+- A device is known by its name. Renaming a device in Spotify silently stops
+  it counting.
 - The development-mode quota is unpublished and shared across the owner's
   apps.
-- Spotify's terms allow caching cover art only as needed, not indefinitely.
 - Spotify's API pages carry the line *"You may not synchronize any sound
-  recordings with any visual media."* Whether a private light that follows a
-  cover falls under it is the owner's judgement. It is recorded here so the
-  question is not rediscovered.
+  recordings with any visual media."* With the lights not following Spotify
+  and its artwork never fetched, this design steps round that question rather
+  than answering it.
+
+## What changed on 2026-10-11
+
+| | As first proposed | As amended |
+|---|---|---|
+| Where it runs | the tenant workload | the agent Pi, which keeps a file across rebuilds |
+| Authorization | authorization code, token copied to the workload | authorization code with PKCE, read-only, token moved to the Pi |
+| Which playback | every device on the account | named devices only |
+| Artwork | arrives with the track, from Spotify | never requested |
 
 ## What would settle it
 
 1. A development-mode app owned by the account gets `/v1/me/player` with
-   the two playback scopes.
+   the two playback scopes. **2026-10-11: authorized, and refused.** The
+   authorization completed and a token was issued; every request then came
+   back `403 Active premium subscription required for the owner of the app`.
 2. Playback on the desktop client, and on the phone, appears within a poll.
 3. What the API returns during a private session.
 4. How it behaves at ten-second polling over a day: any `429`.

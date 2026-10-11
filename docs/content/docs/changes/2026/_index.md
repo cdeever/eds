@@ -11,3 +11,4 @@ bookCollapseSection: true
 | CHG-0001 | 2026-10-10 | [The LP Stand Joins Its Tenant](0001-lp-stand-joins-its-tenant/) | Deployment | {{< status-badge "complete" "Complete" >}} |
 | CHG-0002 | 2026-10-10 | [The Relay Pi, and Accounts for Now Playing](0002-relay-pi-and-now-playing-accounts/) | Deployment | {{< status-badge "complete" "Complete" >}} |
 | CHG-0003 | 2026-10-11 | [The Stand Follows What Is Playing](0003-the-stand-follows-now-playing/) | Deployment | {{< status-badge "complete" "Complete" >}} |
+| CHG-0004 | 2026-10-11 | [Spotify on the Agent Pi](0004-spotify-on-the-agent-pi/) | Deployment | {{< status-badge "active" "In progress" >}} |

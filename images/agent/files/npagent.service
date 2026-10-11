@@ -1,28 +1,38 @@
 # EdS now-playing agent: follows the players it can reach and reports to the
 # Deevnet broker.
 #
-# It does not start until two things exist, and neither is in the image:
-# its settings, which arrive on the card's boot partition (eds-agent-import),
-# and its pairing with iTunes, which a person makes once (eds-agent-pair).
+# It does not start until its settings exist, and they are not in the image:
+# they arrive on the card's boot partition (eds-agent-import).
+#
+# Each driver then needs one thing a person does once: iTunes a pairing
+# (eds-agent-pair), Spotify an authorization (eds-agent-spotify). A driver
+# without its one thing reports itself offline and the other runs. With
+# neither, the agent exits 78 and is left stopped, not restarted for ever.
 [Unit]
 Description=EdS now-playing agent
 Documentation=https://github.com/cdeever/eds/tree/main/services/nowplaying
 After=network-online.target nftables.service
 Wants=network-online.target
 ConditionPathExists=/etc/eds/npagent.env
-ConditionPathExists=/var/lib/eds-npagent/itunes-pairing.json
 
 [Service]
 User=npagent
 Group=npagent
-EnvironmentFile=/etc/eds/npagent.env
+# Both drivers by default. A file's settings win over these, so a card can
+# name fewer in npagent.env.
+Environment=NP_DRIVERS=itunes,spotify
 Environment=NP_STATE_DIR=/var/lib/eds-npagent
+EnvironmentFile=/etc/eds/npagent.env
+# Which Spotify devices count. Written by eds-agent-spotify; absent until then.
+EnvironmentFile=-/etc/eds/npagent-spotify.env
 ExecStart=/usr/local/bin/npagent run
 # A player that has gone away is retried inside the agent. This is for the
-# agent itself going down - and for a player that has forgotten the pairing,
-# which no amount of retrying fixes, so it is not hurried.
+# agent itself going down, or the broker being out of reach at start-up.
 Restart=on-failure
 RestartSec=30
+# 78: no driver has what it needs. Pairing or authorizing restarts the agent;
+# trying again by itself would find the same thing.
+RestartPreventExitStatus=78
 
 NoNewPrivileges=true
 ProtectSystem=strict

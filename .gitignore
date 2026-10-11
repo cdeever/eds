@@ -68,3 +68,8 @@ images/inputs/
 public/
 resources/
 .hugo_build.lock
+
+# The Spotify app's client id and the names of the devices that count. The id
+# is not a secret under PKCE, but it names one person's app, and the device
+# names are one household's.
+deploy/relay/spotify.conf

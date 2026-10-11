@@ -84,3 +84,4 @@ and incidents under the same names. To keep the two apart:
 | [0013](0013-musicbee-by-remote-protocol/) | 2026-10-10 | MusicBee is read through the MusicBee Remote plugin's protocol | {{< adr-status "Proposed" >}} |
 | [0014](0014-tidal-by-lastfm/) | 2026-10-10 | TIDAL is read through Last.fm, because nothing better is offered | {{< adr-status "Proposed" >}} |
 | [0015](0015-eds-builds-its-own-pi-images/) | 2026-10-10 | EdS builds its own Pi images, on the substrate's base; a relay is an agent Pi with a second leg | {{< adr-status "Accepted" >}} |
+| [0016](0016-a-source-can-be-reported-without-its-cover/) | 2026-10-11 | A source can be reported without its cover, and Spotify is: known, and not lit | {{< adr-status "Accepted" >}} |

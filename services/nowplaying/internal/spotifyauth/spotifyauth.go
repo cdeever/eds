@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -279,6 +280,14 @@ func (s *Source) Access(ctx context.Context) (string, error) {
 func (s *Source) Invalidate() { s.access = "" }
 
 func (s *Source) refresh(ctx context.Context) (string, error) {
+	// The file is the truth, not what was read at start-up. Another run of
+	// the agent - listing the account's devices, say - may have refreshed in
+	// the meantime and been handed a replacement, and the token held here
+	// would then be the one Spotify has stopped accepting.
+	if onDisk, err := Load(s.Path); err == nil && onDisk.ClientID == s.token.ClientID {
+		s.token = onDisk
+	}
+
 	grant, err := s.Endpoints.Refresh(ctx, s.HTTP, s.token.ClientID, s.token.RefreshToken)
 	if err != nil {
 		return "", err
@@ -298,4 +307,59 @@ func (s *Source) refresh(ctx context.Context) (string, error) {
 	s.access = grant.AccessToken
 	s.expires = s.Now().Add(grant.ExpiresIn)
 	return s.access, nil
+}
+
+// --- the browser coming back -------------------------------------------------------
+
+// Callback is how an authorization in the browser ended: with a code to
+// exchange, or with the reason there is none.
+type Callback struct {
+	Code string
+	Err  error
+}
+
+// CallbackHandler serves the redirect URI. It answers exactly one request
+// usefully: the one carrying the state this authorization was started with.
+// Anything else on the port - a stale tab, another program, a page that
+// guessed the address - is refused and changes nothing, so it can neither
+// end the wait nor slip a code of its own in.
+//
+// Nothing from the request is written into the page.
+func CallbackHandler(state string, done chan<- Callback) http.Handler {
+	redirect, _ := url.Parse(RedirectURI)
+	var mu sync.Mutex
+	finished := false
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+
+		mu.Lock()
+		defer mu.Unlock()
+
+		q := r.URL.Query()
+		switch {
+		case r.Method != http.MethodGet || r.URL.Path != redirect.Path:
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		case state == "" || q.Get("state") != state:
+			http.Error(w, "This is not the authorization that was started here. Nothing was changed.", http.StatusBadRequest)
+			return
+		case finished:
+			http.Error(w, "This authorization has already been answered.", http.StatusGone)
+			return
+		}
+		finished = true
+
+		if reason := q.Get("error"); reason != "" || q.Get("code") == "" {
+			if reason == "" {
+				reason = "no code was sent"
+			}
+			done <- Callback{Err: fmt.Errorf("spotify: not authorized: %s", reason)}
+			_, _ = io.WriteString(w, "Not authorized. Nothing was changed. You can close this tab.\n")
+			return
+		}
+		done <- Callback{Code: q.Get("code")}
+		_, _ = io.WriteString(w, "Authorized: EdS can see what this account is playing. You can close this tab.\n")
+	})
 }
