@@ -144,9 +144,12 @@ func (a *Arbiter) pick() *contract.State {
 
 	sort.Slice(ids, func(i, j int) bool {
 		x, y := a.sources[ids[i]], a.sources[ids[j]]
-		xp, yp := x.state.State == contract.Playing, y.state.State == contract.Playing
-		if xp != yp {
-			return xp
+		// Playing beats paused, and paused beats stopped, before recency is
+		// asked. A source with nothing loaded has nothing to say: a driver
+		// that starts up and reports "stopped" must not take the place of a
+		// track that is paused on another.
+		if xr, yr := rank(x.state.State), rank(y.state.State); xr != yr {
+			return xr > yr
 		}
 		if !x.since.Equal(y.since) {
 			return x.since.After(y.since)
@@ -156,4 +159,14 @@ func (a *Arbiter) pick() *contract.State {
 
 	winner := a.sources[ids[0]].state
 	return &winner
+}
+
+func rank(s contract.PlayState) int {
+	switch s {
+	case contract.Playing:
+		return 2
+	case contract.Paused:
+		return 1
+	}
+	return 0
 }
