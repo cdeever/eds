@@ -163,6 +163,11 @@ lightd's own HTTP surface: `GET /healthz`, `POST /v1/cover` (image bytes),
 `POST /v1/scene` (publish a scene by hand — how the stand gets exercised with
 no image path), `GET /v1/scene` (last sent).
 
+The stand follows what is playing: the agent Pi reports iTunes to the broker,
+`nowplayd` on the workload publishes the current track and its cover, and
+`lightd` lights the stand from the cover. `make -C deploy deploy WHERE=builder`
+deploys all three services (the Mac has no container tool; the Builder builds).
+
 lightd has a second input for covers: with `LIGHTD_COVER_TOPIC` set it
 subscribes to that topic and runs each image down the same path as
 `POST /v1/cover` (ADR-0009). It still sees only image bytes. Do not teach it

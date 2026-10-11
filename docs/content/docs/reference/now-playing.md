@@ -95,6 +95,11 @@ what `lightd` does.
   track's.
 - **The image is published before the state that names it**, by drivers and
   by nowplayd alike.
+- **A subscriber must not rely on that order**, all the same. Both messages
+  are retained, and a broker handing a new subscriber its retained messages
+  may deliver them either way round. A subscriber that holds a state whose
+  `art.sha256` it has no image for should wait briefly for the image, as
+  nowplayd does for a source's.
 - The same image is not published twice running.
 - When playback pauses or stops, the cover topic is left as it is.
 

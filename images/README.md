@@ -17,7 +17,8 @@ playing from its line-level output, for one.
 
 ## Building
 
-Builds need Linux, sudo and loop devices, so they run on the Builder:
+Builds need Linux, sudo and loop devices, so they run on the Builder
+([why, and what would change that](#why-builds-run-on-the-builder-and-what-would-change-that)):
 
 ```bash
 make -C deploy/relay image    # copies this directory there and runs build.sh agent
@@ -76,6 +77,42 @@ eds-agent-status     each leg, the broker, the player, the agent; non-zero if an
 eds-agent-pair       pair with iTunes, once; prints a code to type in
 journalctl -u npagent -f
 ```
+
+## Why builds run on the Builder, and what would change that
+
+The image is defined entirely here. The Builder is not where it lives; it is
+where three things happen to be:
+
+| What | Why the Builder | Whose concern |
+|---|---|---|
+| A Linux machine to run `build.sh` on | attaching an image as a disk, mounting its filesystem and running commands inside it needs Linux and sudo; macOS cannot mount the filesystem | convenience only |
+| The base image | it is built by the image factory's definition, and the factory's checkout is there. `build.sh` reaches into it by path: its Packer file, its container, the automation user's key | the substrate's |
+| The way in to a Pi | a Pi admits SSH on its site side only, to the automation user, and from a desk the Builder is the hop | the site's |
+
+Only the first is an accident of where a script runs. The other two are about
+what belongs to the substrate and how the site is administered, and would
+stay whatever built the image.
+
+### Future enhancement: build anywhere
+
+Not done, and not needed yet. Two changes would let an EdS image be built from
+a developer's machine alone:
+
+1. **The factory publishes its base image** as an artifact, beside the images
+   it already publishes. `build.sh` would download a named, checksummed base
+   instead of building one from the factory's checkout. That turns today's
+   dependency on the factory's *layout* into a dependency on something it
+   *offers*, and it is the half that matters: a change to the factory's
+   internals could break EdS's build today without anyone meaning it to.
+2. **`build.sh` runs in a Linux container.** On an ARM Mac that would also
+   drop the emulation the Builder needs, since the Mac and the Pi share an
+   architecture.
+
+The first is a change to the substrate and wants its own record there. Until
+then the seam is noted in
+[ADR-0015](../docs/content/docs/architecture/decisions/0015-eds-builds-its-own-pi-images.md)
+and in [CHG-0002](../docs/content/docs/changes/2026/0002-relay-pi-and-now-playing-accounts.md)'s
+follow-ups.
 
 ## Adding an image
 
