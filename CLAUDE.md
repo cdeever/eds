@@ -4,9 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-EdS is a monorepo for an intelligent music experience platform. Only the first
-vertical is built: an LP jacket stand lit by an RGB strip that reacts to the
-record's cover art.
+EdS is a monorepo for an intelligent music experience platform. The first
+vertical is an LP jacket stand lit by an RGB strip that reacts to the
+record's cover art. Beside it is a touch screen that shows the cover and can
+pause, skip and set the volume (ADR-0020).
 
 ```
 cover image ──▶ lightd ──▶ palette ──▶ lightd ──▶ mqtt01 ──▶ LP stand
@@ -23,6 +24,7 @@ builds the monorepo as a whole; work inside one project directory at a time.
 | `services/nowplaying` | Go 1.25 | `make check test-integration run` |
 | `services/console` | Go 1.25 + a static page | `make check run feed` |
 | `firmware/lp-stand` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
+| `firmware/cover-screen` | C / ESP-IDF | `make test pictures` (host), `make build flash` (device) |
 | `infra/deevnet-tenant-eds` | Terraform | `make paths init plan apply` |
 | `images` | Ansible / shell | `make -C deploy/relay image fetch` (builds on builder) |
 
@@ -125,6 +127,23 @@ make provision PORT=/dev/ttyUSB0   # creds partition from the tenant's Terraform
 make logs ARGS=-f              # the stands' events, from the tenant's log store
 ```
 
+### cover-screen (`firmware/cover-screen`)
+
+```bash
+make test                      # host tests, gcc only
+make pictures                  # each screen drawn to test/host/pictures/*.bmp
+. ~/.espressif/tools/activate_idf_v6.1.sh
+make build backup flash provision monitor   # PORT defaults to /dev/cu.usbserial-2120
+```
+
+An ESP32-2432S028R: 320x240 ILI9341, XPT2046 touch, no external memory. Its
+Makefile runs under macOS make 3.81. **Nothing in it holds a frame**: the
+cover is decoded a row of blocks at a time and the buttons are painted into
+each band as it passes (`app/ui/draw.h`). Anything new on the screen must be
+drawable that way. `make pictures` is how its look is checked without a
+board. Its credentials, WiFi, event log and partition table are copies of
+the stand's; change one, change the other.
+
 ### deevnet-tenant-eds (`infra/deevnet-tenant-eds`)
 
 ```bash
@@ -211,6 +230,20 @@ it belongs to; `lightd` holds what the name looks like
 the music side and a preset on the light side; never an album name in lightd,
 never a colour in nowplayd.
 
+**Playback can be controlled, by one route** (ADR-0020). A controller
+publishes `{"v":1,"command":"next"}` to `nowplaying/command`; `nowplayd`
+passes it to the current source's `nowplaying/source/<id>/command`; the
+iTunes driver carries it out over its pairing. The commands are `play_pause`,
+`next`, `previous`, `volume_up`, `volume_down`, and adding one is a decision.
+**A command is never retained and a retained one is ignored**; the screen
+sends at QoS 0 and never queues one. Spotify takes none. A controller never
+names a source, and the console still only looks.
+
+`nowplayd` also publishes each cover small (`nowplaying/current/art/small`:
+baseline JPEG, 240 px, at most 32 KB; empty when it could not be made), for
+subscribers that cannot decode the full one. It knows nothing about any
+screen; do not teach it.
+
 The stand has 18 LEDs: `LP_LED_COUNT` in the firmware, `CONSOLE_STRIP_LEDS`
 on the console, which is told and cannot find out.
 
@@ -223,6 +256,10 @@ on the console, which is told and cannot find out.
 | `eds/lightstand/<id>/state` | device → broker | yes |
 | `eds/lightd/status` | lightd → broker | yes (LWT) |
 | `eds/nowplaying/current/look` | nowplayd → lightd | yes |
+| `eds/nowplaying/current/art/small` | nowplayd → cover screen | yes |
+| `eds/nowplaying/command` | cover screen → nowplayd | **never** |
+| `eds/nowplaying/source/<id>/command` | nowplayd → driver | **never** |
+| `eds/screen/<id>/status` | device → broker | yes (LWT) |
 | `eds/console/status` | console → broker | yes (LWT) |
 | `eds/log/<id>` | device or agent Pi → broker → log bridge | no |
 

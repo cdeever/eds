@@ -215,8 +215,10 @@ resource "deevnet_iot_broker_account" "lp_stand_01" {
 # Drivers each report one player; nowplayd picks the current track. Three kinds
 # of account, each granted only its own side of the contract:
 #
-#   a driver   publishes its own source's three topics, and reads nothing
-#   nowplayd   reads every source, and publishes the current track
+#   a driver   publishes its own source's three topics, and reads only the
+#              commands meant for its own player (ADR-0020)
+#   nowplayd   reads every source, and publishes the current track; passes a
+#              controller's command to the source that is current
 #   lightd     reads the current cover, above
 #
 # The broker does not report a publish or a subscription it refuses, so what
@@ -237,9 +239,17 @@ resource "deevnet_iot_broker_account" "nowplayd" {
     "nowplaying/current/art",  # its cover
     "nowplaying/current/look", # whether that cover's album has a look of its own (ADR-0019)
     "nowplaying/status",       # its own liveness
+
+    # ADR-0020. The cover again, small, for a subscriber that cannot take it
+    # as it comes; and a controller's command, passed on to whichever source
+    # is current. One pattern, because which source that is changes with the
+    # music and is not known here.
+    "nowplaying/current/art/small",
+    "nowplaying/source/+/command",
   ]
   subscribe = [
     "nowplaying/source/+/+", # every driver's state, presence and cover
+    "nowplaying/command",    # what a controller wants of whatever is current (ADR-0020)
   ]
 }
 
@@ -307,5 +317,60 @@ resource "deevnet_iot_broker_account" "np_relay" {
     "nowplaying/source/spotify/art",
     "log/np-relay", # its own events, into the tenant's log store, as the stand's go
   ]
-  subscribe = []
+  # The one thing the agent is told rather than tells (ADR-0020): play, pause,
+  # next, previous, louder, quieter, for iTunes. It arrives from nowplayd and
+  # from nowhere else, since no other account may publish here.
+  #
+  # Spotify has no such line and is not to be given one without a decision:
+  # the agent's authorization there only reads (ADR-0016).
+  subscribe = [
+    "nowplaying/source/itunes/command",
+  ]
+}
+
+# --- The cover screen (ADR-0020) ---------------------------------------------
+#
+# A small touch screen that shows the sleeve of what is playing, and has five
+# buttons: play/pause, next, previous, louder, quieter.
+#
+# Registered as the stand is, and for the same reason: firmware its owner
+# controls is what trust class `iot` is for, and the entry is what lets its
+# account publish under log/. It is an identity and carries no credential.
+resource "deevnet_iot_device" "cover_screen_01" {
+  tenant      = deevnet_tenant.eds.name
+  name        = "cover-screen-01"
+  trust_class = "iot"
+}
+
+# The screen's own account.
+#
+# THIS IS THE FIRST ACCOUNT THAT CAN CHANGE WHAT PLAYS. Every other account in
+# this file says what is so, or draws it; this one may say "next". It is a
+# device credential on the IoT segment, which is rated Medium trust because
+# its devices are assumed reachable by things EdS did not write - so what it
+# may ask for is kept to one topic and five words, and the words are checked
+# by nowplayd and again by the driver. The worst this credential can do is
+# skip a track, pause it, or change the volume - up as well as down.
+#
+# It names no source. It publishes what it wants of whatever is current, and
+# nowplayd, which knows what that is, passes it on. So it cannot address a
+# player directly, and it reads only the current track and its small cover:
+# not the sources, not the stand, not the full-size cover it could not hold.
+#
+# CAREFUL: replacing this resource issues a NEW password, and the screen stops
+# connecting until it is reprovisioned.
+resource "deevnet_iot_broker_account" "cover_screen_01" {
+  tenant = deevnet_tenant.eds.name
+  name   = "cover-screen-01"
+  device = deevnet_iot_device.cover_screen_01.name
+
+  publish = [
+    "screen/cover-screen-01/status", # its own presence, and its last will
+    "nowplaying/command",            # what a hand on the screen asked for
+    "log/cover-screen-01",           # its own events, into the tenant's log store
+  ]
+  subscribe = [
+    "nowplaying/current",           # what is playing, and whether it is
+    "nowplaying/current/art/small", # its sleeve, at a size the screen can hold
+  ]
 }

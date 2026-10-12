@@ -71,7 +71,14 @@ type Publisher struct {
 	// Looks names the look of the album a track is on, or "" (ADR-0019). Nil
 	// means no album has one. It is published beside the cover, for the
 	// cover: a look is something a cover has.
-	Looks   func(contract.Track) string
+	Looks func(contract.Track) string
+	// Small makes a cover small, for the subscriber that cannot take it as
+	// it comes (ADR-0020). Nil means no small cover is published. It is
+	// published after the cover and before the state, and when a cover
+	// cannot be made small the topic is emptied instead: a subscriber left
+	// holding the last album's small cover would be showing the wrong sleeve
+	// with nothing to tell it so.
+	Small   func([]byte) ([]byte, error)
 	Prefix  string
 	Timeout time.Duration // for one catalogue lookup
 	Logger  *slog.Logger
@@ -83,6 +90,8 @@ type Publisher struct {
 	// that is already the right colour.
 	lastState *contract.State
 	lastArt   string
+	// The cover whose small form was last published, or emptied.
+	lastSmall string
 	// The look last published, and the cover it was for.
 	lastLook, lastLookArt string
 	lookSent              bool
@@ -92,9 +101,10 @@ type Publisher struct {
 // or nil when no source has anything to say. fromSource is the cover the
 // winning source itself published, if it has.
 //
-// The cover goes out before the state that names it. A subscriber that reads
-// the state and then looks for the image must find the one the state means,
-// and the other order would leave a moment when it finds the last one.
+// The cover goes out before the state that names it, and its small form with
+// it. A subscriber that reads the state and then looks for the image must
+// find the one the state means, and the other order would leave a moment when
+// it finds the last one.
 //
 // It returns the state as published - with the album and the cover it was
 // completed with - and whether anything went out at all.
@@ -129,6 +139,20 @@ func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSou
 			return out, false, err
 		}
 		p.lastArt = cover.SHA256
+		sent = true
+	}
+	// Kept apart from the cover above so that a small cover the bus did not
+	// take is sent again without the cover itself going out a second time.
+	if cover != nil && p.Small != nil && cover.SHA256 != p.lastSmall {
+		small, err := p.Small(cover.Bytes)
+		if err != nil {
+			p.logger().Warn("the cover has no small form; the small cover is emptied", "art", cover.SHA256, "error", err)
+			small = nil
+		}
+		if err := p.Bus.Publish(contract.CurrentSmallArtTopic(p.Prefix), small, true); err != nil {
+			return out, false, err
+		}
+		p.lastSmall = cover.SHA256
 		sent = true
 	}
 

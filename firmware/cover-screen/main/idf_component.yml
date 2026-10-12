@@ -1,0 +1,12 @@
+dependencies:
+  idf: ">=6.0"
+
+  # esp-mqtt and cJSON shipped inside IDF through 5.x and moved out to the
+  # component registry in 6.0. They are ordinary managed dependencies now.
+  espressif/mqtt: "^1.1.0"
+  espressif/cjson: "^1.7.19"
+
+  # The panel's controller. Its start-up sequence is forty bytes of voltages
+  # and gamma that come from the datasheet; Espressif's driver already has
+  # them right.
+  espressif/esp_lcd_ili9341: "^2.0.0"

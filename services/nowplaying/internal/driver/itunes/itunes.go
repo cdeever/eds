@@ -10,8 +10,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
@@ -25,6 +27,13 @@ type Player interface {
 	Now(ctx context.Context) (dacp.Status, error)
 	Wait(ctx context.Context, revision uint32) (dacp.Status, error)
 	Artwork(ctx context.Context, size int) ([]byte, error)
+
+	// The remote's buttons (ADR-0020).
+	PlayPause(ctx context.Context) error
+	Next(ctx context.Context) error
+	Previous(ctx context.Context) error
+	Volume(ctx context.Context) (int, error)
+	SetVolume(ctx context.Context, volume int) error
 }
 
 // Driver follows one player.
@@ -45,6 +54,71 @@ type Driver struct {
 	Idle time.Duration
 
 	Now func() time.Time
+
+	// Whether there is a session a command could be sent on. Commands arrive
+	// from the bus, on a goroutine that is not the one following the player.
+	mu   sync.Mutex
+	live bool
+}
+
+// VolumeStep is how far one volume command moves the player, of 100. Twenty
+// presses from silence to full: fine enough to settle on a level, coarse
+// enough that a press is heard.
+const VolumeStep = 5
+
+// ErrNoSession means a command arrived while the driver had no session with
+// its player. It is not kept for later: a "next" that lands a minute after
+// it was pressed is a fault of its own.
+var ErrNoSession = errors.New("itunes: no session with the player")
+
+// Command does what a controller asked of this player (ADR-0020). It may be
+// called from any goroutine, while Run is following the player.
+//
+// The driver says nothing on the bus about having done it. The player
+// reports the change it caused the way it reports any other, and that report
+// is the acknowledgement.
+func (d *Driver) Command(ctx context.Context, c contract.Command) error {
+	d.mu.Lock()
+	live := d.live
+	d.mu.Unlock()
+	if !live {
+		return ErrNoSession
+	}
+
+	switch c.Command {
+	case contract.PlayPause:
+		return d.Player.PlayPause(ctx)
+	case contract.Next:
+		return d.Player.Next(ctx)
+	case contract.Previous:
+		return d.Player.Previous(ctx)
+	case contract.VolumeUp:
+		return d.nudge(ctx, VolumeStep)
+	case contract.VolumeDown:
+		return d.nudge(ctx, -VolumeStep)
+	}
+	return fmt.Errorf("itunes: no such command %q", c.Command)
+}
+
+// nudge moves the volume by step. The player is asked where it is first,
+// because it is the only one that knows: the slider in its own window moves
+// it too.
+func (d *Driver) nudge(ctx context.Context, step int) error {
+	volume, err := d.Player.Volume(ctx)
+	if err != nil {
+		return err
+	}
+	to := min(max(volume+step, 0), 100)
+	if to == volume {
+		return nil // already as far as it goes
+	}
+	return d.Player.SetVolume(ctx, to)
+}
+
+func (d *Driver) setLive(live bool) {
+	d.mu.Lock()
+	d.live = live
+	d.mu.Unlock()
 }
 
 // ErrUnpaired means the player does not know this remote. Retrying cannot
@@ -58,6 +132,7 @@ func (d *Driver) Run(ctx context.Context) error {
 	for {
 		started := d.now()
 		err := d.follow(ctx)
+		d.setLive(false)
 		d.Sink.Online(false)
 
 		if ctx.Err() != nil {
@@ -101,6 +176,7 @@ func (d *Driver) follow(ctx context.Context) error {
 }
 
 func (d *Driver) report(ctx context.Context, status dacp.Status) error {
+	d.setLive(true)
 	d.Sink.Online(true)
 
 	var (

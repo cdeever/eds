@@ -88,3 +88,4 @@ and incidents under the same names. To keep the two apart:
 | [0017](0017-an-agent-pi-is-a-registered-device/) | 2026-10-11 | An agent Pi is a registered device, and reports its events like one | {{< adr-status "Accepted" >}} |
 | [0018](0018-a-console-of-eds-own/) | 2026-10-11 | EdS has a console of its own, fed from the bus, and it only looks | {{< adr-status "Accepted" >}} |
 | [0019](0019-an-album-can-have-a-look-of-its-own/) | 2026-10-11 | An album can have a look of its own, named on the music side and drawn on the light side | {{< adr-status "Proposed" >}} |
+| [0020](0020-a-touch-screen-that-can-change-what-plays/) | 2026-10-11 | A touch screen shows the cover and can change what plays, by asking nowplayd | {{< adr-status "Proposed" >}} |

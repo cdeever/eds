@@ -625,3 +625,169 @@ func TestACoverlessSourceGetsNoLook(t *testing.T) {
 		}
 	}
 }
+
+// --- the small cover (ADR-0020) ----------------------------------------------
+
+// shrunk stands in for the scaler: what it makes is recognisably made from
+// what it was given, and it counts how often it was asked.
+type shrunk struct {
+	calls int
+	err   error
+}
+
+func (s *shrunk) small(cover []byte) ([]byte, error) {
+	s.calls++
+	if s.err != nil {
+		return nil, s.err
+	}
+	return append([]byte("small:"), cover...), nil
+}
+
+func withSmall(bus *fakeBus, r Resolver, s *shrunk) *Publisher {
+	p := publisher(bus, r)
+	p.Small = s.small
+	return p
+}
+
+func covered(title string, image *Image) *contract.State {
+	st := playing(title, "Kind of Blue")
+	st.Art = &contract.Art{SHA256: image.SHA256}
+	return st
+}
+
+func topics(sent []published) []string {
+	var out []string
+	for _, p := range sent {
+		out = append(out, p.topic)
+	}
+	return out
+}
+
+// The cover, then its small form, then the state that names them: whoever
+// reads the state must find both already there.
+func TestTheSmallCoverGoesOutAfterTheCoverAndBeforeTheState(t *testing.T) {
+	bus, s := &fakeBus{}, &shrunk{}
+	cover := NewImage(pngA)
+
+	if _, _, err := withSmall(bus, nil, s).Publish(context.Background(), covered("So What", cover), cover); err != nil {
+		t.Fatal(err)
+	}
+
+	sent := bus.take()
+	want := []string{"eds/nowplaying/current/art", "eds/nowplaying/current/art/small", "eds/nowplaying/current"}
+	if got := topics(sent); len(got) != 3 || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
+		t.Fatalf("published %v, want %v", got, want)
+	}
+	if string(sent[1].payload) != "small:"+string(pngA) || !sent[1].retained {
+		t.Errorf("small cover = %q retained=%v", sent[1].payload, sent[1].retained)
+	}
+}
+
+// One small cover per cover: the next track of the album does not make it
+// again, and the next album does.
+func TestTheSmallCoverIsMadeOncePerCover(t *testing.T) {
+	bus, s := &fakeBus{}, &shrunk{}
+	p := withSmall(bus, nil, s)
+	a, b := NewImage(pngA), NewImage(pngB)
+
+	for _, step := range []struct {
+		title string
+		cover *Image
+	}{{"So What", a}, {"Freddie Freeloader", a}, {"Elsewhere", b}} {
+		if _, _, err := p.Publish(context.Background(), covered(step.title, step.cover), step.cover); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	small := 0
+	for _, sent := range bus.take() {
+		if sent.topic == "eds/nowplaying/current/art/small" {
+			small++
+		}
+	}
+	if small != 2 || s.calls != 2 {
+		t.Errorf("published %d small covers from %d makings, for two albums", small, s.calls)
+	}
+}
+
+// A cover that cannot be made small empties the topic. Leaving it would
+// leave a subscriber showing the album before, retained, as if it were this
+// one.
+func TestACoverWithNoSmallFormEmptiesTheSmallCover(t *testing.T) {
+	bus, s := &fakeBus{}, &shrunk{err: errors.New("not a picture")}
+	cover := NewImage(pngA)
+
+	out, sentAny, err := withSmall(bus, nil, s).Publish(context.Background(), covered("So What", cover), cover)
+	if err != nil || !sentAny {
+		t.Fatalf("sent=%v err=%v: a cover with no small form is still published", sentAny, err)
+	}
+	if out.Art == nil {
+		t.Error("the state lost its cover")
+	}
+
+	sent := bus.take()
+	if len(sent) != 3 || sent[1].topic != "eds/nowplaying/current/art/small" {
+		t.Fatalf("published %v", topics(sent))
+	}
+	if len(sent[1].payload) != 0 || !sent[1].retained {
+		t.Errorf("small cover = %d bytes, retained=%v; want empty and retained", len(sent[1].payload), sent[1].retained)
+	}
+}
+
+// No cover published, no small cover touched: a source reported without its
+// cover (ADR-0016) leaves the small one exactly as it leaves the large.
+func TestWithNoCoverTheSmallCoverIsLeftAlone(t *testing.T) {
+	bus, s := &fakeBus{}, &shrunk{}
+	p := coverless(bus, nil, "spotify")
+	p.Small = s.small
+
+	st := playing("Song", "Album")
+	st.Source, st.Player = "spotify", "spotify"
+	if _, _, err := p.Publish(context.Background(), st, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := topics(bus.take()); len(got) != 1 || got[0] != "eds/nowplaying/current" {
+		t.Errorf("published %v", got)
+	}
+	if s.calls != 0 {
+		t.Error("something was made small with no cover to make it from")
+	}
+}
+
+// A small cover the bus did not take is sent again, and the cover it was
+// made from is not: lightd would repaint a room that is already right.
+func TestASmallCoverTheBusRefusedIsSentAgainWithoutTheCover(t *testing.T) {
+	bus, s := &failingAt{fail: "eds/nowplaying/current/art/small"}, &shrunk{}
+	p := &Publisher{Bus: bus, Prefix: "eds", Small: s.small, Now: func() time.Time { return at }}
+	cover := NewImage(pngA)
+
+	if _, _, err := p.Publish(context.Background(), covered("So What", cover), cover); err == nil {
+		t.Fatal("a failed publish was called a success")
+	}
+	bus.fail = ""
+	if _, _, err := p.Publish(context.Background(), covered("So What", cover), cover); err != nil {
+		t.Fatal(err)
+	}
+
+	count := map[string]int{}
+	for _, topic := range bus.sent {
+		count[topic]++
+	}
+	if count["eds/nowplaying/current/art"] != 1 || count["eds/nowplaying/current/art/small"] != 1 || count["eds/nowplaying/current"] != 1 {
+		t.Errorf("published %v", count)
+	}
+}
+
+// failingAt is a bus that refuses one topic.
+type failingAt struct {
+	fail string
+	sent []string
+}
+
+func (f *failingAt) Publish(topic string, _ []byte, _ bool) error {
+	if topic == f.fail {
+		return errors.New("refused")
+	}
+	f.sent = append(f.sent, topic)
+	return nil
+}

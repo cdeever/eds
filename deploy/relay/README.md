@@ -94,7 +94,9 @@ its next boot and deletes them from the card.
 - The broker account goes straight from the tenant's Terraform state to the
   card.
 - `card.sh` refuses to write a card whose account was not granted the topics
-  the agent uses, because the broker would not say so.
+  the agent uses, because the broker would not say so. The one topic the
+  agent listens on, its commands (ADR-0020), only warns: the agent reports
+  what is playing without it.
 
 To change a setting later — a new Wi-Fi key, a reissued account — put the card
 back in the computer and run `make card` again.

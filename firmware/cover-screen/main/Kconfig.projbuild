@@ -1,0 +1,164 @@
+menu "Cover screen"
+
+    config CS_SCREEN_ID
+        string "Screen identifier"
+        default "cover-screen-01"
+        help
+            The device's name in the tenant's registry. It is the client id,
+            a level in the screen's own topics, and what its commands say
+            they are from. Lowercase letters, digits and hyphens.
+
+    config CS_TOPIC_PREFIX
+        string "Topic prefix"
+        default "eds"
+        help
+            Root of the topic tree: the tenant's name.
+
+    menu "Panel"
+
+        config CS_PANEL_ROTATE_180
+            bool "Turn the picture upside down"
+            default n
+            help
+                The panel is used on its side, and which side is up depends on
+                how the board is mounted. The default has the USB socket on
+                the right, as the board's own demonstration does.
+
+        config CS_PANEL_BGR
+            bool "The panel is wired blue-green-red"
+            default y
+            help
+                Red and blue swapped on the screen means this is wrong.
+
+        config CS_PANEL_INVERT
+            bool "Invert colours"
+            default n
+            help
+                A picture that looks like a photographic negative means this
+                is wrong. Boards sold with an ST7789 panel want it on.
+
+        config CS_PANEL_GPIO_SCLK
+            int "Panel clock GPIO"
+            default 14
+        config CS_PANEL_GPIO_MOSI
+            int "Panel data GPIO"
+            default 13
+        config CS_PANEL_GPIO_CS
+            int "Panel chip select GPIO"
+            default 15
+        config CS_PANEL_GPIO_DC
+            int "Panel data/command GPIO"
+            default 2
+        config CS_PANEL_GPIO_BACKLIGHT
+            int "Backlight GPIO"
+            default 21
+
+    endmenu
+
+    menu "Touch"
+
+        config CS_TOUCH_GPIO_SCLK
+            int "Touch clock GPIO"
+            default 25
+            help
+                On the ESP32-2432S028R the touch controller has pins of its
+                own, apart from the panel's.
+        config CS_TOUCH_GPIO_MOSI
+            int "Touch data-in GPIO"
+            default 32
+        config CS_TOUCH_GPIO_MISO
+            int "Touch data-out GPIO"
+            default 39
+        config CS_TOUCH_GPIO_CS
+            int "Touch chip select GPIO"
+            default 33
+
+        config CS_TOUCH_PRESSURE
+            int "Pressure that counts as a touch"
+            range 50 4000
+            default 400
+            help
+                Lower is more sensitive. Too low and the screen wakes by
+                itself; too high and it wants a fingernail.
+
+        config CS_TOUCH_SWAP_XY
+            bool "The controller's axes are the other way round"
+            default y
+            help
+                A finger moved across the screen that moves the touch up and
+                down means this is wrong. Each touch is printed on the serial
+                console with what the controller read and where that was
+                taken to be, which is what these settings are tuned from.
+
+                The defaults here are what the ESP32-2432S028R wants with the
+                panel the default way up, found by pressing its buttons. If
+                the picture is turned upside down the touch is turned with
+                it, and these do not need changing.
+
+        config CS_TOUCH_INVERT_X
+            bool "Left and right are swapped"
+            default y
+        config CS_TOUCH_INVERT_Y
+            bool "Up and down are swapped"
+            default y
+
+        config CS_TOUCH_X_MIN
+            int "Reading at the left edge"
+            range 0 4095
+            default 240
+            help
+                The four readings are taken after the axes are swapped and
+                before either is turned round: the lower reading of each
+                pair, then the higher.
+        config CS_TOUCH_X_MAX
+            int "Reading at the right edge"
+            range 0 4095
+            default 3800
+        config CS_TOUCH_Y_MIN
+            int "Reading at the top edge"
+            range 0 4095
+            default 200
+        config CS_TOUCH_Y_MAX
+            int "Reading at the bottom edge"
+            range 0 4095
+            default 3700
+
+    endmenu
+
+    menu "Network"
+
+        config CS_WIFI_SSID
+            string "WiFi SSID"
+            default "DVNTM-IOT"
+            help
+                The screen belongs on the IoT segment (VLAN 30), with the
+                stand.
+
+                There is no option for the key, on purpose: it is read from
+                the creds partition and from nowhere else, so it cannot end
+                up in sdkconfig or the image. `make provision` writes it.
+
+        config CS_MQTT_URI
+            string "Broker URI"
+            default "mqtts://mqtt.mobile.deevnet.net:8883"
+            help
+                Normally provisioned rather than set here: `make provision`.
+
+        config CS_MQTT_USERNAME
+            string "Broker username"
+            default "cover-screen-01"
+            help
+                The password has no option here, for the same reason the
+                WiFi key has none: it is provisioned, never compiled in.
+
+        config CS_MQTT_USE_TLS
+            bool "Embed a fallback CA for the broker"
+            default n
+            help
+                Requires main/certs/mqtt_ca.pem. The CA is normally
+                provisioned beside the credentials (`make provision`) and this
+                is not needed; a provisioned one takes precedence.
+
+    endmenu
+
+endmenu

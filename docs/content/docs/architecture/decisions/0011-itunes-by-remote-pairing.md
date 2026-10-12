@@ -10,6 +10,7 @@ weight: 11
 | **Status** | {{< adr-status "Accepted" >}} 2026-10-10, after pairing with the real iTunes; see [Evidence](#evidence). Opened the same day as `Proposed` |
 | **Date** | 2026-10-10 |
 | **Scope** | How the iTunes driver learns of track changes and gets artwork. |
+| **Extended by** | [ADR-0020](/docs/architecture/decisions/0020-a-touch-screen-that-can-change-what-plays/): the pairing is also used to play, pause, skip and set the volume |
 | **Related** | [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), [ADR-0007](/docs/architecture/decisions/0007-drivers-are-portable-go/), [ADR-0010](/docs/architecture/decisions/0010-home-lan-relay/) |
 
 ---

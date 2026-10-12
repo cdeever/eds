@@ -40,6 +40,10 @@ type job struct {
 	// to fix. Nil when the driver could not be set up at all; err says why.
 	run func(ctx context.Context, sink driver.Sink) error
 	err error
+	// command does what a controller asked of this driver's player
+	// (ADR-0020). Nil for a driver that takes no commands, which then
+	// subscribes to nothing at all.
+	command func(ctx context.Context, c contract.Command) error
 }
 
 // drivers reads NP_DRIVERS and sets each one up as far as it will go. A
@@ -101,18 +105,21 @@ func itunesJob(logger *slog.Logger) (job, error) {
 		j.err = err
 		return j, nil
 	}
+	// Built here and not in run, because a command arrives from the bus on a
+	// goroutine of its own and has to find the same driver.
+	d := &itunes.Driver{
+		Source: j.source,
+		Kind:   kind,
+		GUID:   p.GUID,
+		Player: dacp.NewClient(p.Host, p.Port),
+		Logger: logger.With("driver", j.name),
+	}
 	j.run = func(ctx context.Context, sink driver.Sink) error {
 		logger.Info("following the player", "driver", j.name, "player", fmt.Sprintf("%s:%d", p.Host, p.Port))
-		d := &itunes.Driver{
-			Source: j.source,
-			Kind:   kind,
-			GUID:   p.GUID,
-			Player: dacp.NewClient(p.Host, p.Port),
-			Sink:   sink,
-			Logger: logger.With("driver", j.name),
-		}
+		d.Sink = sink
 		return d.Run(ctx)
 	}
+	j.command = d.Command
 	return j, nil
 }
 
@@ -128,6 +135,9 @@ func spotifyTokenPath() (string, error) {
 // timeout is the backstop; each request sets a tighter one of its own.
 func spotifyHTTP() *http.Client { return &http.Client{Timeout: 30 * time.Second} }
 
+// The Spotify driver takes no commands, and so has none here: it reads the
+// account with scopes that only read (ADR-0012, ADR-0016), and a command for
+// it would need more than it was authorized for.
 func spotifyJob(logger *slog.Logger) (job, error) {
 	j := job{name: "spotify", source: "spotify"}
 
@@ -294,7 +304,21 @@ func run(ctx context.Context) error {
 		cfg.WillTopic = contract.SourceStatusTopic(common.Prefix, j.source)
 		cfg.OnConnect = sink.announce
 
-		client, err := bus.Connect(cfg, nil, nil)
+		// A driver that takes commands listens for its own, and for nothing
+		// else. Optional, because reporting what is playing must not wait on
+		// a grant that is made somewhere else, at some other time.
+		var handle func(bus.Message)
+		if j.command != nil {
+			topic := contract.SourceCommandTopic(common.Prefix, j.source)
+			cfg.OptionalTopics = []string{topic}
+			cfg.OnRefused = func(topic string, err error) {
+				logger.Warn("driver will not hear commands until the broker account is granted the topic",
+					events.Key, "driver.commands_refused", "driver", j.name, "topic", topic, "reason", err)
+			}
+			handle = commander(ctx, logger.With("driver", j.name), j.source, j.command)
+		}
+
+		client, err := bus.Connect(cfg, nil, handle)
 		if err != nil {
 			return fmt.Errorf("%s: %w", j.name, err)
 		}
@@ -311,6 +335,44 @@ func run(ctx context.Context) error {
 		logger.Info("shutting down", events.Key, "agent.stopping")
 	}
 	return err
+}
+
+// commandTimeout is how long a command may take. A press that has not
+// reached the player in this long is not wanted any more: the hand that
+// pressed it has pressed again, or given up.
+const commandTimeout = 5 * time.Second
+
+// commander is what a driver's connection does with a message on its command
+// topic: carry it out, and say so where it will be seen. The player reporting
+// the change is the answer on the bus; this is the answer in the log store,
+// which is also where a command that did nothing is found.
+func commander(ctx context.Context, logger *slog.Logger, source string,
+	do func(context.Context, contract.Command) error) func(bus.Message) {
+	return func(msg bus.Message) {
+		// Never retained by anyone who follows the contract, and never
+		// carried out if it was: a "next" the broker kept would skip a track
+		// every time this agent reconnected.
+		if msg.Retained {
+			logger.Warn("dropped a retained command", events.Key, "driver.command_failed",
+				"source", source, "reason", "a command is never retained")
+			return
+		}
+		c, err := contract.DecodeCommand(msg.Payload)
+		if err != nil {
+			logger.Warn("dropped a command", events.Key, "driver.command_failed", "source", source, "reason", err)
+			return
+		}
+
+		short, cancel := context.WithTimeout(ctx, commandTimeout)
+		defer cancel()
+		if err := do(short, c); err != nil {
+			logger.Warn("command failed: "+c.Command, events.Key, "driver.command_failed",
+				"source", source, "command", c.Command, "from", c.From, "reason", err)
+			return
+		}
+		logger.Info("command: "+c.Command, events.Key, "driver.command",
+			"source", source, "command", c.Command, "from", c.From)
+	}
 }
 
 // --- watch -------------------------------------------------------------------

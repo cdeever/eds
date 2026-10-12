@@ -285,6 +285,21 @@ func (p *player) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		_, _ = w.Write([]byte("\x89PNG\r\n\x1a\n-cover"))
 
+	case "/ctrl-int/1/playpause", "/ctrl-int/1/nextitem", "/ctrl-int/1/previtem", "/ctrl-int/1/setproperty":
+		if r.URL.Query().Get("session-id") != "99" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		// The player answers a button with nothing at all.
+		w.WriteHeader(http.StatusNoContent)
+
+	case "/ctrl-int/1/getproperty":
+		if r.URL.Query().Get("session-id") != "99" || r.URL.Query().Get("properties") != "dmcp.volume" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		_, _ = w.Write(Encode("cmgt", join(u32("mstt", 200), u32("cmvo", 65))))
+
 	default:
 		http.NotFound(w, r)
 	}
@@ -390,5 +405,73 @@ func TestNoArtworkIsNotAnError(t *testing.T) {
 	art, err := NewClient(host, n).Artwork(context.Background(), 600)
 	if art != nil || err != nil {
 		t.Errorf("art = %v, err = %v", art, err)
+	}
+}
+
+// The buttons, as the phone remote sends them (ADR-0020).
+func TestTheButtonsAskForWhatTheRemoteAsksFor(t *testing.T) {
+	p := &player{guid: "00000000DEADBEEF", revision: 5, title: "So What", change: make(chan string, 1)}
+	c := against(t, p)
+	ctx := context.Background()
+
+	if err := c.Login(ctx, "00000000DEADBEEF"); err != nil {
+		t.Fatal(err)
+	}
+	p.requests = nil
+
+	if err := c.PlayPause(ctx); err != nil {
+		t.Errorf("play/pause: %v", err)
+	}
+	if err := c.Next(ctx); err != nil {
+		t.Errorf("next: %v", err)
+	}
+	if err := c.Previous(ctx); err != nil {
+		t.Errorf("previous: %v", err)
+	}
+	volume, err := c.Volume(ctx)
+	if err != nil || volume != 65 {
+		t.Errorf("volume = %d, %v", volume, err)
+	}
+	if err := c.SetVolume(ctx, 70); err != nil {
+		t.Errorf("set volume: %v", err)
+	}
+
+	want := []string{
+		"/ctrl-int/1/playpause?session-id=99",
+		"/ctrl-int/1/nextitem?session-id=99",
+		"/ctrl-int/1/previtem?session-id=99",
+		"/ctrl-int/1/getproperty?properties=dmcp.volume&session-id=99",
+		"/ctrl-int/1/setproperty?dmcp.volume=70.000000&session-id=99",
+	}
+	if len(p.requests) != len(want) {
+		t.Fatalf("requests = %q", p.requests)
+	}
+	for i := range want {
+		if p.requests[i] != want[i] {
+			t.Errorf("request %d = %q, want %q", i, p.requests[i], want[i])
+		}
+	}
+}
+
+func TestAVolumeOutOfRangeIsNotSent(t *testing.T) {
+	p := &player{guid: "00000000DEADBEEF", change: make(chan string, 1)}
+	c := against(t, p)
+	for _, bad := range []int{-1, 101} {
+		if err := c.SetVolume(context.Background(), bad); err == nil {
+			t.Errorf("volume %d was sent", bad)
+		}
+	}
+	if len(p.requests) != 0 {
+		t.Errorf("the player was asked: %q", p.requests)
+	}
+}
+
+// A button pressed with no session is refused by the player, and that has to
+// come back as an error rather than as a press that did nothing.
+func TestAButtonWithoutASessionFails(t *testing.T) {
+	p := &player{guid: "00000000DEADBEEF", change: make(chan string, 1)}
+	c := against(t, p)
+	if err := c.Next(context.Background()); err == nil {
+		t.Error("a press with no session was called a success")
 	}
 }

@@ -145,6 +145,17 @@ output "lp_stand_01_broker" {
   }
 }
 
+output "cover_screen_01_broker" {
+  description = "What the cover screen's firmware is provisioned with, beside the Wi-Fi key above (ADR-0020)."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.cover_screen_01.username
+    password  = deevnet_iot_broker_account.cover_screen_01.password
+    publish   = deevnet_iot_broker_account.cover_screen_01.granted_publish
+    subscribe = deevnet_iot_broker_account.cover_screen_01.granted_subscribe
+  }
+}
+
 # EdS's own log store credentials (Deevnet ADR-0027, Deevnet CHG-0020).
 #
 # The stand does NOT use these: it publishes its events to MQTT, and the

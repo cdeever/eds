@@ -14,6 +14,15 @@ drivers ──▶ eds/nowplaying/source/<id>/… ──▶ nowplayd ──▶ ed
                                             + enrich          (retained)
 ```
 
+One thing travels the other way. A controller says what it wants of whatever
+is playing, nowplayd passes it to the source that is current, and that
+source's driver does it (ADR-0020):
+
+```
+a controller ──▶ eds/nowplaying/command ──▶ nowplayd ──▶ eds/nowplaying/source/<id>/command ──▶ the driver
+                    (never retained)      the current source        (never retained)
+```
+
 The design, and what was turned down, is recorded:
 [ADR-0006](../../docs/content/docs/architecture/decisions/0006-now-playing-bus-of-drivers.md)
 (a bus of small drivers),
@@ -38,6 +47,7 @@ The design, and what was turned down, is recorded:
 | the agent Pi | running as a relay on `dv02rpi002p01`: paired with iTunes on the home LAN and publishing to the real broker ([`images`](../../images), [`deploy/relay`](../../deploy/relay)) |
 | broker accounts | declared and checked against the real broker (`eds-nowplayd`, `eds-np-relay`) |
 | `nowplayd` on the workload | deployed ([`deploy`](../../deploy)). An album change in iTunes reaches the stand in about a second |
+| commands, the small cover | unit-tested, and run on a development broker: a cover published by hand came back as a 240-pixel baseline JPEG, and a command reached the current source's topic. **Not yet tried against iTunes**: the five requests are the ones the phone remote is documented to send, and nothing here has pressed them on the real player (ADR-0020) |
 | `spotifyauth`, `driver/spotify` | unit-tested against a stand-in for Spotify. Running on the agent Pi against the real account since 2026-10-11: tracks on the named computer are reported within a poll, playback on the phone is not, and the stand does not follow either ([CHG-0004](../../docs/content/docs/changes/2026/0004-spotify-on-the-agent-pi.md)) |
 | the agent with two drivers | running on the Pi: each driver has its own connection and presence, and iTunes reports while Spotify is not set up |
 
@@ -66,6 +76,32 @@ player's own library.
   sleeping PC is told from a quiet evening.
 - A player that no longer knows the pairing is not retried: someone has to
   pair again.
+
+### Commands
+
+The remote iTunes was paired with can press buttons as well as watch, and the
+driver now does (ADR-0020): `play_pause`, `next`, `previous`, `volume_up` and
+`volume_down`, heard on `eds/nowplaying/source/itunes/command`.
+
+- Each is one short request to the player, beside the one held open. The
+  driver says nothing on the bus about having done it: the player reports the
+  change it caused, as it reports any other, and that is the acknowledgement.
+- Volume moves by 5 of 100 a press, and stops at its ends. The player is asked
+  where it is first, because its own slider moves it too.
+- A command that arrives with no session is refused and not kept. A "next"
+  carried out a minute late is a fault of its own.
+- **A retained command is dropped**, by nowplayd and again by the agent. A
+  command is a moment; one the broker kept would be carried out at every
+  reconnect.
+- Each command is logged with an event (`driver.command`,
+  `driver.command_failed`), so the dashboard shows what a controller asked
+  for and whether it happened.
+- The subscription is optional. An agent whose account has not been granted
+  the topic says so (`driver.commands_refused`) and reports what is playing
+  regardless.
+
+The Spotify driver takes no commands and subscribes to nothing. Its
+authorization only reads, and widening it is a decision.
 
 ## The Spotify driver
 
@@ -183,6 +219,28 @@ album is called and nothing about colours or effects: what `spectrum` looks
 like is lightd's. A cover whose album has no look gets a message that says
 so, so a look cannot outlive its album.
 
+## The small cover
+
+A cover is published as it came: up to 600 pixels a side, a JPEG of either
+kind or a PNG, often a hundred kilobytes. A subscriber with a hundred
+kilobytes for everything cannot hold that, and one with a small decoder cannot
+read a progressive JPEG at all. So each cover is published a second time on
+`…/current/art/small` (ADR-0020), retained:
+
+- a **baseline JPEG**, three components of eight bits;
+- scaled so its **longer side is 240 pixels**, shape kept, and scaled up if
+  it started smaller: a subscriber is always handed the same size;
+- **32 KB at most**. Quality starts at 80 and is given up, to 30, to stay
+  under; a typical sleeve is around 10 KB;
+- after the cover and **before the state that names it**;
+- **emptied**, not left, when a cover cannot be made small: a subscriber
+  holding the previous album's would have nothing to tell it so. An empty
+  small cover means "this cover has no small form";
+- left alone when no cover is published at all, exactly as `…/current/art` is.
+
+It is `internal/smallcover`, standard library only. nowplayd still knows
+nothing about who wants it: the size is "small", not the size of a screen.
+
 ## What it guarantees
 
 While something is playing, `current` carries a **title, an album and art**,
@@ -242,5 +300,12 @@ be used stops the program.
 - **`bus.Connect` does not return until its subscriptions are acknowledged.**
   Without that, a message published the moment after it returned was missed.
   A test caught it.
+- **The client library calls a refused subscription a success.** The refusal
+  is a return code in the broker's answer, and `bus` looks at it for the
+  optional topics, which is how a program can say "I was not granted this"
+  instead of waiting for messages that will never come.
+- **nowplayd hears the commands it passes on.** Its one filter for every
+  source, `source/+/+`, matches `source/<id>/command` too. The hub takes
+  those for what they are and ignores them.
 - Paused or stopped playback leaves the cover topic alone, so the stand keeps
   the last scene. What "stopped" should look like is a later decision.
