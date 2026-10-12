@@ -21,7 +21,7 @@ cover image ──▶ lightd ──▶ palette ──▶ lightd ──▶ mqtt01
 ```
 
 It was chosen first because it touches every layer — firmware, a tenant-hosted
-service, the MQTT boundary between house and datacentre, and the deevnet
+service, the MQTT boundary between house and datacenter, and the deevnet
 substrate — while depending on none of the still-unscoped parts: listening,
 identification, playback, personality.
 

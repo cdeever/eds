@@ -94,7 +94,7 @@ A card for such a Pi is written with both:
 The input must be line level and after the phono stage. Set the interface so
 its peaks stay well below full scale; the driver takes anything under
 -55 dBFS for silence. `make status` checks the input is plugged in, the
-recogniser installed and its endpoint in reach.
+recognizer installed and its endpoint in reach.
 
 ## Changing a Pi in service
 
@@ -145,7 +145,7 @@ iTunes offers to pair only when it sees the agent advertise itself over
 Bonjour. Two things have stopped that, one at each end:
 
 - **On the PC.** Under *Allow an app through Windows Firewall*, **Bonjour
-  Service** and **iTunes** must be ticked for the network type the PC is on —
+  Service** and **iTunes** must be checked for the network type the PC is on —
   *Private*, usually. From another machine on that network,
   `dig @224.0.0.251 -p 5353 -x <the PC's address>` answers with the PC's name
   when Bonjour is getting through.

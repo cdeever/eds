@@ -17,10 +17,10 @@ weight: 19
 
 ## Context
 
-Every scene so far is made the same way: the cover's colours, picked by
+Every scene so far is made the same way: the cover's colors, picked by
 `palette`, turned into a scene by `lightd`. That is right for almost every
 record and wrong for a few. *The Dark Side of the Moon* is a black sleeve with
-a thin spectrum across it. The colours a fair extraction finds on it are not
+a thin spectrum across it. The colors a fair extraction finds on it are not
 what anyone would light a room with for that album, and what they would light
 it with is obvious: the spectrum.
 
@@ -28,7 +28,7 @@ That is a fact about an album, not about an image. And the two halves of the
 system were built not to share such facts: `lightd` sees image bytes and
 knows nothing of tracks or albums
 ([ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/)),
-and `nowplayd` knows what is playing and nothing of scenes, colours or LEDs.
+and `nowplayd` knows what is playing and nothing of scenes, colors or LEDs.
 
 ## Options considered
 
@@ -36,8 +36,8 @@ and `nowplayd` knows what is playing and nothing of scenes, colours or LEDs.
 change. It is exactly what ADR-0009 kept out: `lightd` would know what an
 album is, and every future special case would be argued there.
 
-**Recognise the cover image.** `lightd` stays image-only. But the same album
-arrives as different bytes from every library, edition and catalogue, so it
+**Recognize the cover image.** `lightd` stays image-only. But the same album
+arrives as different bytes from every library, edition and catalog, so it
 means fuzzy image matching to answer a question the track's own tags answer
 outright.
 
@@ -63,15 +63,15 @@ the album after it. An album with no look has a message that says so for its
 cover.
 
 **`lightd` owns what a look is.** A look is a scene preset: an effect and a
-palette, in `lightd`, beside the other decisions about colour and hardware. A
-cover with a look gets the preset instead of its own colours. A look `lightd`
-does not know is ignored, and the cover is lit from its own colours, as the
+palette, in `lightd`, beside the other decisions about color and hardware. A
+cover with a look gets the preset instead of its own colors. A look `lightd`
+does not know is ignored, and the cover is lit from its own colors, as the
 stand shows an effect it does not know as `solid`.
 
-**The first look is `spectrum`**: six colours, red to violet, in equal
+**The first look is `spectrum`**: six colors, red to violet, in equal
 shares. It is drawn with an effect the stand already has. Which one is a
-setting: `sweep` moves the whole spectrum round the strip, `morph` shows each
-colour in turn.
+setting: `sweep` moves the whole spectrum around the strip, `morph` shows each
+color in turn.
 
 **No look reaches a stand as anything but a scene.** The stand and the scene
 contract are unchanged.
@@ -93,9 +93,9 @@ contract are unchanged.
   No cover is published for it, so there is nothing for a look to belong to.
   Spotify playing this album changes nothing in the room.
 - At start-up, when both retained messages arrive at once and the cover is
-  first, the stand may show the cover's own colours for a moment before the
+  first, the stand may show the cover's own colors for a moment before the
   look.
 - Two more grants: `nowplayd` publishes the look topic and `lightd` reads it.
-- The colours of a look are fixed, not measured from anything. They are still
+- The colors of a look are fixed, not measured from anything. They are still
   `lightd`'s to choose, and are sent to the stand before gamma like any
   others.

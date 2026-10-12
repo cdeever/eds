@@ -22,8 +22,8 @@ Run a single test:
 
 ### Tuning by eye
 
-The thresholds are judgement calls that no test can settle — where a colour
-stops being a colour, how much black field to discard. The CLI exists for that
+The thresholds are judgment calls that no test can settle — where a color
+stops being a color, how much black field to discard. The CLI exists for that
 loop:
 
 ```bash
@@ -61,7 +61,7 @@ go test ./internal/scene -run TestName -v
 ```
 
 Integration tests are gated on `LIGHTD_TEST_BROKER`; without it they skip. The
-retained-scene behaviour is a *broker* behaviour rather than a client one, so
+retained-scene behavior is a *broker* behavior rather than a client one, so
 the tests that matter most need a real broker.
 
 ### Exercising the whole vertical

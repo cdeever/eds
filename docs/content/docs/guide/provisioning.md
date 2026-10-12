@@ -41,7 +41,7 @@ Leaving a field blank omits it. For the SSID, broker URI and username the
 firmware then uses the `menuconfig` default; a password left blank is simply
 absent, because it has no other source.
 
-Reset the board afterwards. A provisioned stand logs:
+Reset the board afterward. A provisioned stand logs:
 
 ```
 I (587) creds: provisioned from creds; ssid 'MyNetwork', wifi key set, mqtt user 'lp-stand-01', mqtt key set, broker CA provisioned

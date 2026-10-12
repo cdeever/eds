@@ -22,12 +22,12 @@ full size.
 | Line | What it carries |
 |---|---|
 | Heavy blue | Sound: the record, as phono, then S/PDIF, then USB audio |
-| Dashed amber | Mains power, from the strip's switched outlets |
+| Dashed amber | AC power, from the strip's switched outlets |
 | Green | The beacon's one message: that it has power |
-| Grey | Everything else, almost all of it MQTT through the broker |
+| Gray | Everything else, almost all of it MQTT through the broker |
 | Dotted | Device events, on their way to the log store |
 
-Grey boxes are someone else's service. A dashed box is turned off.
+Gray boxes are someone else's service. A dashed box is turned off.
 
 - **The turntable is heard, and separately known to be on.** Its sound goes
   through a converter, down the house as S/PDIF, through a selector it shares

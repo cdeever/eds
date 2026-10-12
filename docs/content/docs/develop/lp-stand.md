@@ -102,7 +102,7 @@ of which are already in the tree:
   API-compatible with `led_strip_out.c` as written.
 - Nothing in the firmware's own sources needed changing.
 
-## Failure behaviour to preserve
+## Failure behavior to preserve
 
 Everything below is a deliberate choice. If you change one, change it knowingly:
 
@@ -130,5 +130,5 @@ W (30792) wifi: no address yet; continuing and retrying in the background
 I (30815) lp-stand: subscribed; awaiting a retained scene on eds/lightstand/lp-stand-01/scene
 ```
 
-The strip driver initialising and the render task starting **before** the
+The strip driver initializing and the render task starting **before** the
 network is touched is the designed order, not a coincidence.

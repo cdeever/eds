@@ -99,7 +99,7 @@ hash, but it is not released. Moving to it later would extend this record.
 4. ~~Whether a client must authenticate, and how.~~ Not by default.
 5. All of the above against a running MusicBee with the plugin installed.
 6. Whether the plugin's address filter admits the relay by default.
-7. Behaviour when MusicBee quits and restarts.
+7. Behavior when MusicBee quits and restarts.
 
 ## Sources
 

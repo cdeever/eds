@@ -10,7 +10,7 @@ weight: 9
 | **Status** | {{< adr-status "Accepted" >}} |
 | **Date** | 2026-10-10 |
 | **Scope** | How the current track's cover reaches `lightd`. |
-| **Extended by** | [ADR-0019](/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own/): a cover may arrive with the name of a look, which `lightd` draws in place of the cover's own colours |
+| **Extended by** | [ADR-0019](/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own/): a cover may arrive with the name of a look, which `lightd` draws in place of the cover's own colors |
 | **Related** | [ADR-0002](/docs/architecture/decisions/0002-gamma-in-firmware/), [ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/) |
 
 ---
@@ -22,7 +22,7 @@ weight: 9
 today takes them only over HTTP, at `POST /v1/cover`. Something has to carry
 the bytes from the topic to `lightd`.
 
-`lightd`'s boundary is that it knows about colour and hardware and nothing
+`lightd`'s boundary is that it knows about color and hardware and nothing
 about music ([ADR-0002](/docs/architecture/decisions/0002-gamma-in-firmware/)).
 
 ## Options considered

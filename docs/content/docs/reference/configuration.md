@@ -18,7 +18,7 @@ container without knowing which.
 | `LIGHTD_STAND_ID` | `lp-stand-01` | default stand |
 | `LIGHTD_COVER_TOPIC` | unset | a topic of cover images to light the stand from, relative to the prefix, e.g. `nowplaying/current/art` |
 | `LIGHTD_LOOK_TOPIC` | unset | a topic that says which covers have a look of their own, e.g. `nowplaying/current/look`. Needs `LIGHTD_COVER_TOPIC` |
-| `LIGHTD_SPECTRUM_EFFECT` | `sweep` | how the `spectrum` look moves: `sweep`, the rainbow round the strip, or `morph`, each colour in turn. Anything else stops the daemon |
+| `LIGHTD_SPECTRUM_EFFECT` | `sweep` | how the `spectrum` look moves: `sweep`, the rainbow around the strip, or `morph`, each color in turn. Anything else stops the daemon |
 | `LIGHTD_TOPIC_PREFIX` | `eds` | root of the topic tree |
 | `LIGHTD_MQTT_URL` | `tcp://127.0.0.1:1883` | `tls://mqtt01…:8883` in production |
 | `LIGHTD_MQTT_USERNAME` / `_PASSWORD` | — | broker credentials |
@@ -27,7 +27,7 @@ container without knowing which.
 | `LIGHTD_EFFECT` | `breathe` | default effect: `solid`, `breathe`, `sweep`, `morph` or `chase` |
 | `LIGHTD_SPEED` / `LIGHTD_BRIGHTNESS` | `0.4` / `0.8` | |
 | `LIGHTD_SWATCHES` | `6` | swatches requested from palette |
-| `LIGHTD_MIN_CHROMA` | `0.05` | below this a swatch is a grey |
+| `LIGHTD_MIN_CHROMA` | `0.05` | below this a swatch is a gray |
 | `LIGHTD_SATURATION` | `1.25` | chroma multiplier for the strip |
 | `LIGHTD_MAX_COLORS` | `4` | palette entries per scene |
 
@@ -47,8 +47,8 @@ A value that cannot be used stops the program.
 | `NP_MQTT_INSECURE` | `false` | bring-up only |
 | `NP_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | one topic level |
 | `NP_CATALOGUES` | `deezer,itunes,musicbrainz` | where a missing album or cover is looked up, in order; empty switches lookups off |
-| `NP_LOOKUP_TIMEOUT` | `10s` | for one catalogue request |
-| `NP_CONTACT` | this repository's URL | goes in the User-Agent sent to catalogues |
+| `NP_LOOKUP_TIMEOUT` | `10s` | for one catalog request |
+| `NP_CONTACT` | this repository's URL | goes in the User-Agent sent to catalogs |
 | `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)). `spotify` on the workload, which is what keeps the stand from following it |
 | `NP_IDLE_AFTER` | `15s` | how long a track may sit paused, or nobody report, before `current` says stopped with no track and the cover topics are emptied, which dims the stand ([ADR-0024](/docs/architecture/decisions/0024-paused-long-enough-is-not-playing/)). `0s` is never; at most an hour |
 | `NP_IDLE_AFTER_STOPPED` | `5m` | the same wait for a source that is stopped and still current: a turntable switched on with nothing playing. Longer, so a record can be turned over. `0s` is never; at most a day |

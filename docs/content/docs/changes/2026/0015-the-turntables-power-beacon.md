@@ -57,7 +57,7 @@ its sound card are moved to.
 | The plan changes something other than what was written | the tenant | the plan is read before it is applied: one device and one account added, two accounts changed in place, nothing replaced. A replaced account is a new password and a program that stops connecting |
 | `nowplayd` is refused its new subscription | the broker | the subscription is optional by construction: a refusal is a warning in its log, and the turntable is arbitrated as before |
 | The console is refused its new subscription | the broker | the page shows no beacon; nothing else on it depends on that topic. The grant and `view.Topics` are written the same, to the character |
-| `nowplayd` or the console does not come back | the workload | the deploy reports it; the console shows the current track afterwards |
+| `nowplayd` or the console does not come back | the workload | the deploy reports it; the console shows the current track afterward |
 | The beacon's connection comes and goes | upstairs, on WiFi | each loss is fifteen seconds before it is believed; its events count them, and the setting can be removed |
 
 ## Procedure

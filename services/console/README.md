@@ -1,7 +1,7 @@
 # console
 
 One page that shows what EdS is doing: what is playing and on which player,
-its cover, each stand drawn in the colours and motion it was sent, and whether
+its cover, each stand drawn in the colors and motion it was sent, and whether
 each part is up.
 
 ```
@@ -66,7 +66,7 @@ The last of those tests holds the port to pixels printed from the firmware's
 own code built for the host; when an effect changes, print them again.
 `clock.js`, which works out the playing time, is tested beside it.
 
-Colours are drawn as sent, before gamma. That is what the wire format carries
+Colors are drawn as sent, before gamma. That is what the wire format carries
 on purpose ([ADR-0002](../../docs/content/docs/architecture/decisions/0002-gamma-in-firmware.md)).
 
 ## Running it

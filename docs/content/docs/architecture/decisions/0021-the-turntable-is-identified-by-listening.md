@@ -3,13 +3,13 @@ title: "ADR-0021: The Turntable Is Identified by Listening"
 weight: 21
 ---
 
-# ADR-0021: The Turntable Is Identified by Listening, With a Recogniser That Can Be Replaced
+# ADR-0021: The Turntable Is Identified by Listening, With a Recognizer That Can Be Replaced
 
 | | |
 |---|---|
 | **Status** | {{< adr-status "Proposed" >}} — until a record on the platter has lit the stand; see [What would settle it](#what-would-settle-it) |
 | **Date** | 2026-10-11 |
-| **Scope** | A third driver in `npagent`, `turntable`: it listens to the amplifier's line-level output on the agent Pi, has a recogniser name what it hears, and reports that as a source on the now-playing bus. |
+| **Scope** | A third driver in `npagent`, `turntable`: it listens to the amplifier's line-level output on the agent Pi, has a recognizer name what it hears, and reports that as a source on the now-playing bus. |
 | **Extends** | [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), which said a turntable that identifies its record would be one more driver, and [ADR-0007](/docs/architecture/decisions/0007-drivers-are-portable-go/) |
 | **Related** | [ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/), [ADR-0012](/docs/architecture/decisions/0012-spotify-by-web-api/) and [ADR-0014](/docs/architecture/decisions/0014-tidal-by-lastfm/), which each declined an unpublished interface; [ADR-0015](/docs/architecture/decisions/0015-eds-builds-its-own-pi-images/), [ADR-0017](/docs/architecture/decisions/0017-an-agent-pi-is-a-registered-device/) |
 
@@ -55,22 +55,22 @@ was free.
 **Fingerprints of the owner's own records**, matched on the Pi: Olaf,
 Panako. Free, offline, and nobody else's terms. But they match audio against
 audio, so every record has to be played to it once, about forty minutes each,
-and told what it is, before anything is recognised at all.
+and told what it is, before anything is recognized at all.
 
 **Shazam, through an open client.** ShazamIO (MIT) and SongRec (GPL-3.0)
 compute Shazam's fingerprint locally and send it to the endpoint Shazam's own
-apps use. Free, no account, no preparation, a very large catalogue, and what
+apps use. Free, no account, no preparation, a very large catalog, and what
 every comparable open project uses. The endpoint was never published: it was
-worked out from the apps, Apple has retired neighbouring endpoints without
+worked out from the apps, Apple has retired neighboring endpoints without
 notice, and its terms are not likely to permit this.
 
-### Where the recogniser sits
+### Where the recognizer sits
 
 **In the driver.** Simplest, and it makes the driver the thing that breaks
 when the endpoint does.
 
 **Behind an interface, as a program.** The driver hands a clip to a command
-and reads back a name. Which recogniser that command is, the driver does not
+and reads back a name. Which recognizer that command is, the driver does not
 know.
 
 ## Decision
@@ -78,7 +78,7 @@ know.
 **The turntable is identified by listening, by a `turntable` driver in
 `npagent` on the agent Pi.**
 
-**The first recogniser is Shazam's, through ShazamIO, and it is kept behind a
+**The first recognizer is Shazam's, through ShazamIO, and it is kept behind a
 seam so that it can be replaced without the driver changing.**
 
 This uses an unpublished interface, which
@@ -101,16 +101,16 @@ The driver:
 - **Counts time in audio heard**, a tenth of a second at a time, not by the
   clock. A capture that stalls is then not mistaken for silence.
 - **Knows silence for certain and nothing else.** Silence for twenty seconds
-  is `stopped`. Music is `playing`: with the track once the recogniser names
+  is `stopped`. Music is `playing`: with the track once the recognizer names
   it, and with no track when it cannot.
 - **Sends a twelve-second clip every twenty seconds** while music plays, and
   only a clip that is mostly music.
 - **Believes the first answer after silence, and no single answer after
   that.** A different track replaces the current one when two clips running
-  agree on it. Four clips running that the recogniser cannot name let the
+  agree on it. Four clips running that the recognizer cannot name let the
   track go.
 - **Keeps the album the side began with** for the tracks after it by the
-  same artist, across the silence of turning the record over. The recogniser
+  same artist, across the silence of turning the record over. The recognizer
   names an album per track and does not agree with itself: on the bench, two
   tracks of one LP came back as two albums.
 - **Names no cover.** nowplayd finds one, as for any source without
@@ -118,7 +118,7 @@ The driver:
 - **Takes no commands** ([ADR-0020](/docs/architecture/decisions/0020-a-touch-screen-that-can-change-what-plays/)).
   There is nothing on a turntable for one to reach.
 
-The recogniser is `/usr/local/bin/eds-recognize`: a WAV file on standard
+The recognizer is `/usr/local/bin/eds-recognize`: a WAV file on standard
 input, one JSON object out. It is the only file that knows it is Shazam. It
 runs in a Python environment of its own on the Pi, with every package pinned
 to what was tried.
@@ -133,15 +133,15 @@ account and the same registered device (`np-relay`). The agent's unit gives up
   firmware.** The turntable is a source like any other.
 - **It can stop working without anything here changing.** The endpoint is
   Apple's to move. The driver then reports music it cannot name, and says in
-  the log store that the recogniser cannot be asked. Mending it is new pins in
-  one requirements file, or a different recogniser behind the same seam.
+  the log store that the recognizer cannot be asked. Mending it is new pins in
+  one requirements file, or a different recognizer behind the same seam.
 - **What is listened to leaves the house as fingerprints**, to Shazam, a few
   times a minute while a record plays. Nothing is sent in silence.
-- **The cover may be another edition's.** The recogniser names the track, and
+- **The cover may be another edition's.** The recognizer names the track, and
   the album it names with it is often a compilation or a reissue. The owner's
-  Discogs collection is the fix, as a catalogue in nowplayd, and is a decision
+  Discogs collection is the fix, as a catalog in nowplayd, and is a decision
   of its own.
-- **Records the catalogue does not hold are never named**: obscure pressings,
+- **Records the catalog does not hold are never named**: obscure pressings,
   private ones. The local index is the fix for those too.
 - **Two sources playing at once take turns.** nowplayd has no priority among
   sources, and a record and iTunes both playing will each win when its track
@@ -165,7 +165,7 @@ tape output and ShazamIO 0.8.1:
   nothing: a third record was named fourteen seconds after it started
   listening, and reported once in the minute and a half that followed.
 - The same again as installed, as the agent's own user under its unit's
-  confinement: a track named, so the sound card and the recogniser are both
+  confinement: a track named, so the sound card and the recognizer are both
   in reach from inside it ([CHG-0013](/docs/changes/2026/0013-the-turntable-driver/)).
 
 Not yet shown, and what this record waits on:

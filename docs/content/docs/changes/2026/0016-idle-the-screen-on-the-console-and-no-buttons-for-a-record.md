@@ -100,7 +100,7 @@ otherwise.
 - A second deploy, for the wait that was missing. The first left the room
   lit with nothing playing.
 - The screen was flashed before the tenant was applied and the workload
-  deployed, not after. Either order is safe, and the board was to hand.
+  deployed, not after. Either order is safe, and the board was at hand.
 
 ## Follow-ups
 

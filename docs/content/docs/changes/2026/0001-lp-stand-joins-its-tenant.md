@@ -106,7 +106,7 @@ then an address and `connected`.
 |---|---|---|
 | 2026-10-10 15:1x | 1 | `make init` failed: `Failed to load state: unexpected end of JSON input`. The local `.terraform/` held a 0-byte backend record and a stale lock from an interrupted init on 2026-10-07. Both removed; init then succeeded. The store itself was never at fault. |
 | 15:2x | 2 | Built on ESP-IDF 6.1; 40% of the app slot free. |
-| 15:25 | 3 | Provisioned. The stand took `10.20.30.202`, connected over TLS and applied a retained scene: breathe, 4 colours. |
+| 15:25 | 3 | Provisioned. The stand took `10.20.30.202`, connected over TLS and applied a retained scene: breathe, 4 colors. |
 | 15:2x | 4 | Applied: 2 added, 0 changed, 0 destroyed. |
 | 15:30 | — | First `stand.health`: 168 KB heap free, −34 dBm. |
 | 15:32 | 2 | Reflashed with the password options removed from Kconfig ([ADR-0004](/docs/architecture/decisions/0004-firmware-secrets-nvs-only/)); the stand reconnected from its existing `creds` partition. |

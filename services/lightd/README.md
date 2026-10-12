@@ -3,7 +3,7 @@
 Cover image in, MQTT scene out.
 
 `lightd` is the piece that joins the palette extractor to the LP jacket stand.
-It takes a cover image over HTTP, asks [`palette`](../palette) for the colours
+It takes a cover image over HTTP, asks [`palette`](../palette) for the colors
 in it, maps those onto a scene the stand can render, and publishes that scene
 retained to the stand's MQTT topic.
 
@@ -27,7 +27,7 @@ cover, retained, and lightd follows it.
   name of a look, and the hash of the cover it belongs to
   ([ADR-0019](../../docs/content/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own.md)).
   A cover with a look lightd knows is sent as that look's preset scene and
-  the extractor is not asked. The one look is `spectrum`: six colours, red to
+  the extractor is not asked. The one look is `spectrum`: six colors, red to
   violet, in equal shares, moved by `LIGHTD_SPECTRUM_EFFECT`. The presets are
   in `internal/scene/looks.go`. lightd does not learn which album it is for.
 - lightd still receives **image bytes and nothing else**. It does not learn
@@ -50,7 +50,7 @@ cover, retained, and lightd follows it.
   cover from the topic is not sent twice, and the moment lightd subscribes is
   the moment it has just started, which on a workload where everything
   restarts together is when palette is least likely to be up.
-- Each scene is logged with its colours and their shares
+- Each scene is logged with its colors and their shares
   (`palette="#c90027 65%, …"`). Only the latest scene is kept on the broker,
   so that line is the record of what a cover produced.
 - The subscription is made again on every reconnect. The broker account needs
@@ -102,7 +102,7 @@ workload or a Pi. A `LIGHTD_*` variable, when set, wins.
 | `LIGHTD_STAND_ID` | `lp-stand-01` | default stand |
 | `LIGHTD_COVER_TOPIC` | unset | a topic of cover images to light the stand from, relative to the prefix, e.g. `nowplaying/current/art` |
 | `LIGHTD_LOOK_TOPIC` | unset | a topic that says which covers have a look of their own, e.g. `nowplaying/current/look`. Needs `LIGHTD_COVER_TOPIC` |
-| `LIGHTD_SPECTRUM_EFFECT` | `sweep` | how the `spectrum` look moves: `sweep`, the rainbow round the strip, or `morph`, each colour in turn. Anything else stops the daemon |
+| `LIGHTD_SPECTRUM_EFFECT` | `sweep` | how the `spectrum` look moves: `sweep`, the rainbow around the strip, or `morph`, each color in turn. Anything else stops the daemon |
 | `LIGHTD_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | root of the topic tree |
 | `LIGHTD_MQTT_URL` | `tls://$MQTT_HOST:$MQTT_PORT`, else `tcp://127.0.0.1:1883` | the broker |
 | `LIGHTD_MQTT_CLIENT_ID` | `lightd` | must be unique on the broker; `eds-lightd` in production |
@@ -112,7 +112,7 @@ workload or a Pi. A `LIGHTD_*` variable, when set, wins.
 | `LIGHTD_EFFECT` | `breathe` | default effect: `solid`, `breathe`, `sweep`, `morph` or `chase`. Not checked here: the stand shows a name it does not know as `solid` |
 | `LIGHTD_SPEED` / `LIGHTD_BRIGHTNESS` | `0.4` / `0.8` | |
 | `LIGHTD_SWATCHES` | `6` | swatches requested from palette |
-| `LIGHTD_MIN_CHROMA` | `0.05` | below this a swatch is a grey |
+| `LIGHTD_MIN_CHROMA` | `0.05` | below this a swatch is a gray |
 | `LIGHTD_SATURATION` | `1.25` | chroma multiplier for the strip |
 | `LIGHTD_MAX_COLORS` | `4` | palette entries per scene |
 
@@ -126,7 +126,7 @@ Invalid values stop the daemon rather than lighting the room wrong quietly.
 | `eds/lightstand/<id>/status` | device → broker | yes (LWT) | the stand's presence |
 | `eds/lightd/status` | lightd → broker | yes (LWT) | this daemon's presence |
 
-**Retention is load-bearing, not an optimisation.** A stand that reboots — power
+**Retention is load-bearing, not an optimization.** A stand that reboots — power
 blip, reflash, WiFi drop — pulls the current scene down on reconnect instead of
 sitting dark until the next record. Without it the failure mode is a black stand
 in the middle of an album. There is an integration test for exactly this: it
@@ -162,22 +162,22 @@ no roles, no correction — because it has no idea what is on the other end.
 lightd does, so the hardware-facing decisions live here:
 
 - **Rejecting neutrals.** A swatch below `LIGHTD_MIN_CHROMA` will not read as a
-  colour on a strip regardless of how much of the sleeve it covers. Weight alone
+  color on a strip regardless of how much of the sleeve it covers. Weight alone
   is not enough: asking for few swatches from busy art forces clusters to merge,
   and a merged centroid lands near the average of what it merged — a high-weight
-  grey. Filtering never returns nothing, though; genuinely monochrome art keeps
-  its most colourful swatch, because the stand still has to light up.
+  gray. Filtering never returns nothing, though; genuinely monochrome art keeps
+  its most colorful swatch, because the stand still has to light up.
 - **Saturation.** A palette that looks right on a monitor reads washed out on a
-  strip. Chroma is scaled in OKLab, so a boosted colour stays recognisably the
-  same colour.
-- **Gamut mapping.** Boosting chroma pushes colours outside sRGB. Rather than
+  strip. Chroma is scaled in OKLab, so a boosted color stays recognizably the
+  same color.
+- **Gamut mapping.** Boosting chroma pushes colors outside sRGB. Rather than
   clipping channels — which shifts hue, so a boosted orange arrives as a
-  different colour than the one on the sleeve — chroma is walked back down until
-  the colour is representable, holding hue and lightness fixed.
+  different color than the one on the sleeve — chroma is walked back down until
+  the color is representable, holding hue and lightness fixed.
 
 **Gamma is not here.** It is a property of the specific LED driver, so it
 belongs in firmware next to the hardware it corrects. Keeping it out of the
-payload means `mosquitto_sub` shows the colours actually intended, which matters
+payload means `mosquitto_sub` shows the colors actually intended, which matters
 the first time something looks wrong.
 
 ## The broker is not in the tenant

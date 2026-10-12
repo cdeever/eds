@@ -23,9 +23,9 @@ weight: 10
 Two things, deployed together because they touch the same three programs.
 
 *The Dark Side of the Moon* is a black sleeve with a thin spectrum across it,
-and its cover's colours are not what that album should light a room with.
+and its cover's colors are not what that album should light a room with.
 After this change `nowplayd` says that album has a look, `spectrum`, and
-`lightd` lights its cover as six colours from red to violet instead of the
+`lightd` lights its cover as six colors from red to violet instead of the
 cover's own.
 
 The stand has room for 18 LEDs across its front, not the 60 the firmware
@@ -35,7 +35,7 @@ assumed. The firmware and the console's drawing both become 18.
 
 - `nowplayd` publishes `eds/nowplaying/current/look` beside every cover.
 - `lightd` logs that it is listening for looks, and lights *The Dark Side of
-  the Moon* as `spectrum`: six colours, the effect in
+  the Moon* as `spectrum`: six colors, the effect in
   `LIGHTD_SPECTRUM_EFFECT`.
 - Every other album is lit from its cover as before, including the one played
   straight after.
@@ -77,7 +77,7 @@ make -C deploy deploy WHERE=builder
 - The stand's boot log names 18 LEDs.
 - The console's strip has 18 segments.
 - *The Dark Side of the Moon* played in iTunes: `lightd` publishes a scene of
-  six colours with `look=spectrum`, and the stand applies it. The next album
+  six colors with `look=spectrum`, and the stand applies it. The next album
   is lit from its cover.
 
 ## Undo
@@ -94,7 +94,7 @@ length is `LP_LED_COUNT` and `CONSOLE_STRIP_LEDS`.
 | 19:45 | Deployed. `lightd` logged `listening for looks topic=eds/nowplaying/current/look spectrum=sweep`. The console's page carried `strip_leds: 18`. The album paused in iTunes was *Dark Side Of The Moon*, and it was lit from its cover: the grants were not in yet. |
 | 19:47 | The plan showed the `lightd` and `nowplayd` accounts updated in place, one topic each, nothing replaced. Applied by the tenant's owner. `lightd` and `nowplayd` restarted. |
 | 19:49 | A track from *Dark Side Of The Moon* played in iTunes. `lightd` published `look=spectrum effect=sweep colors=6`, and the stand applied it 0.3 s after the agent reported the track: `Showing sweep in 6 colours`, red to violet, 17% each. |
-| 20:37 | *Abacab* played next: lit from its cover, `chase` in three colours. Back to *Dark Side Of The Moon* at 20:38: the spectrum again. Back to *Abacab*: its cover again. A look did not outlive its album in either direction. |
+| 20:37 | *Abacab* played next: lit from its cover, `chase` in three colors. Back to *Dark Side Of The Moon* at 20:38: the spectrum again. Back to *Abacab*: its cover again. A look did not outlive its album in either direction. |
 
 Every check under Verification holds, from the logs and the stand's own
 reports. No LEDs are attached, so nobody has seen the spectrum on a strip.

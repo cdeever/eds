@@ -1,9 +1,9 @@
 # palette
 
-Album cover art in, ranked colour swatches out.
+Album cover art in, ranked color swatches out.
 
 This service knows nothing about music, MQTT or LEDs. It takes image bytes and
-returns perceptual colour data. That boundary is deliberate: it makes the
+returns perceptual color data. That boundary is deliberate: it makes the
 extractor developable and tunable against a folder of JPEGs with no
 infrastructure at all, and it is the interface the future album cover resolver
 will reach through `lightd`.
@@ -30,8 +30,8 @@ how the contract stays honest across the Python/Go boundary.
 
 ## Tuning by eye
 
-The thresholds are judgement calls that no test can settle — where a colour
-stops being a colour, how much black field to discard. The CLI exists for that
+The thresholds are judgment calls that no test can settle — where a color
+stops being a color, how much black field to discard. The CLI exists for that
 loop:
 
 ```bash
@@ -72,19 +72,19 @@ Five steps, each answering a specific pathology of album sleeves rather than
 being generic image processing:
 
 1. **Decode and downscale** to 160px on the long edge. Full resolution buys
-   nothing for finding six colours and costs milliseconds.
+   nothing for finding six colors and costs milliseconds.
 2. **Convert to OKLab.** RGB averaging crosses hue: the mean of a strong red
-   and a strong blue is a grey-purple that appears nowhere on the sleeve. In
-   OKLab a centroid is a colour a person would agree was in the image.
+   and a strong blue is a gray-purple that appears nowhere on the sleeve. In
+   OKLab a centroid is a color a person would agree was in the image.
 3. **Drop background pixels** — near-black, near-white, near-neutral — and
    record the fraction. A large share of sleeves are mostly flat field; cluster
-   those in and the dominant colour is "dark", so the strip just goes dim.
+   those in and the dominant color is "dark", so the strip just goes dim.
 4. **Cluster** what remains (k-means with k-means++ seeding, fixed seed).
 5. **Rank by population share** and convert back to sRGB.
 
 Transparency is composited onto **white**, not black — compositing onto black
 would manufacture exactly the dark background step 3 then removes, quietly
-discarding real colour on transparent art.
+discarding real color on transparent art.
 
 k-means is hand-rolled in numpy rather than pulled from scikit-learn: it is
 thirty lines, it keeps the dependency set small enough to matter on a small VM,
@@ -101,12 +101,12 @@ other end. Both belong in `lightd`.
 ## Known characteristics
 
 **Low `n` on busy art returns low-chroma centroids.** Asking for 2 swatches
-from a four-colour sleeve forces one cluster to merge three of them, and the
+from a four-color sleeve forces one cluster to merge three of them, and the
 merged centroid is close to their average. This is arithmetic, not a bug — but
 it is why `chroma` is in the contract. `lightd` should treat a low-chroma
 swatch as unfit to drive a strip regardless of its weight. The default `n=6`
 avoids the situation for most art.
 
-**Genuinely monochrome art sets `fallback`.** A sepia or greyscale sleeve has
-no colour to find. The filter stands down, clusters the unfiltered pixels and
+**Genuinely monochrome art sets `fallback`.** A sepia or grayscale sleeve has
+no color to find. The filter stands down, clusters the unfiltered pixels and
 says so, rather than returning nothing.

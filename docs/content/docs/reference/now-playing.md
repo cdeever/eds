@@ -71,7 +71,7 @@ The same shape on a source topic and on `current`.
 | `art` | optional | describes the image on the matching `art` topic |
 | `art.sha256` | required within `art` | the SHA-256 of that image, in hex |
 | `art.mime` | optional | |
-| `art.from` | on `current` | `player` when the source supplied it; `discogs` when it is the sleeve of a record in the owner's collection ([ADR-0022](/docs/architecture/decisions/0022-the-owners-collection-names-the-record/)); else the catalogue it was found in |
+| `art.from` | on `current` | `player` when the source supplied it; `discogs` when it is the sleeve of a record in the owner's collection ([ADR-0022](/docs/architecture/decisions/0022-the-owners-collection-names-the-record/)); else the catalog it was found in |
 
 Unknown fields are ignored, so one can be added without breaking a subscriber
 that has not been rebuilt.
@@ -82,7 +82,7 @@ While `state` is `playing`, `current` carries `track.title`, `track.album` and
 `art` — whichever driver reported it, and whether or not that driver knew them.
 nowplayd fills in what the source lacked.
 
-The exception is honest rather than hidden: when no catalogue has the album or
+The exception is honest rather than hidden: when no catalog has the album or
 the cover, `current` is published **without** it. A track with no cover is
 still the track that is playing.
 
@@ -97,7 +97,7 @@ moved by Spotify at all.
 
 ## Looks
 
-A few albums are lit by something other than their cover's colours
+A few albums are lit by something other than their cover's colors
 ([ADR-0019](/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own/)).
 `nowplayd` says which, beside every cover it publishes, and before it:
 
@@ -118,7 +118,7 @@ name it does not know is the same as none.
 The one album with a look is *The Dark Side of the Moon*, `spectrum`. It is
 matched on the track's own tags: an album that starts with that title, the
 leading "The" or not, by an artist that includes Pink Floyd. A remaster with
-its year in brackets matches; a copy tagged some other way does not, and is
+its year in parentheses matches; a copy tagged some other way does not, and is
 lit from its cover.
 
 Nothing is said about a look when no cover is published, so a source reported
@@ -141,7 +141,7 @@ what `lightd` does.
   by nowplayd alike.
 - **A subscriber must not rely on that order**, all the same. Both messages
   are retained, and a broker handing a new subscriber its retained messages
-  may deliver them either way round. A subscriber that holds a state whose
+  may deliver them either way around. A subscriber that holds a state whose
   `art.sha256` it has no image for should wait briefly for the image, as
   nowplayd does for a source's.
 - The same image is not published twice running.
@@ -227,7 +227,7 @@ player.
 
 - **A command is never retained, and a retained one is ignored.** A command
   the broker kept would be carried out again by every program that connected
-  afterwards.
+  afterward.
 - **Send it only while connected, and do not queue it.** A command is for
   now. The cover screen sends at QoS 0 for this reason.
 - With no current source the command is dropped. A paused track keeps its

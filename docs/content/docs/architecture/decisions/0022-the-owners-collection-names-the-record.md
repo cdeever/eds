@@ -9,7 +9,7 @@ weight: 22
 |---|---|
 | **Status** | {{< adr-status "Proposed" >}} — until a record on the platter has been shown with its own sleeve; see [What would settle it](#what-would-settle-it) |
 | **Date** | 2026-10-12 |
-| **Scope** | How nowplayd completes a track from a source that plays physical records: it asks the owner's collection at Discogs before any catalogue, and the collection's answer replaces the album the source named. |
+| **Scope** | How nowplayd completes a track from a source that plays physical records: it asks the owner's collection at Discogs before any catalog, and the collection's answer replaces the album the source named. |
 | **Extends** | [ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/), in which a known album is never renamed. For the sources named here, it is. |
 | **Related** | [ADR-0021](/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening/), which left this open; [ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/), the other setting that treats named sources differently |
 
@@ -19,7 +19,7 @@ weight: 22
 
 The turntable driver names a track by what it sounds like. A recording is
 pressed on many records - the album, its reissues, compilations, box sets -
-and nothing in the sound says which. The recogniser names an album anyway.
+and nothing in the sound says which. The recognizer names an album anyway.
 On the bench it called one track of *Chicago Transit Authority* a box set,
 and a track of *No Jacket Required* a singles collection.
 
@@ -31,14 +31,14 @@ The owner keeps a list of them at Discogs, 226 at the time of writing, each
 the exact pressing, with its tracklist and a picture of its sleeve.
 
 [ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/)
-has a rule in the way. A catalogue's answer is checked against the album the
+has a rule in the way. A catalog's answer is checked against the album the
 source named, and an album a source named is never renamed: right for iTunes,
 which knows its album, and exactly wrong here.
 
 ## Options considered
 
-**Discogs as one more catalogue**, first in `NP_CATALOGUES`. The least code.
-But a catalogue is asked about the album the source named, and its answer is
+**Discogs as one more catalog**, first in `NP_CATALOGUES`. The least code.
+But a catalog is asked about the album the source named, and its answer is
 refused unless it is that album. Asked about "The Singles", a collection that
 holds *No Jacket Required* has nothing to say. And it would be asked for
 every source, including ones that know their album.
@@ -49,8 +49,8 @@ begin with. But a driver reports what it perceives and looks nothing up
 and the token would live on the Pi.
 
 **The driver sends no album**, so the album is always the question, and the
-catalogues answer by track. Nothing new in nowplayd. But a catalogue asked
-which album a track is on answers as loosely as the recogniser does, and a
+catalogs answer by track. Nothing new in nowplayd. But a catalog asked
+which album a track is on answers as loosely as the recognizer does, and a
 record not at Discogs would lose the one-cover-a-side the driver now keeps.
 
 **Named sources are looked up in the owner's collection first**, by artist
@@ -67,8 +67,8 @@ and its sleeve the cover.**
 - **The album is replaced**, not merely filled in. This is the one place a
   source's album is not believed, and it is believed nowhere less.
 - **A track the collection does not hold is completed as before**, from the
-  catalogues, under the album the source named.
-- **A record with no picture at Discogs** is looked up in the catalogues
+  catalogs, under the album the source named.
+- **A record with no picture at Discogs** is looked up in the catalogs
   under the record's own title.
 - **A track on several owned records** goes to an album before a
   compilation, always: the owner's choice, made knowing that a greatest hits
@@ -80,7 +80,7 @@ and its sleeve the cover.**
   record's tracklist is read the first time its artist is heard, a few at a
   time, and kept in memory. One cover is held.
 - **It is a package of its own** (`internal/discogs`) behind an interface
-  nowplayd's publisher owns, as the catalogues are. It knows nothing of
+  nowplayd's publisher owns, as the catalogs are. It knows nothing of
   sources.
 
 ### Discogs' terms
@@ -105,12 +105,12 @@ EdS is ever used by anyone but its owner, this is the part to read again.
   login lives, in a file on the workload that is never committed.
 - **It is only as right as the collection is complete.** A record not listed,
   whose track is on a record that is, gets the other record's sleeve. The
-  source's album as a hint guards against it when the recogniser was right,
+  source's album as a hint guards against it when the recognizer was right,
   and nothing guards against it when both are wrong.
 - **Compilations of several artists are not found.** Records are found by
   the artist they are credited to.
 - **The first track by an artist with many records may be completed from a
-  catalogue**, while their tracklists are read, and corrected on the next.
+  catalog**, while their tracklists are read, and corrected on the next.
 - **A dependency on a fourth outside service**, and the first with a limit
   that can be met in ordinary use: 60 requests a minute. Being told to wait
   is waited out.
@@ -123,7 +123,7 @@ EdS is ever used by anyone but its owner, this is the part to read again.
 Tried against the real collection, 2026-10-12: 226 records listed in three
 requests. The tracks played on the bench for ADR-0021 were each found on the
 record they were played from - *Chicago Transit Authority*, *No Jacket
-Required*, *Hello, I Must Be Going!* - where the recogniser had named a box
+Required*, *Hello, I Must Be Going!* - where the recognizer had named a box
 set, a singles collection and a remaster. Of three copies of the last, the
 vinyl was chosen. Discogs asked once to be left alone for a minute, and was.
 
@@ -131,7 +131,7 @@ Not yet shown:
 
 - [x] A record on the platter, on the console, with its own sleeve and
   `art.from` of `discogs`: a Creedence Clearwater Revival track the
-  recogniser put on a greatest hits was named as on *Cosmo's Factory*
+  recognizer put on a greatest hits was named as on *Cosmo's Factory*
   ([CHG-0014](/docs/changes/2026/0014-the-owners-collection/)).
 - [x] The stand lit from it, by its own report.
 - [ ] A record that is not in the collection, completed as before.

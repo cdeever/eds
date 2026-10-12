@@ -17,7 +17,7 @@ weight: 20
 
 ## Context
 
-The stand shows a record's colours. A screen beside it can show the cover
+The stand shows a record's colors. A screen beside it can show the cover
 itself, and a screen that can be touched is the obvious place for the few
 controls a listener reaches for.
 
@@ -173,14 +173,14 @@ Nothing else.
 2. Volume up and down move iTunes' volume, by the step intended. The driver
    carried out each without an error. Nobody has yet said what they heard.
 3. The small cover, as nowplayd makes it from real covers, decodes on the
-   board and is the right way up, in the right colours. **Settled
+   board and is the right way up, in the right colors. **Settled
    2026-10-11:** two albums' covers, of 8.5 KB and 4.8 KB, seen by its owner.
 4. The board holds a connection to the broker over TLS with the cover's
    memory taken, across a day. After 25 minutes it had 116 KB free and had
    never had less than 98 KB. A day has not passed.
 5. Touches land where the finger is. **Found wrong 2026-10-11, and
    corrected:** the touch controller's axes are swapped and both run
-   backwards against the panel, so top was next and bottom was previous. The
+   backward against the panel, so top was next and bottom was previous. The
    defaults are now what this board wants. The corrected firmware has not
    yet been tried by hand.
 6. The substrate grants `nowplaying/source/+/command` to publish, with its
@@ -197,7 +197,7 @@ tracks were skipped at once.
 
 The queue was TCP's, underneath anything MQTT can ask for. So the screen now
 asks before it sends: if the broker has not been heard from in three
-seconds, it republishes its own presence with an acknowledgement requested,
+seconds, it republishes its own presence with an acknowledgment requested,
 and sends the command only when that comes back, within 800 ms. If it does
 not, the command is never written, the screen marks its corner, and the
 connection is dropped and made again. What can still arrive late is the

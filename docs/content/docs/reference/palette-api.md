@@ -5,7 +5,7 @@ weight: 2
 
 # Palette API
 
-`POST /v1/palette` — image bytes in, ranked colour swatches out.
+`POST /v1/palette` — image bytes in, ranked color swatches out.
 
 Accepts either a multipart upload or a raw body. Both return the same result:
 multipart is what a person uses, the raw body is what `lightd` uses.
@@ -54,13 +54,13 @@ honest across the Python/Go boundary.
   instead. Genuinely monochrome art sets this rather than returning nothing.
 
 `chroma`
-: How far the colour is from neutral. **Consumers should treat a low-chroma
+: How far the color is from neutral. **Consumers should treat a low-chroma
   swatch as unfit to drive a strip regardless of its weight** — see below.
 
 ## Known characteristics
 
 **Low `n` on busy art returns low-chroma centroids.** Asking for 2 swatches
-from a four-colour sleeve forces one cluster to merge three of them, and the
+from a four-color sleeve forces one cluster to merge three of them, and the
 merged centroid is close to their average. This is arithmetic, not a bug — but
 it is why `chroma` is in the contract. The default `n=6` avoids the situation
 for most art.
@@ -72,10 +72,10 @@ being generic image processing:
 
 1. **Decode and downscale** to 160px on the long edge.
 2. **Convert to OKLab.** RGB averaging crosses hue: the mean of a strong red and
-   a strong blue is a grey-purple that appears nowhere on the sleeve.
+   a strong blue is a gray-purple that appears nowhere on the sleeve.
 3. **Drop background pixels** — near-black, near-white, near-neutral — and
    record the fraction. A large share of sleeves are mostly flat field; cluster
-   those in and the dominant colour is "dark", so the strip just goes dim.
+   those in and the dominant color is "dark", so the strip just goes dim.
 4. **Cluster** what remains (k-means with k-means++ seeding, fixed seed).
 5. **Rank by population share** and convert back to sRGB.
 

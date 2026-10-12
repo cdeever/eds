@@ -52,7 +52,7 @@ went quiet.
 ## Quality of service
 
 The stand subscribes to `scene` at **QoS 1**. A dropped scene means the stand
-shows the previous record's colours until the next one — exactly the sort of
+shows the previous record's colors until the next one — exactly the sort of
 quiet wrongness that is hard to notice and annoying to debug.
 
 ## Watching the tree
@@ -62,4 +62,4 @@ mosquitto_sub -h <broker> -t 'eds/#' -v
 ```
 
 Because gamma is applied on the device and not on the wire, what you see here
-is the colour actually intended.
+is the color actually intended.
