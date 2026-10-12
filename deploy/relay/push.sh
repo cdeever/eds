@@ -6,7 +6,8 @@
 # (`make image`) or the next card flashed will be older than the Pi it
 # replaces.
 #
-# Nothing secret travels: the agent, a unit file and four scripts. The Pi's
+# Nothing secret travels: the agent, a unit file, its scripts and the
+# turntable's recogniser. The Pi's
 # settings, pairing and authorization are not touched.
 set -euo pipefail
 
@@ -19,6 +20,7 @@ trap 'rm -rf "$stage"' EXIT
 
 cp "$AGENT" "$stage/npagent"
 cp "$FILES"/{npagent.service,eds-agent-status,eds-agent-pair,eds-agent-spotify,eds-agent-import} "$stage/"
+cp "$FILES"/{eds-recognize,eds-recognize-requirements.txt,eds-agent-turntable-install} "$stage/"
 git -C "$REPO" describe --always --dirty > "$stage/source"
 
 # Runs on the Pi, as root, from the directory the rest was unpacked into.
@@ -30,6 +32,10 @@ install -o root -g root -m 0755 npagent /usr/local/bin/npagent
 install -o root -g root -m 0755 eds-agent-status eds-agent-pair eds-agent-spotify /usr/local/bin/
 install -o root -g root -m 0755 eds-agent-import /usr/local/sbin/eds-agent-import
 install -o root -g root -m 0644 npagent.service /etc/systemd/system/npagent.service
+# The recogniser comes from PyPI, which the Pi reaches by itself. arecord is
+# in the base image; a Pi without it is told so by the driver.
+install -o root -g root -m 0755 eds-agent-turntable-install /usr/local/sbin/eds-agent-turntable-install
+/usr/local/sbin/eds-agent-turntable-install "$PWD"
 printf 'pushed: %s on %s\n' "$(cat source)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> /etc/eds-agent-release
 systemctl daemon-reload
 # 78 is "no driver is set up", which is a fair state for a Pi to be in.

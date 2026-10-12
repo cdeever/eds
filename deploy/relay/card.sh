@@ -55,7 +55,7 @@ cp "$INFRA/deevnet-root-ca.pem" "$drop/deevnet-root-ca.pem"
 
 # The agent's account, straight from the tenant's state to the card.
 ( set -a; . "$INFRA/.backend.env"; set +a
-  terraform -chdir="$INFRA" output -json ) | DRIVERS="$DRIVERS" python3 -c '
+  terraform -chdir="$INFRA" output -json ) | DRIVERS="$DRIVERS" TURNTABLE_DEVICE="${TURNTABLE_DEVICE:-}" python3 -c '
 import json, os, sys
 out = {k: v["value"] for k, v in json.load(sys.stdin).items()}
 for need in ("broker", "np_relay_broker"):
@@ -63,9 +63,14 @@ for need in ("broker", "np_relay_broker"):
         sys.exit("the tenant has no output %r: apply infra/deevnet-tenant-eds first" % need)
 broker, account = out["broker"], out["np_relay_broker"]
 drivers = [d.strip() for d in os.environ["DRIVERS"].split(",") if d.strip()]
-unknown = [d for d in drivers if d not in ("itunes", "spotify")]
+unknown = [d for d in drivers if d not in ("itunes", "spotify", "turntable")]
 if unknown or not drivers:
-    sys.exit("DRIVERS must name itunes, spotify or both; got %r" % os.environ["DRIVERS"])
+    sys.exit("DRIVERS must name itunes, spotify, turntable; got %r" % os.environ["DRIVERS"])
+# The turntable driver listens to a sound card, and which one is for the
+# card to say: it is whatever is plugged into this Pi.
+device = os.environ.get("TURNTABLE_DEVICE", "")
+if "turntable" in drivers and not device:
+    sys.exit("DRIVERS names turntable: say which input it listens to, TURNTABLE_DEVICE=plughw:<card>")
 
 # The broker drops a publish to a topic that was not granted, and says
 # nothing. Better to refuse here than to boot an agent that reports to no one.
@@ -95,6 +100,8 @@ print("NP_MQTT_CA_FILE=/etc/eds/deevnet-root-ca.pem")
 print("NP_MQTT_CLIENT_ID=%s" % account["username"])
 print("NP_TOPIC_PREFIX=eds")
 print("NP_DRIVERS=%s" % ",".join(drivers))
+if device:
+    print("NP_TURNTABLE_DEVICE=%s" % device)
 # Its events go to the log store only if its account may publish them.
 log = [t for t in account["publish"] if "/log/" in t]
 if log:

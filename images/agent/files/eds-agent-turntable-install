@@ -1,0 +1,37 @@
+#!/bin/bash
+# eds-agent-turntable-install - what the turntable driver needs beside the
+# agent: a recogniser to ask, and leave to open the sound card.
+#
+# One script for both ways a Pi gets it: the image build runs it in the
+# chroot, and deploy/relay's push runs it on a Pi already in service. Run as
+# root, from anywhere; it reads eds-recognize and its requirements from the
+# directory given, or from where the image keeps them.
+#
+# It needs the network, for PyPI. Only wheels are taken: nothing is compiled
+# on a Pi, or under emulation in an image build.
+set -euo pipefail
+
+src="${1:-/usr/local/share/eds-recognize}"
+venv=/opt/eds-recognize
+
+[[ -s "$src/eds-recognize" && -s "$src/eds-recognize-requirements.txt" ]] ||
+    { echo "no eds-recognize and its requirements in $src" >&2; exit 2; }
+
+python3 -m venv "$venv"
+"$venv/bin/pip" install --quiet --disable-pip-version-check --no-cache-dir \
+    --only-binary=:all: -r "$src/eds-recognize-requirements.txt"
+
+install -d -o root -g root -m 0755 /usr/local/share/eds-recognize
+if [[ "$src" != /usr/local/share/eds-recognize ]]; then
+    install -o root -g root -m 0644 "$src/eds-recognize-requirements.txt" /usr/local/share/eds-recognize/
+    install -o root -g root -m 0755 "$src/eds-recognize" /usr/local/share/eds-recognize/
+fi
+install -o root -g root -m 0755 "$src/eds-recognize" /usr/local/bin/eds-recognize
+
+# The sound card's devices belong to this group.
+usermod -a -G audio npagent
+
+# Importing is most of what can go wrong: a wheel for the wrong machine.
+"$venv/bin/python" -c 'import shazamio' 2>/dev/null ||
+    { echo "the recogniser was installed and cannot be imported" >&2; exit 1; }
+echo "recogniser installed: $("$venv/bin/pip" freeze 2>/dev/null | grep -i '^shazamio==')"

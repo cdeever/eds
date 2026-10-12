@@ -61,7 +61,7 @@ The same shape on a source topic and on `current`.
 |---|---|---|
 | `v` | required | `1` |
 | `source` | on a source topic, required and equal to the `<id>` in the topic | on `current`, the source that won; absent when nothing is reporting |
-| `player` | optional | `itunes`, `music`, `spotify`, `tidal`, `musicbee` |
+| `player` | optional | `itunes`, `music`, `spotify`, `tidal`, `musicbee`, `turntable` |
 | `state` | required | `playing`, `paused` or `stopped` |
 | `track` | optional | absent when stopped with nothing loaded |
 | `track.title`, `.artist`, `.album`, `.album_artist` | optional | a source reports what its player says and nothing more |

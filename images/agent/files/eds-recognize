@@ -1,0 +1,54 @@
+#!/opt/eds-recognize/bin/python
+"""eds-recognize - name the track in a few seconds of audio.
+
+A WAV file on standard input; one JSON object on standard output: artist,
+title and album, or an empty object when the recogniser does not know. Any
+failure is a non-zero exit and a line on standard error.
+
+This is the whole of what the agent's turntable driver knows about its
+recogniser (ADR-0021), and the only file that knows which recogniser it is:
+Shazam's, through ShazamIO, which speaks to an endpoint nobody published.
+When that stops working, this file is what is replaced.
+
+What leaves the Pi is a fingerprint ShazamIO computes here, not the audio.
+"""
+import asyncio
+import json
+import sys
+import warnings
+
+# pydub looks for ffmpeg as it is imported and complains that there is none.
+# There is none on purpose: a WAV file needs no decoding.
+warnings.filterwarnings("ignore")
+
+from shazamio import Shazam  # noqa: E402
+
+
+def album(track):
+    for section in track.get("sections") or []:
+        for item in section.get("metadata") or []:
+            if item.get("title") == "Album":
+                return item.get("text") or ""
+    return ""
+
+
+async def main():
+    clip = sys.stdin.buffer.read()
+    if not clip:
+        sys.exit("eds-recognize: no audio on standard input")
+    answer = await Shazam().recognize(clip)
+    track = answer.get("track") or {}
+    if not track.get("title"):
+        print("{}")
+        return
+    print(json.dumps({
+        "artist": track.get("subtitle") or "",
+        "title": track["title"],
+        "album": album(track),
+    }))
+
+
+try:
+    asyncio.run(main())
+except Exception as err:  # whatever it was, the driver is told in one line
+    sys.exit("eds-recognize: %s: %s" % (type(err).__name__, err))

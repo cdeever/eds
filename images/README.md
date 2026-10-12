@@ -12,8 +12,10 @@ per image. Nothing of EdS's is in the factory.
 |---|---|
 | [`agent`](agent) | a Pi that runs the now-playing agent near the players, and reports to the broker |
 
-More will follow the same shape — a Pi that identifies what a turntable is
-playing from its line-level output, for one.
+More may follow the same shape. The Pi that identifies what a turntable is
+playing, once expected to be the second image, is this one: listening is a
+driver in the same agent, and the image carries what it needs
+([ADR-0021](../docs/content/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening.md)).
 
 ## Building
 
@@ -76,6 +78,8 @@ the running Pi.
 eds-agent-status     each leg, the broker, each driver, the agent; non-zero if anything is wrong
 eds-agent-pair       pair with iTunes, once; prints a code to type in
 eds-agent-spotify    install a Spotify authorization or the devices that count; list the account's devices
+eds-recognize        name the track in a WAV file on standard input; what the turntable driver asks
+eds-agent-turntable-install   (root) install the recogniser again, from its pinned requirements
 journalctl -u npagent -f
 ```
 
