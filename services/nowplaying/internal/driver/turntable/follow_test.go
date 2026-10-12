@@ -21,7 +21,7 @@ func tone() []int16 {
 func hush() []int16 { return make([]int16, blockSamples) }
 
 // deck is a follower with a record on it: it plays so much music or silence,
-// and answers each clip with whatever the test says the recogniser knows.
+// and answers each clip with whatever the test says the recognizer knows.
 type deck struct {
 	t     *testing.T
 	f     *follower
@@ -111,7 +111,7 @@ func TestATrackIsNotReplacedOnOneAnswer(t *testing.T) {
 	d.hears(intro)
 	d.music(ClipSeconds * second)
 
-	// One answer that disagrees, and then the old one again: a recogniser
+	// One answer that disagrees, and then the old one again: a recognizer
 	// that was wrong for a moment. The room is not repainted for it.
 	d.hears(home)
 	d.music(20 * second)
@@ -136,7 +136,7 @@ func TestTheNextTrack(t *testing.T) {
 	if len(d.sent) < 2 || d.sent[1]-d.sent[0] != ClipSeconds*second {
 		t.Fatalf("the second opinion was asked for at blocks %v", d.sent)
 	}
-	// It keeps the album the side began with: the recogniser names the
+	// It keeps the album the side began with: the recognizer names the
 	// record two ways, and one record has one cover.
 	d.want(true, "Does Anybody Really Know What Time It Is?", "Original Album Series")
 }
@@ -217,7 +217,7 @@ func TestAClickIsNotMusic(t *testing.T) {
 	d.want(false, "", "")
 }
 
-func TestARecogniserThatCannotBeAskedTeachesNothing(t *testing.T) {
+func TestARecognizerThatCannotBeAskedTeachesNothing(t *testing.T) {
 	d := newDeck(t)
 	d.cannotAsk()
 	d.music(60 * second)

@@ -142,7 +142,7 @@ func Connect(cfg Config) (*MQTT, error) {
 //
 // Covers are handled one at a time, off the client's own goroutine, and a
 // cover that arrives while another is being handled replaces any that is
-// waiting. Only the newest one matters: the handler asks palette for colours
+// waiting. Only the newest one matters: the handler asks palette for colors
 // and publishes a scene, which is slow next to a burst of track changes, and
 // working through a queue would light the room with covers already gone.
 func (m *MQTT) SubscribeCovers(name string, handle func(image []byte)) error {
@@ -294,7 +294,7 @@ func buildTLS(cfg Config) (*tls.Config, error) {
 
 // PublishScene sends a scene to one stand, retained.
 //
-// Retention is load-bearing, not an optimisation. A stand that reboots - power
+// Retention is load-bearing, not an optimization. A stand that reboots - power
 // blip, reflash, WiFi drop - pulls the current scene down on reconnect instead
 // of sitting dark until the next record. Without it the failure mode is a
 // black stand in the middle of an album.

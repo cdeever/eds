@@ -194,7 +194,7 @@ func spotifyJob(logger *slog.Logger) (job, error) {
 func turntableJob(logger *slog.Logger) (job, error) {
 	j := job{name: "turntable", source: "turntable"}
 
-	// The recogniser publishes no limit. Ten seconds is as often as this
+	// The recognizer publishes no limit. Ten seconds is as often as this
 	// will ask it whatever it is told; twenty is three clips a minute.
 	interval, err := config.Duration("NP_TURNTABLE_INTERVAL", 20*time.Second, 10*time.Second, 5*time.Minute)
 	if err != nil {
@@ -225,7 +225,7 @@ func turntableJob(logger *slog.Logger) (job, error) {
 		return j, nil
 	}
 	if _, err := exec.LookPath(recognizer); err != nil {
-		j.err = fmt.Errorf("the recogniser cannot be run: %w", err)
+		j.err = fmt.Errorf("the recognizer cannot be run: %w", err)
 		return j, nil
 	}
 

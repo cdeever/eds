@@ -156,7 +156,7 @@ func TestTheRecordATrackIsOn(t *testing.T) {
 		t.Fatalf("got %q, cover %+v", got.Album, got.Cover)
 	}
 
-	// Discogs' ways of writing an artist, and a recogniser's of a title.
+	// Discogs' ways of writing an artist, and a recognizer's of a title.
 	if got := find(t, c, "Chicago", "Does Anybody Really Know What Time It Is? (2002 Remaster)"); got.Album != "Chicago Transit Authority" {
 		t.Fatalf("got %q", got.Album)
 	}

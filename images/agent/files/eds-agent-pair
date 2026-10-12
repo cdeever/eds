@@ -16,7 +16,7 @@ export NP_STATE_DIR=/var/lib/eds-npagent
 export NP_REMOTE_NAME="${NP_REMOTE_NAME:-EdS}"
 
 # Not `set -e` for this one: the agent should start whenever a pairing exists,
-# including when the tool paired and then stumbled on something afterwards.
+# including when the tool paired and then stumbled on something afterward.
 set +e
 runuser -u npagent -- env NP_PAIR_PORT="$NP_PAIR_PORT" NP_STATE_DIR="$NP_STATE_DIR" \
     NP_REMOTE_NAME="$NP_REMOTE_NAME" /usr/local/bin/npagent pair

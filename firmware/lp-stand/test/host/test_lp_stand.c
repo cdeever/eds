@@ -34,7 +34,7 @@ static int checks = 0;
 #define STRIP 60
 static lp_rgb_t pixels[STRIP];
 
-static lp_scene_t two_colour(void)
+static lp_scene_t two_color(void)
 {
     lp_scene_t s;
     memset(&s, 0, sizeof(s));
@@ -90,7 +90,7 @@ static void test_unknown_effect_falls_back_to_solid(void)
 
 // --- scene validation ------------------------------------------------------
 
-static void test_validate_normalises_weights(void)
+static void test_validate_normalizes_weights(void)
 {
     lp_scene_t s;
     memset(&s, 0, sizeof(s));
@@ -129,7 +129,7 @@ static void test_validate_drops_weightless_entries(void)
 
     CHECK(lp_scene_validate(&s), "scene rejected");
     CHECK(s.palette_len == 1, "palette_len = %zu, want 1", s.palette_len);
-    CHECK(s.palette[0].rgb.g == 255, "the wrong colour survived");
+    CHECK(s.palette[0].rgb.g == 255, "the wrong color survived");
 }
 
 // This data arrives over the network. A stand that crashes on a malformed
@@ -192,7 +192,7 @@ static void test_default_scene_is_lit(void)
 
 static void test_solid_is_uniform_and_scaled(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     s.effect = LP_EFFECT_SOLID;
     s.brightness = 0.5f;
 
@@ -206,7 +206,7 @@ static void test_solid_is_uniform_and_scaled(void)
 
 static void test_zero_brightness_is_black(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     s.brightness = 0.0f;
 
     for (int effect = 0; effect < LP_EFFECT_COUNT; effect++) {
@@ -223,7 +223,7 @@ static void test_zero_brightness_is_black(void)
 // slow.
 static void test_breathe_never_goes_fully_dark(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     s.effect = LP_EFFECT_BREATHE;
     s.brightness = 1.0f;
 
@@ -239,7 +239,7 @@ static void test_breathe_never_goes_fully_dark(void)
 
 static void test_breathe_actually_varies(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     s.effect = LP_EFFECT_BREATHE;
     s.brightness = 1.0f;
 
@@ -254,7 +254,7 @@ static void test_breathe_actually_varies(void)
 
 static void test_breathe_is_uniform_across_the_strip(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     s.effect = LP_EFFECT_BREATHE;
 
     lp_effects_render(&s, 1234, pixels, STRIP);
@@ -264,11 +264,11 @@ static void test_breathe_is_uniform_across_the_strip(void)
     }
 }
 
-// The point of carrying weights all the way to the device: a colour covering
+// The point of carrying weights all the way to the device: a color covering
 // 75% of the sleeve should cover about 75% of the strip.
-static void test_sweep_honours_palette_weights(void)
+static void test_sweep_honors_palette_weights(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     s.effect = LP_EFFECT_SWEEP;
     s.speed = 0.0f;
     s.brightness = 1.0f;
@@ -282,12 +282,12 @@ static void test_sweep_honours_palette_weights(void)
         }
     }
     float share = (float)reddish / (float)STRIP;
-    CHECK(share > 0.6f && share < 0.9f, "the 0.75-weight colour covers %.2f of the strip", share);
+    CHECK(share > 0.6f && share < 0.9f, "the 0.75-weight color covers %.2f of the strip", share);
 }
 
 static void test_sweep_scrolls(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     s.effect = LP_EFFECT_SWEEP;
     s.speed = 1.0f;
 
@@ -300,7 +300,7 @@ static void test_sweep_scrolls(void)
 
 static void test_sweep_is_continuous_around_the_seam(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     s.effect = LP_EFFECT_SWEEP;
     s.speed = 0.0f;
     s.brightness = 1.0f;
@@ -308,7 +308,7 @@ static void test_sweep_is_continuous_around_the_seam(void)
     lp_effects_render(&s, 0, pixels, STRIP);
 
     // Hard edges on a diffused strip look like a fault in the diffuser, so no
-    // single step should jump the full distance between the two colours.
+    // single step should jump the full distance between the two colors.
     int worst = 0;
     for (int i = 0; i < STRIP; i++) {
         const lp_rgb_t a = pixels[i];
@@ -318,10 +318,10 @@ static void test_sweep_is_continuous_around_the_seam(void)
             worst = step;
         }
     }
-    CHECK(worst < 400, "largest neighbour step is %d - the seam is a hard edge", worst);
+    CHECK(worst < 400, "largest neighbor step is %d - the seam is a hard edge", worst);
 }
 
-static void test_single_colour_sweep_is_uniform(void)
+static void test_single_color_sweep_is_uniform(void)
 {
     lp_scene_t s;
     memset(&s, 0, sizeof(s));
@@ -332,13 +332,13 @@ static void test_single_colour_sweep_is_uniform(void)
 
     lp_effects_render(&s, 4321, pixels, STRIP);
     for (int i = 0; i < STRIP; i++) {
-        CHECK(pixels[i].g == 200, "single-colour sweep varies at pixel %d (g=%d)", i, pixels[i].g);
+        CHECK(pixels[i].g == 200, "single-color sweep varies at pixel %d (g=%d)", i, pixels[i].g);
     }
 }
 
 static void test_render_is_deterministic(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     lp_rgb_t a[STRIP], b[STRIP];
 
     lp_effects_render(&s, 7777, a, STRIP);
@@ -348,7 +348,7 @@ static void test_render_is_deterministic(void)
 
 // --- the effects that use the accents -----------------------------------------
 
-// A cover with a dominant colour and two accents, as lightd sends one.
+// A cover with a dominant color and two accents, as lightd sends one.
 static lp_scene_t accented(void)
 {
     lp_scene_t s;
@@ -377,7 +377,7 @@ static void test_new_effect_names_round_trip(void)
     CHECK(strcmp(lp_effect_name(LP_EFFECT_CHASE), "chase") == 0, "name of chase");
 }
 
-// Morph is one colour for the whole strip at any moment.
+// Morph is one color for the whole strip at any moment.
 static void test_morph_is_uniform_across_the_strip(void)
 {
     lp_scene_t s = accented();
@@ -391,15 +391,15 @@ static void test_morph_is_uniform_across_the_strip(void)
     }
 }
 
-// It starts on the dominant colour, reaches every accent, and comes back.
-static void test_morph_visits_every_colour_and_returns(void)
+// It starts on the dominant color, reaches every accent, and comes back.
+static void test_morph_visits_every_color_and_returns(void)
 {
     lp_scene_t s = accented();
     s.effect = LP_EFFECT_MORPH;
     const uint32_t loop = 3500 * 2 * 3;
 
     lp_effects_render(&s, 0, pixels, STRIP);
-    CHECK(far_from(pixels[0], s.palette[0].rgb) == 0, "morph does not start on the dominant colour");
+    CHECK(far_from(pixels[0], s.palette[0].rgb) == 0, "morph does not start on the dominant color");
 
     int nearest[3] = {255, 255, 255};
     for (uint32_t t = 0; t < loop; t += 25) {
@@ -412,19 +412,19 @@ static void test_morph_visits_every_colour_and_returns(void)
         }
     }
     for (int c = 0; c < 3; c++) {
-        CHECK(nearest[c] == 0, "morph never shows colour %d outright (closest %d)", c, nearest[c]);
+        CHECK(nearest[c] == 0, "morph never shows color %d outright (closest %d)", c, nearest[c]);
     }
 
     lp_rgb_t first = pixels[0];
     lp_effects_render(&s, 0, pixels, STRIP);
     first = pixels[0];
     lp_effects_render(&s, loop, pixels, STRIP);
-    CHECK(far_from(pixels[0], first) == 0, "morph does not come round after one loop");
+    CHECK(far_from(pixels[0], first) == 0, "morph does not come around after one loop");
 }
 
-// The point of weights: the dominant colour is on longest, and a small accent
+// The point of weights: the dominant color is on longest, and a small accent
 // is still on long enough to be seen.
-static void test_morph_gives_the_dominant_colour_the_longest_turn(void)
+static void test_morph_gives_the_dominant_color_the_longest_turn(void)
 {
     lp_scene_t s = accented();
     s.effect = LP_EFFECT_MORPH;
@@ -444,7 +444,7 @@ static void test_morph_gives_the_dominant_colour_the_longest_turn(void)
     CHECK(shown[2] * 20 > 1000, "the smallest accent is shown for only %d ms", shown[2] * 20);
 }
 
-// A change of colour is a glide: no frame differs much from the one before.
+// A change of color is a glide: no frame differs much from the one before.
 static void test_morph_never_jumps(void)
 {
     lp_scene_t s = accented();
@@ -463,8 +463,8 @@ static void test_morph_never_jumps(void)
     CHECK(worst < 12, "morph jumped %d in one frame", worst);
 }
 
-// Chase keeps the dominant colour as the ground and shows each accent on it.
-static void test_chase_shows_each_accent_over_the_dominant_colour(void)
+// Chase keeps the dominant color as the ground and shows each accent on it.
+static void test_chase_shows_each_accent_over_the_dominant_color(void)
 {
     lp_scene_t s = accented();
     s.effect = LP_EFFECT_CHASE;
@@ -483,7 +483,7 @@ static void test_chase_shows_each_accent_over_the_dominant_colour(void)
             }
         }
     }
-    CHECK(ground > STRIP / 2, "only %d of %d pixels are the dominant colour", ground, STRIP);
+    CHECK(ground > STRIP / 2, "only %d of %d pixels are the dominant color", ground, STRIP);
     CHECK(nearest[1] < 25, "the first accent is nowhere on the strip (closest %d)", nearest[1]);
     CHECK(nearest[2] < 25, "the second accent is nowhere on the strip (closest %d)", nearest[2]);
 }
@@ -510,7 +510,7 @@ static void test_chase_gives_a_larger_accent_more_of_the_strip(void)
     CHECK(reddish > yellowish && yellowish >= 2, "the 15%% accent covers %d pixels and the 5%% one %d", reddish, yellowish);
 }
 
-static void test_chase_moves_and_comes_round(void)
+static void test_chase_moves_and_comes_around(void)
 {
     lp_scene_t s = accented();
     s.effect = LP_EFFECT_CHASE;
@@ -521,7 +521,7 @@ static void test_chase_moves_and_comes_round(void)
     CHECK(memcmp(first, pixels, sizeof(first)) != 0, "chase did not move over 300 ms");
 
     lp_effects_render(&s, 3500 * 2, pixels, STRIP);
-    CHECK(memcmp(first, pixels, sizeof(first)) == 0, "chase did not come round after one lap");
+    CHECK(memcmp(first, pixels, sizeof(first)) == 0, "chase did not come around after one lap");
 }
 
 // The strip is a loop, so a patch crossing its ends must not show an edge
@@ -544,8 +544,8 @@ static void test_chase_is_continuous_around_the_seam(void)
     }
 }
 
-// A cover with one colour has no accents. Both effects then show that colour.
-static void test_accent_effects_with_one_colour_are_steady(void)
+// A cover with one color has no accents. Both effects then show that color.
+static void test_accent_effects_with_one_color_are_steady(void)
 {
     lp_scene_t s = accented();
     s.palette_len = 1;
@@ -556,14 +556,14 @@ static void test_accent_effects_with_one_colour_are_steady(void)
         for (uint32_t t = 0; t < 9000; t += 450) {
             lp_effects_render(&s, t, pixels, STRIP);
             for (int i = 0; i < STRIP; i++) {
-                CHECK(far_from(pixels[i], s.palette[0].rgb) == 0, "%s with one colour is not that colour",
+                CHECK(far_from(pixels[i], s.palette[0].rgb) == 0, "%s with one color is not that color",
                       lp_effect_name(both[e]));
             }
         }
     }
 }
 
-static void test_accent_effects_honour_brightness(void)
+static void test_accent_effects_honor_brightness(void)
 {
     lp_scene_t s = accented();
     s.brightness = 0.0f;
@@ -599,14 +599,14 @@ static void test_animation_stays_smooth_after_weeks(void)
 // t_ms is free-running; a wrap at 2^32 should cost one frame, not a hang.
 static void test_render_survives_timestamp_wrap(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     lp_effects_render(&s, 0xFFFFFFFFu, pixels, STRIP);
     CHECK(1, "rendered at the wrap point");
 }
 
 static void test_render_is_defensive(void)
 {
-    lp_scene_t s = two_colour();
+    lp_scene_t s = two_color();
     lp_effects_render(NULL, 0, pixels, STRIP); // must not crash
     lp_effects_render(&s, 0, NULL, STRIP);     // must not crash
     lp_effects_render(&s, 0, pixels, 0);       // must not crash
@@ -678,11 +678,11 @@ static void test_event_is_the_line_the_store_expects(void)
 {
     char line[LP_EVENT_LINE_LEN];
     size_t len = lp_event_format(line, sizeof(line), LP_EVENT_INFO, "scene.applied",
-                                 "Showing sweep in 3 colours", 812345, 0,
+                                 "Showing sweep in 3 colors", 812345, 0,
                                  "\"effect\":\"sweep\",\"colors\":3");
 
     const char *want = "{\"level\":\"info\",\"event\":\"scene.applied\","
-                       "\"msg\":\"Showing sweep in 3 colours\",\"uptime_ms\":812345,"
+                       "\"msg\":\"Showing sweep in 3 colors\",\"uptime_ms\":812345,"
                        "\"effect\":\"sweep\",\"colors\":3}";
     CHECK(strcmp(line, want) == 0, "got %s", line);
     CHECK(len == strlen(want), "length %zu, line is %zu", len, strlen(line));
@@ -707,7 +707,7 @@ static void test_scene_event_says_what_is_showing(void)
 
     // And it is still an event once it is in one.
     char line[LP_EVENT_LINE_LEN];
-    CHECK(lp_event_format(line, sizeof(line), LP_EVENT_INFO, "scene.applied", "Showing breathe in 3 colours",
+    CHECK(lp_event_format(line, sizeof(line), LP_EVENT_INFO, "scene.applied", "Showing breathe in 3 colors",
                           1, 0, extra) > 0,
           "the event did not fit");
     CHECK(well_formed(line), "not well formed: %s", line);
@@ -721,11 +721,11 @@ static void test_scene_event_fits_the_largest_scene(void)
         scene.palette[i] = (lp_swatch_t){{0xff, 0xff, 0xff}, 1.0f};
     }
     char extra[224];
-    CHECK(lp_scene_event_fields(&scene, extra, sizeof(extra)) > 0, "eight colours did not fit");
+    CHECK(lp_scene_event_fields(&scene, extra, sizeof(extra)) > 0, "eight colors did not fit");
 
     char line[LP_EVENT_LINE_LEN];
     size_t len = lp_event_format(line, sizeof(line), LP_EVENT_INFO, "scene.applied",
-                                 "Showing breathe in 8 colours", 4294967295LL * 1000, 99999, extra);
+                                 "Showing breathe in 8 colors", 4294967295LL * 1000, 99999, extra);
     CHECK(len > 0, "the largest scene does not fit in an event");
     CHECK(well_formed(line), "not well formed: %s", line);
 }
@@ -858,7 +858,7 @@ int main(void)
         {"gamma darkens the midrange", test_gamma_darkens_the_midrange},
         {"effect names round trip", test_effect_names_round_trip},
         {"unknown effect falls back to solid", test_unknown_effect_falls_back_to_solid},
-        {"validate normalises weights", test_validate_normalises_weights},
+        {"validate normalizes weights", test_validate_normalizes_weights},
         {"validate clamps out-of-range values", test_validate_clamps_out_of_range_values},
         {"validate drops weightless entries", test_validate_drops_weightless_entries},
         {"validate rejects unrenderable scenes", test_validate_rejects_unrenderable_scenes},
@@ -870,22 +870,22 @@ int main(void)
         {"breathe never goes fully dark", test_breathe_never_goes_fully_dark},
         {"breathe actually varies", test_breathe_actually_varies},
         {"breathe is uniform across the strip", test_breathe_is_uniform_across_the_strip},
-        {"sweep honours palette weights", test_sweep_honours_palette_weights},
+        {"sweep honors palette weights", test_sweep_honors_palette_weights},
         {"sweep scrolls", test_sweep_scrolls},
         {"sweep is continuous around the seam", test_sweep_is_continuous_around_the_seam},
-        {"single-colour sweep is uniform", test_single_colour_sweep_is_uniform},
+        {"single-color sweep is uniform", test_single_color_sweep_is_uniform},
         {"render is deterministic", test_render_is_deterministic},
         {"new effect names round trip", test_new_effect_names_round_trip},
         {"morph is uniform across the strip", test_morph_is_uniform_across_the_strip},
-        {"morph visits every colour and returns", test_morph_visits_every_colour_and_returns},
-        {"morph gives the dominant colour the longest turn", test_morph_gives_the_dominant_colour_the_longest_turn},
+        {"morph visits every color and returns", test_morph_visits_every_color_and_returns},
+        {"morph gives the dominant color the longest turn", test_morph_gives_the_dominant_color_the_longest_turn},
         {"morph never jumps", test_morph_never_jumps},
-        {"chase shows each accent over the dominant colour", test_chase_shows_each_accent_over_the_dominant_colour},
+        {"chase shows each accent over the dominant color", test_chase_shows_each_accent_over_the_dominant_color},
         {"chase gives a larger accent more of the strip", test_chase_gives_a_larger_accent_more_of_the_strip},
-        {"chase moves and comes round", test_chase_moves_and_comes_round},
+        {"chase moves and comes around", test_chase_moves_and_comes_around},
         {"chase is continuous around the seam", test_chase_is_continuous_around_the_seam},
-        {"accent effects with one colour are steady", test_accent_effects_with_one_colour_are_steady},
-        {"accent effects honour brightness", test_accent_effects_honour_brightness},
+        {"accent effects with one color are steady", test_accent_effects_with_one_color_are_steady},
+        {"accent effects honor brightness", test_accent_effects_honor_brightness},
         {"animation stays smooth after weeks", test_animation_stays_smooth_after_weeks},
         {"render survives timestamp wrap", test_render_survives_timestamp_wrap},
         {"render is defensive", test_render_is_defensive},

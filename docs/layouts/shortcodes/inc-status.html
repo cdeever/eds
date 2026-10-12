@@ -1,5 +1,5 @@
 {{- /*
-  Incident substatus as a coloured badge. The colour follows from the substatus,
+  Incident substatus as a colored badge. The color follows from the substatus,
   so the rule lives here and nowhere else - see develop/records/incident-record.
     red:    Triage, Investigating   - something is broken, cause unknown
     orange: Mitigated               - working again, cause not fixed
@@ -7,11 +7,11 @@
   Usage: {{< inc-status "Mitigated" >}}
 */ -}}
 {{- $sub := .Get 0 -}}
-{{- $colours := dict
+{{- $colors := dict
       "Triage" "red" "Investigating" "red"
       "Mitigated" "orange"
       "Remediated" "green" "Hardening" "green" "Completed" "green" -}}
-{{- $c := index $colours $sub -}}
+{{- $c := index $colors $sub -}}
 {{- if not $c -}}
   {{- errorf "inc-status: unknown substatus %q in %s - use Triage, Investigating, Mitigated, Remediated, Hardening or Completed" $sub .Position -}}
 {{- end -}}

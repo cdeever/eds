@@ -17,10 +17,10 @@
 // edges on a diffused strip look like a fault in the diffuser.
 #define SWEEP_BLEND 0.06f
 
-// Morph gives each colour a turn at the whole strip. How long a turn lasts is
-// half by the colour's share of the cover and half equal, so the dominant
-// colour is on longest and a 4% accent still gets to be seen. The last part of
-// each turn is spent turning into the next colour.
+// Morph gives each color a turn at the whole strip. How long a turn lasts is
+// half by the color's share of the cover and half equal, so the dominant
+// color is on longest and a 4% accent still gets to be seen. The last part of
+// each turn is spent turning into the next color.
 #define MORPH_BLEND 0.45f
 
 // Chase: how much of the strip an accent covers is its share of the cover,
@@ -100,7 +100,7 @@ static void fill(lp_rgb_t *out, size_t count, lp_rgb_t color)
 }
 
 // sweep_color samples the palette at position u (0..1 around the strip),
-// laying colours out in proportion to their weights so a colour covering 60%
+// laying colors out in proportion to their weights so a color covering 60%
 // of the sleeve covers 60% of the strip, and cross-fading at the seams.
 static lp_rgb_t sweep_color(const lp_scene_t *scene, float u)
 {
@@ -136,7 +136,7 @@ static lp_rgb_t sweep_color(const lp_scene_t *scene, float u)
     return scene->palette[0].rgb;
 }
 
-// smooth eases a 0..1 ramp in and out, so a change of colour has no moment
+// smooth eases a 0..1 ramp in and out, so a change of color has no moment
 // at which it visibly starts or stops.
 static float smooth(float t)
 {
@@ -149,8 +149,8 @@ static float smooth(float t)
     return t * t * (3.0f - 2.0f * t);
 }
 
-// morph_color is the one colour the whole strip shows at `phase` (0..1 through
-// every colour and back to the first).
+// morph_color is the one color the whole strip shows at `phase` (0..1 through
+// every color and back to the first).
 static lp_rgb_t morph_color(const lp_scene_t *scene, float phase)
 {
     const size_t n = scene->palette_len;
@@ -175,9 +175,9 @@ static lp_rgb_t morph_color(const lp_scene_t *scene, float phase)
     return scene->palette[0].rgb;
 }
 
-// chase_color is what position u (0..1 round the strip) shows when the lap
-// is at `phase`: the dominant colour, with each accent a soft-edged patch
-// travelling over it. Alternate accents go opposite ways, so they pass
+// chase_color is what position u (0..1 around the strip) shows when the lap
+// is at `phase`: the dominant color, with each accent a soft-edged patch
+// traveling over it. Alternate accents go opposite ways, so they pass
 // through one another instead of marching in file.
 static lp_rgb_t chase_color(const lp_scene_t *scene, float u, float phase)
 {
@@ -193,11 +193,11 @@ static lp_rgb_t chase_color(const lp_scene_t *scene, float u, float phase)
         }
         float half = width * 0.5f;
 
-        float centre = (float)k / (float)accents + ((k % 2 == 0) ? phase : -phase);
-        centre -= floorf(centre);
+        float center = (float)k / (float)accents + ((k % 2 == 0) ? phase : -phase);
+        center -= floorf(center);
 
-        // The short way round: the strip is a loop.
-        float distance = fabsf(u - centre);
+        // The short way around: the strip is a loop.
+        float distance = fabsf(u - center);
         if (distance > 0.5f) {
             distance = 1.0f - distance;
         }
@@ -241,14 +241,14 @@ void lp_effects_render(const lp_scene_t *scene, uint32_t t_ms, lp_rgb_t *out, si
 
     case LP_EFFECT_MORPH: {
         // A turn each, of about two of the scene's cycles: slow enough that
-        // the room changes colour, not flickers.
+        // the room changes color, not flickers.
         float loop = period_ms(scene->speed) * 2.0f * (float)scene->palette_len;
         fill(out, count, dim(morph_color(scene, phase_in(t_ms, loop)), brightness));
         break;
     }
 
     case LP_EFFECT_CHASE: {
-        // With nothing but a dominant colour there is nothing to chase.
+        // With nothing but a dominant color there is nothing to chase.
         if (scene->palette_len < 2) {
             fill(out, count, dim(dominant, brightness));
             break;

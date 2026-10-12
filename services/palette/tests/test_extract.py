@@ -29,7 +29,7 @@ def test_two_tone_recovers_both_hues_at_equal_weight(two_tone):
 
 def test_two_tone_never_returns_the_average(two_tone):
     """The whole reason for clustering in OKLab: a red-and-blue sleeve must not
-    yield the grey-purple that sits between them and appears nowhere on it."""
+    yield the gray-purple that sits between them and appears nowhere on it."""
     result = extract_palette(two_tone, swatches=2)
     for swatch in result.swatches:
         r, g, b = swatch.rgb
@@ -38,7 +38,7 @@ def test_two_tone_never_returns_the_average(two_tone):
 
 def test_black_field_is_dropped_and_the_patch_wins(black_field):
     """A sleeve that is 90% black field must light the strip with its 10% of
-    actual colour, not report 'dark' and go dim."""
+    actual color, not report 'dark' and go dim."""
     result = extract_palette(black_field, swatches=3)
 
     assert result.background_dropped > 0.8
@@ -67,12 +67,12 @@ def test_monochrome_art_falls_back_instead_of_failing(all_black):
 
 def test_transparency_composites_onto_white_not_black(transparent_red):
     """Compositing onto black would manufacture the dark background the filter
-    then removes, quietly discarding the real colour."""
+    then removes, quietly discarding the real color."""
     result = extract_palette(transparent_red, swatches=3)
     assert any(is_reddish(s.rgb) for s in result.swatches)
 
 
-def test_weights_are_normalised_and_ranked(three_tone):
+def test_weights_are_normalized_and_ranked(three_tone):
     result = extract_palette(three_tone, swatches=3)
 
     weights = [s.weight for s in result.swatches]
@@ -94,7 +94,7 @@ def test_is_deterministic(three_tone):
     assert [s.weight for s in first.swatches] == [s.weight for s in second.swatches]
 
 
-def test_swatch_count_is_capped_by_available_colour(two_tone):
+def test_swatch_count_is_capped_by_available_color(two_tone):
     """Asking for more clusters than the image contains must not invent any."""
     result = extract_palette(two_tone, swatches=12)
     assert 2 <= len(result.swatches) <= 12

@@ -49,7 +49,7 @@ func isSpectrum(sc scene.Scene) bool {
 }
 
 // The look before its cover: the room is lit once, as the spectrum, and the
-// extractor is never asked what colours a black sleeve has.
+// extractor is never asked what colors a black sleeve has.
 func TestACoverWithALookIsLitAsTheLook(t *testing.T) {
 	ex, pub := &fakeExtractor{resp: goodPalette()}, &fakePublisher{}
 	s := newServer(t, ex, pub)
@@ -77,7 +77,7 @@ func TestACoverWithALookIsLitAsTheLook(t *testing.T) {
 }
 
 // The cover before its look, which is the order two retained messages may
-// arrive in at start-up: lit from its own colours, then corrected.
+// arrive in at start-up: lit from its own colors, then corrected.
 func TestALookThatArrivesAfterItsCoverRelightsTheRoom(t *testing.T) {
 	ex, pub := &fakeExtractor{resp: goodPalette()}, &fakePublisher{}
 	s := newServer(t, ex, pub)
@@ -150,8 +150,8 @@ func TestALookForACoverThatHasGoneIsIgnored(t *testing.T) {
 }
 
 // A name this does not know is not an error: the cover is lit from its own
-// colours, as a stand shows an effect it does not know as solid.
-func TestALookThisDoesNotKnowLeavesTheCoverItsOwnColours(t *testing.T) {
+// colors, as a stand shows an effect it does not know as solid.
+func TestALookThisDoesNotKnowLeavesTheCoverItsOwnColors(t *testing.T) {
 	ex, pub := &fakeExtractor{resp: goodPalette()}, &fakePublisher{}
 	s := newServer(t, ex, pub)
 	ctx := context.Background()

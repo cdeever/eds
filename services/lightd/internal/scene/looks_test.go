@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestTheSpectrumIsSixColoursInEqualShares(t *testing.T) {
+func TestTheSpectrumIsSixColorsInEqualShares(t *testing.T) {
 	opts := DefaultOptions()
 	sc, ok := Look(LookSpectrum, opts, LookOptions{})
 	if !ok {
@@ -29,9 +29,9 @@ func TestTheSpectrumIsSixColoursInEqualShares(t *testing.T) {
 	if first[0] < 200 || first[2] > 50 || last[2] < 200 || last[1] > 50 {
 		t.Errorf("first %v, last %v", first, last)
 	}
-	// A stand takes eight colours at most.
+	// A stand takes eight colors at most.
 	if len(sc.Palette) > 8 {
-		t.Errorf("%d colours is more than a stand takes", len(sc.Palette))
+		t.Errorf("%d colors is more than a stand takes", len(sc.Palette))
 	}
 }
 

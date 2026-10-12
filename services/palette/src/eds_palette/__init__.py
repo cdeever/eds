@@ -1,4 +1,4 @@
-"""Palette extraction for EdS: album cover art in, ranked colour swatches out."""
+"""Palette extraction for EdS: album cover art in, ranked color swatches out."""
 
 __version__ = "0.1.0"
 

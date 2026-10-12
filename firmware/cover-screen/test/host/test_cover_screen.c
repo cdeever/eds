@@ -35,8 +35,8 @@ static int checks = 0;
 #define POLL_MS 20
 
 // The middle of each button, as it is drawn.
-#define MID_X CS_BTN_CENTRE_X
-#define MID_Y CS_BTN_CENTRE_Y
+#define MID_X CS_BTN_CENTER_X
+#define MID_Y CS_BTN_CENTER_Y
 #define PREV_X (MID_X - CS_BTN_SIDE_DX)
 #define NEXT_X (MID_X + CS_BTN_SIDE_DX)
 #define UP_Y (MID_Y - CS_BTN_VOLUME_DY)

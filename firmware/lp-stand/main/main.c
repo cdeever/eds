@@ -46,10 +46,10 @@ static void on_scene(const lp_scene_t *scene)
 
     lp_mqtt_publish_state(scene);
 
-    // Eight colours and the rest come to about 190 bytes.
+    // Eight colors and the rest come to about 190 bytes.
     char extra[224];
     size_t described = lp_scene_event_fields(scene, extra, sizeof(extra));
-    lp_event_log_with(LP_EVENT_INFO, "scene.applied", described ? extra : NULL, "Showing %s in %u colours",
+    lp_event_log_with(LP_EVENT_INFO, "scene.applied", described ? extra : NULL, "Showing %s in %u colors",
                       lp_effect_name(scene->effect), (unsigned)scene->palette_len);
 }
 

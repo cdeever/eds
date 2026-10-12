@@ -1,7 +1,7 @@
 """HTTP surface for the palette extractor.
 
 The service knows nothing about music, MQTT or LEDs. It takes image bytes and
-returns perceptual colour data. That boundary is what lets it be developed and
+returns perceptual color data. That boundary is what lets it be developed and
 tuned against a folder of JPEGs with no infrastructure at all, and it is the
 interface the album cover resolver will eventually call through lightd.
 """
@@ -23,7 +23,7 @@ CONTRACT_VERSION = 1
 app = FastAPI(
     title="EdS palette extractor",
     version=__version__,
-    summary="Ranked, weighted colour swatches from album cover art.",
+    summary="Ranked, weighted color swatches from album cover art.",
 )
 
 

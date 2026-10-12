@@ -127,7 +127,7 @@ func TestExtractSurfacesTransportFailure(t *testing.T) {
 	}
 }
 
-func TestExtractHonoursContextCancellation(t *testing.T) {
+func TestExtractHonorsContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 

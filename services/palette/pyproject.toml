@@ -1,7 +1,7 @@
 [project]
 name = "eds-palette"
 version = "0.1.0"
-description = "Extract a ranked, weighted colour palette from album cover art."
+description = "Extract a ranked, weighted color palette from album cover art."
 requires-python = ">=3.11"
 dependencies = [
     "pillow>=10.0",

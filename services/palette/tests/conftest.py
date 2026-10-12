@@ -37,7 +37,7 @@ def halves(left, right, size=(200, 200)) -> Image.Image:
 
 
 def patch_on_field(patch, field, coverage=0.1, size=(200, 200)) -> Image.Image:
-    """A small coloured patch on a large flat field, like a minimalist sleeve."""
+    """A small colored patch on a large flat field, like a minimalist sleeve."""
     image = Image.new("RGB", size, field)
     side = max(1, int((size[0] * size[1] * coverage) ** 0.5))
     image.paste(Image.new("RGB", (side, side), patch), (10, 10))

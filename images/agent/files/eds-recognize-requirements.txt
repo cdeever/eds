@@ -1,6 +1,6 @@
 # What eds-recognize runs on, pinned to what was proven against a turntable
 # on 2026-10-11 (ADR-0021). ShazamIO follows an endpoint that changes without
-# notice; moving these is how a broken recogniser is mended, and is tried on
+# notice; moving these is how a broken recognizer is mended, and is tried on
 # the Pi before it is written here.
 aiofiles==23.2.1
 aiohappyeyeballs==2.7.1

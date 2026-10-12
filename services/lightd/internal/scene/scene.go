@@ -7,7 +7,7 @@
 //
 // What it does not do is gamma. Gamma is a property of the specific LED driver,
 // so it belongs in firmware, next to the hardware it corrects. Keeping it out
-// of the payload means `mosquitto_sub` shows the colours actually intended,
+// of the payload means `mosquitto_sub` shows the colors actually intended,
 // which matters the first time something looks wrong.
 package scene
 
@@ -46,10 +46,10 @@ type Options struct {
 	Speed      float64
 	Brightness float64
 
-	// MinChroma rejects swatches too close to neutral to read as a colour.
+	// MinChroma rejects swatches too close to neutral to read as a color.
 	// Weight alone is not enough: asking the extractor for few swatches from
 	// busy art forces clusters to merge, and a merged centroid lands near the
-	// average of what it merged - a high-weight grey that would light the
+	// average of what it merged - a high-weight gray that would light the
 	// stand with nothing.
 	MinChroma float64
 
@@ -57,7 +57,7 @@ type Options struct {
 	// reads washed out on a strip, so the aesthetic correction happens here.
 	Saturation float64
 
-	// MaxColors caps the palette. A stand can only show so many colours
+	// MaxColors caps the palette. A stand can only show so many colors
 	// before an effect turns to soup.
 	MaxColors int
 }
@@ -93,7 +93,7 @@ func Build(swatches []palette.Swatch, opts Options) (Scene, error) {
 		ranked = ranked[:opts.MaxColors]
 	}
 
-	// Weights are renormalised after filtering and truncation, so they describe
+	// Weights are renormalized after filtering and truncation, so they describe
 	// the palette that was actually sent rather than the one extracted.
 	var total float64
 	for _, s := range ranked {
@@ -123,7 +123,7 @@ func Build(swatches []palette.Swatch, opts Options) (Scene, error) {
 }
 
 // filterByChroma drops neutrals, but never returns nothing: genuinely
-// monochrome art still has to light the stand, so the most colourful swatch
+// monochrome art still has to light the stand, so the most colorful swatch
 // available survives even when it is below the floor.
 func filterByChroma(swatches []palette.Swatch, minChroma float64) []palette.Swatch {
 	kept := make([]palette.Swatch, 0, len(swatches))

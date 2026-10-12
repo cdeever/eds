@@ -27,11 +27,11 @@ def test_lightness_anchors(rgb, expected_l):
 
 
 def test_neutrals_have_no_chroma():
-    greys = np.linspace(0, 1, 16)[:, None].repeat(3, axis=1)
-    assert np.all(chroma(srgb_to_oklab(greys)) < 1e-6)
+    grays = np.linspace(0, 1, 16)[:, None].repeat(3, axis=1)
+    assert np.all(chroma(srgb_to_oklab(grays)) < 1e-6)
 
 
-def test_saturated_colours_have_chroma():
+def test_saturated_colors_have_chroma():
     lab = srgb_to_oklab(np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]))
     assert np.all(chroma(lab) > 0.1)
 

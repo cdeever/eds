@@ -5,15 +5,15 @@ import "fmt"
 // A look is a scene that is not derived from a cover: a preset, known by
 // name (ADR-0019). Something that knows what is playing may say that a cover
 // has one; what the name looks like is decided here, with the other choices
-// about colour and hardware, and nothing here knows what an album is.
+// about color and hardware, and nothing here knows what an album is.
 //
 // Looks are few. Each is for a record whose look is as well known as its
 // title.
 
-// LookSpectrum is the colours of the rainbow, red to violet.
+// LookSpectrum is the colors of the rainbow, red to violet.
 const LookSpectrum = "spectrum"
 
-// spectrum is six colours in equal shares: the bands a prism throws, as a
+// spectrum is six colors in equal shares: the bands a prism throws, as a
 // strip of LEDs makes them. They are chosen, not measured, and are sent
 // before gamma like any others.
 var spectrum = [][3]uint8{
@@ -26,7 +26,7 @@ var spectrum = [][3]uint8{
 }
 
 // SpectrumEffects are the motions the spectrum can be shown with: the whole
-// rainbow moving round the strip, or the strip turning through each colour in
+// rainbow moving around the strip, or the strip turning through each color in
 // succession. Both are effects every stand already has.
 var SpectrumEffects = []string{"sweep", "morph"}
 
@@ -38,7 +38,7 @@ type LookOptions struct {
 
 // Look returns the scene for a named look, and whether the name is known. A
 // name that is not known is not an error: the cover is lit from its own
-// colours, the way a stand shows an effect it does not know as solid.
+// colors, the way a stand shows an effect it does not know as solid.
 //
 // Speed and brightness are the stand's usual ones. A look changes what is
 // shown, not how bright the room is.

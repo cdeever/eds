@@ -28,7 +28,7 @@ build:
 test:
 	go test ./...
 
-# The retained-scene behaviour is a broker behaviour, not a client one, so the
+# The retained-scene behavior is a broker behavior, not a client one, so the
 # tests that matter most need a real one.
 test-integration: broker
 	LIGHTD_TEST_BROKER=$(TEST_BROKER) go test -race ./...

@@ -274,7 +274,7 @@ esp_err_t cs_mqtt_start(void)
         ESP_LOGW(TAG, "no event task; the screen will run without reporting events");
     }
 
-    ESP_LOGI(TAG, "dialling %s as %s; events on %s",
+    ESP_LOGI(TAG, "dialing %s as %s; events on %s",
              cs_cred_mqtt_uri(), cs_cred_mqtt_username(), CS_TOPIC_LOG);
     return esp_mqtt_client_start(client);
 }
@@ -286,7 +286,7 @@ esp_err_t cs_mqtt_start(void)
 // recovers - which the first evening this screen ran was ten seconds and
 // eight button presses later, all at once (CHG-0012). So before a command
 // is written, something harmless is: the screen's own presence, again, with
-// an acknowledgement asked for. If that comes back, the command goes. If it
+// an acknowledgment asked for. If that comes back, the command goes. If it
 // does not, the command is never written, and there is nothing to arrive
 // late but the word "online".
 static bool broker_is_there(void)

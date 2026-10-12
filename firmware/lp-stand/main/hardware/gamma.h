@@ -3,7 +3,7 @@
 // This is the piece lightd deliberately does not do. Gamma is a property of
 // the specific driver and diffuser, so it belongs next to the hardware it
 // corrects - and keeping it off the wire means `mosquitto_sub` shows the
-// colours actually intended rather than pre-distorted ones.
+// colors actually intended rather than pre-distorted ones.
 //
 // WS2812/SK6812 PWM is linear in duty cycle while perception is not, so an
 // uncorrected fade looks like it rushes through the dark end and then stalls.

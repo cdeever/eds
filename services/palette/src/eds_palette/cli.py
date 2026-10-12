@@ -1,7 +1,7 @@
 """Command-line wrapper for tuning the extractor by eye.
 
-The algorithm has thresholds that no test can really settle - where a colour
-stops being a colour, how much black field to discard - so the fast loop
+The algorithm has thresholds that no test can really settle - where a color
+stops being a color, how much black field to discard - so the fast loop
 matters: run it over a folder of sleeves, look at the result, move a number.
 """
 
@@ -94,7 +94,7 @@ def _contact_sheet(rows: list[tuple[Path, PaletteResult]], out: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="eds-palette",
-        description="Extract colour palettes from cover art.",
+        description="Extract color palettes from cover art.",
     )
     parser.add_argument("paths", nargs="+", type=Path, help="Image files or directories.")
     parser.add_argument("-n", "--swatches", type=int, default=DEFAULT_SWATCHES)

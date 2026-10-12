@@ -33,7 +33,7 @@ test("a track with no known length just counts", () => {
   assert.equal(position(from, 3000), 13000);
 });
 
-test("a sender's clock ahead of the server's does not run time backwards", () => {
+test("a sender's clock ahead of the server's does not run time backward", () => {
   const from = start(playing(), "2026-10-11T19:04:48.000Z", 0);
   assert.equal(position(from, 0), 126243);
   assert.equal(position(from, 2000), 128243);

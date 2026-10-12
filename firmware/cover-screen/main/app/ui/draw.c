@@ -20,8 +20,8 @@ static inline float clamp01(float v)
     return v < 0.0f ? 0.0f : v > 1.0f ? 1.0f : v;
 }
 
-// blend lays colour over a pixel at the given opacity, 0 to 1.
-static inline void blend(uint16_t *pixel, rgb_t colour, float opacity)
+// blend lays color over a pixel at the given opacity, 0 to 1.
+static inline void blend(uint16_t *pixel, rgb_t color, float opacity)
 {
     int a = (int)(clamp01(opacity) * 256.0f + 0.5f);
     if (a <= 0) {
@@ -30,9 +30,9 @@ static inline void blend(uint16_t *pixel, rgb_t colour, float opacity)
     int r = (*pixel >> 11) & 0x1F;
     int g = (*pixel >> 5) & 0x3F;
     int b = *pixel & 0x1F;
-    r += (((colour.r >> 3) - r) * a) >> 8;
-    g += (((colour.g >> 2) - g) * a) >> 8;
-    b += (((colour.b >> 3) - b) * a) >> 8;
+    r += (((color.r >> 3) - r) * a) >> 8;
+    g += (((color.g >> 2) - g) * a) >> 8;
+    b += (((color.b >> 3) - b) * a) >> 8;
     *pixel = (uint16_t)((r << 11) | (g << 5) | b);
 }
 
@@ -49,7 +49,7 @@ typedef float (*distance_fn)(float x, float y, const float *p);
 // function - negative inside, positive outside, in pixels - and the box that
 // bounds it, so only the pixels that could be touched are visited.
 static void paint(const band_t *band, float left, float top, float right, float bottom,
-                  distance_fn distance, const float *p, rgb_t colour, float opacity)
+                  distance_fn distance, const float *p, rgb_t color, float opacity)
 {
     int x0 = (int)floorf(left) - 1;
     int x1 = (int)ceilf(right) + 1;
@@ -73,13 +73,13 @@ static void paint(const band_t *band, float left, float top, float right, float 
         for (int x = x0; x < x1; x++) {
             float d = distance((float)x + 0.5f, (float)y + 0.5f, p);
             if (d < 0.5f) {
-                blend(&row[x], colour, clamp01(0.5f - d) * opacity);
+                blend(&row[x], color, clamp01(0.5f - d) * opacity);
             }
         }
     }
 }
 
-// p: centre x, centre y, radius
+// p: center x, center y, radius
 static float disc_distance(float x, float y, const float *p)
 {
     float dx = x - p[0];
@@ -87,7 +87,7 @@ static float disc_distance(float x, float y, const float *p)
     return sqrtf(dx * dx + dy * dy) - p[2];
 }
 
-// p: centre x, centre y, half width, half height, corner radius
+// p: center x, center y, half width, half height, corner radius
 static float box_distance(float x, float y, const float *p)
 {
     float qx = fabsf(x - p[0]) - (p[2] - p[4]);
@@ -98,7 +98,7 @@ static float box_distance(float x, float y, const float *p)
     return sqrtf(ox * ox + oy * oy) + (inside < 0.0f ? inside : 0.0f) - p[4];
 }
 
-// p: three corners, x then y, in either order round the triangle. The
+// p: three corners, x then y, in either order around the triangle. The
 // distance is to the nearest edge's line, which is exact inside and along the
 // edges and only wrong beyond a corner, where it rounds the point slightly.
 static float triangle_distance(float x, float y, const float *p)
@@ -123,26 +123,26 @@ static float triangle_distance(float x, float y, const float *p)
     return worst;
 }
 
-static void disc(const band_t *band, float cx, float cy, float radius, rgb_t colour, float opacity)
+static void disc(const band_t *band, float cx, float cy, float radius, rgb_t color, float opacity)
 {
     const float p[3] = {cx, cy, radius};
-    paint(band, cx - radius, cy - radius, cx + radius, cy + radius, disc_distance, p, colour, opacity);
+    paint(band, cx - radius, cy - radius, cx + radius, cy + radius, disc_distance, p, color, opacity);
 }
 
 static void box(const band_t *band, float cx, float cy, float half_w, float half_h, float corner,
-                rgb_t colour, float opacity)
+                rgb_t color, float opacity)
 {
     const float p[5] = {cx, cy, half_w, half_h, corner};
-    paint(band, cx - half_w, cy - half_h, cx + half_w, cy + half_h, box_distance, p, colour, opacity);
+    paint(band, cx - half_w, cy - half_h, cx + half_w, cy + half_h, box_distance, p, color, opacity);
 }
 
 static void triangle(const band_t *band, float ax, float ay, float bx, float by, float cx, float cy,
-                     rgb_t colour, float opacity)
+                     rgb_t color, float opacity)
 {
     const float p[6] = {ax, ay, bx, by, cx, cy};
     float left = fminf(ax, fminf(bx, cx)), right = fmaxf(ax, fmaxf(bx, cx));
     float top = fminf(ay, fminf(by, cy)), bottom = fmaxf(ay, fmaxf(by, cy));
-    paint(band, left, top, right, bottom, triangle_distance, p, colour, opacity);
+    paint(band, left, top, right, bottom, triangle_distance, p, color, opacity);
 }
 
 void cs_draw_black(int rows, uint16_t *band)
@@ -183,7 +183,7 @@ void cs_draw_backdrop(const cs_view_t *view, int y0, int rows, uint16_t *band)
         for (int x = 0; x < CS_SCREEN_W; x++) {
             out[x] = ground565;
             float dx = (float)x + 0.5f - cx;
-            // Everything about a record is a circle round the same middle, so
+            // Everything about a record is a circle around the same middle, so
             // one square root does for all of it.
             float d2 = dx * dx + dy * dy;
             if (d2 > (RECORD_RADIUS + 1.0f) * (RECORD_RADIUS + 1.0f)) {
@@ -203,7 +203,7 @@ void cs_draw_backdrop(const cs_view_t *view, int y0, int rows, uint16_t *band)
 
 // --- the buttons -------------------------------------------------------------
 
-#define CENTRE_RADIUS 44.0f
+#define CENTER_RADIUS 44.0f
 #define SIDE_RADIUS   30.0f
 #define VOLUME_RADIUS 26.0f
 
@@ -234,8 +234,8 @@ static void plate(const band_t *band, float cx, float cy, float radius, bool pre
 void cs_draw_chrome(const cs_view_t *view, int y0, int rows, uint16_t *pixels)
 {
     const band_t band = {pixels, y0, rows};
-    float cx = CS_BTN_CENTRE_X;
-    float cy = CS_BTN_CENTRE_Y;
+    float cx = CS_BTN_CENTER_X;
+    float cy = CS_BTN_CENTER_Y;
 
     if (view->overlay) {
         dim(rows, pixels);
@@ -244,12 +244,12 @@ void cs_draw_chrome(const cs_view_t *view, int y0, int rows, uint16_t *pixels)
         float ink = view->link == CS_LINK_UP ? 1.0f : 0.3f;
 
         // Play or pause, whichever pressing it would do.
-        plate(&band, cx, cy, CENTRE_RADIUS, view->pressed == CS_BTN_PLAY_PAUSE);
+        plate(&band, cx, cy, CENTER_RADIUS, view->pressed == CS_BTN_PLAY_PAUSE);
         if (view->playing) {
             box(&band, cx - 10.0f, cy, 5.5f, 18.0f, 1.5f, WHITE, ink);
             box(&band, cx + 10.0f, cy, 5.5f, 18.0f, 1.5f, WHITE, ink);
         } else {
-            // Set a little right of centre, where a triangle looks centred.
+            // Set a little right of center, where a triangle looks centered.
             triangle(&band, cx - 11.0f, cy - 19.0f, cx - 11.0f, cy + 19.0f, cx + 21.0f, cy, WHITE, ink);
         }
 
@@ -259,7 +259,7 @@ void cs_draw_chrome(const cs_view_t *view, int y0, int rows, uint16_t *pixels)
         box(&band, px - 11.0f, cy, 2.5f, 12.0f, 1.0f, WHITE, ink);
         triangle(&band, px + 12.0f, cy - 12.0f, px + 12.0f, cy + 12.0f, px - 7.0f, cy, WHITE, ink);
 
-        // Next: the same, the other way round.
+        // Next: the same, the other way around.
         float nx = cx + CS_BTN_SIDE_DX;
         plate(&band, nx, cy, SIDE_RADIUS, view->pressed == CS_BTN_NEXT);
         box(&band, nx + 11.0f, cy, 2.5f, 12.0f, 1.0f, WHITE, ink);

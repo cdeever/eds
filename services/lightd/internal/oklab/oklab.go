@@ -1,37 +1,37 @@
-// Package oklab converts OKLab colours to sRGB and adjusts their chroma.
+// Package oklab converts OKLab colors to sRGB and adjusts their chroma.
 //
 // The palette service already carries OKLab coordinates in its response, so
 // lightd never has to convert forwards. It only needs the inverse transform
-// and a way to make a colour more saturated without moving its hue, which is
+// and a way to make a color more saturated without moving its hue, which is
 // the one aesthetic correction that belongs on this side of the boundary.
 package oklab
 
 import "math"
 
-// Lab is an OKLab colour: perceptual lightness, then the two opponent axes.
+// Lab is an OKLab color: perceptual lightness, then the two opponent axes.
 type Lab struct {
 	L float64
 	A float64
 	B float64
 }
 
-// RGB is an 8-bit sRGB colour, ready to put on the wire.
+// RGB is an 8-bit sRGB color, ready to put on the wire.
 type RGB struct {
 	R uint8
 	G uint8
 	B uint8
 }
 
-// Chroma is the distance from the neutral axis: how colourful, independent of
-// lightness. A swatch with near-zero chroma is a grey and will not read as a
-// colour on a strip no matter how much of the sleeve it covers.
+// Chroma is the distance from the neutral axis: how colorful, independent of
+// lightness. A swatch with near-zero chroma is a gray and will not read as a
+// color on a strip no matter how much of the sleeve it covers.
 func (l Lab) Chroma() float64 {
 	return math.Sqrt(l.A*l.A + l.B*l.B)
 }
 
 // ScaleChroma multiplies the opponent axes, leaving lightness and hue alone.
-// Scaling in OKLab rather than HSV is what keeps a boosted colour recognisably
-// the same colour.
+// Scaling in OKLab rather than HSV is what keeps a boosted color recognizably
+// the same color.
 func (l Lab) ScaleChroma(k float64) Lab {
 	return Lab{L: l.L, A: l.A * k, B: l.B * k}
 }
@@ -71,12 +71,12 @@ func encode(v float64) uint8 {
 	return uint8(clamp01(v)*255 + 0.5)
 }
 
-// ToSRGB converts to 8-bit sRGB, pulling the colour back into gamut by
+// ToSRGB converts to 8-bit sRGB, pulling the color back into gamut by
 // reducing chroma rather than clipping channels.
 //
 // Per-channel clipping is the obvious approach and the wrong one: clipping a
 // blown red channel while leaving green and blue alone shifts the hue, so a
-// boosted orange arrives as a different colour than the one on the sleeve.
+// boosted orange arrives as a different color than the one on the sleeve.
 // Walking chroma down holds hue and lightness fixed and gives up only
 // saturation, which is the property that was artificially raised anyway.
 func (l Lab) ToSRGB() RGB {

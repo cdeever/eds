@@ -76,7 +76,7 @@ type heldCover struct {
 	// look is the look named for this cover, or "" for none.
 	look string
 	// lit says a scene for this cover has gone out; shown is the look it went
-	// out with, or "" for the cover's own colours.
+	// out with, or "" for the cover's own colors.
 	lit   bool
 	shown string
 }
@@ -123,7 +123,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// describe renders a scene's palette for a log line: each colour as hex with
+// describe renders a scene's palette for a log line: each color as hex with
 // its share of the strip, largest first as the scene has them.
 func describe(sc scene.Scene) string {
 	parts := make([]string, 0, len(sc.Palette))
@@ -177,7 +177,7 @@ func (s *Server) cover(ctx context.Context, image []byte, stand string, swatches
 		"stand", stand,
 		"effect", built.Effect,
 		"colors", len(built.Palette),
-		// Which colours, not only how many. Only the latest scene is kept on
+		// Which colors, not only how many. Only the latest scene is kept on
 		// the broker, so this line is the one record of what a cover produced
 		// - and "what did it pick for that sleeve?" is the tuning question.
 		"palette", describe(built),
@@ -326,7 +326,7 @@ func (s *Server) ClearCover(ctx context.Context) error {
 }
 
 // light makes the stand show what the held cover should look like now: its
-// look, if one was named for it and is known here, else its own colours. It
+// look, if one was named for it and is known here, else its own colors. It
 // does nothing when that is already what was sent, so the look and the cover
 // arriving in either order light the room once where they can, and a look
 // repeated lights it not at all.
@@ -349,7 +349,7 @@ func (s *Server) light(ctx context.Context) error {
 		} else {
 			// Said once per cover: this runs again when the cover is retried.
 			if !held.lit {
-				s.opts.Logger.Warn("a cover came with a look this does not know; lighting it from its own colours",
+				s.opts.Logger.Warn("a cover came with a look this does not know; lighting it from its own colors",
 					"look", held.look)
 			}
 		}
@@ -441,7 +441,7 @@ func (s *Server) handleScene(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(supplied.Palette) == 0 {
-		writeError(w, http.StatusBadRequest, errors.New("scene must carry at least one colour"))
+		writeError(w, http.StatusBadRequest, errors.New("scene must carry at least one color"))
 		return
 	}
 
@@ -459,7 +459,7 @@ func (s *Server) handleScene(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleLastScene reports what this process last published, which answers
-// "why is the stand that colour" without a broker subscription.
+// "why is the stand that color" without a broker subscription.
 func (s *Server) handleLastScene(w http.ResponseWriter, r *http.Request) {
 	stand := s.stand(r)
 

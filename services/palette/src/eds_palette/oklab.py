@@ -1,8 +1,8 @@
 """sRGB <-> OKLab conversion, vectorised over numpy arrays.
 
 Clustering happens in OKLab rather than RGB because RGB averaging crosses hue.
-The mean of a strong red and a strong blue is a grey-purple that appears
-nowhere on the sleeve; in OKLab a cluster centroid is a colour a person would
+The mean of a strong red and a strong blue is a gray-purple that appears
+nowhere on the sleeve; in OKLab a cluster centroid is a color a person would
 agree was actually in the image.
 
 Coefficients are Bjorn Ottosson's, from the original OKLab derivation.
@@ -79,6 +79,6 @@ def oklab_to_srgb(lab: np.ndarray) -> np.ndarray:
 
 
 def chroma(lab: np.ndarray) -> np.ndarray:
-    """Distance from the neutral axis: how colourful, independent of lightness."""
+    """Distance from the neutral axis: how colorful, independent of lightness."""
     lab = np.asarray(lab, dtype=np.float64)
     return np.hypot(lab[..., 1], lab[..., 2])

@@ -94,7 +94,7 @@ func TestCoverThenStateIsDecidedAtOnce(t *testing.T) {
 
 // Found by deploying: a broker handing over retained messages gave the state
 // before the cover. nowplayd took the track to have none and published a
-// catalogue's guess, then the player's own cover 24 ms later.
+// catalog's guess, then the player's own cover 24 ms later.
 func TestStateThenCoverWaitsForTheCover(t *testing.T) {
 	b := newBench()
 	b.state("itunes", "One", coverA, contract.Playing)

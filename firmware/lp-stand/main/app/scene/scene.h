@@ -29,17 +29,17 @@ typedef struct {
 
 typedef struct {
     lp_rgb_t rgb;
-    float weight; // share of the strip this colour occupies
+    float weight; // share of the strip this color occupies
 } lp_swatch_t;
 
 typedef enum {
     LP_EFFECT_SOLID = 0,
     LP_EFFECT_BREATHE,
     LP_EFFECT_SWEEP,
-    // The two that use the accents: the colours of a cover that are not its
+    // The two that use the accents: the colors of a cover that are not its
     // dominant one.
-    LP_EFFECT_MORPH, // the whole strip, turning from one colour to the next
-    LP_EFFECT_CHASE, // the accents travelling round over the dominant colour
+    LP_EFFECT_MORPH, // the whole strip, turning from one color to the next
+    LP_EFFECT_CHASE, // the accents traveling around over the dominant color
     LP_EFFECT_COUNT,
 } lp_effect_t;
 
@@ -55,7 +55,7 @@ typedef struct {
 //
 // An unknown name resolves to LP_EFFECT_SOLID rather than failing. Effects can
 // only be added by reflashing, so a publisher that learns a new one before the
-// stands do is expected: better a lit stand showing the right colours with the
+// stands do is expected: better a lit stand showing the right colors with the
 // wrong animation than a dark one.
 lp_effect_t lp_effect_from_name(const char *name);
 
@@ -67,7 +67,7 @@ const char *lp_effect_name(lp_effect_t effect);
 // deliberate rather than broken.
 void lp_scene_default(lp_scene_t *scene);
 
-// lp_scene_validate clamps a scene into range and normalises its weights in
+// lp_scene_validate clamps a scene into range and normalizes its weights in
 // place. Returns false if there is nothing renderable in it, in which case the
 // caller should keep whatever it was already showing.
 //
@@ -77,10 +77,10 @@ void lp_scene_default(lp_scene_t *scene);
 bool lp_scene_validate(lp_scene_t *scene);
 
 // lp_scene_event_fields writes what a scene is as the extra fields of an
-// event: its effect, how many colours, brightness, speed, and the palette as
+// event: its effect, how many colors, brightness, speed, and the palette as
 // one string in the form the publisher logs it, "#c90027 65%, #ac0030 13%".
 //
-// These are the colours as they arrived, before gamma: what was intended, and
+// These are the colors as they arrived, before gamma: what was intended, and
 // what a dashboard should draw. Returns the length written, or 0 if it does
 // not fit in cap bytes, in which case dst is an empty string.
 size_t lp_scene_event_fields(const lp_scene_t *scene, char *dst, size_t cap);

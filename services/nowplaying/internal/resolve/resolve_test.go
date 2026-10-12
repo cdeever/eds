@@ -22,7 +22,7 @@ var png = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR-not-a-real-image")
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
 
-// fake is a catalogue that answers from a table and counts how often it was
+// fake is a catalog that answers from a table and counts how often it was
 // asked, which is what the caching promises are about.
 type fake struct {
 	name string
@@ -64,15 +64,15 @@ func images(t *testing.T, body []byte, status int) (*httptest.Server, *int) {
 	return srv, &count
 }
 
-func resolver(catalogues ...Catalogue) *Resolver {
-	r := New(catalogues, "eds-test/0 ( test )", quiet)
+func resolver(catalogs ...Catalog) *Resolver {
+	r := New(catalogs, "eds-test/0 ( test )", quiet)
 	r.HTTP = &http.Client{Timeout: 2 * time.Second}
 	return r
 }
 
 var kindOfBlue = contract.Track{Title: "So What", Artist: "Miles Davis", Album: "Kind of Blue"}
 
-func TestTheFirstCatalogueThatHasItWins(t *testing.T) {
+func TestTheFirstCatalogThatHasItWins(t *testing.T) {
 	srv, _ := images(t, png, http.StatusOK)
 	first := &fake{name: "first", err: ErrNotFound}
 	second := &fake{name: "second", hit: &Hit{Artist: "Miles Davis", Album: "Kind of Blue", ImageURL: srv.URL + "/kob.png"}}
@@ -86,11 +86,11 @@ func TestTheFirstCatalogueThatHasItWins(t *testing.T) {
 		t.Errorf("cover = from %q, %d bytes, %s", got.Cover.From, len(got.Cover.Image), got.Cover.MIME)
 	}
 	if third.calls() != 0 {
-		t.Error("a catalogue was asked after one had already answered")
+		t.Error("a catalog was asked after one had already answered")
 	}
 }
 
-// The promise that keeps this inside every catalogue's limits.
+// The promise that keeps this inside every catalog's limits.
 func TestOneLookupPerAlbumNotPerTrack(t *testing.T) {
 	srv, fetched := images(t, png, http.StatusOK)
 	cat := &fake{name: "cat", hit: &Hit{Artist: "Miles Davis", Album: "Kind of Blue", ImageURL: srv.URL}}
@@ -123,7 +123,7 @@ func TestNotFoundIsRememberedThenAskedAgain(t *testing.T) {
 		t.Errorf("a miss was looked up %d times, want once", cat.calls())
 	}
 
-	// But not forever: a release can be added to a catalogue.
+	// But not forever: a release can be added to a catalog.
 	now = now.Add(r.MissTTL + time.Minute)
 	_, _ = r.Resolve(context.Background(), kindOfBlue)
 	if cat.calls() != 2 {
@@ -140,17 +140,17 @@ func TestATimeoutIsNotRememberedAsAMiss(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if _, err := r.Resolve(ctx, kindOfBlue); errors.Is(err, ErrNotFound) {
-		t.Error("a cancelled lookup was reported as not found")
+		t.Error("a canceled lookup was reported as not found")
 	}
 
 	cat.err = ErrNotFound
 	_, _ = r.Resolve(context.Background(), kindOfBlue)
 	if cat.calls() != 2 {
-		t.Errorf("the cancelled lookup was cached: %d lookups, want 2", cat.calls())
+		t.Errorf("the canceled lookup was cached: %d lookups, want 2", cat.calls())
 	}
 }
 
-func TestACatalogueThatIsDownIsSkipped(t *testing.T) {
+func TestACatalogThatIsDownIsSkipped(t *testing.T) {
 	srv, _ := images(t, png, http.StatusOK)
 	down := &fake{name: "down", err: errors.New("connection refused")}
 	up := &fake{name: "up", hit: &Hit{Artist: "Miles Davis", Album: "Kind of Blue", ImageURL: srv.URL}}
@@ -263,7 +263,7 @@ func TestWithNoAlbumTheAlbumIsPartOfTheAnswer(t *testing.T) {
 	if cat.calls() != 2 {
 		t.Errorf("%d lookups for two albumless tracks, want 2", cat.calls())
 	}
-	// And the catalogue's answer here is about "So What", a different track:
+	// And the catalog's answer here is about "So What", a different track:
 	// its album is not this track's album, and must not be taken for it.
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("an answer about another track was accepted: %v", err)
@@ -293,7 +293,7 @@ func TestWithNothingToAskNothingIsAsked(t *testing.T) {
 		}
 	}
 	if cat.calls() != 0 {
-		t.Errorf("a catalogue was asked %d times with nothing to ask", cat.calls())
+		t.Errorf("a catalog was asked %d times with nothing to ask", cat.calls())
 	}
 }
 
@@ -303,7 +303,7 @@ func TestTheCacheIsBounded(t *testing.T) {
 	r.Keep = 3
 	for i := 0; i < 10; i++ {
 		album := fmt.Sprintf("Album %d", i)
-		r.Catalogues = []Catalogue{&fake{name: "cat", hit: &Hit{Artist: "Artist", Album: album, ImageURL: srv.URL}}}
+		r.Catalogs = []Catalog{&fake{name: "cat", hit: &Hit{Artist: "Artist", Album: album, ImageURL: srv.URL}}}
 		if _, err := r.Resolve(context.Background(), contract.Track{Title: "T", Artist: "Artist", Album: album}); err != nil {
 			t.Fatal(err)
 		}
@@ -313,7 +313,7 @@ func TestTheCacheIsBounded(t *testing.T) {
 	}
 }
 
-// --- the real catalogues, against stand-ins that speak their shapes ----------
+// --- the real catalogs, against stand-ins that speak their shapes ----------
 
 type route struct {
 	path  string // prefix
@@ -377,7 +377,7 @@ func TestDeezer(t *testing.T) {
 	)
 	d := Deezer{Base: srv.URL, HTTP: srv.Client(), UserAgent: "eds-test/0 ( test )"}
 
-	// The first result is the wrong album; the catalogue must not take it.
+	// The first result is the wrong album; the catalog must not take it.
 	hit, err := d.Lookup(context.Background(), Query{Artist: "Miles Davis", Album: "Kind of Blue"})
 	if err != nil || hit.ImageURL != "http://img/kob-xl.jpg" {
 		t.Errorf("album lookup = %+v, %v", hit, err)
@@ -397,7 +397,7 @@ func TestDeezerWithNothing(t *testing.T) {
 	}
 }
 
-// A quote in a title is syntax to the catalogue. It must not end the term.
+// A quote in a title is syntax to the catalog. It must not end the term.
 func TestAQuoteInANameDoesNotBreakTheSearch(t *testing.T) {
 	srv := standIn(t, route{"/search/album", func(r *http.Request) error {
 		q := r.URL.Query().Get("q")
@@ -464,7 +464,7 @@ func TestMusicBrainz(t *testing.T) {
 	}
 }
 
-func TestACatalogueErrorIsNotNotFound(t *testing.T) {
+func TestACatalogErrorIsNotNotFound(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	}))
@@ -482,6 +482,6 @@ func TestNamed(t *testing.T) {
 		t.Errorf("got %v, %v", got, err)
 	}
 	if _, err := Named([]string{"discogs"}, http.DefaultClient, "ua"); err == nil {
-		t.Error("an unknown catalogue was accepted")
+		t.Error("an unknown catalog was accepted")
 	}
 }

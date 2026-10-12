@@ -320,7 +320,7 @@ func (c *Collection) read(ctx context.Context, id int) {
 }
 
 // track is one line of a tracklist. A medley or a suite is a line with lines
-// of its own, and any of them may be what a recogniser calls the track.
+// of its own, and any of them may be what a recognizer calls the track.
 type track struct {
 	Type  string  `json:"type_"`
 	Title string  `json:"title"`

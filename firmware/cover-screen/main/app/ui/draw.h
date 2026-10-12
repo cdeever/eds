@@ -25,8 +25,8 @@
 // Where each button is drawn. The zones a touch is matched against
 // (cs_ui_zone) are larger and cover the whole screen; these are the middle of
 // each.
-#define CS_BTN_CENTRE_X  (CS_SCREEN_W / 2)
-#define CS_BTN_CENTRE_Y  (CS_SCREEN_H / 2)
+#define CS_BTN_CENTER_X  (CS_SCREEN_W / 2)
+#define CS_BTN_CENTER_Y  (CS_SCREEN_H / 2)
 #define CS_BTN_SIDE_DX   108 // previous and next, either side of the middle
 #define CS_BTN_VOLUME_DY 86  // volume up and down, above and below it
 

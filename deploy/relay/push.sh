@@ -2,12 +2,12 @@
 # push.sh - put this tree's agent, its unit and its tools on the running Pi.
 #
 # For changing a Pi that is already in service without reflashing it. What it
-# installs is what the image would have had; rebuild the image afterwards
+# installs is what the image would have had; rebuild the image afterward
 # (`make image`) or the next card flashed will be older than the Pi it
 # replaces.
 #
 # Nothing secret travels: the agent, a unit file, its scripts and the
-# turntable's recogniser. The Pi's
+# turntable's recognizer. The Pi's
 # settings, pairing and authorization are not touched.
 set -euo pipefail
 
@@ -32,7 +32,7 @@ install -o root -g root -m 0755 npagent /usr/local/bin/npagent
 install -o root -g root -m 0755 eds-agent-status eds-agent-pair eds-agent-spotify /usr/local/bin/
 install -o root -g root -m 0755 eds-agent-import /usr/local/sbin/eds-agent-import
 install -o root -g root -m 0644 npagent.service /etc/systemd/system/npagent.service
-# The recogniser comes from PyPI, which the Pi reaches by itself. arecord is
+# The recognizer comes from PyPI, which the Pi reaches by itself. arecord is
 # in the base image; a Pi without it is told so by the driver.
 install -o root -g root -m 0755 eds-agent-turntable-install /usr/local/sbin/eds-agent-turntable-install
 /usr/local/sbin/eds-agent-turntable-install "$PWD"

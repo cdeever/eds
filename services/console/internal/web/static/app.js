@@ -1,7 +1,7 @@
 // The console's page. It is handed the picture - once, then again whenever
 // it changes - and draws it. It asks for nothing and sends nothing.
 //
-// Every word that came from a player or a catalogue is put on the page as
+// Every word that came from a player or a catalog is put on the page as
 // text, never as markup.
 
 import { label, position, start } from "./clock.js";
@@ -174,7 +174,7 @@ function drawStands(page) {
       `${stand.id} showing ${scene.effect} in ${scene.palette.map((s) => hex(s.rgb)).join(", ")}`,
     );
 
-    // Breathe and solid light the dominant colour alone. Marking it says
+    // Breathe and solid light the dominant color alone. Marking it says
     // which of these is on the strip without another sentence.
     const onlyFirst = scene.effect === "solid" || scene.effect === "breathe";
     scene.palette.forEach((sw, i) => {
@@ -194,7 +194,7 @@ function drawStands(page) {
 
     const notes = [];
     if (onlyFirst && scene.palette.length > 1) {
-      notes.push(`In ${scene.effect}, the strip is the first colour alone; the others are what the cover also held.`);
+      notes.push(`In ${scene.effect}, the strip is the first color alone; the others are what the cover also held.`);
     }
     if (online === false) notes.push("The stand is offline. This is the scene waiting for it, not one it is showing.");
     else if (stand.applied && stand.applied.effect !== scene.effect) {
@@ -216,22 +216,22 @@ function drawStands(page) {
   if (first) document.documentElement.style.setProperty("--accent", accent(first.scene.palette[0].rgb));
 }
 
-// pace says how long the effect takes to come round, in the effect's own
-// terms: a breath, a lap, a turn through every colour.
+// pace says how long the effect takes to come around, in the effect's own
+// terms: a breath, a lap, a turn through every color.
 function pace(scene) {
   const seconds = (ms) => `${(ms / 1000).toFixed(1)} s`;
   const cycle = periodMs(scene.speed);
   switch (scene.effect) {
     case "breathe": return ` · a breath every ${seconds(cycle)}`;
-    case "sweep": return ` · once round every ${seconds(cycle)}`;
+    case "sweep": return ` · once around every ${seconds(cycle)}`;
     case "chase": return scene.palette.length > 1 ? ` · a lap every ${seconds(cycle * 2)}` : "";
-    case "morph": return scene.palette.length > 1 ? ` · through every colour in ${seconds(cycle * 2 * scene.palette.length)}` : "";
+    case "morph": return scene.palette.length > 1 ? ` · through every color in ${seconds(cycle * 2 * scene.palette.length)}` : "";
     default: return "";
   }
 }
 
-// accent is a colour from the scene made fit to be text on a dark page: a
-// cover's dominant colour is often nearly black.
+// accent is a color from the scene made fit to be text on a dark page: a
+// cover's dominant color is often nearly black.
 function accent(rgb) {
   const peak = Math.max(...rgb, 1);
   const lift = Math.max(1, 190 / peak);
@@ -259,10 +259,10 @@ function paint(t) {
     const pitch = width / leds, gap = Math.min(6, pitch * 0.18);
     const top = height * 0.28, tall = height * 0.44;
     for (let i = 0; i < leds; i++) {
-      const colour = `rgb(${pixels[i][0]},${pixels[i][1]},${pixels[i][2]})`;
-      ctx.shadowColor = colour;
+      const color = `rgb(${pixels[i][0]},${pixels[i][1]},${pixels[i][2]})`;
+      ctx.shadowColor = color;
       ctx.shadowBlur = height * 0.34;
-      ctx.fillStyle = colour;
+      ctx.fillStyle = color;
       ctx.beginPath();
       ctx.roundRect(i * pitch + gap / 2, top, pitch - gap, tall, 3);
       ctx.fill();

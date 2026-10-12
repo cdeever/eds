@@ -42,7 +42,7 @@ type Hub struct {
 	// But both are retained, and a broker handing a new subscriber its
 	// retained messages promises no order: found by deploying, where nowplayd
 	// started, was given the state first, took the track to have no cover,
-	// fetched one from a catalogue, published it - and was given the
+	// fetched one from a catalog, published it - and was given the
 	// player's own cover twenty-four milliseconds later.
 	Grace time.Duration
 

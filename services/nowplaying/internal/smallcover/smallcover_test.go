@@ -13,7 +13,7 @@ import (
 )
 
 // Covers cannot be committed, so the tests draw their own: quadrants of flat
-// colour, which is what scaling must keep, and noise, which is what a JPEG
+// color, which is what scaling must keep, and noise, which is what a JPEG
 // finds hardest to make small.
 
 func quadrants(w, h int) *image.RGBA {
@@ -111,7 +111,7 @@ func near(a, b uint8) bool {
 	return d > -30 && d < 30
 }
 
-func TestACoverIsMadeSmallAndKeepsItsColours(t *testing.T) {
+func TestACoverIsMadeSmallAndKeepsItsColors(t *testing.T) {
 	for name, cover := range map[string][]byte{
 		"a jpeg, as a player sends": asJPEG(t, quadrants(600, 600)),
 		"a png":                     asPNG(t, quadrants(600, 600)),
@@ -220,15 +220,15 @@ func TestAProgressiveJPEGComesOutBaseline(t *testing.T) {
 	}
 }
 
-// A cover with no colour in it is still three components. A grey image
-// handed to the encoder as grey comes out with one, which is not what was
+// A cover with no color in it is still three components. A gray image
+// handed to the encoder as gray comes out with one, which is not what was
 // promised.
-func TestAGreyCoverStillHasThreeComponents(t *testing.T) {
-	grey := image.NewGray(image.Rect(0, 0, 300, 300))
-	for i := range grey.Pix {
-		grey.Pix[i] = uint8(i % 251)
+func TestAGrayCoverStillHasThreeComponents(t *testing.T) {
+	gray := image.NewGray(image.Rect(0, 0, 300, 300))
+	for i := range gray.Pix {
+		gray.Pix[i] = uint8(i % 251)
 	}
-	small, err := Make(asPNG(t, grey))
+	small, err := Make(asPNG(t, gray))
 	if err != nil {
 		t.Fatal(err)
 	}

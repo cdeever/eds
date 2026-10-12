@@ -20,7 +20,7 @@
 #define CS_TOPIC_COVER   CS_TOPIC_PREFIX "/nowplaying/current/art/small"
 
 // What a button press is sent to. Never retained: a command the broker kept
-// would skip a track for every program that connected afterwards.
+// would skip a track for every program that connected afterward.
 #define CS_TOPIC_COMMAND CS_TOPIC_PREFIX "/nowplaying/command"
 
 // The screen's own presence, with a last will.

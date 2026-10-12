@@ -25,7 +25,7 @@ type Bus interface {
 	Publish(topic string, payload []byte, retained bool) error
 }
 
-// Resolver finds a track's album and cover in a catalogue.
+// Resolver finds a track's album and cover in a catalog.
 type Resolver interface {
 	Resolve(ctx context.Context, t contract.Track) (resolve.Result, error)
 }
@@ -72,7 +72,7 @@ type Publisher struct {
 	// It is how a source is reported without lighting the stand. lightd
 	// reacts to a cover arriving and to nothing else, so a current track with
 	// no cover leaves the room as it was. The lookup is refused as well as
-	// the source's own image, because a catalogue's cover would light the
+	// the source's own image, because a catalog's cover would light the
 	// room just the same.
 	Coverless map[string]bool
 	// Owned names sources that play the owner's own records, and Collection
@@ -100,14 +100,14 @@ type Publisher struct {
 	// current state, for whoever draws buttons.
 	NoControls map[string]bool
 	Prefix     string
-	Timeout    time.Duration // for one catalogue lookup
+	Timeout    time.Duration // for one catalog lookup
 	Logger     *slog.Logger
 	Now        func() time.Time
 
 	// What was last put on the bus, so nothing is published twice. Retained
 	// messages mean a subscriber that reconnects gets the same cover again
 	// without help; republishing it would only make lightd repaint a room
-	// that is already the right colour.
+	// that is already the right color.
 	lastState *contract.State
 	lastArt   string
 	// The cover whose small form was last published, or emptied.
@@ -138,7 +138,7 @@ func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSou
 	// cover then already knows whether this one has a look of its own, and
 	// does not light it twice. The order is a courtesy, not a guarantee: the
 	// message names its cover, so a subscriber that gets them the other way
-	// round still pairs them.
+	// around still pairs them.
 	if cover != nil {
 		look := ""
 		if p.Looks != nil && out.Track != nil {
