@@ -21,4 +21,4 @@ bookCollapseSection: true
 | CHG-0011 | 2026-10-11 | [Spotify Turned Off](0011-spotify-turned-off/) | Configuration | {{< status-badge "complete" "Complete" >}} |
 | CHG-0012 | 2026-10-11 | [The Cover Screen](0012-the-cover-screen/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0013 | 2026-10-11 | [The Turntable Driver](0013-the-turntable-driver/) | Deployment | {{< status-badge "complete" "Complete" >}} |
-| CHG-0014 | 2026-10-12 | [The Owner's Collection](0014-the-owners-collection/) | Deployment | {{< status-badge "planned" "Planned" >}} |
+| CHG-0014 | 2026-10-12 | [The Owner's Collection](0014-the-owners-collection/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |

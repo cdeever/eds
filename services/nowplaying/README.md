@@ -42,7 +42,7 @@ The design, and what was turned down, is recorded:
 | `bus` | tested against a real broker with `-race` (`make test-integration`) |
 | `nowplayd` | run locally end to end: a source state published by hand became a current track with a looked-up album and cover, and `lightd` lit a scene from it |
 | the three catalogues | each checked once against the live service on 2026-10-10 |
-| `discogs` | unit-tested against a stand-in. Asked of the real collection on 2026-10-12: 226 records listed, and the tracks played on the bench each found on the record they were played from, with its sleeve. Being told to wait by Discogs was met once, and waited out. **Not yet deployed** |
+| `discogs` | unit-tested against a stand-in. Asked of the real collection on 2026-10-12: 226 records listed, and the tracks played on the bench each found on the record they were played from, with its sleeve. Being told to wait by Discogs was met once, and waited out. Deployed on the workload on 2026-10-12 ([CHG-0014](../../docs/content/docs/changes/2026/0014-the-owners-collection.md)); no record has been played through it yet |
 | `dacp`, `driver/itunes` | unit-tested, including a replay of a session recorded from the real iTunes |
 | `npagent` | paired with iTunes 12.13.10.3 on Windows and run end to end on a development broker: iTunes → driver → nowplayd → lightd → scene ([ADR-0011](../../docs/content/docs/architecture/decisions/0011-itunes-by-remote-pairing.md)) |
 | the agent Pi | running as a relay on `dv02rpi002p01`: paired with iTunes on the home LAN and publishing to the real broker ([`images`](../../images), [`deploy/relay`](../../deploy/relay)) |
