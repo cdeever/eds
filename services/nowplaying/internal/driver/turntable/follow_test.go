@@ -124,21 +124,122 @@ func TestATrackIsNotReplacedOnOneAnswer(t *testing.T) {
 func TestTheNextTrack(t *testing.T) {
 	d := newDeck(t)
 	d.hears(intro)
-	d.music(ClipSeconds * second)
+	d.music(40 * second)
 
 	d.hears(time_)
 	d.quiet(3 * second) // the gap between two tracks is not a stop
 	d.want(true, "Introduction", "Original Album Series")
 
-	// Heard once at the next interval, and asked about again a clip later,
-	// not an interval later.
-	d.music(40 * second)
-	if len(d.sent) < 2 || d.sent[1]-d.sent[0] != ClipSeconds*second {
-		t.Fatalf("the second opinion was asked for at blocks %v", d.sent)
+	// Asked as soon as there is a whole clip of what came after the gap,
+	// whenever the last clip was, and believed on that one answer.
+	d.music(ClipSeconds*second - 1)
+	d.want(true, "Introduction", "Original Album Series")
+	d.music(1)
+	if len(d.sent) != 1 {
+		t.Fatalf("clips sent at blocks %v, want one", d.sent)
 	}
 	// It keeps the album the side began with: the recognizer names the
 	// record two ways, and one record has one cover.
 	d.want(true, "Does Anybody Really Know What Time It Is?", "Original Album Series")
+
+	// The clock starts again from that clip.
+	d.music(20 * second)
+	if len(d.sent) != 1 || d.sent[0] != 20*second {
+		t.Fatalf("the next clip was sent at blocks %v", d.sent)
+	}
+}
+
+func TestTracksThatRunTogether(t *testing.T) {
+	d := newDeck(t)
+	d.hears(intro)
+	d.music(ClipSeconds * second)
+
+	// No gap, so no clip that is known to be all one track: heard once at
+	// the next interval, and asked about again a clip later, not an
+	// interval later.
+	d.hears(time_)
+	d.music(20 * second)
+	d.want(true, "Introduction", "Original Album Series")
+	d.music(20 * second)
+	if len(d.sent) < 1 || d.sent[0] != ClipSeconds*second {
+		t.Fatalf("the second opinion was asked for at blocks %v", d.sent)
+	}
+	d.want(true, "Does Anybody Really Know What Time It Is?", "Original Album Series")
+}
+
+func TestAQuietPassage(t *testing.T) {
+	d := newDeck(t)
+	d.hears(intro)
+	d.music(40 * second)
+
+	// It is asked about like a gap, and the answer is the same track.
+	d.quiet(2 * second)
+	d.music(ClipSeconds * second)
+	if len(d.sent) != 1 {
+		t.Fatalf("clips sent at blocks %v, want one", d.sent)
+	}
+	d.want(true, "Introduction", "Original Album Series")
+}
+
+func TestMusicThatKeepsStopping(t *testing.T) {
+	d := newDeck(t)
+	d.hears(intro)
+	d.music(ClipSeconds * second)
+
+	// A pause every few seconds starts the listening over once, and not
+	// each time: it is still asked about at the interval.
+	before := d.clips
+	for i := 0; i < 20; i++ {
+		d.music(4 * second)
+		d.quiet(2 * second)
+	}
+	if got := d.clips - before; got < 4 {
+		t.Fatalf("%d clips in two minutes of music that keeps stopping", got)
+	}
+	d.want(true, "Introduction", "Original Album Series")
+}
+
+func TestAnAnswerFromBeforeTheGap(t *testing.T) {
+	d := newDeck(t)
+	d.hears(intro)
+	d.music(ClipSeconds * second)
+
+	// A clip is sent, and the gap comes while the recognizer has it.
+	var clip []int16
+	for i := 0; i < 20*second && clip == nil; i++ {
+		clip = d.f.hear(tone())
+	}
+	if clip == nil {
+		t.Fatal("no clip was sent at the interval")
+	}
+	d.quiet(2 * second)
+	d.music(1 * second)
+
+	// Its answer is about what was before the gap, wrong or not, and is
+	// one answer like any other.
+	d.f.answer(home, nil)
+	d.want(true, "Introduction", "Original Album Series")
+
+	// The clip from after the gap is the one believed alone.
+	d.hears(time_)
+	d.music(ClipSeconds * second)
+	d.want(true, "Does Anybody Really Know What Time It Is?", "Original Album Series")
+}
+
+func TestTheLeadIn(t *testing.T) {
+	d := newDeck(t)
+	d.hears(intro)
+
+	// The needle lands, the lead-in is quiet, and then the record: the
+	// clip is of the record, and none of it the thump.
+	d.music(3)
+	d.quiet(3 * second)
+	d.music(ClipSeconds*second - 1)
+	if d.clips != 0 {
+		t.Fatal("asked before a whole clip of the record had been heard")
+	}
+	d.music(1)
+	d.want(true, "Introduction", "Original Album Series")
 }
 
 func TestMusicNobodyKnows(t *testing.T) {

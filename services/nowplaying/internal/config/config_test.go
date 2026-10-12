@@ -168,7 +168,7 @@ func TestSourcePower(t *testing.T) {
 
 func TestIdleAfterAndNoControls(t *testing.T) {
 	cfg, err := LoadNowplayd("0.1")
-	if err != nil || cfg.IdleAfter != 15*time.Second || cfg.StoppedIdleAfter != 5*time.Minute || len(cfg.NoControls) != 0 {
+	if err != nil || cfg.IdleAfter != 15*time.Second || cfg.StoppedIdleAfter != time.Second || len(cfg.NoControls) != 0 {
 		t.Fatalf("defaults: idle %v, no controls %v, %v", cfg.IdleAfter, cfg.NoControls, err)
 	}
 

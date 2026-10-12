@@ -51,7 +51,8 @@ type Hub struct {
 	IdleAfter time.Duration
 	// StoppedIdleAfter is the same for a winner that says "stopped": a
 	// source held while its equipment is on (ADR-0023), with nothing on it.
-	// It is longer, because a record being turned over is stopped too.
+	// It is a wait of its own because it was once much the longer, to keep
+	// the sleeve while a record was turned over; it is now short (ADR-0026).
 	StoppedIdleAfter time.Duration
 
 	// After schedules f, and Now is the time. They exist so tests can hold
@@ -190,9 +191,8 @@ func (h *Hub) decide(winner *contract.State) {
 // (ADR-0024). Called with the lock.
 //
 // Stopped has a wait of its own. A source that says "stopped" and is still
-// the winner is one that is being held (ADR-0023), and a record between its
-// sides is not a room to turn the lights down in - but a turntable left on
-// with nothing on it is.
+// the winner is one that is being held (ADR-0023): a turntable switched on
+// with nothing playing, which is not something to light a room for.
 func (h *Hub) submit(winner *contract.State, cover *current.Image) {
 	wait := time.Duration(0)
 	switch {

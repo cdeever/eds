@@ -94,3 +94,4 @@ and incidents under the same names. To keep the two apart:
 | [0023](0023-a-source-that-is-switched-on-holds-the-stand/) | 2026-10-12 | A source's equipment can say it is on, and a source that is on holds the stand | {{< adr-status "Proposed" >}} |
 | [0024](0024-paused-long-enough-is-not-playing/) | 2026-10-12 | A track left paused is not playing for ever, and a room with nothing playing is dim | {{< adr-status "Proposed" >}} |
 | [0025](0025-current-says-when-there-are-no-controls/) | 2026-10-12 | The current track says when there is nothing a controller could do | {{< adr-status "Proposed" >}} |
+| [0026](0026-what-silence-means-on-the-turntable/) | 2026-10-12 | A gap between tracks is listened for, and a silent turntable is idle in twenty seconds | {{< adr-status "Proposed" >}} |

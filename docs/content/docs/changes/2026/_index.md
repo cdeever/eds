@@ -24,3 +24,4 @@ bookCollapseSection: true
 | CHG-0014 | 2026-10-12 | [The Owner's Collection](0014-the-owners-collection/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0015 | 2026-10-12 | [The Turntable's Power Beacon](0015-the-turntables-power-beacon/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0016 | 2026-10-12 | [Idle, the Screen on the Console, and No Buttons for a Record](0016-idle-the-screen-on-the-console-and-no-buttons-for-a-record/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0017 | 2026-10-12 | [The Gap Between Tracks, and a Silent Turntable](0017-the-gap-between-tracks-and-a-silent-turntable/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
