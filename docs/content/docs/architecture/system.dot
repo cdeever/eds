@@ -1,0 +1,126 @@
+// The EdS system, as it is deployed. Drawn by GraphViz:
+//
+//   make -C docs diagrams
+//
+// writes system.svg beside this file, and both are committed: the site is
+// built by Hugo alone, which does not run dot.
+//
+// Change this when a component is added, moved or retired. The picture is a
+// claim about what is running, and a wrong one is worse than none.
+//
+// It reads left to right: where music comes from, what hears it, the broker
+// where everything meets, and what acts on it. Every MQTT line is drawn to
+// the broker, because that is where it goes; nothing here talks to anything
+// else on the bus directly.
+digraph eds {
+    graph [rankdir=LR, bgcolor="white", pad=0.3, nodesep=0.3, ranksep=0.75,
+           fontname="Helvetica,Arial,sans-serif", fontsize=13, newrank=true, compound=true];
+    node  [shape=box, style="rounded,filled", fillcolor="white", color="#5b6470",
+           fontname="Helvetica,Arial,sans-serif", fontsize=11, margin="0.14,0.08"];
+    edge  [color="#5b6470", fontname="Helvetica,Arial,sans-serif", fontsize=9,
+           fontcolor="#3a4048", arrowsize=0.7];
+
+    // ---- where the music comes from --------------------------------------
+
+    subgraph cluster_upstairs {
+        label="Upstairs"; labeljust=l; style="rounded,filled"; fillcolor="#fdf3e3"; color="#d9b77a";
+        turntable [label="Turntable\non the strip's master outlet", fillcolor="#fbe2b6"];
+        strip     [label="Smart power strip\npowers its other outlets\nwhile the turntable draws power", style="filled"];
+        adc       [label="ADC\nphono in, S/PDIF out"];
+        beacon    [label="Power beacon\nESP32-S2 · turntable-power-01\nsays only that it has power", fillcolor="#dcedd8"];
+    }
+
+    itunes  [label="iTunes\non the house computer", fillcolor="#e6d9f5"];
+    spotify [label="Spotify\nthe account, by its Web API\n(turned off)", style="rounded,dashed,filled", fillcolor="#f4f4f4", fontcolor="#7a828c", color="#9aa1aa"];
+
+    subgraph cluster_basement {
+        label="Basement"; labeljust=l; style="rounded,filled"; fillcolor="#eef3f9"; color="#9db4cf";
+        mediaserver [label="Media server\ndigital out"];
+        selector    [label="S/PDIF selector\nturntable or media server"];
+        roland      [label="Roland UA-4FX\nUSB sound card"];
+        subgraph cluster_pi {
+            label="Agent Pi · np-relay"; labeljust=l; style="rounded,filled"; fillcolor="#dbe7f5"; color="#7d9cc2";
+            drv_tt      [label="turntable driver\nhears a clip, asks its name"];
+            drv_itunes  [label="iTunes driver\nreports; carries out commands"];
+            drv_spotify [label="Spotify driver\n(turned off)", style="rounded,dashed,filled", fontcolor="#7a828c", color="#9aa1aa"];
+        }
+    }
+
+    shazam [label="Shazam\nnames a clip", fillcolor="#f4f4f4", color="#9aa1aa"];
+
+    // ---- the middle -------------------------------------------------------
+
+    subgraph cluster_substrate {
+        label="Deevnet substrate"; labeljust=l; style="rounded,filled"; fillcolor="#eef7f1"; color="#8fbf9f";
+        broker   [label="MQTT broker\nmqtt01 · IoT Backend, VLAN 35\n\neverything meets here", shape=cylinder, fillcolor="#cfe9d8", margin="0.25,0.2", fontsize=12];
+        logstore [label="Log store and Grafana\nwhat each device reported"];
+    }
+
+    // ---- what acts on it --------------------------------------------------
+
+    subgraph cluster_workload {
+        label="EdS tenant · services workload"; labeljust=l; style="rounded,filled"; fillcolor="#fff8e1"; color="#d6c06a";
+        nowplayd [label="nowplayd\npicks what is current, completes it,\npasses commands on", fillcolor="#fdecb0"];
+        lightd   [label="lightd\na cover becomes a scene", fillcolor="#fdecb0"];
+        palette  [label="palette\nan image becomes colours", fillcolor="#fdecb0"];
+        console  [label="console\none page; it only looks", fillcolor="#fdecb0"];
+    }
+
+    subgraph cluster_room {
+        label="The listening room · IoT, VLAN 30"; labeljust=l; style="rounded,filled"; fillcolor="#fdeeee"; color="#d9a3a3";
+        stand  [label="LP stand\nESP32 · 18 LEDs\nrenders the scene itself", fillcolor="#f8d2d2"];
+        screen [label="Cover screen\nESP32 · touch\nthe sleeve, and five buttons", fillcolor="#f8d2d2"];
+    }
+
+    discogs    [label="Discogs\nthe owner's record collection", fillcolor="#f4f4f4", color="#9aa1aa"];
+    catalogues [label="Catalogues\nDeezer · iTunes · MusicBrainz", fillcolor="#f4f4f4", color="#9aa1aa"];
+    browser    [label="A browser\non the site", fillcolor="#f4f4f4", color="#9aa1aa"];
+
+    // ---- columns ----------------------------------------------------------
+    { rank=same; turntable; mediaserver; }
+    { rank=same; adc; strip; }
+    { rank=same; selector; beacon; }
+    { rank=same; roland; itunes; spotify; }
+    { rank=same; drv_tt; drv_itunes; drv_spotify; }
+    { rank=same; broker; shazam; }
+    { rank=same; nowplayd; lightd; console; stand; screen; logstore; }
+    { rank=same; discogs; catalogues; palette; browser; }
+
+    // ---- power: dashed amber ---------------------------------------------
+    edge [style=dashed, color="#b07a1e", fontcolor="#8a5d12"];
+    turntable -> strip  [label="draws power"];
+    strip     -> adc    [label="switched"];
+    strip     -> beacon [label="switched"];
+
+    // ---- sound: heavy blue -----------------------------------------------
+    edge [style=bold, color="#2f5d8f", fontcolor="#24476d", penwidth=1.8];
+    turntable   -> adc      [label="phono"];
+    adc         -> selector [label="S/PDIF, down the house"];
+    mediaserver -> selector [label="S/PDIF"];
+    selector    -> roland   [label="whichever is selected"];
+    roland      -> drv_tt   [label="USB audio"];
+
+    // ---- everything else --------------------------------------------------
+    edge [style=solid, color="#5b6470", fontcolor="#3a4048", penwidth=1];
+
+    itunes  -> drv_itunes  [label="remote pairing", dir=both];
+    spotify -> drv_spotify [style=dashed, color="#9aa1aa"];
+    drv_tt  -> shazam      [label="a 12 s clip"];
+
+    drv_tt      -> broker [label="what it hears"];
+    drv_itunes  -> broker [label="what plays; commands back", dir=both];
+    drv_spotify -> broker [style=dashed, color="#9aa1aa"];
+    beacon      -> broker [label="online, or its last will", color="#3d8b53", fontcolor="#2c6a3e", penwidth=1.4];
+
+    broker -> nowplayd [label="sources, beacon, commands in\ncurrent track and cover out", dir=both];
+    broker -> lightd   [label="cover in · scene out", dir=both];
+    broker -> console  [label="reads it all"];
+    broker -> stand    [label="scene"];
+    broker -> screen   [label="track and small cover\ncommands back", dir=both];
+    broker -> logstore [label="device events", style=dotted];
+
+    nowplayd -> discogs    [label="which record?"];
+    nowplayd -> catalogues [label="album and cover"];
+    lightd   -> palette    [label="HTTP", dir=both];
+    console  -> browser    [label="HTTPS"];
+}
