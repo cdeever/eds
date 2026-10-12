@@ -148,8 +148,9 @@ is on. Off is not shown as a fault: it is a turntable that is off.
   broker is down leaves `online` retained until it next connects. The
   turntable would be held, silent, and the screen's buttons idle, until the
   turntable is next switched on and off.
-- **"About fifteen seconds" is the broker's to keep**, and is assumed here
-  from what MQTT says a broker does, not measured on this one.
+- **"About fifteen seconds" is the broker's to keep.** One and a half
+  keepalives is when it may send the will, and it looks every few seconds:
+  on the bench it took between twelve and nineteen.
 - **The strip decides what "on" means.** It switches on what the turntable
   draws. That has been reliable for the converter, by its owner's account,
   and the beacon inherits it.
@@ -163,6 +164,9 @@ arbiter's own way. Provisioned, and restarted three times from its reset pin
 beside the access point, the board said `online` 3.0 to 3.1 seconds after
 starting ([CHG-0015](/docs/changes/2026/0015-the-turntables-power-beacon/)).
 That is a reset and not the strip switching on, and not where it will live.
+Held in reset to stand in for its power going, it read `offline` on the
+console after 12.3 and 18.6 seconds; let go, `online` after 7.6 and 3.1.
+nowplayd, deployed, named the switch as it started.
 
 Not yet shown:
 
