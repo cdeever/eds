@@ -35,6 +35,7 @@ in place of Podman where that is what there is.
 | `/opt/eds/lightd.env` | lightd's own settings; overrides `kit.env` |
 | `/opt/eds/nowplayd.env` | nowplayd's own settings |
 | `/opt/eds/nowplayd-broker.env` | secret, 0600: nowplayd's broker login. `kit.env` carries one login, lightd's, so nowplayd's is generated beside it |
+| `/opt/eds/discogs.env` | secret, 0600: whose Discogs collection the turntable is looked up in, and the token that reads it (ADR-0022). Kept by hand in `deploy/discogs.env`, which is gitignored; `make units` refuses to run without it |
 | `/opt/eds/deevnet-root-ca.pem` | the Deevnet Root CA, which the broker's certificate is checked against |
 
 Both run with host networking, and the workload's firewall admits only SSH, so
