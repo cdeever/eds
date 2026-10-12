@@ -283,6 +283,7 @@ resource "deevnet_iot_broker_account" "console" {
     "lightstand/+/status",
     "lightd/status",
     "beacon/+/status", # whether each switch with a beacon on it is on (ADR-0023)
+    "screen/+/status", # whether each cover screen is there (ADR-0020)
   ]
 }
 

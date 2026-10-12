@@ -94,11 +94,15 @@ type Publisher struct {
 	// cannot be made small the topic is emptied instead: a subscriber left
 	// holding the last album's small cover would be showing the wrong sleeve
 	// with nothing to tell it so.
-	Small   func([]byte) ([]byte, error)
-	Prefix  string
-	Timeout time.Duration // for one catalogue lookup
-	Logger  *slog.Logger
-	Now     func() time.Time
+	Small func([]byte) ([]byte, error)
+	// NoControls names sources a controller should offer nothing for,
+	// because a command to them does nothing (ADR-0025). It is said in the
+	// current state, for whoever draws buttons.
+	NoControls map[string]bool
+	Prefix     string
+	Timeout    time.Duration // for one catalogue lookup
+	Logger     *slog.Logger
+	Now        func() time.Time
 
 	// What was last put on the bus, so nothing is published twice. Retained
 	// messages mean a subscriber that reconnects gets the same cover again
@@ -111,6 +115,8 @@ type Publisher struct {
 	// The look last published, and the cover it was for.
 	lastLook, lastLookArt string
 	lookSent              bool
+	// Whether the cover topics were last emptied, for idle (ADR-0024).
+	emptied bool
 }
 
 // Publish puts the current track on the bus. winner is the arbiter's choice,
@@ -155,6 +161,7 @@ func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSou
 			return out, false, err
 		}
 		p.lastArt = cover.SHA256
+		p.emptied = false
 		sent = true
 	}
 	// Kept apart from the cover above so that a small cover the bus did not
@@ -186,6 +193,56 @@ func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSou
 	return out, true, nil
 }
 
+// PublishIdle says that nothing is playing as far as a room is concerned:
+// the winner has sat paused, or there has been none, for long enough
+// (ADR-0024).
+//
+// The state is "stopped" with no track. It still names the winner's source,
+// because that is who a command is for, and a pause is undone from where it
+// was made. The cover topics are emptied, which is what whoever lights a
+// room from the cover is waiting to be told: an emptied cover is no cover,
+// where a cover merely not sent leaves the room as it was (ADR-0016).
+func (p *Publisher) PublishIdle(ctx context.Context, winner *contract.State) (contract.State, bool, error) {
+	out := contract.State{V: contract.Version, State: contract.Stopped, ChangedAt: p.now()}
+	if winner != nil {
+		out.Source, out.Player = winner.Source, winner.Player
+		out.NoControls = p.NoControls[winner.Source]
+	}
+	sent := false
+
+	// The state first, here: a subscriber told "stopped" and then shown no
+	// cover has nothing to get wrong, and one shown no cover while the track
+	// still reads as paused would look for a cover that is not coming.
+	if !contract.Same(&out, p.lastState) {
+		payload, err := contract.Encode(out)
+		if err != nil {
+			return out, false, err
+		}
+		if err := p.Bus.Publish(contract.CurrentTopic(p.Prefix), payload, true); err != nil {
+			return out, false, err
+		}
+		p.lastState = &out
+		sent = true
+	}
+
+	if !p.emptied {
+		topics := []string{contract.CurrentArtTopic(p.Prefix)}
+		if p.Small != nil {
+			topics = append(topics, contract.CurrentSmallArtTopic(p.Prefix))
+		}
+		for _, topic := range topics {
+			if err := p.Bus.Publish(topic, nil, true); err != nil {
+				return out, sent, err
+			}
+		}
+		// Whatever comes next is published in full, the same cover included:
+		// the topics no longer hold it, and nobody lit from it still is.
+		p.emptied, p.lastArt, p.lastSmall, p.lookSent = true, "", "", false
+		sent = true
+	}
+	return out, sent, nil
+}
+
 // complete fills in what the winning source lacked, and returns the state to
 // publish with the cover it names, if it names one.
 func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSource *Image) (contract.State, *Image) {
@@ -198,6 +255,7 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 	out := *winner
 	out.V = contract.Version
 	out.Art = nil
+	out.NoControls = p.NoControls[winner.Source]
 	if winner.Track == nil {
 		return out, nil
 	}

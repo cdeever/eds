@@ -143,6 +143,13 @@ type Nowplayd struct {
 	// Power names, for a source whose equipment has a beacon on its switch,
 	// that beacon: source id to beacon id (ADR-0023).
 	Power map[string]string
+	// IdleAfter is how long a track may sit paused, or nothing be reporting,
+	// before nothing is said to be playing and the cover is taken away
+	// (ADR-0024). Zero is never.
+	IdleAfter time.Duration
+	// NoControls names sources a controller should offer nothing for
+	// (ADR-0025).
+	NoControls []string
 }
 
 // LoadNowplayd builds nowplayd's configuration.
@@ -185,6 +192,17 @@ func LoadNowplayd(version string) (Nowplayd, error) {
 	// would do nothing, and nothing would say so.
 	if len(cfg.Owned) > 0 && cfg.DiscogsUser == "" {
 		return cfg, fmt.Errorf("config: NP_COLLECTION_SOURCES is set and NP_DISCOGS_USER is not: whose collection?")
+	}
+
+	if cfg.IdleAfter, err = Duration("NP_IDLE_AFTER", 15*time.Second, 0, time.Hour); err != nil {
+		return cfg, err
+	}
+
+	cfg.NoControls = List("NP_NO_CONTROLS_SOURCES", "")
+	for _, source := range cfg.NoControls {
+		if !contract.ValidSourceID(source) {
+			return cfg, fmt.Errorf("config: NP_NO_CONTROLS_SOURCES names %q, which cannot be a source", source)
+		}
 	}
 
 	// Each entry is source=beacon. Both become topic levels, and a typo in

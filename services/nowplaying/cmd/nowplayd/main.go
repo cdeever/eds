@@ -52,6 +52,8 @@ func main() {
 type decision struct {
 	winner *contract.State
 	cover  *current.Image
+	// idle: nothing is playing as far as a room is concerned (ADR-0024).
+	idle bool
 }
 
 func run(logger *slog.Logger) error {
@@ -94,7 +96,8 @@ func run(logger *slog.Logger) error {
 		}
 	}
 
-	sources := hub.New(cfg.Prefix, func(d hub.Decision) { submit(decision{winner: d.Winner, cover: d.Cover}) }, logger)
+	sources := hub.New(cfg.Prefix, func(d hub.Decision) { submit(decision{winner: d.Winner, cover: d.Cover, idle: d.Idle}) }, logger)
+	sources.IdleAfter = cfg.IdleAfter
 
 	// Commands for whatever is current (ADR-0020). The router is given its
 	// bus once there is one, and drops what it is handed before that.
@@ -181,15 +184,27 @@ func run(logger *slog.Logger) error {
 		logger.Info("reporting these sources without a cover", "sources", cfg.Coverless)
 	}
 
+	noControls := make(map[string]bool, len(cfg.NoControls))
+	for _, source := range cfg.NoControls {
+		noControls[source] = true
+	}
+	if len(noControls) > 0 {
+		logger.Info("telling controllers to offer nothing for these sources", "sources", cfg.NoControls)
+	}
+	if cfg.IdleAfter > 0 {
+		logger.Info("a track paused this long is no longer said to be playing, and its cover is taken away", "after", cfg.IdleAfter)
+	}
+
 	publisher := &current.Publisher{
-		Bus:       client,
-		Resolver:  resolver,
-		Coverless: coverless,
-		Looks:     looks.For,
-		Small:     smallcover.Make,
-		Prefix:    cfg.Prefix,
-		Timeout:   cfg.LookupTimeout,
-		Logger:    logger,
+		Bus:        client,
+		Resolver:   resolver,
+		Coverless:  coverless,
+		NoControls: noControls,
+		Looks:      looks.For,
+		Small:      smallcover.Make,
+		Prefix:     cfg.Prefix,
+		Timeout:    cfg.LookupTimeout,
+		Logger:     logger,
 	}
 	// The owner's records, for the sources that play them (ADR-0022). The
 	// token is never logged; whether there is one is.
@@ -227,7 +242,16 @@ func run(logger *slog.Logger) error {
 			return nil
 
 		case d := <-decisions:
-			published, sent, err := publisher.Publish(ctx, d.winner, d.cover)
+			var (
+				published contract.State
+				sent      bool
+				err       error
+			)
+			if d.idle {
+				published, sent, err = publisher.PublishIdle(ctx, d.winner)
+			} else {
+				published, sent, err = publisher.Publish(ctx, d.winner, d.cover)
+			}
 			if err != nil {
 				// Not fatal: the bus reconnects by itself, and the next
 				// decision publishes in full.
@@ -237,6 +261,9 @@ func run(logger *slog.Logger) error {
 			// Whoever is current is who a command is for, from now.
 			commands.SetCurrent(published.Source)
 			if sent {
+				if d.idle {
+					logger.Info("idle: nothing has played for a while, and the cover is taken away", "source", published.Source)
+				}
 				logCurrent(logger, published)
 			}
 		}

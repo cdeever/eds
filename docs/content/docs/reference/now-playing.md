@@ -145,7 +145,45 @@ what `lightd` does.
   `art.sha256` it has no image for should wait briefly for the image, as
   nowplayd does for a source's.
 - The same image is not published twice running.
-- When playback pauses or stops, the cover topic is left as it is.
+- When playback pauses or stops, the cover topic is left as it is, until
+  nothing has played for a while: see [Idle](#idle).
+
+## Idle
+
+A track left paused is not something playing for ever
+([ADR-0024](/docs/architecture/decisions/0024-paused-long-enough-is-not-playing/)).
+After `NP_IDLE_AFTER`, fifteen seconds on the workload, nowplayd says so:
+
+- `current` becomes `{"v":1,"source":…,"player":…,"state":"stopped"}` with no
+  `track` and no `art`. **The source is still named**: it is who a command
+  is for, so play can be pressed from where pause was.
+- `current/art` and `current/art/small` are **emptied**. An emptied cover
+  topic means there is no cover, which is different from a cover not being
+  sent: Spotify's track sends none and leaves the last one standing
+  ([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
+  `lightd` answers an emptied topic with its idle scene, dim and warm.
+- The same goes for nobody reporting at all, after the same wait, with no
+  source named.
+- When something plays again, everything is published again in full, the
+  same cover included.
+
+A source that is `stopped` and still current does not go idle. That is a
+source being held ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)):
+a record between its sides.
+
+An emptied retained topic is not delivered to a subscriber that arrives
+later. One that lights something from the cover should take hearing nothing,
+shortly after subscribing, as there being no cover.
+
+## Controls
+
+`current` may carry `"no_controls": true`
+([ADR-0025](/docs/architecture/decisions/0025-current-says-when-there-are-no-controls/)).
+It means a command to whatever is current would do nothing, and a controller
+should offer none: the cover screen draws no buttons. It is said for the
+sources `NP_NO_CONTROLS_SOURCES` names, the turntable on the workload, and
+left out otherwise. A reader that does not know the field offers its
+controls as before, and they do nothing.
 
 ## The small cover
 

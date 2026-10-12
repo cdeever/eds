@@ -603,3 +603,61 @@ func TestDescribe(t *testing.T) {
 		t.Error("an empty palette described as something")
 	}
 }
+
+// ADR-0024: the cover topic emptied is nothing playing, and the stand is sent
+// the idle scene - once, however often it is said.
+func TestClearCoverSendsTheIdleSceneOnce(t *testing.T) {
+	pub := &fakePublisher{}
+	srv := newServer(t, &fakeExtractor{resp: goodPalette()}, pub)
+	if err := srv.ApplyCover(context.Background(), []byte("COVER")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := srv.ClearCover(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.ClearCover(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if pub.count() != 2 {
+		t.Fatalf("published %d scenes, want the cover's and one idle", pub.count())
+	}
+
+	var got scene.Scene
+	if err := json.Unmarshal(pub.payloads[1], &got); err != nil {
+		t.Fatal(err)
+	}
+	want := scene.Idle()
+	if got.V != scene.ContractVersion || got.Effect != "solid" || got.Brightness != want.Brightness ||
+		len(got.Palette) != 1 || got.Palette[0].RGB != want.Palette[0].RGB {
+		t.Errorf("idle scene = %+v", got)
+	}
+	if got.Brightness <= 0 || got.Brightness > 0.2 {
+		t.Errorf("idle is not dim and lit: brightness %v", got.Brightness)
+	}
+}
+
+// Play pressed again: the same cover returns, and the room has to be lit from
+// it again, though it is the cover that was held before.
+func TestTheSameCoverLightsTheRoomAgainAfterIdle(t *testing.T) {
+	pub := &fakePublisher{}
+	srv := newServer(t, &fakeExtractor{resp: goodPalette()}, pub)
+	_ = srv.ApplyCover(context.Background(), []byte("COVER"))
+	_ = srv.ClearCover(context.Background())
+
+	if err := srv.ApplyCover(context.Background(), []byte("COVER")); err != nil {
+		t.Fatal(err)
+	}
+	if pub.count() != 3 {
+		t.Fatalf("published %d scenes, want cover, idle, cover", pub.count())
+	}
+	if string(pub.payloads[2]) != string(pub.payloads[0]) {
+		t.Errorf("the cover came back as %s, was %s", pub.payloads[2], pub.payloads[0])
+	}
+
+	// And idle is said again afterwards.
+	_ = srv.ClearCover(context.Background())
+	if pub.count() != 4 {
+		t.Errorf("published %d scenes; idle after a cover was not sent", pub.count())
+	}
+}

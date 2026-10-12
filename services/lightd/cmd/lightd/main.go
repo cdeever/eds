@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -64,7 +65,22 @@ func run(logger *slog.Logger) error {
 
 	if cfg.CoverTopic != "" {
 		topic := broker.CoverTopic(cfg.Broker.TopicPrefix, cfg.CoverTopic)
+		var heard atomic.Bool
+		clear := func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := covers.ClearCover(ctx); err != nil {
+				logger.Warn("could not send the idle scene", "topic", topic, "error", err)
+			}
+		}
 		err := publisher.SubscribeCovers(cfg.CoverTopic, func(image []byte) {
+			heard.Store(true)
+			// The topic emptied: nothing is playing, and the stand is told
+			// so (ADR-0024).
+			if len(image) == 0 {
+				clear()
+				return
+			}
 			// Long enough to outlast palette starting beside it; a cover that
 			// still cannot be applied after that is given up on, the last
 			// scene stays up, and the next cover gets its own chance.
@@ -78,6 +94,17 @@ func run(logger *slog.Logger) error {
 			return err
 		}
 		logger.Info("listening for covers", "topic", topic)
+
+		// A retained cover arrives within moments of subscribing. If none
+		// does, the topic is empty, and it may have been emptied while this
+		// was not listening: an emptied retained topic is not delivered to
+		// whoever subscribes afterwards. So silence is taken for what it is.
+		time.AfterFunc(5*time.Second, func() {
+			if !heard.Load() {
+				logger.Info("no cover on the topic; taking it that nothing is playing", "topic", topic)
+				clear()
+			}
+		})
 	}
 
 	if cfg.LookTopic != "" {

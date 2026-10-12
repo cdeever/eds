@@ -311,6 +311,7 @@ function drawFrame(page) {
   pills.push(pill("nowplayd", word(page.services.nowplayd)), pill("lightd", word(page.services.lightd)));
   for (const s of page.sources) pills.push(pill(PLAYERS[s.id] || s.id, s.online === null ? undefined : s.online));
   for (const s of page.stands) pills.push(pill(s.id, s.online === null ? undefined : s.online));
+  for (const s of page.screens) pills.push(pill(s.id, s.online === null ? undefined : s.online));
   // A beacon that is off is not a part that is down: it is a switch that is
   // off, and lit only when it is on.
   for (const b of page.beacons) {

@@ -100,6 +100,13 @@ type Beacon struct {
 	Online *bool  `json:"online,omitempty"`
 }
 
+// Screen is a cover screen (ADR-0020): a device that shows the cover and can
+// ask for the next track. The page shows only whether it is there.
+type Screen struct {
+	ID     string `json:"id"`
+	Online *bool  `json:"online,omitempty"`
+}
+
 // Play is one entry in what was recently played.
 type Play struct {
 	At     time.Time `json:"at"`
@@ -119,6 +126,7 @@ type Snapshot struct {
 	Sources  []Source          `json:"sources"`
 	Stands   []Stand           `json:"stands"`
 	Beacons  []Beacon          `json:"beacons"`
+	Screens  []Screen          `json:"screens"`
 	Services map[string]string `json:"services"`
 	Recent   []Play            `json:"recent"`
 }
@@ -140,6 +148,7 @@ type View struct {
 	sources  map[string]*Source
 	stands   map[string]*Stand
 	beacons  map[string]*Beacon
+	screens  map[string]*Screen
 	services map[string]string
 	recent   []Play
 	lastKey  string
@@ -153,6 +162,7 @@ func New(prefix string) *View {
 		sources:  map[string]*Source{},
 		stands:   map[string]*Stand{},
 		beacons:  map[string]*Beacon{},
+		screens:  map[string]*Screen{},
 		services: map[string]string{},
 	}
 }
@@ -173,6 +183,7 @@ func Topics(prefix string) []string {
 		prefix + "/lightstand/+/status",
 		prefix + "/lightd/status",
 		prefix + "/beacon/+/status",
+		prefix + "/screen/+/status",
 	}
 }
 
@@ -253,6 +264,12 @@ func (v *View) Apply(topic string, payload []byte) bool {
 			return false
 		}
 		return setOnline(&v.beacon(parts[1]).Online, payload)
+
+	case len(parts) == 3 && parts[0] == "screen" && parts[2] == "status":
+		if presence(payload) == "" {
+			return false
+		}
+		return setOnline(&v.screen(parts[1]).Online, payload)
 	}
 	return false
 }
@@ -282,6 +299,15 @@ func (v *View) beacon(id string) *Beacon {
 		v.beacons[id] = b
 	}
 	return b
+}
+
+func (v *View) screen(id string) *Screen {
+	s, ok := v.screens[id]
+	if !ok {
+		s = &Screen{ID: id}
+		v.screens[id] = s
+	}
+	return s
 }
 
 func (v *View) setService(name string, payload []byte) bool {
@@ -371,6 +397,7 @@ func (v *View) Snapshot() Snapshot {
 		Sources:  make([]Source, 0, len(v.sources)),
 		Stands:   make([]Stand, 0, len(v.stands)),
 		Beacons:  make([]Beacon, 0, len(v.beacons)),
+		Screens:  make([]Screen, 0, len(v.screens)),
 		Services: make(map[string]string, len(v.services)),
 		Recent:   append([]Play{}, v.recent...),
 	}
@@ -390,6 +417,9 @@ func (v *View) Snapshot() Snapshot {
 	for _, b := range v.beacons {
 		out.Beacons = append(out.Beacons, *b)
 	}
+	for _, s := range v.screens {
+		out.Screens = append(out.Screens, *s)
+	}
 	for name, word := range v.services {
 		out.Services[name] = word
 	}
@@ -398,6 +428,7 @@ func (v *View) Snapshot() Snapshot {
 	sort.Slice(out.Sources, func(i, j int) bool { return out.Sources[i].ID < out.Sources[j].ID })
 	sort.Slice(out.Stands, func(i, j int) bool { return out.Stands[i].ID < out.Stands[j].ID })
 	sort.Slice(out.Beacons, func(i, j int) bool { return out.Beacons[i].ID < out.Beacons[j].ID })
+	sort.Slice(out.Screens, func(i, j int) bool { return out.Screens[i].ID < out.Screens[j].ID })
 	return out
 }
 

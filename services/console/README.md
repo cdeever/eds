@@ -12,6 +12,7 @@ each part is up.
  lightstand/+/…  ──────▶│    but its own presence)                                      │
  lightd/status ────────▶│                                                               │
  beacon/+/status ──────▶│                                                               │
+ screen/+/status ──────▶│                                                               │
                         └───────────────────────────────────────────────────────────────┘
 ```
 

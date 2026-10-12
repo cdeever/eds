@@ -87,13 +87,14 @@ void cs_screen_link(cs_link_t link)
     xSemaphoreGive(lock);
 }
 
-void cs_screen_playing(cs_play_t play, bool has_art)
+void cs_screen_playing(cs_play_t play, bool has_art, bool controls)
 {
     if (xSemaphoreTake(lock, pdMS_TO_TICKS(2000)) != pdTRUE) {
         ESP_LOGW(TAG, "dropped a track change: the screen was busy");
         return;
     }
     cs_ui_set_playing(&ui, play, has_art);
+    cs_ui_set_controls(&ui, controls);
     xSemaphoreGive(lock);
 }
 

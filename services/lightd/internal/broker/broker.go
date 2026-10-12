@@ -137,6 +137,9 @@ func Connect(cfg Config) (*MQTT, error) {
 // SubscribeCovers starts delivering images published to the named topic,
 // retained one first, to handle. It stays subscribed across reconnects.
 //
+// An emptied topic is delivered as an image of no bytes, which means "there
+// is no cover", not "here is one".
+//
 // Covers are handled one at a time, off the client's own goroutine, and a
 // cover that arrives while another is being handled replaces any that is
 // waiting. Only the newest one matters: the handler asks palette for colours
@@ -248,10 +251,10 @@ func latest(slot chan []byte, v []byte) {
 
 // onCover runs on the client's goroutine, so it only hands the image on.
 func (m *MQTT) onCover(_ mqtt.Client, msg mqtt.Message) {
-	// An empty retained message is how a topic is cleared, not a cover.
-	if len(msg.Payload()) == 0 {
-		return
-	}
+	// An empty message is how the topic is cleared, and is handed on as no
+	// image at all: it is how the publisher says there is no cover now
+	// (ADR-0024). It is never a cover, and the handler must not take it for
+	// one.
 	image := append([]byte(nil), msg.Payload()...)
 
 	select {

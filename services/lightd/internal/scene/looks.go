@@ -64,6 +64,24 @@ func Look(name string, opts Options, look LookOptions) (Scene, bool) {
 	return Scene{}, false
 }
 
+// Idle is what a stand shows when there is no cover to light it from: nothing
+// is playing (ADR-0024). It is the scene the firmware starts with before it
+// has heard anything - a steady, dim, warm white - so a stand that is idle
+// and one that has just been switched on look the same, and neither is dark.
+// A dark stand cannot be told from a dead one.
+//
+// It is not the usual brightness turned down. The room is not being lit for
+// a record, and how bright that is has its own answer.
+func Idle() Scene {
+	return Scene{
+		V:          ContractVersion,
+		Effect:     "solid",
+		Speed:      0,
+		Brightness: 0.15,
+		Palette:    []Color{{RGB: [3]uint8{255, 170, 90}, Weight: 1}},
+	}
+}
+
 // ValidSpectrumEffect reports whether effect is one the spectrum can be shown
 // with.
 func ValidSpectrumEffect(effect string) error {

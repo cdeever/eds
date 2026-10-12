@@ -275,7 +275,25 @@ says which beacon speaks for which source, and nowplayd reads
   offline or never heard from, holds nothing.
 
 While a source that takes no commands is held, a controller's commands go
-nowhere. That is what "current" means, and it is the turntable's case.
+nowhere. That is what "current" means, and it is the turntable's case. So
+`current` says `no_controls` for it, and the cover screen draws no buttons
+([ADR-0025](../../docs/content/docs/architecture/decisions/0025-current-says-when-there-are-no-controls.md)).
+
+### Paused long enough is not playing
+
+A track left paused stays current for `NP_IDLE_AFTER`, fifteen seconds, and
+then nothing is said to be playing
+([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)):
+`current` is `stopped` with no track, and the cover topics are emptied,
+which is what tells `lightd` to dim the stand. The source is still named, so
+a command still reaches it and play can be pressed. Nobody reporting at all
+goes the same way after the same wait.
+
+- The wait is counted from when the source says it paused, so a track paused
+  an hour ago is idle at once when nowplayd starts, and not lit again first.
+- A source that is stopped and still current, which is one being held, does
+  not go idle: a record between its sides keeps its sleeve.
+- Playing again publishes everything again, the same cover included.
 
 ## Albums with a look of their own
 
@@ -360,6 +378,8 @@ be used stops the program.
 | `NP_DISCOGS_USER` | none | whose collection. Required when a source is named above |
 | `NP_DISCOGS_TOKEN` | none | a personal access token; needed for a private collection, and raises Discogs' limit from 25 requests a minute to 60. **Secret** |
 | `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](../../docs/content/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover.md)). `spotify` on the workload, which is what keeps the stand from following it |
+| `NP_IDLE_AFTER` | `15s` | how long a track may sit paused, or nobody report, before nothing is said to be playing and the cover topics are emptied ([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)). `0s` is never; at most an hour |
+| `NP_NO_CONTROLS_SOURCES` | none | sources a controller is told to offer nothing for, as `no_controls` in `current` ([ADR-0025](../../docs/content/docs/architecture/decisions/0025-current-says-when-there-are-no-controls.md)). `turntable` on the workload |
 | `NP_SOURCE_POWER` | none | `source=beacon` pairs: a source whose equipment has a beacon on its switch, and so can say it is on ([ADR-0023](../../docs/content/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand.md)). `turntable=turntable-power-01` on the workload |
 
 ## The owner's collection

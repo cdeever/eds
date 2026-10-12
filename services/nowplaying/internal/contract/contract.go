@@ -96,6 +96,12 @@ type State struct {
 	ChangedAt time.Time `json:"changed_at"`
 
 	Art *Art `json:"art,omitempty"`
+
+	// NoControls is said on the current topic only, and only by nowplayd:
+	// that a controller should offer nothing for this source, because there
+	// is nothing a command to it would do (ADR-0025). Left out, controls
+	// are offered, which is what every reader before this field does.
+	NoControls bool `json:"no_controls,omitempty"`
 }
 
 var sourceID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
@@ -155,7 +161,7 @@ func Same(a, b *State) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if a.Source != b.Source || a.Player != b.Player || a.State != b.State {
+	if a.Source != b.Source || a.Player != b.Player || a.State != b.State || a.NoControls != b.NoControls {
 		return false
 	}
 	if (a.Track == nil) != (b.Track == nil) {

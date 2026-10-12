@@ -287,6 +287,20 @@ arbiter's one exception (`internal/arbiter`), and it is why a lifted needle
 does not hand the room to a paused iTunes. Do not make the beacon publish a
 source's own status topic: that is the driver's word about its sound card.
 
+**Paused long enough is not playing** (ADR-0024). After `NP_IDLE_AFTER`
+(15 s) of a paused winner, or of nobody reporting, `nowplayd` publishes
+`current` as stopped with no track, still naming the source so play can be
+pressed, and **empties** the cover topics. An emptied cover topic is the one
+way `lightd` is told there is no cover, and it answers with its idle scene
+(`scene.Idle`, the firmware's own starting scene). A cover merely not sent
+still leaves the room as it was (ADR-0016); do not confuse the two. A source
+that is stopped and held does not go idle.
+
+**`current` says when there are no controls** (ADR-0025):
+`"no_controls": true` for the sources in `NP_NO_CONTROLS_SOURCES`, the
+turntable. The cover screen draws no buttons then. It still knows no source;
+do not teach the firmware the word "turntable".
+
 `nowplayd` also publishes each cover small (`nowplaying/current/art/small`:
 baseline JPEG, 240 px, at most 32 KB; empty when it could not be made), for
 subscribers that cannot decode the full one. It knows nothing about any

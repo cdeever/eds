@@ -187,6 +187,22 @@ func TestABeaconsPresence(t *testing.T) {
 	}
 }
 
+func TestAScreensPresence(t *testing.T) {
+	v := New("eds")
+	if v.Apply("eds/screen/cover-screen-01/status", []byte("")) {
+		t.Fatal("an emptied topic is not a change")
+	}
+	if !v.Apply("eds/screen/cover-screen-01/status", []byte("online")) {
+		t.Fatal("a screen coming on is a change")
+	}
+	v.Apply("eds/screen/cover-screen-01/status", []byte("offline"))
+
+	got := v.Snapshot().Screens
+	if len(got) != 1 || got[0].ID != "cover-screen-01" || *got[0].Online {
+		t.Fatalf("screens %+v", got)
+	}
+}
+
 func TestASceneIsHeldToWhatAStandWouldTake(t *testing.T) {
 	v := New("eds")
 	if v.Apply("eds/lightstand/a/scene", []byte(`{"v":1,"effect":"solid","palette":[]}`)) {
@@ -272,6 +288,7 @@ func TestTopicsCoverWhatApplyReads(t *testing.T) {
 		"eds/nowplaying/source/+/state": true, "eds/nowplaying/source/+/status": true,
 		"eds/lightstand/+/scene": true, "eds/lightstand/+/state": true, "eds/lightstand/+/status": true,
 		"eds/lightd/status": true, "eds/beacon/+/status": true,
+		"eds/screen/+/status": true,
 	}
 	got := Topics("eds")
 	if len(got) != len(want) {
