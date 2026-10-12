@@ -102,7 +102,6 @@ otherwise.
 ## Follow-ups
 
 - [ ] The evidence the two decisions ask for.
-- [ ] A turntable left on with no record keeps the last sleeve lit for as
-  long as it is on, and was seen doing it within a minute of the deploy.
-  Whether a held source should go idle too, and after how long, is its
-  owner's to say.
+- [x] A turntable left on with no record kept the last sleeve lit for as
+  long as it was on, and was seen doing it within a minute of the deploy.
+  Its owner chose five minutes, and it is `NP_IDLE_AFTER_STOPPED`.

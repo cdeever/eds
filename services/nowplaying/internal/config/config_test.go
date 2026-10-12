@@ -100,6 +100,7 @@ func TestInvalidValuesStopTheProgram(t *testing.T) {
 		"a collection source misspelt":   {"NP_COLLECTION_SOURCES": "Turntable", "NP_DISCOGS_USER": "someone"},
 		"a collection with no owner":     {"NP_COLLECTION_SOURCES": "turntable"},
 		"idle after a day":               {"NP_IDLE_AFTER": "24h"},
+		"stopped idle after a week":      {"NP_IDLE_AFTER_STOPPED": "168h"},
 		"idle after something else":      {"NP_IDLE_AFTER": "soon"},
 		"a source without controls, +":   {"NP_NO_CONTROLS_SOURCES": "turntable,+"},
 		"a switch with no beacon":        {"NP_SOURCE_POWER": "turntable"},
@@ -167,7 +168,7 @@ func TestSourcePower(t *testing.T) {
 
 func TestIdleAfterAndNoControls(t *testing.T) {
 	cfg, err := LoadNowplayd("0.1")
-	if err != nil || cfg.IdleAfter != 15*time.Second || len(cfg.NoControls) != 0 {
+	if err != nil || cfg.IdleAfter != 15*time.Second || cfg.StoppedIdleAfter != 5*time.Minute || len(cfg.NoControls) != 0 {
 		t.Fatalf("defaults: idle %v, no controls %v, %v", cfg.IdleAfter, cfg.NoControls, err)
 	}
 

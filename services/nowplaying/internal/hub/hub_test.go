@@ -334,8 +334,43 @@ func TestNobodyReportingGoesIdleToo(t *testing.T) {
 }
 
 // A record between its sides is held, stopped (ADR-0023), and is not a room
-// to turn the lights down in.
-func TestAStoppedWinnerDoesNotGoIdle(t *testing.T) {
+// to turn the lights down in: it has a longer wait of its own.
+func TestAStoppedWinnerWaitsItsOwnLongerWait(t *testing.T) {
+	b, now := idleBench()
+	b.hub.StoppedIdleAfter = 5 * time.Minute
+	var waits []time.Duration
+	b.hub.After = func(d time.Duration, f func()) { waits = append(waits, d); b.timers = append(b.timers, f) }
+
+	b.hub.Power("turntable", true)
+	b.state("turntable", "Side One", nil, contract.Playing)
+	b.state("turntable", "Side One", nil, contract.Stopped)
+	if got := b.take(); len(got) != 2 || got[1].Idle {
+		t.Fatalf("the needle lifted: decisions = %+v", got)
+	}
+	if len(waits) != 1 || waits[0] < 4*time.Minute || waits[0] > 5*time.Minute {
+		t.Fatalf("waits = %v, want one of about five minutes", waits)
+	}
+
+	// The other side, before the time is up: nothing dims.
+	b.state("turntable", "Side Two", nil, contract.Playing)
+	b.take()
+	b.elapse()
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("an idle came for a record that is playing: %+v", got)
+	}
+
+	// Left on with nothing on it.
+	b.state("turntable", "Side Two", nil, contract.Stopped)
+	b.take()
+	*now = now.Add(6 * time.Minute)
+	b.elapse()
+	got := b.take()
+	if len(got) != 1 || !got[0].Idle || got[0].Winner == nil || got[0].Winner.Source != "turntable" {
+		t.Fatalf("left on: decisions = %+v", got)
+	}
+}
+
+func TestAStoppedWinnerNeverGoesIdleWhenItsWaitIsOff(t *testing.T) {
 	b, _ := idleBench()
 	b.hub.Power("turntable", true)
 	b.state("turntable", "Side One", nil, contract.Playing)

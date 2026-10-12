@@ -167,9 +167,11 @@ After `NP_IDLE_AFTER`, fifteen seconds on the workload, nowplayd says so:
 - When something plays again, everything is published again in full, the
   same cover included.
 
-A source that is `stopped` and still current does not go idle. That is a
-source being held ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)):
-a record between its sides.
+A source that is `stopped` and still current waits longer,
+`NP_IDLE_AFTER_STOPPED`, five minutes. That is a source being held
+([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)):
+a record between its sides keeps its sleeve, and a turntable left on with
+nothing playing goes idle in the end.
 
 An emptied retained topic is not delivered to a subscriber that arrives
 later. One that lights something from the cover should take hearing nothing,

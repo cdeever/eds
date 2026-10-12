@@ -98,6 +98,7 @@ func run(logger *slog.Logger) error {
 
 	sources := hub.New(cfg.Prefix, func(d hub.Decision) { submit(decision{winner: d.Winner, cover: d.Cover, idle: d.Idle}) }, logger)
 	sources.IdleAfter = cfg.IdleAfter
+	sources.StoppedIdleAfter = cfg.StoppedIdleAfter
 
 	// Commands for whatever is current (ADR-0020). The router is given its
 	// bus once there is one, and drops what it is handed before that.
@@ -193,6 +194,9 @@ func run(logger *slog.Logger) error {
 	}
 	if cfg.IdleAfter > 0 {
 		logger.Info("a track paused this long is no longer said to be playing, and its cover is taken away", "after", cfg.IdleAfter)
+	}
+	if cfg.StoppedIdleAfter > 0 {
+		logger.Info("a source held with nothing playing on it this long has its cover taken away", "after", cfg.StoppedIdleAfter)
 	}
 
 	publisher := &current.Publisher{

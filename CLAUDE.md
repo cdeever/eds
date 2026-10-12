@@ -294,7 +294,8 @@ pressed, and **empties** the cover topics. An emptied cover topic is the one
 way `lightd` is told there is no cover, and it answers with its idle scene
 (`scene.Idle`, the firmware's own starting scene). A cover merely not sent
 still leaves the room as it was (ADR-0016); do not confuse the two. A source
-that is stopped and held does not go idle.
+that is stopped and held waits longer, `NP_IDLE_AFTER_STOPPED` (5 m), so a
+record can be turned over.
 
 **`current` says when there are no controls** (ADR-0025):
 `"no_controls": true` for the sources in `NP_NO_CONTROLS_SOURCES`, the

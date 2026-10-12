@@ -62,9 +62,15 @@ steady, warm, and dim.**
 - **Nobody reporting at all goes the same way** after the same wait, with no
   source named. Before the wait it is as it was, so an agent restarting does
   not dim the room.
-- **Stopped and still current is left alone.** That is a source being held
-  ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)):
-  a record between its sides keeps its sleeve.
+- **Stopped and still current waits five minutes**
+  (`NP_IDLE_AFTER_STOPPED`). That is a source being held
+  ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)).
+  A record between its sides keeps its sleeve; a turntable left on with
+  nothing on it does not light the room all night. This was first written as
+  "left alone", and was wrong within a minute of being deployed: the
+  turntable was on and silent, a track paused in iTunes was not the winner,
+  and the room stayed lit at full
+  ([CHG-0016](/docs/changes/2026/0016-idle-the-screen-on-the-console-and-no-buttons-for-a-record/)).
 - **The wait is counted from when the source says it paused**, where that is
   in the past. A track paused an hour ago is idle the moment nowplayd starts.
 - **Emptied means no cover; not sent means no change.** The two are kept
@@ -113,3 +119,5 @@ Not yet shown:
   stand is lit from the same cover.
 - [ ] The services restarted with iTunes paused long ago: the stand is not
   lit first.
+- [ ] The turntable on and silent for five minutes: the stand is dim. Then a
+  record: lit from its sleeve.

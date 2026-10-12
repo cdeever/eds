@@ -49,6 +49,10 @@ type Hub struct {
 	// IdleAfter is how long a track may sit paused, or nothing be reporting,
 	// before the decision is made again as idle (ADR-0024). Zero is never.
 	IdleAfter time.Duration
+	// StoppedIdleAfter is the same for a winner that says "stopped": a
+	// source held while its equipment is on (ADR-0023), with nothing on it.
+	// It is longer, because a record being turned over is stopped too.
+	StoppedIdleAfter time.Duration
 
 	// After schedules f, and Now is the time. They exist so tests can hold
 	// the clock.
@@ -185,12 +189,19 @@ func (h *Hub) decide(winner *contract.State) {
 // left paused, or nobody reporting, is not something playing for ever
 // (ADR-0024). Called with the lock.
 //
-// Stopped is not counted. A source that says "stopped" and is still the
-// winner is one that is being held (ADR-0023), and a record between its
-// sides is not a room to turn the lights down in.
+// Stopped has a wait of its own. A source that says "stopped" and is still
+// the winner is one that is being held (ADR-0023), and a record between its
+// sides is not a room to turn the lights down in - but a turntable left on
+// with nothing on it is.
 func (h *Hub) submit(winner *contract.State, cover *current.Image) {
-	quiet := winner == nil || winner.State == contract.Paused
-	if !quiet || h.IdleAfter <= 0 {
+	wait := time.Duration(0)
+	switch {
+	case winner == nil || winner.State == contract.Paused:
+		wait = h.IdleAfter
+	case winner.State == contract.Stopped:
+		wait = h.StoppedIdleAfter
+	}
+	if wait <= 0 {
 		h.quiet = false
 		h.Submit(Decision{Winner: winner, Cover: cover})
 		return
@@ -201,7 +212,7 @@ func (h *Hub) submit(winner *contract.State, cover *current.Image) {
 	// pause starting over.
 	key := ""
 	if winner != nil {
-		key = winner.Source + "\x00"
+		key = winner.Source + "\x00" + string(winner.State) + "\x00"
 		if winner.Track != nil {
 			key += winner.Track.Key()
 		}
@@ -217,7 +228,7 @@ func (h *Hub) submit(winner *contract.State, cover *current.Image) {
 		}
 	}
 
-	left := h.IdleAfter - now.Sub(h.quietSince)
+	left := wait - now.Sub(h.quietSince)
 	if left <= 0 {
 		h.Submit(Decision{Winner: winner, Idle: true})
 		return
