@@ -142,8 +142,11 @@ recognizer counted under the service it names.
 
 Not yet shown:
 
-- [ ] A line from `nowplayd` kept by the log store: the token, the store's
+- [x] A line from `nowplayd` kept by the log store: the token, the store's
   certificate against the site's CA, and the way there from the workload.
+  The first, a minute after it started, was read back from the workload
+  partition: three calls to Discogs, 58 left of sixty
+  ([CHG-0018](/docs/changes/2026/0018-counting-what-is-asked-of-outside-services/)).
 - [ ] A line from the agent Pi arriving with its numbers as fields.
 - [ ] The dashboard reading both partitions in one panel.
 - [ ] A side of a record: the recognizer's calls a minute, and Discogs'.

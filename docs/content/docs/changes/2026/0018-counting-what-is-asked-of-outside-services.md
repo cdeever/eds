@@ -76,8 +76,15 @@ Any order. The dashboard is empty until the other two are done.
 | When (UTC) | What happened |
 |---|---|
 | 21:53 | The agent and the recognizer were pushed to the Pi by its owner (`23e4dfb`, this branch on top of CHG-0017's, which had been merged). The agent came back active with both drivers online. The turntable was silent and Spotify's driver is off, so nothing was asked of anybody and there was no count to see. |
+| 21:54 | The workload was deployed by its owner (`3de0662`). All four services came back active. `nowplayd` said it was counting for the log store at `https://logs.mobile.deevnet.net`, and listed the collection, 226 records. |
+| 21:55 | The first summary: `3 calls to discogs`, none refused, none failed, the slowest 993 ms, 58 left of Discogs' sixty. Nothing was said about the store refusing it, and read back from the workload partition the line was there, with its numbers as fields and `app` as `nowplayd`. |
 
 ## Departures
+
+- The Pi and the workload were done before the tenant, and by the owner: the
+  push and the merge were refused to the assistant. The dashboard waits on
+  this branch being merged, because the tenant's state settings are in the
+  main checkout and the dashboard is not.
 
 ## Follow-ups
 
