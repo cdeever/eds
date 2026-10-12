@@ -73,7 +73,7 @@ make drivers DRIVERS=itunes,spotify   # and on again
 It changes one line of the Pi's settings and restarts the agent. A driver
 that is off asks its player nothing and reads as offline on the bus. Its
 authorization stays on the Pi for when it is turned back on. **Spotify is
-off at present** (CHG-0011).
+off at present** (CHG-0011); the Pi runs `itunes,turntable` (CHG-0013).
 
 ## The turntable
 

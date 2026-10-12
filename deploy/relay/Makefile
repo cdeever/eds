@@ -75,18 +75,23 @@ spotify:
 # Pi's settings and restarts the agent. Nothing else is touched: a driver
 # turned off keeps its pairing or its authorization, and has it when turned
 # back on. The settings file holds the broker password and is never printed.
+#
+# The line is deleted and then added at the end, as two steps. As one sed
+# script ("d", then "$$a" on the last line) it lost the line whenever that
+# line was already the last: the second time this was run, the setting was
+# gone and the agent started the image's default drivers (CHG-0013).
 drivers:
 	@case ",$(DRIVERS)," in ,,|*,,*) bad=1;; *) bad=0;; esac; \
 		for d in $(subst $(comma), ,$(DRIVERS)); do case "$$d" in itunes|spotify|turntable) ;; *) bad=1;; esac; done; \
 		if [ $$bad = 1 ]; then echo "DRIVERS must name itunes, spotify, turntable, with commas" >&2; exit 2; fi
-	ssh $(BUILDER) "ssh a_autoprov@$(PI) 'sudo sed -i -e \"/^NP_DRIVERS=/d\" -e \"\\\$$a NP_DRIVERS=$(DRIVERS)\" /etc/eds/npagent.env && sudo systemctl restart npagent && sleep 3 && systemctl is-active npagent && sudo grep ^NP_DRIVERS= /etc/eds/npagent.env'"
+	ssh $(BUILDER) "ssh a_autoprov@$(PI) 'sudo sed -i -e \"/^NP_DRIVERS=/d\" /etc/eds/npagent.env && echo NP_DRIVERS=$(DRIVERS) | sudo tee -a /etc/eds/npagent.env >/dev/null && sudo systemctl restart npagent && sleep 3 && systemctl is-active npagent && sudo grep ^NP_DRIVERS= /etc/eds/npagent.env'"
 
 # Which input the turntable driver listens to, as ALSA names it: plughw:<card>.
 # `arecord -L` on the Pi lists them. Like `drivers`, one line of the Pi's
 # settings and a restart; the driver itself is turned on with `drivers`.
 turntable:
 	@case "$(DEVICE)" in *[!A-Za-z0-9:,_=-]*|"") echo "DEVICE must be an ALSA name such as plughw:UA4FX" >&2; exit 2;; esac
-	ssh $(BUILDER) "ssh a_autoprov@$(PI) 'sudo sed -i -e \"/^NP_TURNTABLE_DEVICE=/d\" -e \"\\\$$a NP_TURNTABLE_DEVICE=$(DEVICE)\" /etc/eds/npagent.env && sudo systemctl restart npagent && sleep 3 && systemctl is-active npagent && sudo grep ^NP_TURNTABLE_DEVICE= /etc/eds/npagent.env'"
+	ssh $(BUILDER) "ssh a_autoprov@$(PI) 'sudo sed -i -e \"/^NP_TURNTABLE_DEVICE=/d\" /etc/eds/npagent.env && echo NP_TURNTABLE_DEVICE=$(DEVICE) | sudo tee -a /etc/eds/npagent.env >/dev/null && sudo systemctl restart npagent && sleep 3 && systemctl is-active npagent && sudo grep ^NP_TURNTABLE_DEVICE= /etc/eds/npagent.env'"
 
 # The Pi is reached through the Builder, as the site's automation reaches it:
 # it admits SSH on its wired side only, to the automation user.

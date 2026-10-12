@@ -9,7 +9,7 @@ weight: 13
 |---|---|
 | **Date** | 2026-10-11 |
 | **Change type** | Deployment |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} — the Pi is ready and the driver is off, waiting on the grant |
+| **Status** | {{< status-badge "in-progress" "In progress" >}} — the driver is on and a record reaches the bus; the stand was offline and has not been seen to follow it |
 | **Systems** | the tenant (one broker account), the agent Pi (its agent, its unit, a recogniser installed, two lines of its settings) |
 | **How** | `make apply` in the tenant; `make -C deploy/relay push`, `turntable`, `drivers` |
 | **Risk** | Medium. Most likely to go wrong: the agent's unit, which changes how it is confined, not starting, which would stop iTunes being followed too |
@@ -105,8 +105,16 @@ from the commit before this one.
 | 03:38 | The installed agent run by hand as `npagent`, under the unit's confinement (`systemd-run` with the same properties), in `watch` mode, publishing nothing: it opened the UA-4FX and named the record playing, *You Can't Hurry Love*, twenty-four seconds after starting. |
 | 03:38 | `make turntable DEVICE=plughw:UA4FX`: the line is in the Pi's settings and the agent is active, still with `NP_DRIVERS=itunes`. |
 
-Still to do: `make apply`, then `make -C deploy/relay drivers
-DRIVERS=itunes,turntable`, and the checks that need a record on the bus.
+| about 03:40 | `make apply`, by the owner. The account reads back with the three turntable topics granted, and the same password. |
+| 03:41 | `make drivers DRIVERS=itunes,turntable`, by the owner. The agent started both drivers, and fourteen seconds later reported `playing on the turntable: Phil Collins - It Don't Matter to Me`. |
+| 03:42 | The same target run a second time, from the session making this change, which had not been told it was done. It removed the `NP_DRIVERS` line and did not put it back; the agent restarted with the unit's default, `itunes,spotify`. **Spotify was polled for 38 seconds** and the turntable was not listened to. |
+| 03:43 | The line put back by hand. The agent started `itunes,turntable`; the track was named again fourteen seconds later. Spotify reads as offline. |
+| 03:44 | The target mended (below) and run twice running: `NP_DRIVERS=itunes,turntable` both times. |
+| 03:45 | On the console: `current` is the turntable's track, playing, with an album and a cover nowplayd found in the iTunes catalogue, and `lit_cover` is that cover, so lightd has sent a scene from it. **`lp-stand-01` was offline**, so the stand itself was not seen to change. |
+
+Still to do: see the stand follow a record, lift the needle and see
+`stopped`, and unplug the interface and see `offline` with iTunes carrying
+on.
 
 ### Departures from the plan
 
@@ -115,6 +123,13 @@ DRIVERS=itunes,turntable`, and the checks that need a record on the bus.
   steps that do not depend on the grant went ahead, and the driver stays off
   until it is applied, since a publish to a topic not granted is dropped in
   silence.
+- **The `drivers` target lost the setting when run twice.** It deleted the
+  line and appended the new one in one `sed` script, `d` and then `$a` on the
+  last line. Its first run leaves the line last; on the second, the line
+  deleted is the last line, and the append never happens. It has been in the
+  target since CHG-0011 and nobody had run it twice. The two steps are now two
+  commands, in `drivers` and in the new `turntable` target, which had copied
+  it.
 - The confinement was tried with `systemd-run` before the driver is turned
   on, which the plan did not have. It is the one part that could not be
   tested on a desk.

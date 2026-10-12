@@ -171,7 +171,9 @@ tape output and ShazamIO 0.8.1:
 Not yet shown, and what this record waits on:
 
 - [ ] That the bench source was the turntable itself, and the answers right.
-- [ ] A record on the platter lights the stand through the driver.
+- [ ] A record on the platter lights the stand through the driver. So far:
+  its track became `current` with a cover, and lightd sent a scene from that
+  cover, with the stand itself offline at the time.
 - [ ] The needle put down in the middle of a track.
 - [ ] A record Shazam is unlikely to know.
 - [ ] The input's level with the needle up, and in the run-out groove, against
