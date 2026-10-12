@@ -1,7 +1,13 @@
 # EdS
 
-EdS is an intelligent music experience platform that listens, identifies, plays,
-and responds to music through sound, light, and personality.
+EdS is where the old analog world meets the convenience of the new one. A
+record plays as it always has, analog from the stylus to the speakers, and
+EdS works beside that path, never in it: a stand that lights the room from
+the cover art, a small touch screen that shows the sleeve and controls what
+plays, and a system that knows what is playing without being told.
+
+The product, in plain words, is on the
+[docs site](https://cdeever.github.io/eds/).
 
 This is a monorepo. Each project below is a distinct piece of that system.
 
@@ -10,10 +16,13 @@ This is a monorepo. Each project below is a distinct piece of that system.
 | [`services/palette`](services/palette) | Python | Album cover art in, ranked color swatches out |
 | [`services/lightd`](services/lightd) | Go | Cover image in, MQTT scene out |
 | [`services/nowplaying`](services/nowplaying) | Go | What is playing, on the bus: drivers per player, and the one current track with its cover |
+| [`services/console`](services/console) | Go, and a static page | One page that shows what EdS is doing; it only looks |
 | [`firmware/lp-stand`](firmware/lp-stand) | C / ESP-IDF | The LP jacket stand: MQTT subscriber driving an addressable RGB strip |
+| [`firmware/cover-screen`](firmware/cover-screen) | C / ESP-IDF | The touch screen: the sleeve, and five buttons |
+| [`firmware/power-beacon`](firmware/power-beacon) | C / ESP-IDF | A board on the turntable's switched outlet that says only that it has power |
 | [`infra/deevnet-tenant-eds`](infra/deevnet-tenant-eds) | Terraform | The EdS tenant on the deevnet Proxmox substrate |
 | [`images`](images) | Ansible, shell | EdS's Raspberry Pi images, built on the substrate's base; the first is the now-playing agent Pi |
-| [`deploy`](deploy) | Make, systemd | palette and lightd as containers on the tenant's workload; the relay Pi's settings |
+| [`deploy`](deploy) | Make, systemd | The four services as containers on the tenant's workload; the agent Pi's settings |
 | [`docs`](docs) | Hugo | The developer and user guide, published to [cdeever.github.io/eds](https://cdeever.github.io/eds/) |
 
 ## The first vertical
