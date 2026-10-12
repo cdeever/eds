@@ -129,8 +129,10 @@ vinyl was chosen. Discogs asked once to be left alone for a minute, and was.
 
 Not yet shown:
 
-- [ ] A record on the platter, on the console, with its own sleeve and
-  `art.from` of `discogs`.
-- [ ] The stand lit from it.
+- [x] A record on the platter, on the console, with its own sleeve and
+  `art.from` of `discogs`: a Creedence Clearwater Revival track the
+  recogniser put on a greatest hits was named as on *Cosmo's Factory*
+  ([CHG-0014](/docs/changes/2026/0014-the-owners-collection/)).
+- [x] The stand lit from it, by its own report.
 - [ ] A record that is not in the collection, completed as before.
 - [ ] A whole side without the cover changing.

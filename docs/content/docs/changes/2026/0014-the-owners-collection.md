@@ -9,7 +9,7 @@ weight: 14
 |---|---|
 | **Date** | 2026-10-12 |
 | **Change type** | Deployment |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} — deployed and the collection listed; no record has been played since |
+| **Status** | {{< status-badge "in-progress" "In progress" >}} — a record from the collection is shown with its own sleeve; one that is not in it has not been tried |
 | **Systems** | the services workload: nowplayd's image, its unit, one settings file changed and one added. The console's image, for one line of its page |
 | **How** | `make -C deploy deploy WHERE=builder` |
 | **Risk** | Medium. Most likely to go wrong: nowplayd's unit, which names a new settings file, not starting; nothing would then be current and the stand would hold its last scene |
@@ -84,9 +84,9 @@ and the unit can stay.
 | 04:04 | `make -C deploy deploy WHERE=builder`, from `f6020bd` plus the commit that puts an album before a compilation. Four images built on the Builder and loaded; settings and units installed, `discogs.env` among them. |
 | 04:05 | All four services active. nowplayd logged `looking these sources up in the owner's collection first sources=[turntable] discogs_user=… token=true`, and three seconds later `the collection was listed records=226`. |
 | 04:06 | On the console: iTunes current, paused, with the player's own cover, as before. The turntable online and stopped. The stand online. |
+| 04:07 | A record played, by the owner. The turntable reported *Who'll Stop The Rain* by Creedence Clearwater Revival, on what the recogniser called "Chronicle: The 20 Greatest Hits (Remastered 2023 / Hi Res)". `current` named the album *Cosmo's Factory*, with `art.from` of `discogs`; lightd lit from that cover and the stand reported the scene applied. |
 
-Still to do: a record from the collection on the platter, and one that is
-not in it.
+Still to do: a record that is not in the collection.
 
 ### Departures from the plan
 
