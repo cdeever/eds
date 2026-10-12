@@ -122,7 +122,8 @@ a program, `eds-recognize` in `images/agent/files`, which is Shazam's through
 an unpublished endpoint and may stop working any day. Keep every trace of
 Shazam in that file and its pinned requirements; the driver knows only "a WAV
 in, a name out". `make -C deploy/relay turntable DEVICE=…` names the input.
-**Not yet turned on** (CHG-0013 is planned).
+**Installed on the Pi and not yet turned on** (CHG-0013 is in progress: the
+broker grant is planned and not applied).
 
 Integration tests are gated on `NP_TEST_BROKER`. This Makefile runs on macOS
 (make 3.81, `/bin/bash`); the lightd and palette ones hardcode `/usr/bin/bash`

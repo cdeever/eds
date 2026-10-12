@@ -164,6 +164,9 @@ tape output and ShazamIO 0.8.1:
 - The driver itself, run on the Pi with `npagent watch` and publishing
   nothing: a third record was named fourteen seconds after it started
   listening, and reported once in the minute and a half that followed.
+- The same again as installed, as the agent's own user under its unit's
+  confinement: a track named, so the sound card and the recogniser are both
+  in reach from inside it ([CHG-0013](/docs/changes/2026/0013-the-turntable-driver/)).
 
 Not yet shown, and what this record waits on:
 

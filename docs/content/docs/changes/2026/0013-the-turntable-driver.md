@@ -9,7 +9,7 @@ weight: 13
 |---|---|
 | **Date** | 2026-10-11 |
 | **Change type** | Deployment |
-| **Status** | {{< status-badge "planned" "Planned" >}} |
+| **Status** | {{< status-badge "in-progress" "In progress" >}} — the Pi is ready and the driver is off, waiting on the grant |
 | **Systems** | the tenant (one broker account), the agent Pi (its agent, its unit, a recogniser installed, two lines of its settings) |
 | **How** | `make apply` in the tenant; `make -C deploy/relay push`, `turntable`, `drivers` |
 | **Risk** | Medium. Most likely to go wrong: the agent's unit, which changes how it is confined, not starting, which would stop iTunes being followed too |
@@ -97,9 +97,27 @@ from the commit before this one.
 
 ## Outcome
 
-Not run yet.
+| When (UTC) | What happened |
+|---|---|
+| 2026-10-12 03:35 | `make plan` showed one change: the `np-relay` account updated in place, with the three turntable topics added to `publish`. Nothing replaced. **Not applied.** |
+| 03:36 | `make -C deploy/relay push` installed the agent from `45a90e3`, the new unit, and the recogniser (`shazamio==0.8.1`, wheels only). The agent came back active. |
+| 03:37 | `eds-agent-status` passed. iTunes online under the new unit, and reporting its paused track. `npagent` is in the `audio` group. |
+| 03:38 | The installed agent run by hand as `npagent`, under the unit's confinement (`systemd-run` with the same properties), in `watch` mode, publishing nothing: it opened the UA-4FX and named the record playing, *You Can't Hurry Love*, twenty-four seconds after starting. |
+| 03:38 | `make turntable DEVICE=plughw:UA4FX`: the line is in the Pi's settings and the agent is active, still with `NP_DRIVERS=itunes`. |
+
+Still to do: `make apply`, then `make -C deploy/relay drivers
+DRIVERS=itunes,turntable`, and the checks that need a record on the bus.
 
 ### Departures from the plan
+
+- The grant was planned and not applied before the Pi was changed: the
+  session making this change was not permitted to run `terraform apply`. The
+  steps that do not depend on the grant went ahead, and the driver stays off
+  until it is applied, since a publish to a topic not granted is dropped in
+  silence.
+- The confinement was tried with `systemd-run` before the driver is turned
+  on, which the plan did not have. It is the one part that could not be
+  tested on a desk.
 
 ## Follow-ups
 
