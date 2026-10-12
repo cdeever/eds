@@ -70,10 +70,11 @@ and its sleeve the cover.**
   catalogues, under the album the source named.
 - **A record with no picture at Discogs** is looked up in the catalogues
   under the record's own title.
-- **A track on several owned records** goes to: the one named as the source
-  named the album; then the one last answered with, since a side is played
-  through; then vinyl before a disc; an album before a compilation; the
-  earliest.
+- **A track on several owned records** goes to an album before a
+  compilation, always: the owner's choice, made knowing that a greatest hits
+  played through will show each song's own album where that album is owned.
+  Then the one named as the source named the album; the one last answered
+  with, since a side is played through; vinyl before a disc; the earliest.
 - **The collection is Discogs', read through its API** with the owner's
   personal access token. The list is read at start and every six hours. A
   record's tracklist is read the first time its artist is heard, a few at a

@@ -221,22 +221,32 @@ func TestATrackOnTwoRecords(t *testing.T) {
 		t.Fatalf("got %q, record %d", got.Album, c.last)
 	}
 
-	// But a side is played through: once the compilation is what is
-	// playing, a track that is on both is on the compilation.
+	// Always: with the compilation playing, a song that is also on its own
+	// album is shown as that album. Only a song with no album here is shown
+	// as the compilation.
 	if got := find(t, c, "Phil Collins", "Another Day in Paradise"); got.Album != "...Hits" {
 		t.Fatalf("got %q", got.Album)
 	}
-	if got := find(t, c, "Phil Collins", "Sussudio"); got.Album != "...Hits" {
-		t.Fatalf("got %q; the record already playing has this track", got.Album)
+	if got := find(t, c, "Phil Collins", "Sussudio"); got.Album != "No Jacket Required" {
+		t.Fatalf("got %q; its own album is here", got.Album)
+	}
+	// Even when the source names the compilation.
+	ctx := context.Background()
+	if got, err := c.Find(ctx, "Phil Collins", "Sussudio", "...Hits"); err != nil || got.Album != "No Jacket Required" {
+		t.Fatalf("got %q, %v", got.Album, err)
 	}
 
-	// What the source called the album outweighs both, when a record of that
-	// name is there: edition notes and all.
-	ctx := context.Background()
-	if got, err := c.Find(ctx, "Phil Collins", "Sussudio", "No Jacket Required (Deluxe Edition)"); err != nil || got.Album != "No Jacket Required" || c.last != 31 {
-		t.Fatalf("got %q (record %d), %v", got.Album, c.last, err)
+	// Between two albums, what the source called it decides, edition notes
+	// and all; and once a record is playing, a track on both stays on it.
+	s.add(33, "Phil Collins", "Serious Hits... Live!", 1990, "", "Sussudio", "Take Me Home")
+	c = s.collection()
+	if got, err := c.Find(ctx, "Phil Collins", "Sussudio", "Serious Hits... Live! (Remastered)"); err != nil || got.Album != "Serious Hits... Live!" {
+		t.Fatalf("got %q, %v", got.Album, err)
 	}
-	// And is only a hint when none is: the track is still found.
+	if got := find(t, c, "Phil Collins", "Take Me Home"); got.Album != "Serious Hits... Live!" {
+		t.Fatalf("got %q; the record already playing has this track", got.Album)
+	}
+	// And the name is only a hint: a track is found without a record of it.
 	if got, err := c.Find(ctx, "Phil Collins", "In the Air Tonight", "Face Value"); err != nil || got.Album != "...Hits" {
 		t.Fatalf("got %q, %v", got.Album, err)
 	}

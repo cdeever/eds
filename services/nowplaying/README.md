@@ -352,9 +352,12 @@ first, by artist and title:
 - **The record's title becomes the album**, replacing what the source called
   it, and **its sleeve becomes the cover**: the pressing that is owned, not a
   catalogue's guess at an edition. `art.from` is `discogs`.
-- **A track on several records** goes to the one named as the source named
-  the album, then the one last answered with (a side is played through), then
-  vinyl before a disc, an album before a compilation, the earliest.
+- **A track on several records** goes to an album before a compilation,
+  always; then the one named as the source named the album, the one last
+  answered with (a side is played through), vinyl before a disc, the
+  earliest. So a greatest hits played through shows each song's own album
+  where that album is owned, and its own sleeve for the rest. That is the
+  owner's choice.
 - **A track the collection does not have** is completed the ordinary way,
   from the catalogues.
 - **Only those sources.** iTunes says which album it is playing, and knows.

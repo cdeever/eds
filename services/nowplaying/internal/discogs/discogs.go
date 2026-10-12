@@ -341,11 +341,12 @@ func (t track) titles(into []string) []string {
 
 // choose picks the record a title is on. A title that is on the record, to
 // the letter, beats one that is part of a longer title. Among records that
-// have it: one named as the source named the album; then the one last
-// answered with, because a side is played through; then vinyl before the
-// same album on a disc, because what asks here is listening to a record;
-// then an album before a compilation; then the earliest, as the likeliest to
-// be the one meant.
+// have it: an album before a compilation, always - the owner's choice, so
+// that a greatest hits played through shows each song's own album; then one
+// named as the source named the album; then the one last answered with,
+// because a side is played through; then vinyl before the same album on a
+// disc, because what asks here is listening to a record; then the earliest,
+// as the likeliest to be the one meant.
 func (c *Collection) choose(records []record, title, album string) (record, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -384,14 +385,14 @@ func (c *Collection) choose(records []record, title, album string) (record, bool
 	sort.SliceStable(candidates, func(i, j int) bool {
 		a, b := candidates[i], candidates[j]
 		switch {
+		case a.compilation != b.compilation:
+			return !a.compilation
 		case named(a) != named(b):
 			return named(a)
 		case (a.id == c.last) != (b.id == c.last):
 			return a.id == c.last
 		case a.vinyl != b.vinyl:
 			return a.vinyl
-		case a.compilation != b.compilation:
-			return !a.compilation
 		case (a.year > 0) != (b.year > 0):
 			return a.year > 0
 		case a.year != b.year:
