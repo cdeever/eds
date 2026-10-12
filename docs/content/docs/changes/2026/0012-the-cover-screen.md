@@ -95,12 +95,35 @@ Ordered so that each step is safe without the ones after it.
 | 23:30 | The services were deployed from the Builder. All four came back active. `nowplayd` connected, named its command topic, and published the track playing: Genesis, *Abacab*, from iTunes. |
 | 23:30 | The agent was pushed to the Pi: `installed efcb197; npagent is active`. |
 | 23:31 | The screen was provisioned. It joined `DVNTM-IOT` as 10.20.30.205, connected to the broker over TLS 1.4 seconds later, read the current track as playing with a cover, and received a small cover of 8,504 bytes. The decoder reported no fault. |
+| 23:56 | Its owner pressed the buttons. **The first eight presses, made over ten seconds, reached `nowplayd` together**, within 100 ms: the screen's connection had stopped carrying anything and delivered them when it recovered. iTunes skipped two tracks at once. The screen's own events show the same ten seconds, each sent several times over. After that, each press arrived as it was made. |
+| 23:57 | `play_pause` paused iTunes and resumed it, each within 20 ms of being passed on. `next` and `previous` changed the track. Volume commands were carried out without error. The agent logged every command, and both the screen's and the agent's events reached the log store. |
+| 23:57 | Its owner reported the cover perfect, and the buttons turned round: top was next, bottom was previous. |
+| 23:58 | Reflashed with the touch axes swapped and both turned round, as the defaults for this board. |
+| 00:04 | Reflashed again: a command is now sent only when the broker has answered within three seconds or answers a question first, and WiFi power saving is off. It started, connected, and drew the cover of what was playing. Neither change has been tried by hand yet. |
 
 ### Departures from the plan
 
 - The tenant was planned before the board was flashed, because the board's
   serial port was busy with the backup. Nothing was applied out of order.
+- The apply was run from the session after all, at its owner's word, as a
+  saved plan whose summary was checked against the one already read.
+- The board was flashed three times, not once: the touch settings were wrong,
+  and the stall found a fault in the design that was fixed the same evening
+  (ADR-0020, "What building it found").
+- Touch was first checked with no broker, by reading where presses landed. It
+  was read wrongly: the presses matched the buttons' places on axes that were
+  in fact swapped, because nobody recorded which button each press was. It
+  took real commands to show it.
 
 ## Follow-ups
 
 - [ ] ADR-0020 moves to `Accepted` when its six questions are answered here.
+  Open: the buttons by hand on the corrected firmware, what the volume
+  buttons sound like, and a day connected.
+- [ ] Why the connection stalled for ten seconds is not known.
+- [ ] A stall sends each of the screen's events several times: the client
+  repeats an unacknowledged event, and the store keeps every copy. The
+  stand's firmware does the same.
+- [ ] `next` on an album's last track stops iTunes, and then `previous` and
+  `next` do nothing until something is played. That is iTunes; the screen
+  shows the record and gives no hint.

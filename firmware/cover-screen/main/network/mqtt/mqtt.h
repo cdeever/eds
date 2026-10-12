@@ -22,4 +22,8 @@ bool cs_mqtt_connected(void);
 // cs_mqtt_send_command publishes a button press. It returns false, having
 // sent nothing, when the broker is not there: a command is for now, and one
 // delivered after a reconnect would skip a track nobody is asking to skip.
+//
+// "There" is checked, not assumed: if the broker has not been heard from in
+// the last few seconds it is asked first, and the command waits up to most
+// of a second for the answer. Call it from a task that can wait that long.
 bool cs_mqtt_send_command(cs_button_t button);

@@ -7,8 +7,10 @@
 #include "cs_credentials.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "event_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "mqtt_client.h"
 #include "now_json.h"
@@ -19,6 +21,18 @@ static const char *TAG = "mqtt";
 
 static esp_mqtt_client_handle_t client;
 static volatile bool connected;
+
+// When the broker last answered anything, and the question a command asks
+// before it is sent: see cs_mqtt_send_command.
+static volatile int64_t heard_us;
+static volatile int probe_id = -1;
+static SemaphoreHandle_t probe_answered;
+
+// A broker heard from this recently is taken to be there.
+#define FRESH_US (3 * 1000 * 1000)
+// How long a command waits to find out. Longer than a round trip on a bad
+// day, shorter than a finger's patience.
+#define PROBE_WAIT_MS 800
 
 // A message longer than the client's buffer arrives in pieces, and only the
 // first says which topic it is on. This remembers.
@@ -45,6 +59,7 @@ static void on_connected(void)
     char extra[64];
     snprintf(extra, sizeof(extra), "\"ip\":\"%s\",\"rssi\":%d", cs_wifi_ip(), cs_wifi_rssi());
     cs_event_log_with(CS_EVENT_INFO, "mqtt.connected", extra, "Connected to the broker");
+    heard_us = esp_timer_get_time();
     connected = true;
     cs_screen_link(CS_LINK_UP);
 }
@@ -135,7 +150,15 @@ static void on_mqtt_event(void *handler_args, esp_event_base_t base, int32_t id,
         on_connected();
         break;
     case MQTT_EVENT_DATA:
+        heard_us = esp_timer_get_time();
         on_data(event);
+        break;
+    case MQTT_EVENT_PUBLISHED:
+        // The broker acknowledged something: it is there, now.
+        heard_us = esp_timer_get_time();
+        if (event->msg_id == probe_id && probe_answered != NULL) {
+            xSemaphoreGive(probe_answered);
+        }
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGW(TAG, "disconnected; the client will keep retrying");
@@ -242,6 +265,7 @@ esp_err_t cs_mqtt_start(void)
     if (client == NULL) {
         return ESP_FAIL;
     }
+    probe_answered = xSemaphoreCreateBinary();
 
     ESP_ERROR_CHECK(esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID,
                                                    &on_mqtt_event, NULL));
@@ -255,6 +279,32 @@ esp_err_t cs_mqtt_start(void)
     return esp_mqtt_client_start(client);
 }
 
+// broker_is_there finds out whether the broker answers, now.
+//
+// "Connected" is not that. A connection that has stopped carrying anything
+// still takes what is written to it, holds it, and delivers it when it
+// recovers - which the first evening this screen ran was ten seconds and
+// eight button presses later, all at once (CHG-0012). So before a command
+// is written, something harmless is: the screen's own presence, again, with
+// an acknowledgement asked for. If that comes back, the command goes. If it
+// does not, the command is never written, and there is nothing to arrive
+// late but the word "online".
+static bool broker_is_there(void)
+{
+    if (esp_timer_get_time() - heard_us < FRESH_US) {
+        return true;
+    }
+    if (probe_answered == NULL) {
+        return false;
+    }
+
+    xSemaphoreTake(probe_answered, 0);
+    probe_id = esp_mqtt_client_publish(client, CS_TOPIC_STATUS, CS_STATUS_ONLINE, 0, 1, 1);
+    bool answered = probe_id >= 0 && xSemaphoreTake(probe_answered, pdMS_TO_TICKS(PROBE_WAIT_MS)) == pdTRUE;
+    probe_id = -1;
+    return answered;
+}
+
 bool cs_mqtt_send_command(cs_button_t button)
 {
     if (client == NULL || !connected) {
@@ -264,6 +314,18 @@ bool cs_mqtt_send_command(cs_button_t button)
     char payload[96];
     size_t len = cs_command_format(payload, sizeof(payload), button, CS_SCREEN_ID);
     if (len == 0) {
+        return false;
+    }
+
+    if (!broker_is_there()) {
+        // Say so on the screen, and start again with a connection that
+        // works: this one is holding whatever was written to it.
+        ESP_LOGW(TAG, "the broker did not answer; %s was not sent", cs_button_command(button));
+        connected = false;
+        cs_screen_link(cs_wifi_connected() ? CS_LINK_NO_BROKER : CS_LINK_NO_WIFI);
+        cs_event_log(CS_EVENT_WARN, "mqtt.stalled", "The broker stopped answering");
+        esp_mqtt_client_disconnect(client);
+        esp_mqtt_client_reconnect(client);
         return false;
     }
 

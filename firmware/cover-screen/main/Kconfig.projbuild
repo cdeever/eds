@@ -83,36 +83,45 @@ menu "Cover screen"
 
         config CS_TOUCH_SWAP_XY
             bool "The controller's axes are the other way round"
-            default n
+            default y
             help
                 A finger moved across the screen that moves the touch up and
                 down means this is wrong. Each touch is printed on the serial
                 console with what the controller read and where that was
                 taken to be, which is what these settings are tuned from.
 
+                The defaults here are what the ESP32-2432S028R wants with the
+                panel the default way up, found by pressing its buttons. If
+                the picture is turned upside down the touch is turned with
+                it, and these do not need changing.
+
         config CS_TOUCH_INVERT_X
             bool "Left and right are swapped"
-            default n
+            default y
         config CS_TOUCH_INVERT_Y
             bool "Up and down are swapped"
-            default n
+            default y
 
         config CS_TOUCH_X_MIN
             int "Reading at the left edge"
             range 0 4095
-            default 200
+            default 240
+            help
+                The four readings are taken after the axes are swapped and
+                before either is turned round: the lower reading of each
+                pair, then the higher.
         config CS_TOUCH_X_MAX
             int "Reading at the right edge"
             range 0 4095
-            default 3700
+            default 3800
         config CS_TOUCH_Y_MIN
             int "Reading at the top edge"
             range 0 4095
-            default 240
+            default 200
         config CS_TOUCH_Y_MAX
             int "Reading at the bottom edge"
             range 0 4095
-            default 3800
+            default 3700
 
     endmenu
 

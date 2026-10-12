@@ -19,20 +19,39 @@
 
 static const char *TAG = "screen";
 
+// A setting that is off is not defined at all, so each is turned into a 0 or
+// a 1 here.
+#ifdef CONFIG_CS_TOUCH_SWAP_XY
+#define TOUCH_SWAP_XY 1
+#else
+#define TOUCH_SWAP_XY 0
+#endif
+#ifdef CONFIG_CS_TOUCH_INVERT_X
+#define TOUCH_INVERT_X 1
+#else
+#define TOUCH_INVERT_X 0
+#endif
+#ifdef CONFIG_CS_TOUCH_INVERT_Y
+#define TOUCH_INVERT_Y 1
+#else
+#define TOUCH_INVERT_Y 0
+#endif
+#ifdef CONFIG_CS_PANEL_ROTATE_180
+#define PANEL_TURNED 1
+#else
+#define PANEL_TURNED 0
+#endif
+
+// The touch glass is fixed to the panel, so a picture turned upside down
+// turns both of its axes with it.
 static const cs_touch_cal_t calibration = {
     .x_min = CONFIG_CS_TOUCH_X_MIN,
     .x_max = CONFIG_CS_TOUCH_X_MAX,
     .y_min = CONFIG_CS_TOUCH_Y_MIN,
     .y_max = CONFIG_CS_TOUCH_Y_MAX,
-#if CONFIG_CS_TOUCH_SWAP_XY
-    .swap_xy = true,
-#endif
-#if CONFIG_CS_TOUCH_INVERT_X
-    .invert_x = true,
-#endif
-#if CONFIG_CS_TOUCH_INVERT_Y
-    .invert_y = true,
-#endif
+    .swap_xy = TOUCH_SWAP_XY,
+    .invert_x = TOUCH_INVERT_X ^ PANEL_TURNED,
+    .invert_y = TOUCH_INVERT_Y ^ PANEL_TURNED,
 };
 
 // Guards everything below it. The broker client writes; the screen task

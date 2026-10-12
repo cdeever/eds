@@ -14,11 +14,10 @@ Why it is built this way is
 
 ## Status
 
-**Built, host-tested, and not yet run on the board.** The pure half has 144
-host checks and its screens have been looked at as pictures. The firmware
-builds with ESP-IDF 6.1. Nothing below "The board" has been proven on
-hardware, and the things most likely to be wrong on first flash are listed
-under [First flash](#first-flash).
+**Running on one board since 2026-10-11** ([CHG-0012](../../docs/content/docs/changes/2026/0012-the-cover-screen.md)).
+It shows the cover, and its buttons pause, resume and skip the real iTunes.
+The pure half has 144 host checks. Still open: a day connected, and why its
+connection once stalled for ten seconds.
 
 ## The board
 
@@ -82,6 +81,12 @@ Each is a choice against a screen that looks broken:
 - **A press is never queued.** It is sent at QoS 0 and only while connected.
   A press delivered after a reconnect would skip a track nobody is asking to
   skip.
+- **A press is sent only to a broker that is answering.** A connection can
+  stop carrying anything and still accept what is written to it, and deliver
+  it all when it recovers. So if the broker has not been heard from in three
+  seconds, the screen asks it something harmless first and waits up to
+  800 ms. No answer: the press is dropped, the corner goes amber, and the
+  connection is made again.
 - **A cover that is too large or cannot be decoded** is dropped and the
   record is shown, with a `cover.rejected` event.
 - **A `current` of another version, or that is not JSON**, is ignored and the
@@ -128,17 +133,17 @@ What to check, in order, with the settings that fix each:
 1. **The picture is upside down**: Panel → *Turn the picture upside down*.
 2. **Red and blue are swapped**: Panel → *wired blue-green-red*.
 3. **It looks like a negative**: Panel → *Invert colours*.
-4. **Touches land in the wrong place.** Each press prints a line on the
-   serial console:
+4. **Touches land in the wrong place.** The defaults are right for this
+   board: axes swapped, both turned round. For another, each press prints a
+   line on the serial console:
 
    ```
    I (5123) screen: touch: read 1890,2105, taken as 154,125
    ```
 
-   Press each corner and read the first pair. If moving a finger across the
-   screen changes the second number of the pair, the axes are swapped. If
-   left reads high, left and right are swapped. The readings at the edges are
-   the four calibration settings.
+   Press somewhere you can name, a corner, and compare. **Do not judge it by
+   pressing the buttons**: they sit on the axes, where a swapped pair of
+   axes reads as a plausible button, just the wrong one.
 5. **It wakes by itself, or wants a fingernail**: Touch → *Pressure that
    counts as a touch*.
 
@@ -154,6 +159,7 @@ and its own:
 | `command.not_sent` | it could not be | `command` |
 | `cover.rejected` | a cover was too large or could not be drawn | `bytes`, `limit` |
 | `current.rejected` | a track message could not be read | `bytes` |
+| `mqtt.stalled` | the broker did not answer when a press asked | |
 
 ## Shared with the stand
 

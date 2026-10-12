@@ -121,6 +121,12 @@ esp_err_t cs_wifi_start(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
+    // No power saving. The radio dozing between beacons saves a few tens of
+    // milliamps and adds up to a beacon's wait to everything, and this is a
+    // remote control on a USB supply. (The stand's copy of this file leaves
+    // it on: nothing waits on the stand.)
+    esp_wifi_set_ps(WIFI_PS_NONE);
+
     ESP_LOGI(TAG, "connecting to %s", cs_cred_wifi_ssid());
 
     // Wait, but not forever: the panel is already showing something, and

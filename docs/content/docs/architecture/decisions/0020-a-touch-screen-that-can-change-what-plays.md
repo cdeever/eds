@@ -167,13 +167,43 @@ Nothing else.
 1. A button on the screen pauses and resumes the real iTunes, and skips a
    track. In particular: whether iTunes accepts a command from a client that
    sends `Viewer-Only-Client: 1`, as the driver does on every request.
-2. Volume up and down move iTunes' volume, by the step intended.
+   **Settled 2026-10-11:** it does. `play_pause` paused and resumed it within
+   20 ms of nowplayd passing the command on, and `next` changed the track
+   ([CHG-0012](/docs/changes/2026/0012-the-cover-screen/)).
+2. Volume up and down move iTunes' volume, by the step intended. The driver
+   carried out each without an error. Nobody has yet said what they heard.
 3. The small cover, as nowplayd makes it from real covers, decodes on the
-   board and is the right way up, in the right colours.
+   board and is the right way up, in the right colours. **Settled
+   2026-10-11:** two albums' covers, of 8.5 KB and 4.8 KB, seen by its owner.
 4. The board holds a connection to the broker over TLS with the cover's
-   memory taken, across a day.
-5. Touches land where the finger is. The panel's orientation and the touch
-   controller's calibration are settings, with defaults that are a guess
-   until the board has been touched.
+   memory taken, across a day. After 25 minutes it had 116 KB free and had
+   never had less than 98 KB. A day has not passed.
+5. Touches land where the finger is. **Found wrong 2026-10-11, and
+   corrected:** the touch controller's axes are swapped and both run
+   backwards against the panel, so top was next and bottom was previous. The
+   defaults are now what this board wants. The corrected firmware has not
+   yet been tried by hand.
 6. The substrate grants `nowplaying/source/+/command` to publish, with its
-   wildcard.
+   wildcard. **Settled 2026-10-11:** granted as written.
+
+## What building it found
+
+**"Connected" does not mean a command will arrive now.** The decision above
+sends at QoS 0 and only while connected, so that nothing is queued. The
+first evening, the screen's first eight presses were written to a connection
+that had stopped carrying anything; it held them for ten seconds and
+delivered all eight within a tenth of a second. Two were `next`, and two
+tracks were skipped at once.
+
+The queue was TCP's, underneath anything MQTT can ask for. So the screen now
+asks before it sends: if the broker has not been heard from in three
+seconds, it republishes its own presence with an acknowledgement requested,
+and sends the command only when that comes back, within 800 ms. If it does
+not, the command is never written, the screen marks its corner, and the
+connection is dropped and made again. What can still arrive late is the
+word `online`.
+
+This narrows the fault and does not close it: a connection can stall in the
+three seconds after it last answered. Why that connection stalled is not
+known. WiFi power saving was on and is now off, which is a guess at the
+cause and not a finding.
