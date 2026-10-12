@@ -5,7 +5,7 @@
    plain CSS: no nesting and no // comments, because nothing preprocesses it.
 
    The accent is the warm amber the stand shows before the network exists -
-   rgb(255, 170, 90) in lp_scene_default(). It seemed the right colour for a
+   rgb(255, 170, 90) in lp_scene_default(). It seemed the right color for a
    site about lighting a record sleeve.
    ========================================================================== */
 
@@ -109,7 +109,7 @@
 
 /* -----------------------------------------------------------------------------
    Status badges - the decision, change and incident records. Same class names
-   and colours as deevnet-docs, so a record reads the same on either site.
+   and colors as deevnet-docs, so a record reads the same on either site.
    -------------------------------------------------------------------------- */
 
 .status-badge {

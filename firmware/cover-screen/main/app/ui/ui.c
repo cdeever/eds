@@ -6,7 +6,7 @@
 
 // The middle button's reach. Larger than it is drawn: play and pause is the
 // one most wanted, and the one a thumb aims at least carefully.
-#define CS_CENTRE_REACH 52
+#define CS_CENTER_REACH 52
 
 void cs_ui_init(cs_ui_t *ui)
 {
@@ -21,7 +21,7 @@ cs_button_t cs_ui_zone(int x, int y)
     int dx = x - CS_SCREEN_W / 2;
     int dy = y - CS_SCREEN_H / 2;
 
-    if (dx * dx + dy * dy <= CS_CENTRE_REACH * CS_CENTRE_REACH) {
+    if (dx * dx + dy * dy <= CS_CENTER_REACH * CS_CENTER_REACH) {
         return CS_BTN_PLAY_PAUSE;
     }
 

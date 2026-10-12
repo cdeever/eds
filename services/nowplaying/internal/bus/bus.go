@@ -83,7 +83,7 @@ type Bus struct {
 //
 // handle runs on a goroutine of its own rather than the client's, so it may
 // publish and wait for the result. The client's own goroutine must never do
-// that: it is the one that would deliver the acknowledgement.
+// that: it is the one that would deliver the acknowledgment.
 func Connect(cfg Config, topics []string, handle func(Message)) (*Bus, error) {
 	if cfg.URL == "" {
 		return nil, fmt.Errorf("bus: no broker url configured")

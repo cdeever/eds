@@ -156,7 +156,7 @@ func (s *Server) Handler() http.Handler {
 		h := w.Header()
 		// The page loads its own script, style and pictures and nothing
 		// else, and nothing may frame it. Track names come from players and
-		// catalogues; they are put on the page as text, and this is what
+		// catalogs; they are put on the page as text, and this is what
 		// holds if that is ever got wrong.
 		h.Set("Content-Security-Policy",
 			"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; "+

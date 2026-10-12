@@ -76,7 +76,7 @@ var ErrNoSession = errors.New("itunes: no session with the player")
 //
 // The driver says nothing on the bus about having done it. The player
 // reports the change it caused the way it reports any other, and that report
-// is the acknowledgement.
+// is the acknowledgment.
 func (d *Driver) Command(ctx context.Context, c contract.Command) error {
 	d.mu.Lock()
 	live := d.live

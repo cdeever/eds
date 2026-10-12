@@ -57,7 +57,7 @@ void pb_event_log_with(pb_event_level_t level, const char *event, const char *ex
     }
 
     // The count this line carries is reported once it is queued, so what is
-    // left to report afterwards is only what was lost making room for it.
+    // left to report afterward is only what was lost making room for it.
     uint32_t lost = 0;
     if (xQueueSend(queue, line, 0) != pdTRUE) {
         // Full. message is free again by now, and is the right size to take

@@ -78,7 +78,7 @@ type Client struct {
 
 // New returns a client with a timeout short enough that a wedged palette
 // service surfaces as an error rather than a hung request holding the stand
-// on its previous colour indefinitely.
+// on its previous color indefinitely.
 func New(baseURL string) *Client {
 	return &Client{
 		BaseURL: baseURL,

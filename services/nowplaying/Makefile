@@ -39,7 +39,7 @@ build-arm64:
 test:
 	go test ./...
 
-# Retention, the last will and subscription timing are the broker's behaviour,
+# Retention, the last will and subscription timing are the broker's behavior,
 # not the client's, so the tests that matter most need a real one.
 test-integration: broker
 	NP_TEST_BROKER=$(TEST_BROKER) go test -race -count=1 ./...

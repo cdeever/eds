@@ -50,7 +50,7 @@ type Playing struct {
 	ChangedAt  *time.Time `json:"changed_at,omitempty"`
 	// Cover is the sha256 of the cover this state names, when it names one.
 	Cover string `json:"cover,omitempty"`
-	// CoverFrom is where that cover came from: the player, or a catalogue.
+	// CoverFrom is where that cover came from: the player, or a catalog.
 	CoverFrom string `json:"cover_from,omitempty"`
 }
 
@@ -61,7 +61,7 @@ type Source struct {
 	Now    *Playing `json:"now,omitempty"`
 }
 
-// Swatch is one colour of a scene and its share of the strip.
+// Swatch is one color of a scene and its share of the strip.
 type Swatch struct {
 	RGB    [3]uint8 `json:"rgb"`
 	Weight float64  `json:"weight"`
@@ -480,7 +480,7 @@ func decodeScene(payload []byte) (*Scene, bool) {
 	if json.Unmarshal(payload, &m) != nil || m.V != ContractVersion || len(m.Palette) == 0 {
 		return nil, false
 	}
-	// The firmware takes at most eight colours and clamps the rest; the page
+	// The firmware takes at most eight colors and clamps the rest; the page
 	// draws what a stand would.
 	if len(m.Palette) > 8 {
 		m.Palette = m.Palette[:8]

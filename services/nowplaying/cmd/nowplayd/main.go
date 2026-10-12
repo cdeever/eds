@@ -63,19 +63,19 @@ func run(logger *slog.Logger) error {
 	}
 
 	var resolver current.Resolver
-	if len(cfg.Catalogues) > 0 {
-		catalogues, err := resolve.Named(cfg.Catalogues, &http.Client{Timeout: cfg.LookupTimeout}, cfg.UserAgent)
+	if len(cfg.Catalogs) > 0 {
+		catalogs, err := resolve.Named(cfg.Catalogs, &http.Client{Timeout: cfg.LookupTimeout}, cfg.UserAgent)
 		if err != nil {
 			return err
 		}
-		resolver = resolve.New(catalogues, cfg.UserAgent, logger)
+		resolver = resolve.New(catalogs, cfg.UserAgent, logger)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	// Deciding is quick and publishing is not: completing a track can mean a
-	// catalogue lookup of several seconds. So the two are separate, joined by
+	// catalog lookup of several seconds. So the two are separate, joined by
 	// a slot that holds one decision. A decision that arrives while another
 	// is being published replaces any that is waiting, because only the
 	// newest matters - working through a queue would publish, late and in
@@ -171,7 +171,7 @@ func run(logger *slog.Logger) error {
 		"sources", contract.AllSourcesTopic(cfg.Prefix),
 		"current", contract.CurrentTopic(cfg.Prefix),
 		"commands", commandTopic,
-		"catalogues", cfg.Catalogues,
+		"catalogs", cfg.Catalogs,
 	)
 	if len(cfg.Power) > 0 {
 		logger.Info("these sources are held while their equipment is on, and unheard while it is off", "switches", cfg.Power)

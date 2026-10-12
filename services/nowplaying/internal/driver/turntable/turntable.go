@@ -2,14 +2,14 @@
 //
 // A turntable has nothing to ask. The driver listens instead: it takes the
 // line-level signal the amplifier sends to a tape deck, and every so often
-// hands a few seconds of it to a recogniser that names the track (ADR-0021).
+// hands a few seconds of it to a recognizer that names the track (ADR-0021).
 //
 // Three rules of its own:
 //
 //   - Silence is the only thing it knows for certain. Music it cannot name is
 //     reported as playing, with no track; it is not made up, and it is not
 //     called stopped.
-//   - A track is not replaced on one answer. A recogniser is sometimes wrong
+//   - A track is not replaced on one answer. A recognizer is sometimes wrong
 //     for a moment, and one wrong answer would repaint the room.
 //   - It names no cover. What it hears has no picture; nowplayd finds one.
 package turntable
@@ -28,7 +28,7 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/events"
 )
 
-// Rate is the sample rate the driver listens at. A recogniser wants no more,
+// Rate is the sample rate the driver listens at. A recognizer wants no more,
 // and it is what keeps twelve seconds small.
 const Rate = 16000
 
@@ -106,7 +106,7 @@ func (d *Driver) Run(ctx context.Context) error {
 	}
 }
 
-// answer is what a recogniser said about one clip.
+// answer is what a recognizer said about one clip.
 type answer struct {
 	match Match
 	err   error
@@ -179,14 +179,14 @@ func (d *Driver) listen(ctx context.Context, last **contract.State) (heard bool,
 			case a.err == nil, errors.Is(a.err, ErrNoMatch):
 				if failing {
 					failing = false
-					d.logger().Info("the recogniser is answering again", events.Key, "turntable.recognizer_back")
+					d.logger().Info("the recognizer is answering again", events.Key, "turntable.recognizer_back")
 				}
 			default:
 				// Said once for a run of failures. It is asked several times
 				// a minute, and the log store is not the place to count them.
 				if !failing {
 					failing = true
-					d.logger().Warn("the recogniser could not be asked", events.Key, "turntable.recognizer_failed", "reason", a.err)
+					d.logger().Warn("the recognizer could not be asked", events.Key, "turntable.recognizer_failed", "reason", a.err)
 				}
 			}
 			f.answer(a.match, a.err)
@@ -215,8 +215,8 @@ func (d *Driver) report(f *follower, last **contract.State) {
 		return
 	}
 	if playing && track == nil {
-		d.logger().Info("the turntable is playing something the recogniser does not know",
-			events.Key, "turntable.unrecognised")
+		d.logger().Info("the turntable is playing something the recognizer does not know",
+			events.Key, "turntable.unrecognized")
 	}
 	d.Sink.Publish(driver.Update{State: state})
 	*last = &state

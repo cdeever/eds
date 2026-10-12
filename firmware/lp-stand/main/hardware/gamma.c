@@ -2,7 +2,7 @@
 
 // Gamma 2.6, the value conventionally used for WS2812-class strips. Baked into
 // a table rather than computed: this runs per channel per pixel per frame, and
-// there is no reason to spend float maths on it.
+// there is no reason to spend float math on it.
 static const uint8_t gamma_lut[256] = {
       0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
       0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,

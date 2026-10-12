@@ -33,7 +33,7 @@ type Config struct {
 	CoverTopic string
 	// LookTopic, when set, is a topic that says whether the cover on
 	// CoverTopic has a look of its own (ADR-0019). Empty means every cover is
-	// lit from its own colours.
+	// lit from its own colors.
 	LookTopic string
 	// Looks are the choices a look leaves open.
 	Looks  scene.LookOptions

@@ -9,8 +9,8 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 )
 
-// ClipSeconds is how much audio a recogniser is given. Twelve seconds is what
-// the recogniser in use is built around: less is padded, more is ignored.
+// ClipSeconds is how much audio a recognizer is given. Twelve seconds is what
+// the recognizer in use is built around: less is padded, more is ignored.
 const ClipSeconds = 12
 
 // DefaultSilenceDB is quieter than the quietest music tried on the bench
@@ -19,14 +19,14 @@ const DefaultSilenceDB = -55.0
 
 // missesBeforeUnknown is how many clips in a row may go unnamed before the
 // track is let go. One miss is a quiet passage. Several are a different track
-// the recogniser does not know, or the needle in the run-out groove.
+// the recognizer does not know, or the needle in the run-out groove.
 const missesBeforeUnknown = 4
 
 // forgetAfter is how much silence ends an album. Turning a record over is
 // silence too, and must not: so it is long.
 const forgetAfter = 10 * time.Minute
 
-// follower turns what is heard, and what the recogniser says about it, into
+// follower turns what is heard, and what the recognizer says about it, into
 // what is playing. It has no clock but the audio and does nothing but decide,
 // which is what lets a test put it through a whole side in no time.
 type follower struct {
@@ -40,16 +40,16 @@ type follower struct {
 	loud  []bool  // which of the ring's blocks were music
 	quiet int     // blocks of silence in a row
 	since int     // blocks since a clip was last sent
-	busy  bool    // a clip is with the recogniser
+	busy  bool    // a clip is with the recognizer
 
 	hearing  bool // music is playing
-	answered bool // the recogniser has answered since it started
+	answered bool // the recognizer has answered since it started
 	track    *Match
 	pending  *Match // a different track, heard once
 	misses   int
 
 	// album is kept from the first track named on a side and given to the
-	// tracks after it. The recogniser names an album per track, and for two
+	// tracks after it. The recognizer names an album per track, and for two
 	// tracks of one record it has named two: the album, and a box set the
 	// album is in. Left alone, that is a new cover between tracks.
 	album, albumArtist string
@@ -68,7 +68,7 @@ func newFollower(interval, stopAfter time.Duration, silenceDB float64) *follower
 }
 
 // hear takes the next tenth of a second. It returns a clip when it is time
-// for the recogniser to be asked, and nil otherwise.
+// for the recognizer to be asked, and nil otherwise.
 func (f *follower) hear(block []int16) []int16 {
 	music := Level(block) >= f.silence
 	if music {
@@ -130,7 +130,7 @@ func (f *follower) mostlyMusic() bool {
 	return 2*n >= len(f.loud)
 }
 
-// answer takes what the recogniser said about the last clip.
+// answer takes what the recognizer said about the last clip.
 func (f *follower) answer(m Match, err error) {
 	f.busy = false
 	if !f.hearing {
@@ -147,7 +147,7 @@ func (f *follower) answer(m Match, err error) {
 			}
 		}
 	case err != nil:
-		// Not an answer. Nothing is learned from a recogniser that could
+		// Not an answer. Nothing is learned from a recognizer that could
 		// not be reached, least of all that the music is unknown.
 	default:
 		f.answered = true
@@ -175,7 +175,7 @@ func (f *follower) adopt(m Match) {
 }
 
 // state is what the follower believes. Music is not reported until the
-// recogniser has had its say once: a needle that has just come down is
+// recognizer has had its say once: a needle that has just come down is
 // followed by a track a few seconds later, and "playing, nobody knows what"
 // in between would only blank the display.
 func (f *follower) state() (playing bool, track *contract.Track) {

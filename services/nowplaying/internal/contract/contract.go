@@ -67,8 +67,8 @@ type Art struct {
 	SHA256 string `json:"sha256"`
 	MIME   string `json:"mime,omitempty"`
 	// From says where the image came from: the player itself, or the
-	// catalogue nowplayd found it in. A cover from the player is the right
-	// cover; one from a catalogue is a good guess.
+	// catalog nowplayd found it in. A cover from the player is the right
+	// cover; one from a catalog is a good guess.
 	From string `json:"from,omitempty"`
 }
 

@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { periodMs, render, validate } from "./static/effects.js";
 
 const STRIP = 60;
-const twoColour = (over = {}) =>
+const twoColor = (over = {}) =>
   validate({
     effect: "solid", speed: 0.5, brightness: 1,
     palette: [{ rgb: [200, 20, 20], weight: 0.75 }, { rgb: [20, 20, 200], weight: 0.25 }],
@@ -13,20 +13,20 @@ const twoColour = (over = {}) =>
   });
 
 test("solid is uniform and scaled", () => {
-  const px = render(twoColour({ brightness: 0.5 }), 0, STRIP);
+  const px = render(twoColor({ brightness: 0.5 }), 0, STRIP);
   assert.deepEqual(px[0], [100, 10, 10]);
   assert.ok(px.every((p) => p.join() === px[0].join()));
 });
 
 test("zero brightness is black", () => {
   for (const effect of ["solid", "breathe", "sweep"]) {
-    const px = render(twoColour({ effect, brightness: 0 }), 1234, STRIP);
+    const px = render(twoColor({ effect, brightness: 0 }), 1234, STRIP);
     assert.ok(px.every((p) => p.join() === "0,0,0"), effect);
   }
 });
 
 test("breathe never goes fully dark, and does vary", () => {
-  const scene = twoColour({ effect: "breathe" });
+  const scene = twoColor({ effect: "breathe" });
   let lo = 255, hi = 0;
   for (let t = 0; t < 8000; t += 25) {
     const r = render(scene, t, STRIP)[0][0];
@@ -36,20 +36,20 @@ test("breathe never goes fully dark, and does vary", () => {
   assert.ok(hi - lo > 60, `range is only ${hi - lo}`);
 });
 
-test("breathe is the dominant colour, uniform across the strip", () => {
-  const px = render(twoColour({ effect: "breathe" }), 1234, STRIP);
+test("breathe is the dominant color, uniform across the strip", () => {
+  const px = render(twoColor({ effect: "breathe" }), 1234, STRIP);
   assert.ok(px.every((p) => p.join() === px[0].join()));
-  assert.ok(px[0][0] > px[0][2], "not the dominant colour");
+  assert.ok(px[0][0] > px[0][2], "not the dominant color");
 });
 
-test("sweep honours palette weights", () => {
-  const px = render(twoColour({ effect: "sweep", speed: 0 }), 0, STRIP);
+test("sweep honors palette weights", () => {
+  const px = render(twoColor({ effect: "sweep", speed: 0 }), 0, STRIP);
   const share = px.filter((p) => p[0] > p[2]).length / STRIP;
-  assert.ok(share > 0.6 && share < 0.9, `the 0.75 colour covers ${share}`);
+  assert.ok(share > 0.6 && share < 0.9, `the 0.75 color covers ${share}`);
 });
 
-test("sweep scrolls, and comes round", () => {
-  const scene = twoColour({ effect: "sweep", speed: 1 });
+test("sweep scrolls, and comes around", () => {
+  const scene = twoColor({ effect: "sweep", speed: 1 });
   const first = render(scene, 0, STRIP);
   assert.notDeepEqual(render(scene, 300, STRIP), first);
   assert.deepEqual(render(scene, periodMs(1), STRIP), first);
@@ -100,7 +100,7 @@ test("morph and chase are known effects, not shown as solid", () => {
   assert.equal(accented({ effect: "chase" }).effect, "chase");
 });
 
-test("morph is one colour for the whole strip, visits every colour, and returns", () => {
+test("morph is one color for the whole strip, visits every color, and returns", () => {
   const scene = accented();
   const loop = 3500 * 2 * 3;
   assert.deepEqual(render(scene, 0, STRIP)[0], [30, 40, 200]);
@@ -114,7 +114,7 @@ test("morph is one colour for the whole strip, visits every colour, and returns"
   assert.deepEqual(render(scene, loop, STRIP)[0], render(scene, 0, STRIP)[0]);
 });
 
-test("morph gives the dominant colour the longest turn, and never jumps", () => {
+test("morph gives the dominant color the longest turn, and never jumps", () => {
   const scene = accented();
   const shown = [0, 0, 0];
   let before = render(scene, 0, 1)[0], worst = 0;
@@ -129,11 +129,11 @@ test("morph gives the dominant colour the longest turn, and never jumps", () => 
   assert.ok(worst < 14, `jumped ${worst} in one step`);
 });
 
-test("chase shows each accent over the dominant colour, wider for a larger share", () => {
+test("chase shows each accent over the dominant color, wider for a larger share", () => {
   const scene = accented({ effect: "chase" });
   const px = render(scene, 875, STRIP);
   const ground = px.filter((p) => far(p, [30, 40, 200]) === 0).length;
-  assert.ok(ground > STRIP / 2, `only ${ground} pixels are the dominant colour`);
+  assert.ok(ground > STRIP / 2, `only ${ground} pixels are the dominant color`);
   const patches = px.filter((p) => far(p, [30, 40, 200]) !== 0);
   const reddish = patches.filter((p) => p[1] < 100).length;
   const yellowish = patches.length - reddish;
@@ -142,7 +142,7 @@ test("chase shows each accent over the dominant colour, wider for a larger share
   assert.ok(Math.min(...px.map((p) => far(p, [240, 220, 90]))) < 25);
 });
 
-test("chase moves, comes round, and has no edge at the seam", () => {
+test("chase moves, comes around, and has no edge at the seam", () => {
   const scene = accented({ effect: "chase" });
   const first = render(scene, 0, STRIP);
   assert.notDeepEqual(render(scene, 300, STRIP), first);
@@ -155,7 +155,7 @@ test("chase moves, comes round, and has no edge at the seam", () => {
   }
 });
 
-test("with one colour the accent effects are that colour", () => {
+test("with one color the accent effects are that color", () => {
   for (const effect of ["morph", "chase"]) {
     const scene = validate({ effect, speed: 0.5, brightness: 1, palette: [{ rgb: [30, 40, 200], weight: 1 }] });
     for (let t = 0; t < 9000; t += 450) {

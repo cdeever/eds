@@ -165,7 +165,7 @@ func TestCoverMultipartUpload(t *testing.T) {
 	}
 }
 
-func TestCoverHonoursStandAndEffectAndN(t *testing.T) {
+func TestCoverHonorsStandAndEffectAndN(t *testing.T) {
 	ex := &fakeExtractor{resp: goodPalette()}
 	pub := &fakePublisher{}
 
@@ -419,7 +419,7 @@ func TestApplyCoverPublishesWhatHTTPWould(t *testing.T) {
 }
 
 // What the topic delivered is what GET /v1/scene reports, so "why is the
-// stand that colour" has one answer whichever input set it.
+// stand that color" has one answer whichever input set it.
 func TestApplyCoverIsVisibleAsLastScene(t *testing.T) {
 	srv := newServer(t, &fakeExtractor{resp: goodPalette()}, &fakePublisher{})
 	if err := srv.ApplyCover(context.Background(), []byte("COVER")); err != nil {
@@ -571,10 +571,10 @@ func TestWhatCountsAsTemporary(t *testing.T) {
 }
 
 // Only the latest scene is kept on the broker, so the log line is the one
-// record of what a cover produced. It has to say which colours, not only how
+// record of what a cover produced. It has to say which colors, not only how
 // many: found by wanting to know, and having to ask for an album to be played
 // again.
-func TestThePublishedSceneIsLoggedWithItsColours(t *testing.T) {
+func TestThePublishedSceneIsLoggedWithItsColors(t *testing.T) {
 	var out strings.Builder
 	srv := New(Options{
 		Extractor: &fakeExtractor{resp: goodPalette()}, Publisher: &fakePublisher{},
@@ -587,7 +587,7 @@ func TestThePublishedSceneIsLoggedWithItsColours(t *testing.T) {
 
 	line := out.String()
 	if !strings.Contains(line, "palette=") || strings.Count(line, "#") != 2 || !strings.Contains(line, "60%") || !strings.Contains(line, "40%") {
-		t.Errorf("the log line does not name the colours and their shares: %s", line)
+		t.Errorf("the log line does not name the colors and their shares: %s", line)
 	}
 }
 
@@ -655,7 +655,7 @@ func TestTheSameCoverLightsTheRoomAgainAfterIdle(t *testing.T) {
 		t.Errorf("the cover came back as %s, was %s", pub.payloads[2], pub.payloads[0])
 	}
 
-	// And idle is said again afterwards.
+	// And idle is said again afterward.
 	_ = srv.ClearCover(context.Background())
 	if pub.count() != 4 {
 		t.Errorf("published %d scenes; idle after a cover was not sent", pub.count())

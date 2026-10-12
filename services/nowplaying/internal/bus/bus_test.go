@@ -7,7 +7,7 @@ import (
 )
 
 // Broker tests are gated the way lightd's are: they need a real broker,
-// because retention and the last will are the broker's behaviour and a fake
+// because retention and the last will are the broker's behavior and a fake
 // would only confirm what the fake was written to do.
 func testBroker(t *testing.T) string {
 	t.Helper()

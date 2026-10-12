@@ -2,11 +2,11 @@
 """eds-recognize - name the track in a few seconds of audio.
 
 A WAV file on standard input; one JSON object on standard output: artist,
-title and album, or an empty object when the recogniser does not know. Any
+title and album, or an empty object when the recognizer does not know. Any
 failure is a non-zero exit and a line on standard error.
 
 This is the whole of what the agent's turntable driver knows about its
-recogniser (ADR-0021), and the only file that knows which recogniser it is:
+recognizer (ADR-0021), and the only file that knows which recognizer it is:
 Shazam's, through ShazamIO, which speaks to an endpoint nobody published.
 When that stops working, this file is what is replaced.
 

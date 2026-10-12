@@ -65,7 +65,7 @@ type Client struct {
 }
 
 // NewClient builds a client. Requests carry no overall timeout, because the
-// one that matters most is meant to hang: see Wait. Dialling and the response
+// one that matters most is meant to hang: see Wait. Dialing and the response
 // headers of an ordinary request are bounded instead.
 func NewClient(host string, port int) *Client {
 	if port == 0 {

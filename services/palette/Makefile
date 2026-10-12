@@ -1,4 +1,4 @@
-# palette - album cover art in, ranked colour swatches out.
+# palette - album cover art in, ranked color swatches out.
 .ONESHELL:
 SHELL := /usr/bin/bash
 .SHELLFLAGS := -euo pipefail -c

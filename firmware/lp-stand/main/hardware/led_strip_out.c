@@ -49,7 +49,7 @@ esp_err_t lp_strip_show(const lp_rgb_t *pixels, size_t count)
     for (size_t i = 0; i < count; i++) {
         // Gamma is applied here, at the hardware, and deliberately nowhere
         // upstream: it is a property of this driver, and keeping it off the
-        // wire means mosquitto_sub shows the colours actually intended.
+        // wire means mosquitto_sub shows the colors actually intended.
         esp_err_t err = led_strip_set_pixel(strip, i,
                                             lp_gamma8(pixels[i].r),
                                             lp_gamma8(pixels[i].g),

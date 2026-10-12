@@ -114,7 +114,7 @@ func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &handler{reporter: h.reporter, next: h.next.WithAttrs(attrs), attrs: kept}
 }
 
-// Groups are passed on and not otherwise honoured: the agent uses none, and
+// Groups are passed on and not otherwise honored: the agent uses none, and
 // an event is a flat line.
 func (h *handler) WithGroup(name string) slog.Handler {
 	return &handler{reporter: h.reporter, next: h.next.WithGroup(name), attrs: h.attrs}

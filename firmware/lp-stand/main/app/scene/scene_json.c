@@ -16,8 +16,8 @@ static float json_number(const cJSON *object, const char *key, float fallback)
     return (float)item->valuedouble;
 }
 
-// channel reads one 0..255 colour component, refusing out-of-range values
-// rather than truncating them into a different colour.
+// channel reads one 0..255 color component, refusing out-of-range values
+// rather than truncating them into a different color.
 static bool channel(const cJSON *array, int index, uint8_t *out)
 {
     const cJSON *item = cJSON_GetArrayItem(array, index);
@@ -72,7 +72,7 @@ bool lp_scene_parse(const char *json, size_t length, lp_scene_t *out)
     const cJSON *entry = NULL;
     cJSON_ArrayForEach(entry, palette) {
         if (parsed.palette_len >= LP_MAX_COLORS) {
-            break; // extra colours are ignored, not an error
+            break; // extra colors are ignored, not an error
         }
         const cJSON *rgb = cJSON_GetObjectItemCaseSensitive(entry, "rgb");
         if (!cJSON_IsArray(rgb) || cJSON_GetArraySize(rgb) != 3) {

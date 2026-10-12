@@ -104,10 +104,10 @@ if [[ ",$drivers," == *",turntable,"* ]]; then
         if [[ "$device" != *:* ]]; then ok "listening to $device"
         elif [[ -e "/proc/asound/$card" ]]; then ok "listening to $device"
         else fail "$device is not plugged in (cards: $(awk -F'[][]' '/\[/{printf "%s ", $2}' /proc/asound/cards))"; fi
-        if /opt/eds-recognize/bin/python -c 'import shazamio' 2>/dev/null; then ok "recogniser installed"; else fail "recogniser is not installed: eds-agent-turntable-install"; fi
+        if /opt/eds-recognize/bin/python -c 'import shazamio' 2>/dev/null; then ok "recognizer installed"; else fail "recognizer is not installed: eds-agent-turntable-install"; fi
         if timeout 5 bash -c "</dev/tcp/amp.shazam.com/443" 2>/dev/null; then ok "amp.shazam.com:443 reachable"; else fail "amp.shazam.com:443 not reachable"; fi
         # The last word on each, since the agent started: an input lost and
-        # found again is not a failure, and nor is a recogniser that is back.
+        # found again is not a failure, and nor is a recognizer that is back.
         said="$(sudo journalctl -u npagent -b --no-pager -o cat 2>/dev/null | grep 'driver=turntable')"
         input="$(grep -E 'event=(turntable\.capture_lost|driver\.online)' <<<"$said" | tail -1)"
         asked="$(grep -E 'event=turntable\.recognizer_(failed|back)' <<<"$said" | tail -1)"

@@ -12,7 +12,7 @@
 // lp_scene_parse reads a scene descriptor into `out`.
 //
 // Returns false for anything it cannot make sense of - wrong contract version,
-// malformed JSON, no usable colours - leaving `out` untouched. The caller keeps
+// malformed JSON, no usable colors - leaving `out` untouched. The caller keeps
 // rendering whatever it already had: a stand that goes dark on a bad payload is
 // worse than one that ignores it.
 bool lp_scene_parse(const char *json, size_t length, lp_scene_t *out);

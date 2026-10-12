@@ -211,7 +211,7 @@ func script(t *testing.T, body string) string {
 	return path
 }
 
-func TestTheRecogniserIsAProgram(t *testing.T) {
+func TestTheRecognizerIsAProgram(t *testing.T) {
 	clip := make([]int16, Rate)
 	for i := range clip {
 		clip[i] = int16(i)

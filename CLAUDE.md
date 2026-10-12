@@ -351,15 +351,16 @@ broker into the tenant is an ADR, not a config change.
 
 ## Conventions that matter
 
-- **Write American English**, everywhere a person reads: the docs site, the
-  READMEs, records, comments, log lines and the console's page. "Color",
-  "catalog", "recognizer", "gray", "behavior"; "around", not "round";
-  "parentheses", not "brackets". Its owner is American, and the docs were
-  swept on 2026-10-12. A name that already exists is left as it is: an
-  identifier, a setting (`NP_CATALOGUES`), a file name, a URL, or text quoted
-  from a program. Spelling is not a reason to rename something that is
-  referred to.
-
+- **Write American English**, everywhere a person reads and in the code
+  itself: the docs site, the READMEs, records, comments, log lines, the
+  console's page, and the names of things. "Color", "catalog", "recognizer",
+  "gray", "behavior", "center"; "around", not "round"; "parentheses", not
+  "brackets". Its owner is American; the docs and then the code were swept
+  on 2026-10-12. **A name that something outside its own source refers to
+  keeps the spelling it has**: a setting (`NP_CATALOGUES`), a topic, an
+  event name already in the log store, a page's URL
+  (`0008-the-stand-reports-its-colours`), or text quoted from what a program
+  once printed. Spelling is not a reason to break a reference.
 - **Configuration is all environment variables in lightd**, no config file — the
   broker credentials must never land on disk in the repository, and one binary
   must work under systemd or a container. Invalid values stop the daemon rather

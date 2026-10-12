@@ -38,7 +38,7 @@ if [[ ! "$client_id" =~ ^[0-9a-f]{32}$ ]]; then
 fi
 
 # A directory of its own, so this never touches an agent being run on this
-# machine, and so what is left behind afterwards is nothing.
+# machine, and so what is left behind afterward is nothing.
 state="$(mktemp -d)"
 trap 'rm -rf "$state"' EXIT
 export NP_STATE_DIR="$state"

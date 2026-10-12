@@ -1,7 +1,7 @@
 // Command lightd turns album cover art into light on an LP jacket stand.
 //
 // It takes a cover image - over HTTP, or from an MQTT topic when one is
-// configured - asks the palette service for the colours in it, maps those onto
+// configured - asks the palette service for the colors in it, maps those onto
 // a scene descriptor, and publishes that scene retained to the stand's MQTT
 // topic.
 package main
@@ -98,7 +98,7 @@ func run(logger *slog.Logger) error {
 		// A retained cover arrives within moments of subscribing. If none
 		// does, the topic is empty, and it may have been emptied while this
 		// was not listening: an emptied retained topic is not delivered to
-		// whoever subscribes afterwards. So silence is taken for what it is.
+		// whoever subscribes afterward. So silence is taken for what it is.
 		time.AfterFunc(5*time.Second, func() {
 			if !heard.Load() {
 				logger.Info("no cover on the topic; taking it that nothing is playing", "topic", topic)

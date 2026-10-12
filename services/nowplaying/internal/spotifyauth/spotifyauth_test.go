@@ -348,7 +348,7 @@ func TestACallbackWithTheWrongStateIsRefusedAndChangesNothing(t *testing.T) {
 		t.Fatalf("a refused request ended the wait: %+v", <-done)
 	}
 
-	// And the real one still works afterwards.
+	// And the real one still works afterward.
 	if rec := callback(t, h, "/callback?code=the-code&state=the-state"); rec.Code != http.StatusOK {
 		t.Fatalf("the real callback was answered %d", rec.Code)
 	}

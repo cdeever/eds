@@ -1,6 +1,6 @@
 // Package smallcover makes a cover small.
 //
-// A cover arrives as the player or a catalogue had it: up to 600 pixels a
+// A cover arrives as the player or a catalog had it: up to 600 pixels a
 // side, a JPEG of either kind or a PNG, tens or hundreds of kilobytes. That
 // suits a program with memory to spare. It does not suit a subscriber with a
 // hundred kilobytes for everything, which cannot hold the image, let alone
@@ -64,8 +64,8 @@ func Make(data []byte) ([]byte, error) {
 
 	small := Scale(src, Side)
 
-	// Encoded from RGBA and never from a grey image, even for a cover with
-	// no colour in it: a grey image is written with one component, and the
+	// Encoded from RGBA and never from a gray image, even for a cover with
+	// no color in it: a gray image is written with one component, and the
 	// promise is three. The encoder writes baseline, which is the other half
 	// of the promise - it has no progressive mode to choose by mistake.
 	for _, quality := range qualities {
@@ -142,7 +142,7 @@ func spans(from, to int) [][]span {
 	out := make([][]span, to)
 	if to >= from {
 		for i := range out {
-			// Where the centre of this pixel falls among the source's.
+			// Where the center of this pixel falls among the source's.
 			pos := (float64(i)+0.5)*float64(from)/float64(to) - 0.5
 			lo := int(pos)
 			if pos < 0 {

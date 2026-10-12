@@ -13,8 +13,8 @@ func TestDefaults(t *testing.T) {
 	if cfg.Broker.URL != "tcp://127.0.0.1:1883" || cfg.Broker.ClientID != "eds-nowplayd" || cfg.Prefix != "eds" {
 		t.Errorf("broker %q as %q under %q", cfg.Broker.URL, cfg.Broker.ClientID, cfg.Prefix)
 	}
-	if len(cfg.Catalogues) != 3 || cfg.Catalogues[0] != "deezer" {
-		t.Errorf("catalogues = %v", cfg.Catalogues)
+	if len(cfg.Catalogs) != 3 || cfg.Catalogs[0] != "deezer" {
+		t.Errorf("catalogs = %v", cfg.Catalogs)
 	}
 	if cfg.UserAgent != "eds-nowplaying/0.1 ( https://github.com/cdeever/eds )" {
 		t.Errorf("user agent = %q", cfg.UserAgent)
@@ -40,7 +40,7 @@ func TestKitEnv(t *testing.T) {
 		t.Errorf("url = %q", cfg.Broker.URL)
 	}
 	if cfg.Prefix != "bench1" || cfg.Broker.Username != "bench1-nowplayd" || cfg.Broker.CAFile != "/kit/deevnet-root-ca.pem" {
-		t.Errorf("kit names not honoured: %+v under %q", cfg.Broker, cfg.Prefix)
+		t.Errorf("kit names not honored: %+v under %q", cfg.Broker, cfg.Prefix)
 	}
 }
 
@@ -67,20 +67,20 @@ func TestOwnSettingsWinOverKitEnv(t *testing.T) {
 	}
 }
 
-func TestCataloguesCanBeChosenAndSwitchedOff(t *testing.T) {
+func TestCatalogsCanBeChosenAndSwitchedOff(t *testing.T) {
 	t.Setenv("NP_CATALOGUES", " itunes , ,musicbrainz")
 	cfg, err := LoadNowplayd("0.1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cfg.Catalogues) != 2 || cfg.Catalogues[0] != "itunes" || cfg.Catalogues[1] != "musicbrainz" {
-		t.Errorf("catalogues = %v", cfg.Catalogues)
+	if len(cfg.Catalogs) != 2 || cfg.Catalogs[0] != "itunes" || cfg.Catalogs[1] != "musicbrainz" {
+		t.Errorf("catalogs = %v", cfg.Catalogs)
 	}
 
 	t.Setenv("NP_CATALOGUES", "")
 	cfg, err = LoadNowplayd("0.1")
-	if err != nil || len(cfg.Catalogues) != 0 {
-		t.Errorf("an empty list did not switch lookups off: %v, %v", cfg.Catalogues, err)
+	if err != nil || len(cfg.Catalogs) != 0 {
+		t.Errorf("an empty list did not switch lookups off: %v, %v", cfg.Catalogs, err)
 	}
 }
 
@@ -91,7 +91,7 @@ func TestInvalidValuesStopTheProgram(t *testing.T) {
 		"an empty prefix":                {"NP_TOPIC_PREFIX": ""},
 		"a prefix of several levels":     {"NP_TOPIC_PREFIX": "eds/nowplaying"},
 		"a wildcard prefix":              {"NP_TOPIC_PREFIX": "+"},
-		"no contact for catalogues":      {"NP_CONTACT": " "},
+		"no contact for catalogs":        {"NP_CONTACT": " "},
 		"a timeout that is not one":      {"NP_LOOKUP_TIMEOUT": "ten"},
 		"a timeout of nothing":           {"NP_LOOKUP_TIMEOUT": "0s"},
 		"a timeout of an hour":           {"NP_LOOKUP_TIMEOUT": "1h"},

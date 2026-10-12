@@ -15,7 +15,7 @@ import (
 var (
 	pngA = []byte("\x89PNG\r\n\x1a\n-cover-A")
 	pngB = []byte("\x89PNG\r\n\x1a\n-cover-B")
-	jpeg = []byte("\xff\xd8\xff\xe0-a-jpeg-from-a-catalogue")
+	jpeg = []byte("\xff\xd8\xff\xe0-a-jpeg-from-a-catalog")
 )
 
 type published struct {
@@ -88,7 +88,7 @@ func decode(t *testing.T, p published) contract.State {
 }
 
 // The whole promise: something is playing, so current has a title, an album
-// and art - here from the player itself, with no catalogue asked.
+// and art - here from the player itself, with no catalog asked.
 func TestThePlayersOwnCoverIsUsedAndNothingIsLookedUp(t *testing.T) {
 	bus, res := &fakeBus{}, &fakeResolver{err: resolve.ErrNotFound}
 	cover := NewImage(pngA)
@@ -119,7 +119,7 @@ func TestThePlayersOwnCoverIsUsedAndNothingIsLookedUp(t *testing.T) {
 		t.Errorf("art = %+v", got.Art)
 	}
 	if len(res.asked) != 0 {
-		t.Error("a catalogue was asked although the player supplied the cover")
+		t.Error("a catalog was asked although the player supplied the cover")
 	}
 }
 
@@ -158,9 +158,9 @@ func TestAMissingAlbumIsFilledIn(t *testing.T) {
 	}
 }
 
-// A source that knows its album keeps its own name for it. The catalogue's
+// A source that knows its album keeps its own name for it. The catalog's
 // "Kind Of Blue (Legacy Edition)" is not an improvement.
-func TestAKnownAlbumIsNotRenamedByACatalogue(t *testing.T) {
+func TestAKnownAlbumIsNotRenamedByACatalog(t *testing.T) {
 	bus := &fakeBus{}
 	res := &fakeResolver{result: resolve.Result{Album: "Kind Of Blue (Legacy Edition)", Cover: &resolve.Cover{Image: jpeg, From: "deezer"}}}
 
@@ -211,8 +211,8 @@ func TestACoverThatBelongsToAnotherTrackIsNotUsed(t *testing.T) {
 // the track that is playing.
 func TestWhenNothingHasTheCoverTheTrackIsStillPublished(t *testing.T) {
 	for name, err := range map[string]error{
-		"not found":      resolve.ErrNotFound,
-		"catalogue down": errors.New("connection refused"),
+		"not found":    resolve.ErrNotFound,
+		"catalog down": errors.New("connection refused"),
 	} {
 		t.Run(name, func(t *testing.T) {
 			bus := &fakeBus{}
@@ -239,7 +239,7 @@ func TestWithNoResolverNothingIsLookedUp(t *testing.T) {
 }
 
 // The next track on the same album has the same cover. Publishing it again
-// would make lightd repaint a room that is already the right colour.
+// would make lightd repaint a room that is already the right color.
 func TestTheSameCoverIsNotPublishedTwice(t *testing.T) {
 	bus := &fakeBus{}
 	res := &fakeResolver{result: resolve.Result{Cover: &resolve.Cover{Image: jpeg, From: "deezer"}}}
@@ -398,7 +398,7 @@ func from(source, title, album string) *contract.State {
 }
 
 // The track is reported, truthfully and in full, and nothing is published
-// that could light a room: no cover from the source, none from a catalogue.
+// that could light a room: no cover from the source, none from a catalog.
 func TestACoverlessSourceIsReportedWithNoPicture(t *testing.T) {
 	bus := &fakeBus{}
 	res := &fakeResolver{result: resolve.Result{Album: "X", Cover: &resolve.Cover{Image: jpeg, From: "deezer"}}}
@@ -426,7 +426,7 @@ func TestACoverlessSourceIsReportedWithNoPicture(t *testing.T) {
 		t.Errorf("the track was not reported in full: %+v %+v", state, state.Track)
 	}
 	if len(res.asked) != 0 {
-		t.Error("a catalogue was asked about a coverless source")
+		t.Error("a catalog was asked about a coverless source")
 	}
 }
 
@@ -629,7 +629,7 @@ func TestACoverlessSourceGetsNoLook(t *testing.T) {
 
 // --- the small cover (ADR-0020) ----------------------------------------------
 
-// shrunk stands in for the scaler: what it makes is recognisably made from
+// shrunk stands in for the scaler: what it makes is recognizably made from
 // what it was given, and it counts how often it was asked.
 type shrunk struct {
 	calls int
@@ -816,9 +816,9 @@ func owned(bus *fakeBus, r Resolver, c Collection, sources ...string) *Publisher
 	return p
 }
 
-// The source heard a track and named the album a recogniser guessed. The
+// The source heard a track and named the album a recognizer guessed. The
 // collection knows the record: its title is the album, and its sleeve the
-// cover. No catalogue is asked.
+// cover. No catalog is asked.
 func TestARecordTheOwnerHasIsNamedByTheCollection(t *testing.T) {
 	bus := &fakeBus{}
 	res := &fakeResolver{result: resolve.Result{Album: "The Singles", Cover: &resolve.Cover{Image: pngA, From: "deezer"}}}
@@ -836,7 +836,7 @@ func TestARecordTheOwnerHasIsNamedByTheCollection(t *testing.T) {
 		t.Fatalf("the collection was asked %v", col.asked)
 	}
 	if len(res.asked) != 0 {
-		t.Fatalf("a catalogue was asked as well: %v", res.asked)
+		t.Fatalf("a catalog was asked as well: %v", res.asked)
 	}
 }
 
@@ -874,7 +874,7 @@ func TestARecordWithNoPictureIsLookedUpByItsOwnTitle(t *testing.T) {
 		t.Fatalf("album %q, art %+v", out.Track.Album, out.Art)
 	}
 	if len(res.asked) != 1 || res.asked[0].Album != "No Jacket Required" {
-		t.Fatalf("the catalogue was asked about %+v", res.asked)
+		t.Fatalf("the catalog was asked about %+v", res.asked)
 	}
 }
 

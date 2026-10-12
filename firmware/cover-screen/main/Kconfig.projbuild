@@ -31,7 +31,7 @@ menu "Cover screen"
                 Red and blue swapped on the screen means this is wrong.
 
         config CS_PANEL_INVERT
-            bool "Invert colours"
+            bool "Invert colors"
             default n
             help
                 A picture that looks like a photographic negative means this
@@ -82,7 +82,7 @@ menu "Cover screen"
                 itself; too high and it wants a fingernail.
 
         config CS_TOUCH_SWAP_XY
-            bool "The controller's axes are the other way round"
+            bool "The controller's axes are the other way around"
             default y
             help
                 A finger moved across the screen that moves the touch up and
@@ -108,7 +108,7 @@ menu "Cover screen"
             default 240
             help
                 The four readings are taken after the axes are swapped and
-                before either is turned round: the lower reading of each
+                before either is turned around: the lower reading of each
                 pair, then the higher.
         config CS_TOUCH_X_MAX
             int "Reading at the right edge"

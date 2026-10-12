@@ -40,7 +40,7 @@
       - avahi-utils    # avahi-publish, which the agent's pairing uses
       - nftables
       - alsa-utils     # arecord, which is how the turntable driver listens
-      - python3-venv   # the recogniser it asks is Python, kept to itself
+      - python3-venv   # the recognizer it asks is Python, kept to itself
 
     pi_eds_agent_units:
       - npagent.service
@@ -156,11 +156,11 @@
         - {src: eds-agent-spotify, dest: /usr/local/bin/eds-agent-spotify}
 
     # ------------------------------------------------------------
-    # The turntable's recogniser
+    # The turntable's recognizer
     # ------------------------------------------------------------
     # The same script a Pi in service is updated with (deploy/relay, push),
     # so an image and a pushed Pi cannot come to differ in it.
-    - name: Create the recogniser's directory
+    - name: Create the recognizer's directory
       ansible.builtin.file:
         path: "{{ chroot_root }}/usr/local/share/eds-recognize"
         state: directory
@@ -168,7 +168,7 @@
         group: root
         mode: "0755"
 
-    - name: Stage the recogniser
+    - name: Stage the recognizer
       ansible.builtin.copy:
         src: "files/{{ item.src }}"
         dest: "{{ chroot_root }}{{ item.dest }}"
@@ -180,7 +180,7 @@
         - {src: eds-recognize-requirements.txt, dest: /usr/local/share/eds-recognize/eds-recognize-requirements.txt, mode: "0644"}
         - {src: eds-agent-turntable-install, dest: /usr/local/sbin/eds-agent-turntable-install, mode: "0755"}
 
-    - name: Install the recogniser inside chroot
+    - name: Install the recognizer inside chroot
       ansible.builtin.command:
         cmd: "chroot {{ chroot_root }} /usr/local/sbin/eds-agent-turntable-install"
       changed_when: true
@@ -395,9 +395,9 @@
           - pi_eds_agent_forward_policy.stdout == "1"
         fail_msg: "Forwarding is not off in both the kernel settings and the firewall"
 
-    # A recogniser that cannot be imported is a turntable driver that is
+    # A recognizer that cannot be imported is a turntable driver that is
     # offline on every card, and says so only once it is in the rack.
-    - name: Check the recogniser can be imported
+    - name: Check the recognizer can be imported
       ansible.builtin.command:
         cmd: "chroot {{ chroot_root }} /opt/eds-recognize/bin/python -c 'import shazamio'"
       changed_when: false

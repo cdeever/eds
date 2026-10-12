@@ -24,7 +24,7 @@ static void on_connected(void)
     ESP_LOGI(TAG, "connected; subscribing to %s", LP_TOPIC_SCENE);
 
     // QoS 1. A dropped scene means the stand shows the previous record's
-    // colours until the next one, which is exactly the sort of quiet wrongness
+    // colors until the next one, which is exactly the sort of quiet wrongness
     // that is hard to notice and annoying to debug.
     esp_mqtt_client_subscribe(client, LP_TOPIC_SCENE, 1);
 
@@ -76,7 +76,7 @@ static void on_data(const esp_mqtt_event_handle_t event)
         return;
     }
 
-    ESP_LOGI(TAG, "scene: %s, %u colours, brightness %.2f",
+    ESP_LOGI(TAG, "scene: %s, %u colors, brightness %.2f",
              lp_effect_name(scene.effect), (unsigned)scene.palette_len, scene.brightness);
 
     if (scene_handler != NULL) {
@@ -214,7 +214,7 @@ esp_err_t lp_mqtt_start(lp_scene_handler on_scene)
         ESP_LOGW(TAG, "no event task; the stand will run without reporting events");
     }
 
-    ESP_LOGI(TAG, "dialling %s as %s; events on %s",
+    ESP_LOGI(TAG, "dialing %s as %s; events on %s",
              lp_cred_mqtt_uri(), lp_cred_mqtt_username(), LP_TOPIC_LOG);
     return esp_mqtt_client_start(client);
 }

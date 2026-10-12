@@ -9,10 +9,10 @@ import (
 	"strings"
 )
 
-// The three catalogues, in the order ADR-0008 tries them. Each needs no key
+// The three catalogs, in the order ADR-0008 tries them. Each needs no key
 // and no account. Base URLs are fields so the tests can stand in for them.
 
-// quoted makes a value safe inside a quoted search term. The catalogues'
+// quoted makes a value safe inside a quoted search term. The catalogs'
 // query languages all treat a double quote as syntax.
 func quoted(s string) string {
 	return strings.TrimSpace(strings.ReplaceAll(s, `"`, " "))
@@ -193,9 +193,9 @@ func getJSON(ctx context.Context, client *http.Client, userAgent, endpoint strin
 	return nil
 }
 
-// Named builds the catalogues an operator asked for by name, in that order.
-func Named(names []string, client *http.Client, userAgent string) ([]Catalogue, error) {
-	var out []Catalogue
+// Named builds the catalogs an operator asked for by name, in that order.
+func Named(names []string, client *http.Client, userAgent string) ([]Catalog, error) {
+	var out []Catalog
 	for _, name := range names {
 		switch strings.TrimSpace(strings.ToLower(name)) {
 		case "":
@@ -206,7 +206,7 @@ func Named(names []string, client *http.Client, userAgent string) ([]Catalogue, 
 		case "musicbrainz":
 			out = append(out, MusicBrainz{Base: "https://musicbrainz.org", CoverBase: "https://coverartarchive.org", HTTP: client, UserAgent: userAgent})
 		default:
-			return nil, fmt.Errorf("resolve: unknown catalogue %q (known: deezer, itunes, musicbrainz)", name)
+			return nil, fmt.Errorf("resolve: unknown catalog %q (known: deezer, itunes, musicbrainz)", name)
 		}
 	}
 	return out, nil

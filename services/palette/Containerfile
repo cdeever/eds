@@ -1,4 +1,4 @@
-# palette - album cover art in, ranked colour swatches out.
+# palette - album cover art in, ranked color swatches out.
 #
 # numpy and Pillow install as wheels, so the slim image needs no compiler.
 # Nothing is configured: palette reads no settings and holds no secrets.

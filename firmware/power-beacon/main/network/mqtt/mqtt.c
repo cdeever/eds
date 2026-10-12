@@ -162,7 +162,7 @@ esp_err_t pb_mqtt_start(void)
         ESP_LOGW(TAG, "no event task; the beacon will run without reporting events");
     }
 
-    ESP_LOGI(TAG, "dialling %s as %s; presence on %s, events on %s",
+    ESP_LOGI(TAG, "dialing %s as %s; presence on %s, events on %s",
              pb_cred_mqtt_uri(), pb_cred_mqtt_username(), PB_TOPIC_STATUS, PB_TOPIC_LOG);
     return esp_mqtt_client_start(client);
 }

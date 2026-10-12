@@ -6,7 +6,7 @@ sleeves rather than being generic image processing:
 1. Decode and downscale. Full resolution buys nothing for clustering.
 2. Convert to OKLab, because RGB clustering returns mud (see oklab module).
 3. Drop background pixels. A large share of sleeves are mostly black or white
-   field; cluster those in and the dominant colour is "dark", so the strip
+   field; cluster those in and the dominant color is "dark", so the strip
    just goes dim.
 4. Cluster what is left.
 5. Rank by population share and convert back to sRGB.
@@ -28,13 +28,13 @@ from PIL import Image, UnidentifiedImageError
 from .oklab import chroma, oklab_to_srgb, srgb_to_oklab
 
 # Clustering resolution. 160px on the long edge is ~25k pixels, which is far
-# more than enough to find six colours and keeps a request in the low
+# more than enough to find six colors and keeps a request in the low
 # milliseconds.
 DEFAULT_MAX_DIM = 160
 DEFAULT_SWATCHES = 6
 
 # Background thresholds in OKLab. L runs roughly 0..1; chroma of 0.035 is about
-# where a colour stops reading as a colour and starts reading as a grey.
+# where a color stops reading as a color and starts reading as a gray.
 DEFAULT_MIN_LIGHTNESS = 0.12
 DEFAULT_MAX_LIGHTNESS = 0.95
 DEFAULT_MIN_CHROMA = 0.035
@@ -94,7 +94,7 @@ def _load_pixels(data: bytes, max_dim: int) -> tuple[np.ndarray, SourceInfo]:
 
     # Flatten alpha onto white before dropping the channel: compositing onto
     # black would manufacture exactly the dark background the filter then
-    # removes, which would silently discard real colour on transparent art.
+    # removes, which would silently discard real color on transparent art.
     if image.mode in ("RGBA", "LA", "PA") or "transparency" in image.info:
         rgba = image.convert("RGBA")
         backdrop = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
@@ -114,28 +114,28 @@ def _kmeans(points: np.ndarray, k: int, *, seed: int) -> tuple[np.ndarray, np.nd
     keeps the service's dependency set small enough to matter on a small VM,
     and a fixed seed makes the output reproducible, which the tests rely on.
 
-    Returns (centres, counts) with empty clusters already removed.
+    Returns (centers, counts) with empty clusters already removed.
     """
     rng = np.random.default_rng(seed)
     n = len(points)
     k = min(k, n)
 
-    centres = np.empty((k, points.shape[1]), dtype=np.float64)
-    centres[0] = points[rng.integers(n)]
-    nearest_sq = np.sum((points - centres[0]) ** 2, axis=1)
+    centers = np.empty((k, points.shape[1]), dtype=np.float64)
+    centers[0] = points[rng.integers(n)]
+    nearest_sq = np.sum((points - centers[0]) ** 2, axis=1)
 
     for i in range(1, k):
         total = nearest_sq.sum()
         if total <= 0:
-            # Every remaining point is already a centre; pad arbitrarily.
-            centres[i] = points[rng.integers(n)]
+            # Every remaining point is already a center; pad arbitrarily.
+            centers[i] = points[rng.integers(n)]
         else:
-            centres[i] = points[rng.choice(n, p=nearest_sq / total)]
-        nearest_sq = np.minimum(nearest_sq, np.sum((points - centres[i]) ** 2, axis=1))
+            centers[i] = points[rng.choice(n, p=nearest_sq / total)]
+        nearest_sq = np.minimum(nearest_sq, np.sum((points - centers[i]) ** 2, axis=1))
 
     labels = np.zeros(n, dtype=np.int64)
     for _ in range(_KMEANS_ITERATIONS):
-        distances = ((points[:, None, :] - centres[None, :, :]) ** 2).sum(axis=2)
+        distances = ((points[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)
         labels = distances.argmin(axis=1)
 
         shift = 0.0
@@ -145,18 +145,18 @@ def _kmeans(points: np.ndarray, k: int, *, seed: int) -> tuple[np.ndarray, np.nd
                 # Reseed an empty cluster onto the worst-served point rather
                 # than dropping k silently.
                 worst = distances[np.arange(n), labels].argmax()
-                new_centre = points[worst]
+                new_center = points[worst]
             else:
-                new_centre = member.mean(axis=0)
-            shift = max(shift, float(np.sum((new_centre - centres[i]) ** 2)))
-            centres[i] = new_centre
+                new_center = member.mean(axis=0)
+            shift = max(shift, float(np.sum((new_center - centers[i]) ** 2)))
+            centers[i] = new_center
 
         if shift < _KMEANS_TOLERANCE:
             break
 
     counts = np.bincount(labels, minlength=k)
     keep = counts > 0
-    return centres[keep], counts[keep]
+    return centers[keep], counts[keep]
 
 
 def extract_palette(
@@ -191,14 +191,14 @@ def extract_palette(
     fallback = bool(keep.sum() < max(swatches, len(pixels) * MIN_KEEP_FRACTION))
     subject = lab if fallback else lab[keep]
 
-    centres, counts = _kmeans(subject, swatches, seed=seed)
+    centers, counts = _kmeans(subject, swatches, seed=seed)
 
     order = np.argsort(counts)[::-1]
-    centres, counts = centres[order], counts[order]
+    centers, counts = centers[order], counts[order]
     weights = counts / counts.sum()
 
-    rgb = np.rint(oklab_to_srgb(centres) * 255.0).astype(int)
-    centre_chroma = chroma(centres)
+    rgb = np.rint(oklab_to_srgb(centers) * 255.0).astype(int)
+    center_chroma = chroma(centers)
 
     result = [
         Swatch(
@@ -209,7 +209,7 @@ def extract_palette(
             chroma=round(float(ch), 4),
             lightness=round(float(c[0]), 4),
         )
-        for (r, g, b), c, w, ch in zip(rgb, centres, weights, centre_chroma)
+        for (r, g, b), c, w, ch in zip(rgb, centers, weights, center_chroma)
     ]
 
     return PaletteResult(

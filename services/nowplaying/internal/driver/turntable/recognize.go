@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Match is a track a recogniser named.
+// Match is a track a recognizer named.
 type Match struct {
 	Artist string `json:"artist"`
 	Title  string `json:"title"`
@@ -20,22 +20,22 @@ type Match struct {
 }
 
 // same compares what tells one track from the next. The album is left out:
-// the recogniser does not name it the same way twice.
+// the recognizer does not name it the same way twice.
 func (m Match) same(other Match) bool {
 	return plain(m.Artist) == plain(other.Artist) && plain(m.Title) == plain(other.Title)
 }
 
-// ErrNoMatch is a recogniser that answered, and did not know.
-var ErrNoMatch = errors.New("turntable: the recogniser does not know this")
+// ErrNoMatch is a recognizer that answered, and did not know.
+var ErrNoMatch = errors.New("turntable: the recognizer does not know this")
 
 // Recognizer names the track in a clip of mono audio at Rate. It is the seam
-// ADR-0021 keeps: the recogniser in use is not one anybody promised would
+// ADR-0021 keeps: the recognizer in use is not one anybody promised would
 // last, and its replacement is a second one of these, not a second driver.
 type Recognizer interface {
 	Recognize(ctx context.Context, clip []int16) (Match, error)
 }
 
-// Command is a recogniser that is a program: the clip goes to its standard
+// Command is a recognizer that is a program: the clip goes to its standard
 // input as a WAV file, and it prints one JSON object - artist, title, album -
 // or an empty one when it does not know. Anything else is a failure.
 type Command struct {

@@ -23,7 +23,7 @@ enableGitInfo = true
   BookEditLink = '{{ .Site.Params.BookRepo }}/edit/main/docs/{{ .Path }}'
   BookLastChangeLink = '{{ .Site.Params.BookRepo }}/commit/{{ .GitInfo.Hash }}'
   BookSection = "docs"
-  # Resolve in-content markdown links through the theme so they honour the
+  # Resolve in-content markdown links through the theme so they honor the
   # baseURL subpath (/eds/). Without this, absolute links like /docs/... render
   # literally and 404 on the project Pages site.
   BookPortableLinks = true

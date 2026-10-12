@@ -5,7 +5,7 @@
 // the page is of a stand that does not exist.
 //
 // Pure: no page, no clock. Gamma is left out on purpose, as it is on the
-// wire - these are the colours intended, which is what a screen should show.
+// wire - these are the colors intended, which is what a screen should show.
 
 const PERIOD_SLOW_MS = 6000;
 const PERIOD_FAST_MS = 1000;
@@ -27,7 +27,7 @@ export function periodMs(speed) {
 }
 
 // validate is what the stand does to a scene before it shows it: clamp,
-// drop colours with no share, and make the shares add up to one. Returns
+// drop colors with no share, and make the shares add up to one. Returns
 // null for a scene with nothing in it to show.
 export function validate(scene) {
   if (!scene || !Array.isArray(scene.palette)) return null;
@@ -67,7 +67,7 @@ const phase01 = (tMs, speed) => phaseIn(tMs, periodMs(speed));
 
 const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
-// morphColor is the one colour the whole strip shows at `phase`: each colour
+// morphColor is the one color the whole strip shows at `phase`: each color
 // has a turn, half by its share of the cover and half equal, and spends the
 // end of it turning into the next.
 function morphColor(scene, phase) {
@@ -88,7 +88,7 @@ function morphColor(scene, phase) {
 }
 
 // chaseColor is what position u shows when the lap is at `phase`: the
-// dominant colour, with each accent a soft-edged patch travelling over it,
+// dominant color, with each accent a soft-edged patch traveling over it,
 // alternate accents going opposite ways.
 function chaseColor(scene, u, phase) {
   let color = scene.palette[0].rgb;
@@ -96,9 +96,9 @@ function chaseColor(scene, u, phase) {
   for (let k = 0; k < accents; k++) {
     const accent = scene.palette[k + 1];
     const half = Math.min(CHASE_MAX_WIDTH, CHASE_MIN_WIDTH + accent.weight) * 0.5;
-    let centre = k / accents + (k % 2 === 0 ? phase : -phase);
-    centre -= Math.floor(centre);
-    let distance = Math.abs(u - centre);
+    let center = k / accents + (k % 2 === 0 ? phase : -phase);
+    center -= Math.floor(center);
+    let distance = Math.abs(u - center);
     if (distance > 0.5) distance = 1 - distance;
     if (distance < half) {
       color = mix(color, accent.rgb, 0.5 + 0.5 * Math.cos((Math.PI * distance) / half));
@@ -107,7 +107,7 @@ function chaseColor(scene, u, phase) {
   return color;
 }
 
-// sweepColor samples the palette at u (0..1 round the strip): bands as wide
+// sweepColor samples the palette at u (0..1 around the strip): bands as wide
 // as their shares, cross-faded over the tail of each.
 function sweepColor(scene, u) {
   u -= Math.floor(u);

@@ -125,10 +125,10 @@ func List(key, fallback string) []string {
 // Nowplayd is everything cmd/nowplayd needs.
 type Nowplayd struct {
 	Common
-	// Catalogues are where a missing album or cover is looked up, in order.
+	// Catalogs are where a missing album or cover is looked up, in order.
 	// Empty means never: current is then only as complete as its source.
-	Catalogues []string
-	// UserAgent is what catalogues are told. They ask for a way to reach
+	Catalogs []string
+	// UserAgent is what catalogs are told. They ask for a way to reach
 	// whoever is calling, and one refuses callers that give none.
 	UserAgent     string
 	LookupTimeout time.Duration
@@ -163,11 +163,11 @@ func LoadNowplayd(version string) (Nowplayd, error) {
 		return Nowplayd{}, err
 	}
 
-	cfg := Nowplayd{Common: common, Catalogues: List("NP_CATALOGUES", "deezer,itunes,musicbrainz")}
+	cfg := Nowplayd{Common: common, Catalogs: List("NP_CATALOGUES", "deezer,itunes,musicbrainz")}
 
 	contact := Str("NP_CONTACT", "https://github.com/cdeever/eds")
 	if strings.TrimSpace(contact) == "" {
-		return cfg, fmt.Errorf("config: NP_CONTACT must not be empty; catalogues require a way to reach the caller")
+		return cfg, fmt.Errorf("config: NP_CONTACT must not be empty; catalogs require a way to reach the caller")
 	}
 	cfg.UserAgent = fmt.Sprintf("eds-nowplaying/%s ( %s )", version, contact)
 

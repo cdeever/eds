@@ -10,7 +10,7 @@ import (
 
 // These tests need a real broker, because the property they check - that a
 // scene is still there for a client which was not connected when it was
-// published - is a broker behaviour, not a client one. A fake would prove
+// published - is a broker behavior, not a client one. A fake would prove
 // nothing.
 //
 //	LIGHTD_TEST_BROKER=tcp://127.0.0.1:21883 go test ./internal/broker/

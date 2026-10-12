@@ -2,7 +2,7 @@
 #
 # A static binary on distroless, like lightd: no shell, no package manager, a
 # non-root user. The image's CA roots matter here for more than the broker:
-# nowplayd asks public catalogues for covers over HTTPS. Settings are all
+# nowplayd asks public catalogs for covers over HTTPS. Settings are all
 # environment - see the README - and on Deevnet most come from kit.env.
 #
 # Only nowplayd is in the image. The agent runs on a Pi, not here.

@@ -23,10 +23,10 @@ var (
 	blue    = swatch(0.449, -0.036, -0.116, 0.30)
 	yellow  = swatch(0.804, 0.017, 0.161, 0.20)
 	green   = swatch(0.541, -0.104, 0.035, 0.07)
-	neutral = swatch(0.536, 0.0015, 0.021, 0.03) // chroma ~0.021, a grey
+	neutral = swatch(0.536, 0.0015, 0.021, 0.03) // chroma ~0.021, a gray
 )
 
-func TestBuildRanksAndNormalises(t *testing.T) {
+func TestBuildRanksAndNormalizes(t *testing.T) {
 	got, err := Build([]palette.Swatch{orange, blue, yellow, green}, DefaultOptions())
 	if err != nil {
 		t.Fatal(err)
@@ -48,26 +48,26 @@ func TestBuildRanksAndNormalises(t *testing.T) {
 	}
 }
 
-// The finding that motivated MinChroma: a high-weight grey would otherwise
+// The finding that motivated MinChroma: a high-weight gray would otherwise
 // light the stand with nothing at all.
 func TestDropsNeutralSwatchesEvenWhenHeavy(t *testing.T) {
-	heavyGrey := neutral
-	heavyGrey.Weight = 0.9
+	heavyGray := neutral
+	heavyGray.Weight = 0.9
 
-	got, err := Build([]palette.Swatch{heavyGrey, orange}, DefaultOptions())
+	got, err := Build([]palette.Swatch{heavyGray, orange}, DefaultOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if len(got.Palette) != 1 {
-		t.Fatalf("expected the grey to be dropped, got %d colours", len(got.Palette))
+		t.Fatalf("expected the gray to be dropped, got %d colors", len(got.Palette))
 	}
 	if got.Palette[0].Weight != 1.0 {
-		t.Errorf("surviving weight = %v, want renormalised to 1", got.Palette[0].Weight)
+		t.Errorf("surviving weight = %v, want renormalized to 1", got.Palette[0].Weight)
 	}
 	c := got.Palette[0]
 	if !(c.RGB[0] > c.RGB[2]) {
-		t.Errorf("surviving colour is not the orange: %v", c.RGB)
+		t.Errorf("surviving color is not the orange: %v", c.RGB)
 	}
 }
 
@@ -78,7 +78,7 @@ func TestNeverReturnsAnEmptyPalette(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(got.Palette) != 1 {
-		t.Fatalf("want exactly the most colourful swatch, got %d", len(got.Palette))
+		t.Fatalf("want exactly the most colorful swatch, got %d", len(got.Palette))
 	}
 	if got.Palette[0].Weight != 1.0 {
 		t.Errorf("weight = %v, want 1", got.Palette[0].Weight)
@@ -94,7 +94,7 @@ func TestTruncatesToMaxColors(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(got.Palette) != 2 {
-		t.Fatalf("got %d colours, want 2", len(got.Palette))
+		t.Fatalf("got %d colors, want 2", len(got.Palette))
 	}
 
 	var total float64
@@ -102,7 +102,7 @@ func TestTruncatesToMaxColors(t *testing.T) {
 		total += c.Weight
 	}
 	if math.Abs(total-1) > 1e-3 {
-		t.Errorf("weights not renormalised after truncation: sum %v", total)
+		t.Errorf("weights not renormalized after truncation: sum %v", total)
 	}
 }
 

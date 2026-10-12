@@ -2,11 +2,11 @@
 //
 // Almost every record is lit from its cover. A few are known by a look as
 // well as by a name, and for those the room should be lit by that, not by
-// whatever colours a fair reading of the sleeve finds. This is the list.
+// whatever colors a fair reading of the sleeve finds. This is the list.
 //
-// It names a look and nothing else. What a look is - which colours, which
+// It names a look and nothing else. What a look is - which colors, which
 // motion - is lightd's, which knows nothing about albums; this package knows
-// nothing about colours. The name is all that crosses.
+// nothing about colors. The name is all that crosses.
 //
 // The list is short on purpose. It is for records whose look is as well
 // known as their title.
@@ -19,7 +19,7 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 )
 
-// Spectrum is the colours of the rainbow, red to violet.
+// Spectrum is the colors of the rainbow, red to violet.
 const Spectrum = "spectrum"
 
 // A rule gives a look to an album by an artist. Both are written as a person
@@ -55,7 +55,7 @@ func For(t contract.Track) string {
 }
 
 // plain reduces a name to its letters and digits, lower case, without
-// anything in brackets and without a leading "the": what is left when
+// anything in parentheses and without a leading "the": what is left when
 // taggers' habits are taken away.
 func plain(s string) string {
 	var out strings.Builder

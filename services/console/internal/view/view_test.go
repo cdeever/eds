@@ -206,7 +206,7 @@ func TestAScreensPresence(t *testing.T) {
 func TestASceneIsHeldToWhatAStandWouldTake(t *testing.T) {
 	v := New("eds")
 	if v.Apply("eds/lightstand/a/scene", []byte(`{"v":1,"effect":"solid","palette":[]}`)) {
-		t.Fatal("a scene with no colours was taken")
+		t.Fatal("a scene with no colors was taken")
 	}
 	if v.Apply("eds/lightstand/a/scene", []byte(`{"v":2,"effect":"solid","palette":[{"rgb":[1,2,3],"weight":1}]}`)) {
 		t.Fatal("a scene of another version was taken")
