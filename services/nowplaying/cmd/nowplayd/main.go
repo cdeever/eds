@@ -17,12 +17,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
 	"github.com/cdeever/eds/services/nowplaying/internal/command"
 	"github.com/cdeever/eds/services/nowplaying/internal/config"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/current"
+	"github.com/cdeever/eds/services/nowplaying/internal/discogs"
 	"github.com/cdeever/eds/services/nowplaying/internal/hub"
 	"github.com/cdeever/eds/services/nowplaying/internal/looks"
 	"github.com/cdeever/eds/services/nowplaying/internal/resolve"
@@ -154,6 +156,34 @@ func run(logger *slog.Logger) error {
 		Prefix:    cfg.Prefix,
 		Timeout:   cfg.LookupTimeout,
 		Logger:    logger,
+	}
+	// The owner's records, for the sources that play them (ADR-0022). The
+	// token is never logged; whether there is one is.
+	if len(cfg.Owned) > 0 {
+		publisher.Owned = make(map[string]bool, len(cfg.Owned))
+		for _, source := range cfg.Owned {
+			publisher.Owned[source] = true
+		}
+		collection := &discogs.Collection{
+			User:      cfg.DiscogsUser,
+			Token:     cfg.DiscogsToken,
+			HTTP:      &http.Client{Timeout: cfg.LookupTimeout},
+			UserAgent: cfg.UserAgent,
+			Logger:    logger,
+		}
+		publisher.Collection = collection
+		logger.Info("looking these sources up in the owner's collection first",
+			"sources", cfg.Owned, "discogs_user", cfg.DiscogsUser, "token", cfg.DiscogsToken != "")
+		// Listed now, and not when the first record is played. Not waited
+		// for, and not fatal: a collection that cannot be read is said so,
+		// and tracks are completed the ordinary way until it can.
+		go func() {
+			listing, cancel := context.WithTimeout(ctx, time.Minute)
+			defer cancel()
+			if err := collection.Warm(listing); err != nil {
+				logger.Warn("the owner's collection could not be read", "error", err)
+			}
+		}()
 	}
 
 	for {

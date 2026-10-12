@@ -24,7 +24,7 @@ VERSION   ?= $(shell git -C $(REPO) describe --always --dirty 2>/dev/null || ech
 SERVICES := eds-palette eds-lightd eds-nowplayd eds-console
 UNITS    := $(addsuffix .service,$(SERVICES))
 
-.PHONY: help images load kit-env broker-env tls-files ship units deploy restart status logs clean
+.PHONY: help images load kit-env broker-env tls-files discogs-env ship units deploy restart status logs clean
 
 help:
 	@echo "deploy - palette, lightd, nowplayd and the console onto $(HOST)"
@@ -106,11 +106,23 @@ ship: images
 	$(MAKE) load
 	ssh $(HOST) sudo systemctl restart $(SERVICES)
 
-units: kit-env tls-files
+# discogs.env is kept by hand: NP_DISCOGS_USER and NP_DISCOGS_TOKEN, a personal
+# access token from discogs.com/settings/developers. Secret, gitignored, and
+# not removed by `clean`: nothing here can make it again.
+discogs-env:
+	@if [[ ! -s discogs.env ]]; then \
+		echo "No discogs.env here. nowplayd.env names a source to look up in a Discogs" >&2; \
+		echo "collection (ADR-0022), and discogs.env says whose:" >&2; \
+		echo "  NP_DISCOGS_USER=<the Discogs username>" >&2; \
+		echo "  NP_DISCOGS_TOKEN=<a personal access token>" >&2; \
+		exit 2; fi
+	@chmod 600 discogs.env
+
+units: kit-env tls-files discogs-env
 	ssh $(HOST) 'sudo install -d -m 0755 /opt/eds && mkdir -p ~/eds-deploy'
-	scp kit.env lightd.env nowplayd.env nowplayd-broker.env console.env console-broker.env $(INFRA)/deevnet-root-ca.pem tls/console.key tls/console.crt $(UNITS) $(HOST):eds-deploy/
+	scp kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env $(INFRA)/deevnet-root-ca.pem tls/console.key tls/console.crt $(UNITS) $(HOST):eds-deploy/
 	ssh $(HOST) 'cd ~/eds-deploy && \
-		sudo install -m 0600 kit.env lightd.env nowplayd.env nowplayd-broker.env console.env console-broker.env /opt/eds/ && \
+		sudo install -m 0600 kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env /opt/eds/ && \
 		sudo install -m 0644 deevnet-root-ca.pem /opt/eds/ && \
 		sudo install -d -m 0700 -o 65532 -g 65532 /opt/eds/tls && \
 		sudo install -m 0400 -o 65532 -g 65532 console.key console.crt /opt/eds/tls/ && \

@@ -71,7 +71,7 @@ The same shape on a source topic and on `current`.
 | `art` | optional | describes the image on the matching `art` topic |
 | `art.sha256` | required within `art` | the SHA-256 of that image, in hex |
 | `art.mime` | optional | |
-| `art.from` | on `current` | `player` when the source supplied it, else the catalogue it was found in |
+| `art.from` | on `current` | `player` when the source supplied it; `discogs` when it is the sleeve of a record in the owner's collection ([ADR-0022](/docs/architecture/decisions/0022-the-owners-collection-names-the-record/)); else the catalogue it was found in |
 
 Unknown fields are ignored, so one can be added without breaking a subscriber
 that has not been rebuilt.

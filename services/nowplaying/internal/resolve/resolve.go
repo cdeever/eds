@@ -291,6 +291,11 @@ func similar(a, b string) bool {
 	return x == y || strings.Contains(x, y) || strings.Contains(y, x)
 }
 
+// Simplify is a name as this package compares names: letters and digits
+// only, without case, edition notes in brackets or a leading article. It is
+// for whoever else has to decide whether two names are one (ADR-0022).
+func Simplify(s string) string { return simplify(s) }
+
 func simplify(s string) string {
 	plain := lettersOnly(s, true)
 	if plain == "" {

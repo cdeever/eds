@@ -791,3 +791,104 @@ func (f *failingAt) Publish(topic string, _ []byte, _ bool) error {
 	f.sent = append(f.sent, topic)
 	return nil
 }
+
+// --- the owner's collection (ADR-0022) ---------------------------------------
+
+type fakeCollection struct {
+	result resolve.Result
+	err    error
+	asked  [][3]string
+}
+
+func (f *fakeCollection) Find(_ context.Context, artist, title, album string) (resolve.Result, error) {
+	f.asked = append(f.asked, [3]string{artist, title, album})
+	return f.result, f.err
+}
+
+func owned(bus *fakeBus, r Resolver, c Collection, sources ...string) *Publisher {
+	p := publisher(bus, r)
+	p.Collection = c
+	p.Owned = map[string]bool{}
+	for _, s := range sources {
+		p.Owned[s] = true
+	}
+	return p
+}
+
+// The source heard a track and named the album a recogniser guessed. The
+// collection knows the record: its title is the album, and its sleeve the
+// cover. No catalogue is asked.
+func TestARecordTheOwnerHasIsNamedByTheCollection(t *testing.T) {
+	bus := &fakeBus{}
+	res := &fakeResolver{result: resolve.Result{Album: "The Singles", Cover: &resolve.Cover{Image: pngA, From: "deezer"}}}
+	col := &fakeCollection{result: resolve.Result{Album: "No Jacket Required", Cover: &resolve.Cover{Image: jpeg, From: "discogs"}}}
+	p := owned(bus, res, col, "turntable")
+
+	out, _, err := p.Publish(context.Background(), from("turntable", "Take Me Home", "The Singles (Deluxe Edition)"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Track.Album != "No Jacket Required" || out.Art == nil || out.Art.From != "discogs" || out.Art.SHA256 != NewImage(jpeg).SHA256 {
+		t.Fatalf("album %q, art %+v", out.Track.Album, out.Art)
+	}
+	if len(col.asked) != 1 || col.asked[0] != [3]string{"Artist", "Take Me Home", "The Singles (Deluxe Edition)"} {
+		t.Fatalf("the collection was asked %v", col.asked)
+	}
+	if len(res.asked) != 0 {
+		t.Fatalf("a catalogue was asked as well: %v", res.asked)
+	}
+}
+
+// A record that is not in the collection is completed as any track is.
+func TestARecordTheOwnerDoesNotHaveIsLookedUpAsBefore(t *testing.T) {
+	for name, err := range map[string]error{"not there": resolve.ErrNotFound, "could not be asked": errors.New("discogs answered 503")} {
+		t.Run(name, func(t *testing.T) {
+			bus := &fakeBus{}
+			res := &fakeResolver{result: resolve.Result{Album: "X", Cover: &resolve.Cover{Image: pngA, From: "deezer"}}}
+			p := owned(bus, res, &fakeCollection{err: err}, "turntable")
+
+			out, _, perr := p.Publish(context.Background(), from("turntable", "So What", "Kind of Blue"), nil)
+			if perr != nil {
+				t.Fatal(perr)
+			}
+			if out.Track.Album != "Kind of Blue" || out.Art == nil || out.Art.From != "deezer" {
+				t.Fatalf("album %q, art %+v", out.Track.Album, out.Art)
+			}
+		})
+	}
+}
+
+// The collection knew the record and had no picture of it. The cover is then
+// looked up - under the record's title, not the one the source guessed.
+func TestARecordWithNoPictureIsLookedUpByItsOwnTitle(t *testing.T) {
+	bus := &fakeBus{}
+	res := &fakeResolver{result: resolve.Result{Album: "ignored", Cover: &resolve.Cover{Image: pngA, From: "deezer"}}}
+	p := owned(bus, res, &fakeCollection{result: resolve.Result{Album: "No Jacket Required"}}, "turntable")
+
+	out, _, err := p.Publish(context.Background(), from("turntable", "Take Me Home", "The Singles"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Track.Album != "No Jacket Required" || out.Art == nil || out.Art.From != "deezer" {
+		t.Fatalf("album %q, art %+v", out.Track.Album, out.Art)
+	}
+	if len(res.asked) != 1 || res.asked[0].Album != "No Jacket Required" {
+		t.Fatalf("the catalogue was asked about %+v", res.asked)
+	}
+}
+
+// Only the sources named. iTunes says which album it is playing, and knows.
+func TestASourceThatIsNotNamedIsNeverAskedOfTheCollection(t *testing.T) {
+	bus := &fakeBus{}
+	res := &fakeResolver{result: resolve.Result{Album: "X", Cover: &resolve.Cover{Image: pngA, From: "deezer"}}}
+	col := &fakeCollection{result: resolve.Result{Album: "Another", Cover: &resolve.Cover{Image: jpeg, From: "discogs"}}}
+	p := owned(bus, res, col, "turntable")
+
+	out, _, err := p.Publish(context.Background(), from("itunes", "So What", "Kind of Blue"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(col.asked) != 0 || out.Track.Album != "Kind of Blue" || out.Art.From != "deezer" {
+		t.Fatalf("asked %v, album %q, art %+v", col.asked, out.Track.Album, out.Art)
+	}
+}
