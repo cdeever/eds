@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
+	"github.com/cdeever/eds/services/nowplaying/internal/calls"
 	"github.com/cdeever/eds/services/nowplaying/internal/config"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/dacp"
@@ -138,7 +139,48 @@ func spotifyTokenPath() (string, error) {
 
 // spotifyHTTP is the client for Spotify's API and its token endpoint. The
 // timeout is the backstop; each request sets a tighter one of its own.
-func spotifyHTTP() *http.Client { return &http.Client{Timeout: 30 * time.Second} }
+//
+// It counts what it asks (ADR-0027), as everything here that asks somebody
+// else's service does.
+func spotifyHTTP() *http.Client { return asked.Client(30 * time.Second) }
+
+// asked counts what the drivers ask of outside services. The agent says
+// what it holds once a minute, as an event; a command that runs once and
+// exits, such as spotify-auth, counts and tells nobody.
+var asked = calls.New()
+
+// countedRecognizer counts each clip a recognizer is asked about. Whose
+// service that is, the recognizer says itself in its answer; until one has
+// answered, it is "recognizer".
+type countedRecognizer struct {
+	next turntable.Recognizer
+	mu   sync.Mutex
+	name string
+}
+
+func (c *countedRecognizer) Recognize(ctx context.Context, clip []int16) (turntable.Match, error) {
+	started := time.Now()
+	m, err := c.next.Recognize(ctx, clip)
+	took := time.Since(started)
+
+	c.mu.Lock()
+	if m.Service != "" {
+		c.name = m.Service
+	}
+	name := c.name
+	c.mu.Unlock()
+	if name == "" {
+		name = "recognizer"
+	}
+
+	// Not knowing the track is an answer. Not being able to ask is not.
+	outcome := calls.OK
+	if err != nil && !errors.Is(err, turntable.ErrNoMatch) {
+		outcome = calls.Failed
+	}
+	asked.Record(name, outcome, took)
+	return m, err
+}
 
 // The Spotify driver takes no commands, and so has none here: it reads the
 // account with scopes that only read (ADR-0012, ADR-0016), and a command for
@@ -233,7 +275,7 @@ func turntableJob(logger *slog.Logger) (job, error) {
 		d := &turntable.Driver{
 			Source:     j.source,
 			Capture:    turntable.ALSA{Device: device},
-			Recognizer: turntable.Command{Path: recognizer},
+			Recognizer: &countedRecognizer{next: turntable.Command{Path: recognizer}},
 			Sink:       sink,
 			Logger:     logger.With("driver", j.name),
 			Interval:   interval,
@@ -392,7 +434,21 @@ func run(ctx context.Context) error {
 			"state", contract.SourceStateTopic(common.Prefix, j.source))
 	}
 
+	// What was asked of outside services, a minute at a time (ADR-0027). It
+	// ends with the drivers, and its last minute is said before the
+	// reporter is stopped.
+	counting, stopCounting := context.WithCancel(context.Background())
+	counted := make(chan struct{})
+	go func() {
+		defer close(counted)
+		asked.Run(counting, calls.Every, func(s calls.Summary) {
+			logger.Info(fmt.Sprintf("%d calls to %s", s.Calls, s.API), append([]any{events.Key, calls.Event}, s.Attrs()...)...)
+		})
+	}()
+
 	err = supervise(ctx, logger, jobs, sinks)
+	stopCounting()
+	<-counted
 	if err == nil {
 		logger.Info("shutting down", events.Key, "agent.stopping")
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver"
+	"github.com/cdeever/eds/services/nowplaying/internal/driver/turntable"
 )
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -271,5 +272,40 @@ func TestOnlyTheITunesDriverTakesCommands(t *testing.T) {
 	}
 	if j.command != nil {
 		t.Error("the Spotify driver takes commands: its authorization only reads (ADR-0016)")
+	}
+}
+
+type fixedRecognizer struct {
+	match turntable.Match
+	err   error
+}
+
+func (f fixedRecognizer) Recognize(context.Context, []int16) (turntable.Match, error) {
+	return f.match, f.err
+}
+
+func TestARecognizerIsCountedUnderTheServiceItNames(t *testing.T) {
+	asked.Take()
+	defer asked.Take()
+
+	// Before it has answered, nobody knows whose it is.
+	failing := &countedRecognizer{next: fixedRecognizer{err: errors.New("no network")}}
+	failing.Recognize(context.Background(), nil)
+
+	r := &countedRecognizer{next: fixedRecognizer{match: turntable.Match{Title: "x", Service: "somebody"}}}
+	r.Recognize(context.Background(), nil)
+	// Not knowing is an answer; and the name is remembered for a failure
+	// that cannot give it.
+	r.next = fixedRecognizer{match: turntable.Match{Service: "somebody"}, err: turntable.ErrNoMatch}
+	r.Recognize(context.Background(), nil)
+	r.next = fixedRecognizer{err: errors.New("no network")}
+	r.Recognize(context.Background(), nil)
+
+	got := asked.Take()
+	if len(got) != 2 || got[0].API != "recognizer" || got[0].Calls != 1 || got[0].Failed != 1 {
+		t.Fatalf("summaries = %+v", got)
+	}
+	if got[1].API != "somebody" || got[1].Calls != 3 || got[1].Failed != 1 {
+		t.Fatalf("summaries = %+v", got)
 	}
 }

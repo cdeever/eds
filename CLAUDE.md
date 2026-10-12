@@ -139,6 +139,17 @@ and never committed or logged. Discogs' terms ask for "Data provided by
 Discogs." beside its pictures, which the console says, and that nothing of
 theirs is kept longer than needed: one cover is held, in memory.
 
+**What is asked of other people's services is counted** (ADR-0027). Every
+HTTP client in `services/nowplaying` that reaches an outside service is made
+by `calls.Meter.Client`, and the recognizer is wrapped the same way; once a
+minute each service asked anything gets one `api.calls` line. `npagent`
+reports it as an event. `nowplayd` posts it to the tenant's log store itself
+(`internal/logstore`, the workload partition), and that is all it sends
+there: its log stays in the journal. A new client for an outside service is
+made the same way, and its host named in `calls.Name`. The counter limits
+nothing; do not make it. The dashboard is **Outside Services**, beside the
+stand's. The ingest token is in `kit.env` and is never logged.
+
 Integration tests are gated on `NP_TEST_BROKER`. This Makefile runs on macOS
 (make 3.81, `/bin/bash`); the lightd and palette ones hardcode `/usr/bin/bash`
 and `.ONESHELL` and do not.

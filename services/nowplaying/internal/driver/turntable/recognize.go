@@ -17,6 +17,9 @@ type Match struct {
 	Artist string `json:"artist"`
 	Title  string `json:"title"`
 	Album  string `json:"album"`
+	// Service is whose answer this is, when the recognizer says. The driver
+	// does nothing with it; it is for whoever counts what is asked of whom.
+	Service string `json:"service,omitempty"`
 }
 
 // same compares what tells one track from the next. The album is left out:
@@ -37,7 +40,8 @@ type Recognizer interface {
 
 // Command is a recognizer that is a program: the clip goes to its standard
 // input as a WAV file, and it prints one JSON object - artist, title, album -
-// or an empty one when it does not know. Anything else is a failure.
+// or one with no title when it does not know. Anything else is a failure.
+// It may say whose service it asked, as "service".
 type Command struct {
 	Path string
 	// Timeout is how long it may take. Default thirty seconds.
@@ -74,7 +78,7 @@ func (c Command) Recognize(ctx context.Context, clip []int16) (Match, error) {
 	}
 	m.Artist, m.Title, m.Album = strings.TrimSpace(m.Artist), strings.TrimSpace(m.Title), strings.TrimSpace(m.Album)
 	if m.Title == "" {
-		return Match{}, ErrNoMatch
+		return Match{Service: m.Service}, ErrNoMatch
 	}
 	return m, nil
 }

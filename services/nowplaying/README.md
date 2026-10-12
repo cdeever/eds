@@ -304,6 +304,39 @@ goes the same way after the same wait.
   being turned over dims it too (ADR-0026).
 - Playing again publishes everything again, the same cover included.
 
+## What is asked of other people's services
+
+None of the services this module calls is EdS's, and each has a limit,
+published or not. Every call is counted (`internal/calls`, ADR-0027), and
+once a minute each service that was asked anything gets one line, the event
+`api.calls`:
+
+```json
+{"event":"api.calls","api":"discogs","calls":3,"limited":0,"failed":0,"slowest_ms":412,"mean_ms":280,"remaining":57}
+```
+
+- `limited` is answers of 429: the service saying it was asked too often.
+  `failed` is no answer, or an error or a refusal. "Not found" is neither.
+- `remaining` is the least the service said was left of its allowance in
+  that minute, for a service that says. Discogs does.
+- HTTP calls are counted by the client they go through, redirects included,
+  and named by host: `discogs`, `deezer`, `itunes`, `musicbrainz`,
+  `coverartarchive`, `spotify`. A service's pictures come from other hosts
+  and are counted apart (`discogs-images`), because the allowance is the
+  API's.
+- The turntable's recognizer is a program and not an HTTP client, so each
+  clip it is asked about is one call. It says whose service it asked in its
+  answer; the driver does not know.
+- **It counts, and limits nothing.** Each client keeps to its service's
+  rules itself.
+
+`npagent` reports the line as an event, like any other, and it arrives in
+the tenant's device partition. `nowplayd` is not a device: it posts the line
+to the tenant's log store itself (`internal/logstore`), to the workload
+partition, when it has `LOG_ENDPOINT` and `LOG_INGEST_TOKEN`. That is the
+only thing it sends there. The dashboard is **Outside Services**
+(`infra/deevnet-tenant-eds/dashboards/outside-services.json`).
+
 ## Albums with a look of their own
 
 A few albums are lit by something other than their cover's colors
@@ -390,6 +423,7 @@ be used stops the program.
 | `NP_IDLE_AFTER` | `15s` | how long a track may sit paused, or nobody report, before nothing is said to be playing and the cover topics are emptied ([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)). `0s` is never; at most an hour |
 | `NP_IDLE_AFTER_STOPPED` | `1s` | the same wait for a source that is stopped and still current: a turntable switched on with nothing playing. Short, because its driver has already waited out twenty seconds of silence. `0s` is never; at most a day |
 | `NP_NO_CONTROLS_SOURCES` | none | sources a controller is told to offer nothing for, as `no_controls` in `current` ([ADR-0025](../../docs/content/docs/architecture/decisions/0025-current-says-when-there-are-no-controls.md)). `turntable` on the workload |
+| `NP_LOG_ENDPOINT`, `NP_LOG_INGEST_TOKEN` | `LOG_ENDPOINT` and `LOG_INGEST_TOKEN`, as `kit.env` gives them | the tenant's log store and the token that writes to its workload partition: where the counts of calls to outside services go once a minute (ADR-0027). Without both, the counts are in the journal only. The token is secret |
 | `NP_SOURCE_POWER` | none | `source=beacon` pairs: a source whose equipment has a beacon on its switch, and so can say it is on ([ADR-0023](../../docs/content/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand.md)). `turntable=turntable-power-01` on the workload |
 
 ## The owner's collection

@@ -2,8 +2,9 @@
 """eds-recognize - name the track in a few seconds of audio.
 
 A WAV file on standard input; one JSON object on standard output: artist,
-title and album, or an empty object when the recognizer does not know. Any
-failure is a non-zero exit and a line on standard error.
+title and album, or one with no title when the recognizer does not know;
+and "service", whose answer it is. Any failure is a non-zero exit and a line
+on standard error.
 
 This is the whole of what the agent's turntable driver knows about its
 recognizer (ADR-0021), and the only file that knows which recognizer it is:
@@ -24,6 +25,9 @@ warnings.filterwarnings("ignore")
 from shazamio import Shazam  # noqa: E402
 
 
+SERVICE = "shazam"
+
+
 def album(track):
     for section in track.get("sections") or []:
         for item in section.get("metadata") or []:
@@ -38,13 +42,16 @@ async def main():
         sys.exit("eds-recognize: no audio on standard input")
     answer = await Shazam().recognize(clip)
     track = answer.get("track") or {}
+    # "service" is whose answer this is. The agent counts what it asks of
+    # whom, and this is the only place that knows.
     if not track.get("title"):
-        print("{}")
+        print(json.dumps({"service": SERVICE}))
         return
     print(json.dumps({
         "artist": track.get("subtitle") or "",
         "title": track["title"],
         "album": album(track),
+        "service": SERVICE,
     }))
 
 

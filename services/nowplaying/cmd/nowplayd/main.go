@@ -15,20 +15,22 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
+	"github.com/cdeever/eds/services/nowplaying/internal/calls"
 	"github.com/cdeever/eds/services/nowplaying/internal/command"
 	"github.com/cdeever/eds/services/nowplaying/internal/config"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/current"
 	"github.com/cdeever/eds/services/nowplaying/internal/discogs"
 	"github.com/cdeever/eds/services/nowplaying/internal/hub"
+	"github.com/cdeever/eds/services/nowplaying/internal/logstore"
 	"github.com/cdeever/eds/services/nowplaying/internal/looks"
 	"github.com/cdeever/eds/services/nowplaying/internal/resolve"
 	"github.com/cdeever/eds/services/nowplaying/internal/smallcover"
@@ -62,17 +64,33 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	// Everything asked of somebody else's service goes through a client
+	// that counts it (ADR-0027).
+	asked := calls.New()
+
 	var resolver current.Resolver
 	if len(cfg.Catalogs) > 0 {
-		catalogs, err := resolve.Named(cfg.Catalogs, &http.Client{Timeout: cfg.LookupTimeout}, cfg.UserAgent)
+		catalogs, err := resolve.Named(cfg.Catalogs, asked.Client(cfg.LookupTimeout), cfg.UserAgent)
 		if err != nil {
 			return err
 		}
-		resolver = resolve.New(catalogs, cfg.UserAgent, logger)
+		r := resolve.New(catalogs, cfg.UserAgent, logger)
+		r.HTTP = asked.Client(r.HTTP.Timeout)
+		resolver = r
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	counted, err := reportCalls(ctx, asked, cfg, logger)
+	if err != nil {
+		return err
+	}
+	// After stop, so that the last minute's counts are sent on the way out.
+	defer func() {
+		stop()
+		<-counted
+	}()
 
 	// Deciding is quick and publishing is not: completing a track can mean a
 	// catalog lookup of several seconds. So the two are separate, joined by
@@ -220,7 +238,7 @@ func run(logger *slog.Logger) error {
 		collection := &discogs.Collection{
 			User:      cfg.DiscogsUser,
 			Token:     cfg.DiscogsToken,
-			HTTP:      &http.Client{Timeout: cfg.LookupTimeout},
+			HTTP:      asked.Client(cfg.LookupTimeout),
 			UserAgent: cfg.UserAgent,
 			Logger:    logger,
 		}
@@ -284,4 +302,53 @@ func logCurrent(logger *slog.Logger, st contract.State) {
 		attrs = append(attrs, "art_from", st.Art.From)
 	}
 	logger.Info("current", attrs...)
+}
+
+// reportCalls says once a minute what was asked of each outside service: in
+// the journal, and in the tenant's log store when the service has been given
+// the way there, which is where a dashboard can add it up (ADR-0027). The
+// channel it returns closes when the last minute has been said.
+func reportCalls(ctx context.Context, asked *calls.Meter, cfg config.Nowplayd, logger *slog.Logger) (<-chan struct{}, error) {
+	var store *logstore.Writer
+	if cfg.LogEndpoint != "" && cfg.LogToken != "" {
+		var err error
+		if store, err = logstore.New(cfg.LogEndpoint, cfg.LogToken, "nowplayd", cfg.Broker.CAFile); err != nil {
+			return nil, err
+		}
+		logger.Info("counting what is asked of outside services, for the log store", "endpoint", cfg.LogEndpoint, "every", calls.Every)
+	} else {
+		logger.Info("counting what is asked of outside services, in this log only: no log store was named", "every", calls.Every)
+	}
+
+	failing := false
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		asked.Run(ctx, calls.Every, func(s calls.Summary) {
+			msg := fmt.Sprintf("%d calls to %s", s.Calls, s.API)
+			logger.Info(msg, append([]any{"event", calls.Event}, s.Attrs()...)...)
+			if store == nil {
+				return
+			}
+			fields := map[string]any{"event": calls.Event, "level": "info"}
+			attrs := s.Attrs()
+			for i := 0; i+1 < len(attrs); i += 2 {
+				fields[attrs[i].(string)] = attrs[i+1]
+			}
+			// Not ctx: the last of these is sent after it has ended.
+			sending, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			err := store.Write(sending, msg, fields)
+			cancel()
+			// Said once for a run of failures, and once when it mends.
+			switch {
+			case err != nil && !failing:
+				failing = true
+				logger.Warn("the counts could not be written to the log store", "reason", err)
+			case err == nil && failing:
+				failing = false
+				logger.Info("the counts are reaching the log store again")
+			}
+		})
+	}()
+	return done, nil
 }

@@ -241,6 +241,12 @@ func TestTheRecognizerIsAProgram(t *testing.T) {
 	}
 
 	// Not knowing is an answer.
+	// Whose answer it was is kept, known or not: it is how the asking is
+	// counted against the right service.
+	m, err = Command{Path: script(t, `cat >/dev/null; echo '{"service":"somebody"}'`)}.Recognize(ctx, clip)
+	if !errors.Is(err, ErrNoMatch) || m.Service != "somebody" {
+		t.Fatalf("m = %+v, err = %v", m, err)
+	}
 	if _, err := (Command{Path: script(t, `cat >/dev/null; echo '{}'`)}).Recognize(ctx, clip); !errors.Is(err, ErrNoMatch) {
 		t.Fatalf("got %v, want ErrNoMatch", err)
 	}

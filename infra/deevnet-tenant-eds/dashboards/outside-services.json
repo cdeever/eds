@@ -1,0 +1,553 @@
+{
+  "uid": "eds-outside-services",
+  "title": "Outside Services",
+  "tags": [
+    "eds"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "refresh": "1m",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Calls from the agent Pi",
+      "description": "What the drivers asked of outside services in the selected period: the turntable's recognizer, and Spotify when its driver is on.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"api.calls\" | stats sum(calls) calls"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Calls from nowplayd",
+      "description": "What nowplayd asked in the selected period: the owner's collection, and the catalogs covers are found in.",
+      "gridPos": {
+        "x": 5,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"api.calls\" | stats sum(calls) calls"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Refused for asking too often",
+      "description": "Answers of 429 in the selected period, from the Pi and from nowplayd. Anything but none is a service saying EdS asked too much.",
+      "gridPos": {
+        "x": 10,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"api.calls\" | stats sum(limited) limited"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"api.calls\" | stats sum(limited) limited"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Failed",
+      "description": "Calls that reached nobody, or were answered with an error or a refusal, in the selected period.",
+      "gridPos": {
+        "x": 15,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"api.calls\" | stats sum(failed) failed"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"api.calls\" | stats sum(failed) failed"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Least left of Discogs' allowance",
+      "description": "The lowest Discogs said was left of its allowance of calls a minute, in the selected period. Sixty is untouched.",
+      "gridPos": {
+        "x": 19,
+        "y": 0,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"api.calls\" api:=\"discogs\" | stats min(remaining) remaining"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "green",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Calls, by service",
+      "description": "Each bar is what was asked in that stretch of time. A summary is written once a minute for each service that was asked anything; a minute with no calls writes nothing.",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"api.calls\" | stats by (api) sum(calls) calls",
+          "legendFormat": "{{api}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"api.calls\" | stats by (api) sum(calls) calls",
+          "legendFormat": "{{api}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Refused for asking too often, by service",
+      "description": "429s. This should be empty.",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"api.calls\" | stats by (api) sum(limited) limited",
+          "legendFormat": "{{api}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"api.calls\" | stats by (api) sum(limited) limited",
+          "legendFormat": "{{api}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Failed, by service",
+      "description": "No answer, or an error or a refusal. A recognizer that cannot be reached shows here.",
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"api.calls\" | stats by (api) sum(failed) failed",
+          "legendFormat": "{{api}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"api.calls\" | stats by (api) sum(failed) failed",
+          "legendFormat": "{{api}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Slowest call, by service",
+      "description": "The slowest call in each minute. For the recognizer this is the whole of naming a clip, fingerprinting included.",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 4
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"api.calls\" | stats by (api) max(slowest_ms) slowest_ms",
+          "legendFormat": "{{api}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"api.calls\" | stats by (api) max(slowest_ms) slowest_ms",
+          "legendFormat": "{{api}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "What Discogs says is left",
+      "description": "The least left of the allowance in each minute Discogs was asked anything.",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "showPoints": "always",
+            "pointSize": 4
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"api.calls\" api:=\"discogs\" | stats min(remaining) remaining",
+          "legendFormat": "left"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "title": "What each service allows",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 7
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "As each service published it when this was written (2026-10). Check before leaning on a number.\n\n| Counted as | What it is | Asked from | Allowance |\n|---|---|---|---|\n| `shazam` | the turntable's recognizer | agent Pi | none published; the endpoint was never offered (ADR-0021). About three a minute while a record plays |\n| `spotify` | the Web API | agent Pi | not published as a number: a rolling 30 second window, and a 429 with `Retry-After` |\n| `discogs` | the owner's collection | nowplayd | 60 a minute with a token; it says what is left in every answer |\n| `deezer` | cover lookup | nowplayd | 50 in 5 seconds |\n| `itunes` | cover lookup | nowplayd | about 20 a minute |\n| `musicbrainz` | cover lookup | nowplayd | 1 a second, and a User-Agent that says who is asking |\n| `coverartarchive` | covers for MusicBrainz releases | nowplayd | none published |\n| `*-images` | pictures, from each service's own hosts | nowplayd | counted apart: the allowances above are for the APIs |"
+      }
+    },
+    {
+      "type": "logs",
+      "title": "The summaries, from the agent Pi",
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-devices"
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-devices"
+          },
+          "queryType": "instant",
+          "expr": "event:=\"api.calls\""
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "The summaries, from nowplayd",
+      "gridPos": {
+        "x": 12,
+        "y": 35,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "instant",
+          "expr": "event:=\"api.calls\""
+        }
+      ]
+    }
+  ]
+}
