@@ -7,6 +7,7 @@ import (
 	"io"
 	"os/exec"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -41,13 +42,18 @@ type recording struct {
 	cmd    *exec.Cmd
 	out    io.ReadCloser
 	stderr *bytes.Buffer
+
+	wait    sync.Once
+	waitErr error
 }
 
 // Read is the audio. When arecord stops, the error is what it said on the
-// way out, which is the only place "no such device" is to be found.
+// way out, which is the only place "no such device" is to be found. It is
+// waited for first: the audio ends before arecord has finished saying why.
 func (r *recording) Read(p []byte) (int, error) {
 	n, err := r.out.Read(p)
 	if err == io.EOF && n == 0 {
+		r.finish()
 		if said := lastLine(r.stderr.String()); said != "" {
 			return 0, fmt.Errorf("arecord: %s", said)
 		}
@@ -59,5 +65,10 @@ func (r *recording) Close() error {
 	if r.cmd.Process != nil {
 		r.cmd.Process.Kill()
 	}
-	return r.cmd.Wait()
+	return r.finish()
+}
+
+func (r *recording) finish() error {
+	r.wait.Do(func() { r.waitErr = r.cmd.Wait() })
+	return r.waitErr
 }

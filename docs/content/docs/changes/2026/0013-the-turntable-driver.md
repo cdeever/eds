@@ -7,9 +7,9 @@ weight: 13
 
 | | |
 |---|---|
-| **Date** | 2026-10-11 |
+| **Date** | 2026-10-11, run on 2026-10-12 UTC |
 | **Change type** | Deployment |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} — the driver is on, the stand follows a record and the needle lifting is seen; the interface has not been unplugged |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-12 |
 | **Systems** | the tenant (one broker account), the agent Pi (its agent, its unit, a recogniser installed, two lines of its settings) |
 | **How** | `make apply` in the tenant; `make -C deploy/relay push`, `turntable`, `drivers` |
 | **Risk** | Medium. Most likely to go wrong: the agent's unit, which changes how it is confined, not starting, which would stop iTunes being followed too |
@@ -114,8 +114,13 @@ from the commit before this one.
 | 03:45 | The stand back online. It reported the scene for the record's cover as applied: `chase`, four colours. |
 | 03:45:33 | The needle lifted, by the owner. The turntable reported `stopped`, about twenty seconds after. |
 | 03:45 | `current` then passed to iTunes, which was paused on another album, and the stand was lit from that album's cover. See the follow-ups. |
+| 03:48:05 | The interface unplugged, by the owner. The turntable went `offline`, said once; iTunes stayed online and the agent stayed up. `eds-agent-status` failed on the missing input, by name. |
+| 03:49:08 | Plugged back in. The driver found it again by itself and went `online`, with no restart. |
+| 03:49 | Two faults seen in that, and mended: `eds-agent-status` went on failing after the input was back, and the reason logged for losing it was cut short. Pushed again; the status check passes with both drivers. |
 
-Still to do: unplug the interface and see `offline` with iTunes carrying on.
+Every goal was seen: both drivers online, a record named within half a
+minute and `stopped` twenty seconds after the needle lifted, an album and a
+cover from nowplayd, the stand lit from it, and iTunes followed throughout.
 
 ### Departures from the plan
 
@@ -131,6 +136,13 @@ Still to do: unplug the interface and see `offline` with iTunes carrying on.
   target since CHG-0011 and nobody had run it twice. The two steps are now two
   commands, in `drivers` and in the new `turntable` target, which had copied
   it.
+- **Two faults found by pulling the cable.** `eds-agent-status` looked for the
+  last line about the turntable's troubles and took no notice of it coming
+  back online, so it failed for ever after one lost input. And the driver
+  read what `arecord` said on its way out before `arecord` had finished
+  saying it, so the reason logged ended at `pcm_read:2221:`. Both are mended
+  and pushed. The second has not been seen with a cable pulled since: the fix
+  is to wait for `arecord` to exit before reading what it said.
 - The confinement was tried with `systemd-run` before the driver is turned
   on, which the plan did not have. It is the one part that could not be
   tested on a desk.
