@@ -89,11 +89,13 @@ otherwise.
 
 | When (UTC) | What happened |
 |---|---|
-| | |
+| 12:12 | The tenant was planned: 0 to add, 1 to change in place (the console's account, one subscription), 0 to destroy. The apply was left to its owner. |
+| 12:12 | The board on `/dev/cu.usbserial-2120` said it was `cover-screen`, and was flashed with `6dab15e`. It started, found its credentials, connected, and read the current track: stopped, no cover. The stand, on the other port, was not touched. |
 
 ## Departures
 
-None yet.
+- The screen was flashed before the tenant was applied and the workload
+  deployed, not after. Either order is safe, and the board was to hand.
 
 ## Follow-ups
 
