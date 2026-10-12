@@ -99,6 +99,10 @@ func TestInvalidValuesStopTheProgram(t *testing.T) {
 		"a coverless wildcard":           {"NP_COVERLESS_SOURCES": "itunes,+"},
 		"a collection source misspelt":   {"NP_COLLECTION_SOURCES": "Turntable", "NP_DISCOGS_USER": "someone"},
 		"a collection with no owner":     {"NP_COLLECTION_SOURCES": "turntable"},
+		"a switch with no beacon":        {"NP_SOURCE_POWER": "turntable"},
+		"a switch for no source":         {"NP_SOURCE_POWER": "=turntable-power-01"},
+		"a switch that is a wildcard":    {"NP_SOURCE_POWER": "turntable=+"},
+		"a source with two switches":     {"NP_SOURCE_POWER": "turntable=a,turntable=b"},
 	}
 	for name, env := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -142,5 +146,18 @@ func TestCollectionSources(t *testing.T) {
 	cfg, err = LoadNowplayd("0.1")
 	if err != nil || len(cfg.Owned) != 1 || cfg.Owned[0] != "turntable" || cfg.DiscogsUser != "someone" || cfg.DiscogsToken != "secret" {
 		t.Errorf("owned = %v, user = %q, err = %v", cfg.Owned, cfg.DiscogsUser, err)
+	}
+}
+
+func TestSourcePower(t *testing.T) {
+	cfg, err := LoadNowplayd("0.1")
+	if err != nil || len(cfg.Power) != 0 {
+		t.Fatalf("by default no source has a switch: %v, %v", cfg.Power, err)
+	}
+
+	t.Setenv("NP_SOURCE_POWER", " turntable = turntable-power-01 , tape=deck-power-01")
+	cfg, err = LoadNowplayd("0.1")
+	if err != nil || len(cfg.Power) != 2 || cfg.Power["turntable"] != "turntable-power-01" || cfg.Power["tape"] != "deck-power-01" {
+		t.Errorf("power = %v, %v", cfg.Power, err)
 	}
 }

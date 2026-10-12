@@ -11,6 +11,7 @@ each part is up.
  nowplaying/source/+/…─▶│   (subscribes, and serves what it heard; publishes nothing    │
  lightstand/+/…  ──────▶│    but its own presence)                                      │
  lightd/status ────────▶│                                                               │
+ beacon/+/status ──────▶│                                                               │
                         └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -40,6 +41,9 @@ page, and that is a decision to record first.
   of the firmware's effects. It is a picture of the scene, not a measurement
   of the LEDs. Whether the stand took the scene is its own `state` and
   presence, which the page also shows.
+- **A beacon** is a device on a switch, lit on the page while the switch is
+  on ([ADR-0023](../../docs/content/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand.md)).
+  Unlit is not a fault: it is the turntable being off.
 - **The playing time** counts on from what the bus said: where playback was
   when the track or the play state last changed, plus the time since, by the
   server's clock and the page's own stopwatch. The viewer's clock is not

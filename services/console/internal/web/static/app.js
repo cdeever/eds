@@ -311,6 +311,13 @@ function drawFrame(page) {
   pills.push(pill("nowplayd", word(page.services.nowplayd)), pill("lightd", word(page.services.lightd)));
   for (const s of page.sources) pills.push(pill(PLAYERS[s.id] || s.id, s.online === null ? undefined : s.online));
   for (const s of page.stands) pills.push(pill(s.id, s.online === null ? undefined : s.online));
+  // A beacon that is off is not a part that is down: it is a switch that is
+  // off, and lit only when it is on.
+  for (const b of page.beacons) {
+    const node = pill(b.id, b.online === true ? true : undefined);
+    node.title = b.online === true ? "switched on" : b.online === false ? "switched off" : "not heard from yet";
+    pills.push(node);
+  }
   $("pills").replaceChildren(...pills.map((p) => { const li = el("li"); li.append(p); return li; }));
 
   const links = [];

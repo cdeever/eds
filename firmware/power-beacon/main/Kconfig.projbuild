@@ -1,0 +1,56 @@
+menu "Power beacon"
+
+    config PB_BEACON_ID
+        string "Beacon identifier"
+        default "turntable-power-01"
+        help
+            The device's name in the tenant's registry. It is the client id
+            and a level in the beacon's own topics. Lowercase letters, digits
+            and hyphens.
+
+            The name is the only place that says what the beacon shares a
+            switch with. The firmware is the same for any of them.
+
+    config PB_TOPIC_PREFIX
+        string "Topic prefix"
+        default "eds"
+        help
+            Root of the topic tree: the tenant's name.
+
+    menu "Network"
+
+        config PB_WIFI_SSID
+            string "WiFi SSID"
+            default "DVNTM-IOT"
+            help
+                The beacon belongs on the IoT segment (VLAN 30), with the
+                stand.
+
+                There is no option for the key, on purpose: it is read from
+                the creds partition and from nowhere else, so it cannot end
+                up in sdkconfig or the image. `make provision` writes it.
+
+        config PB_MQTT_URI
+            string "Broker URI"
+            default "mqtts://mqtt.mobile.deevnet.net:8883"
+            help
+                Normally provisioned rather than set here: `make provision`.
+
+        config PB_MQTT_USERNAME
+            string "Broker username"
+            default "turntable-power-01"
+            help
+                The password has no option here, for the same reason the
+                WiFi key has none: it is provisioned, never compiled in.
+
+        config PB_MQTT_USE_TLS
+            bool "Embed a fallback CA for the broker"
+            default n
+            help
+                Requires main/certs/mqtt_ca.pem. The CA is normally
+                provisioned beside the credentials (`make provision`) and this
+                is not needed; a provisioned one takes precedence.
+
+    endmenu
+
+endmenu

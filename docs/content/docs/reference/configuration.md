@@ -50,6 +50,7 @@ A value that cannot be used stops the program.
 | `NP_LOOKUP_TIMEOUT` | `10s` | for one catalogue request |
 | `NP_CONTACT` | this repository's URL | goes in the User-Agent sent to catalogues |
 | `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)). `spotify` on the workload, which is what keeps the stand from following it |
+| `NP_SOURCE_POWER` | none | `source=beacon` pairs: a source whose equipment has a beacon on its switch. While the beacon is connected that source is current; while it is not, the source is not heard; a beacon never heard from changes nothing ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)). `turntable=turntable-power-01` on the workload |
 
 ## console
 

@@ -220,6 +220,14 @@ func CurrentSmallArtTopic(prefix string) string { return prefix + "/nowplaying/c
 // one: nowplayd passes the command to the source that is current.
 func CommandTopic(prefix string) string { return prefix + "/nowplaying/command" }
 
+// BeaconStatusTopic is where a beacon says it has power: "online" while it
+// does, and the broker's "offline" for it when it has not (ADR-0023). It is
+// outside nowplaying/, because a beacon is not a source and reports no
+// playing: it is a device on a switch, and says only that the switch is on.
+func BeaconStatusTopic(prefix, id string) string {
+	return prefix + "/beacon/" + id + "/status"
+}
+
 // SourceCommandTopic is where one driver hears commands meant for its player.
 func SourceCommandTopic(prefix, id string) string {
 	return prefix + "/nowplaying/source/" + id + "/command"

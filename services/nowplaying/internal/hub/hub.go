@@ -118,6 +118,17 @@ func (h *Hub) Handle(msg bus.Message) {
 	}
 }
 
+// Power takes what a source's beacon said: that the source's equipment is
+// switched on, or is not (ADR-0023).
+func (h *Hub) Power(source string, on bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if winner, changed := h.arb.Power(source, on); changed {
+		h.decide(winner)
+	}
+}
+
 // decide submits the decision for a winner, unless the winner names a cover
 // that has not arrived, in which case it waits for it. Called with the lock.
 func (h *Hub) decide(winner *contract.State) {

@@ -263,3 +263,71 @@ func TestTiesDoNotDependOnMapOrder(t *testing.T) {
 		}
 	}
 }
+
+func switched(id string, on bool) func(*Arbiter) (*contract.State, bool) {
+	return func(a *Arbiter) (*contract.State, bool) { return a.Power(id, on) }
+}
+
+// The needle lifted between sides, and a track left paused on another player:
+// the reason there is a beacon at all (ADR-0023).
+func TestASourceSwitchedOnHoldsThroughItsSilence(t *testing.T) {
+	run(t, []step{
+		{"itunes is left paused", update(state("itunes", contract.Paused, "Left Paused")), "itunes", "Left Paused", contract.Paused, true},
+		{"the turntable is switched on", switched("turntable", true), "itunes", "Left Paused", contract.Paused, false},
+		{"its driver hears nothing yet", update(state("turntable", contract.Stopped, "")), "turntable", "", contract.Stopped, true},
+		{"side one", update(state("turntable", contract.Playing, "Side One")), "turntable", "Side One", contract.Playing, true},
+		{"the needle is lifted", update(state("turntable", contract.Stopped, "")), "turntable", "", contract.Stopped, true},
+		{"side two", update(state("turntable", contract.Playing, "Side Two")), "turntable", "Side Two", contract.Playing, true},
+	})
+}
+
+func TestASourceSwitchedOnHoldsAgainstOnePlaying(t *testing.T) {
+	run(t, []step{
+		{"the turntable is switched on", switched("turntable", true), "", "", "", false},
+		{"a record plays", update(state("turntable", contract.Playing, "Record")), "turntable", "Record", contract.Playing, true},
+		{"itunes starts, more recently", update(state("itunes", contract.Playing, "Elsewhere")), "turntable", "Record", contract.Playing, false},
+		{"the record ends", update(state("turntable", contract.Stopped, "")), "turntable", "", contract.Stopped, true},
+	})
+}
+
+// What the turntable's driver hears when the turntable is off is whatever
+// else is on the same wire, and it is not a record.
+func TestASourceSwitchedOffIsNotHeardWhateverItReports(t *testing.T) {
+	run(t, []step{
+		{"itunes is paused", update(state("itunes", contract.Paused, "Paused")), "itunes", "Paused", contract.Paused, true},
+		{"the turntable is off", switched("turntable", false), "itunes", "Paused", contract.Paused, false},
+		{"and its driver names a track", update(state("turntable", contract.Playing, "Not A Record")), "itunes", "Paused", contract.Paused, false},
+		{"switched on, it was playing all along", switched("turntable", true), "turntable", "Not A Record", contract.Playing, true},
+		{"switched off, it is gone", switched("turntable", false), "itunes", "Paused", contract.Paused, true},
+	})
+}
+
+func TestOnlyASourceSwitchedOffLeavesNothingCurrent(t *testing.T) {
+	run(t, []step{
+		{"a record plays", update(state("turntable", contract.Playing, "Record")), "turntable", "Record", contract.Playing, true},
+		{"and is switched off", switched("turntable", false), "", "", "", true},
+	})
+}
+
+// A beacon nobody has heard from is no beacon: the rule is the one there was
+// before, which is also what a source without a beacon gets.
+func TestASourceWhoseSwitchIsUnknownIsArbitratedAsBefore(t *testing.T) {
+	run(t, []step{
+		{"itunes is paused", update(state("itunes", contract.Paused, "Paused")), "itunes", "Paused", contract.Paused, true},
+		{"the turntable hears nothing", update(state("turntable", contract.Stopped, "")), "itunes", "Paused", contract.Paused, false},
+		{"a record plays", update(state("turntable", contract.Playing, "Record")), "turntable", "Record", contract.Playing, true},
+		{"the needle is lifted", update(state("turntable", contract.Stopped, "")), "itunes", "Paused", contract.Paused, true},
+	})
+}
+
+// The switch says the turntable is on. It does not say anyone is listening
+// to it: with its driver gone there is nothing to hold with.
+func TestASourceSwitchedOnButOfflineDoesNotHold(t *testing.T) {
+	run(t, []step{
+		{"itunes plays", update(state("itunes", contract.Playing, "Elsewhere")), "itunes", "Elsewhere", contract.Playing, true},
+		{"the turntable is on and silent", switched("turntable", true), "itunes", "Elsewhere", contract.Playing, false},
+		{"its driver reports", update(state("turntable", contract.Stopped, "")), "turntable", "", contract.Stopped, true},
+		{"its driver goes", presence("turntable", false), "itunes", "Elsewhere", contract.Playing, true},
+		{"and comes back", presence("turntable", true), "turntable", "", contract.Stopped, true},
+	})
+}

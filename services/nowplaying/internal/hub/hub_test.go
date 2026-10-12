@@ -235,3 +235,30 @@ func TestWhatIsNotAnImageClearsTheCover(t *testing.T) {
 		t.Fatalf("decisions = %+v", got)
 	}
 }
+
+// A switch is a decision like a presence: it goes to the publisher at once,
+// with the cover of whoever it leaves current (ADR-0023).
+func TestASwitchDecidesAndCarriesTheRightCover(t *testing.T) {
+	b := newBench()
+	b.art("itunes", coverA)
+	b.state("itunes", "Paused", coverA, contract.Paused)
+	b.state("turntable", "Record", nil, contract.Playing)
+	b.take()
+
+	b.hub.Power("turntable", false)
+	got := b.take()
+	if len(got) != 1 || title(got[0]) != "Paused" || got[0].Cover == nil {
+		t.Fatalf("switched off: decisions = %+v", got)
+	}
+
+	b.hub.Power("turntable", false)
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("said twice: decisions = %+v", got)
+	}
+
+	b.hub.Power("turntable", true)
+	got = b.take()
+	if len(got) != 1 || title(got[0]) != "Record" || got[0].Cover != nil {
+		t.Fatalf("switched on: decisions = %+v", got)
+	}
+}

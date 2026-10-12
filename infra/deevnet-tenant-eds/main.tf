@@ -250,6 +250,11 @@ resource "deevnet_iot_broker_account" "nowplayd" {
   subscribe = [
     "nowplaying/source/+/+", # every driver's state, presence and cover
     "nowplaying/command",    # what a controller wants of whatever is current (ADR-0020)
+
+    # ADR-0023. Whether the turntable is switched on, from the beacon on its
+    # switch. Named, and not a pattern: nowplayd subscribes to the beacons its
+    # settings name (NP_SOURCE_POWER) and to no others.
+    "beacon/turntable-power-01/status",
   ]
 }
 
@@ -277,6 +282,7 @@ resource "deevnet_iot_broker_account" "console" {
     "lightstand/+/state",
     "lightstand/+/status",
     "lightd/status",
+    "beacon/+/status", # whether each switch with a beacon on it is on (ADR-0023)
   ]
 }
 
@@ -379,4 +385,40 @@ resource "deevnet_iot_broker_account" "cover_screen_01" {
     "nowplaying/current",           # what is playing, and whether it is
     "nowplaying/current/art/small", # its sleeve, at a size the screen can hold
   ]
+}
+
+# --- The turntable's power beacon (ADR-0023) ---------------------------------
+#
+# A bare board on the outlet that is switched with the turntable. It is
+# connected while the turntable is on, and that is all it says: "online",
+# retained, and the broker's "offline" for it when the switch goes off.
+#
+# Registered as the stand is, and for the same reason: firmware its owner
+# controls is what trust class `iot` is for, and the entry is what lets its
+# account publish under log/. It is an identity and carries no credential.
+resource "deevnet_iot_device" "turntable_power_01" {
+  tenant      = deevnet_tenant.eds.name
+  name        = "turntable-power-01"
+  trust_class = "iot"
+}
+
+# The beacon's own account. It reads nothing.
+#
+# What this credential can do is say the turntable is on when it is not, or
+# off when it is: nowplayd would hold the stand for a silent turntable, or
+# stop hearing a record. Neither reaches a player.
+#
+# CAREFUL: replacing this resource issues a NEW password, and the beacon stops
+# connecting until it is reprovisioned - which reads as the turntable never
+# being switched on.
+resource "deevnet_iot_broker_account" "turntable_power_01" {
+  tenant = deevnet_tenant.eds.name
+  name   = "turntable-power-01"
+  device = deevnet_iot_device.turntable_power_01.name
+
+  publish = [
+    "beacon/turntable-power-01/status", # its own presence, and its last will
+    "log/turntable-power-01",           # its own events, into the tenant's log store
+  ]
+  subscribe = []
 }
