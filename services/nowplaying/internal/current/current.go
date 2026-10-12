@@ -30,6 +30,13 @@ type Resolver interface {
 	Resolve(ctx context.Context, t contract.Track) (resolve.Result, error)
 }
 
+// Collection knows the records their owner has (ADR-0022). Find names the
+// record a track is on, and returns resolve.ErrNotFound when it is on none
+// of them.
+type Collection interface {
+	Find(ctx context.Context, artist, title, album string) (resolve.Result, error)
+}
+
 // Image is a cover as it arrived from a source: bytes, with the hash they are
 // known by.
 type Image struct {
@@ -68,6 +75,15 @@ type Publisher struct {
 	// the source's own image, because a catalogue's cover would light the
 	// room just the same.
 	Coverless map[string]bool
+	// Owned names sources that play the owner's own records, and Collection
+	// is where those records are listed (ADR-0022). For such a source the
+	// collection is asked first, by artist and title, and its answer is the
+	// album: it replaces whatever album the source named, because a source
+	// that hears a track cannot know which record it is on, and the
+	// collection can. A track the collection does not have is completed the
+	// ordinary way.
+	Owned      map[string]bool
+	Collection Collection
 	// Looks names the look of the album a track is on, or "" (ADR-0019). Nil
 	// means no album has one. It is published beside the cover, for the
 	// cover: a look is something a cover has.
@@ -205,11 +221,32 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 		}
 	}
 
+	lookup, cancel := context.WithTimeout(ctx, p.timeout())
+	defer cancel()
+
+	if p.Collection != nil && p.Owned[winner.Source] && cover == nil {
+		owned, err := p.Collection.Find(lookup, track.Artist, track.Title, track.Album)
+		switch {
+		case err == nil:
+			// The record on the platter. Its title is the album, whatever
+			// the source called it, and what is looked up below - when the
+			// collection had no picture of it - is looked up by that title.
+			out.Track.Album = owned.Album
+			track.Album = owned.Album
+			if owned.Cover != nil {
+				if image := NewImage(owned.Cover.Image); image != nil {
+					out.Art = &contract.Art{SHA256: image.SHA256, MIME: image.MIME, From: owned.Cover.From}
+					return out, image
+				}
+			}
+		case !errors.Is(err, resolve.ErrNotFound):
+			p.logger().Warn("the collection could not be asked", "artist", track.Artist, "title", track.Title, "error", err)
+		}
+	}
+
 	if p.Resolver == nil {
 		return out, cover
 	}
-	lookup, cancel := context.WithTimeout(ctx, p.timeout())
-	defer cancel()
 
 	found, err := p.Resolver.Resolve(lookup, track)
 	if err != nil {

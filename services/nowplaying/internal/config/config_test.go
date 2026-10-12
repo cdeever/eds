@@ -97,6 +97,8 @@ func TestInvalidValuesStopTheProgram(t *testing.T) {
 		"a timeout of an hour":           {"NP_LOOKUP_TIMEOUT": "1h"},
 		"a coverless source misspelt":    {"NP_COVERLESS_SOURCES": "Spotify"},
 		"a coverless wildcard":           {"NP_COVERLESS_SOURCES": "itunes,+"},
+		"a collection source misspelt":   {"NP_COLLECTION_SOURCES": "Turntable", "NP_DISCOGS_USER": "someone"},
+		"a collection with no owner":     {"NP_COLLECTION_SOURCES": "turntable"},
 	}
 	for name, env := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -120,5 +122,25 @@ func TestCoverlessSources(t *testing.T) {
 	cfg, err = LoadNowplayd("0.1")
 	if err != nil || len(cfg.Coverless) != 2 || cfg.Coverless[0] != "spotify" || cfg.Coverless[1] != "tidal" {
 		t.Errorf("coverless = %v, %v", cfg.Coverless, err)
+	}
+}
+
+func TestCollectionSources(t *testing.T) {
+	cfg, err := LoadNowplayd("0.1")
+	if err != nil || len(cfg.Owned) != 0 {
+		t.Fatalf("by default no source is looked up in a collection: %v, %v", cfg.Owned, err)
+	}
+
+	// An owner and no sources is nothing to stop for: nothing is asked.
+	t.Setenv("NP_DISCOGS_USER", " someone ")
+	t.Setenv("NP_DISCOGS_TOKEN", " secret\n")
+	if _, err := LoadNowplayd("0.1"); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("NP_COLLECTION_SOURCES", "turntable")
+	cfg, err = LoadNowplayd("0.1")
+	if err != nil || len(cfg.Owned) != 1 || cfg.Owned[0] != "turntable" || cfg.DiscogsUser != "someone" || cfg.DiscogsToken != "secret" {
+		t.Errorf("owned = %v, user = %q, err = %v", cfg.Owned, cfg.DiscogsUser, err)
 	}
 }

@@ -42,6 +42,7 @@ The design, and what was turned down, is recorded:
 | `bus` | tested against a real broker with `-race` (`make test-integration`) |
 | `nowplayd` | run locally end to end: a source state published by hand became a current track with a looked-up album and cover, and `lightd` lit a scene from it |
 | the three catalogues | each checked once against the live service on 2026-10-10 |
+| `discogs` | unit-tested against a stand-in. Asked of the real collection on 2026-10-12: 226 records listed, and the tracks played on the bench each found on the record they were played from, with its sleeve. Being told to wait by Discogs was met once, and waited out. Deployed on the workload on 2026-10-12 ([CHG-0014](../../docs/content/docs/changes/2026/0014-the-owners-collection.md)): a track the recogniser put on a greatest hits was shown as on the owner's *Cosmo's Factory*, with that sleeve, and the stand lit from it |
 | `dacp`, `driver/itunes` | unit-tested, including a replay of a session recorded from the real iTunes |
 | `npagent` | paired with iTunes 12.13.10.3 on Windows and run end to end on a development broker: iTunes → driver → nowplayd → lightd → scene ([ADR-0011](../../docs/content/docs/architecture/decisions/0011-itunes-by-remote-pairing.md)) |
 | the agent Pi | running as a relay on `dv02rpi002p01`: paired with iTunes on the home LAN and publishing to the real broker ([`images`](../../images), [`deploy/relay`](../../deploy/relay)) |
@@ -332,7 +333,48 @@ be used stops the program.
 | `NP_CATALOGUES` | `deezer,itunes,musicbrainz` | where to look, in order; empty switches lookups off |
 | `NP_LOOKUP_TIMEOUT` | `10s` | for one catalogue request; 1s to 1m |
 | `NP_CONTACT` | this repository's URL | goes in the User-Agent; catalogues require a way to reach the caller |
+| `NP_COLLECTION_SOURCES` | none | sources that play the owner's own records, looked up in the owner's Discogs collection before any catalogue ([ADR-0022](../../docs/content/docs/architecture/decisions/0022-the-owners-collection-names-the-record.md)). `turntable` on the workload |
+| `NP_DISCOGS_USER` | none | whose collection. Required when a source is named above |
+| `NP_DISCOGS_TOKEN` | none | a personal access token; needed for a private collection, and raises Discogs' limit from 25 requests a minute to 60. **Secret** |
 | `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](../../docs/content/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover.md)). `spotify` on the workload, which is what keeps the stand from following it |
+
+## The owner's collection
+
+A source that hears a track cannot know which record it is on. The
+recogniser behind the turntable names an album with each track, and names a
+compilation or a reissue as often as not. But the record on the platter is
+one its owner has, and the owner's collection at Discogs says which
+([ADR-0022](../../docs/content/docs/architecture/decisions/0022-the-owners-collection-names-the-record.md)).
+
+For the sources `NP_COLLECTION_SOURCES` names, `nowplayd` asks the collection
+first, by artist and title:
+
+- **The record's title becomes the album**, replacing what the source called
+  it, and **its sleeve becomes the cover**: the pressing that is owned, not a
+  catalogue's guess at an edition. `art.from` is `discogs`.
+- **A track on several records** goes to an album before a compilation,
+  always; then the one named as the source named the album, the one last
+  answered with (a side is played through), vinyl before a disc, the
+  earliest. So a greatest hits played through shows each song's own album
+  where that album is owned, and its own sleeve for the rest. That is the
+  owner's choice.
+- **A track the collection does not have** is completed the ordinary way,
+  from the catalogues.
+- **Only those sources.** iTunes says which album it is playing, and knows.
+
+The list of records is read when nowplayd starts and again every six hours. A
+record's tracklist is read the first time its artist is heard, and kept. One
+cover is held, the last. Nothing is written to disk.
+
+Two things it gets wrong, both by not knowing what it has not been told:
+
+- **A record that is not in the collection, whose track is on one that is.**
+  The other record is named. Adding the record at Discogs is the cure.
+- **Compilations of several artists.** A record is found by the artist it is
+  credited to, and those are credited to "Various".
+
+`internal/discogs` has a test that asks the real Discogs, skipped unless
+`NP_TEST_DISCOGS="Artist|Title|Album"` and `NP_DISCOGS_USER` are set.
 
 ## Things worth knowing
 

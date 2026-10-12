@@ -125,6 +125,16 @@ in, a name out". `make -C deploy/relay turntable DEVICE=…` names the input.
 **On, on the agent Pi, beside iTunes** (CHG-0013): the Pi runs
 `itunes,turntable`.
 
+**The record on the turntable is named by its owner's collection** (ADR-0022).
+For sources in `NP_COLLECTION_SOURCES`, nowplayd asks the owner's Discogs
+collection first (`internal/discogs`), and its answer replaces the album the
+source named: a source that hears a track cannot know the record, and the
+collection can. Do not extend this to a source that knows its album. The
+token is `NP_DISCOGS_TOKEN`, kept by hand in gitignored `deploy/discogs.env`
+and never committed or logged. Discogs' terms ask for "Data provided by
+Discogs." beside its pictures, which the console says, and that nothing of
+theirs is kept longer than needed: one cover is held, in memory.
+
 Integration tests are gated on `NP_TEST_BROKER`. This Makefile runs on macOS
 (make 3.81, `/bin/bash`); the lightd and palette ones hardcode `/usr/bin/bash`
 and `.ONESHELL` and do not.

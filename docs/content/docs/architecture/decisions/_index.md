@@ -90,3 +90,4 @@ and incidents under the same names. To keep the two apart:
 | [0019](0019-an-album-can-have-a-look-of-its-own/) | 2026-10-11 | An album can have a look of its own, named on the music side and drawn on the light side | {{< adr-status "Proposed" >}} |
 | [0020](0020-a-touch-screen-that-can-change-what-plays/) | 2026-10-11 | A touch screen shows the cover and can change what plays, by asking nowplayd | {{< adr-status "Proposed" >}} |
 | [0021](0021-the-turntable-is-identified-by-listening/) | 2026-10-11 | The turntable is identified by listening, with a recogniser that can be replaced | {{< adr-status "Proposed" >}} |
+| [0022](0022-the-owners-collection-names-the-record/) | 2026-10-12 | For a source that plays the owner's records, the owner's collection names the record | {{< adr-status "Proposed" >}} |

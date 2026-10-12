@@ -134,6 +134,12 @@ type Nowplayd struct {
 	LookupTimeout time.Duration
 	// Coverless names sources that are reported without a cover (ADR-0016).
 	Coverless []string
+	// Owned names sources that play the owner's own records, and so are
+	// looked up in the owner's collection first (ADR-0022).
+	Owned []string
+	// DiscogsUser is whose collection that is. DiscogsToken is a personal
+	// access token for it, needed when the collection is private.
+	DiscogsUser, DiscogsToken string
 }
 
 // LoadNowplayd builds nowplayd's configuration.
@@ -162,6 +168,20 @@ func LoadNowplayd(version string) (Nowplayd, error) {
 		if !contract.ValidSourceID(source) {
 			return cfg, fmt.Errorf("config: NP_COVERLESS_SOURCES names %q, which cannot be a source", source)
 		}
+	}
+
+	cfg.Owned = List("NP_COLLECTION_SOURCES", "")
+	for _, source := range cfg.Owned {
+		if !contract.ValidSourceID(source) {
+			return cfg, fmt.Errorf("config: NP_COLLECTION_SOURCES names %q, which cannot be a source", source)
+		}
+	}
+	cfg.DiscogsUser = strings.TrimSpace(Str("NP_DISCOGS_USER", ""))
+	cfg.DiscogsToken = strings.TrimSpace(Str("NP_DISCOGS_TOKEN", ""))
+	// A source said to play the owner's records, and no owner: the setting
+	// would do nothing, and nothing would say so.
+	if len(cfg.Owned) > 0 && cfg.DiscogsUser == "" {
+		return cfg, fmt.Errorf("config: NP_COLLECTION_SOURCES is set and NP_DISCOGS_USER is not: whose collection?")
 	}
 	return cfg, nil
 }

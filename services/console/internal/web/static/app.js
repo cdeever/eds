@@ -103,7 +103,9 @@ function drawNow(page) {
     $("cover-note").textContent =
       now.cover_from === "player" || !now.cover_from
         ? "Cover from the player's own library."
-        : `No cover in the library; this one was found in ${now.cover_from}.`;
+        : now.cover_from === "discogs"
+          ? "The sleeve of the record in the owner's collection. Data provided by Discogs."
+          : `No cover in the library; this one was found in ${now.cover_from}.`;
   } else {
     img.hidden = true;
     img.removeAttribute("src");
