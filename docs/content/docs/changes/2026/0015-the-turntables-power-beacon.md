@@ -103,13 +103,14 @@ Ordered so that each step is safe without the ones after it.
 | 11:48 | Its owner had applied the tenant. The beacon was provisioned from the tenant's outputs, as account `eds-turntable-power-01`, and restarted three times from its reset pin, on the bench. Each time it had an address about 1.7 s after starting and had said `online` at 3.03, 3.07 and 3.06 s. |
 | 11:50 | The work was committed (`73b6e94`) and the services deployed from the Builder. All four came back active. `nowplayd` named the switch as it started, `source=turntable on=true`, and published what was current: iTunes, paused. The console's page listed `turntable-power-01`, on. |
 | 11:52 | The board was held in reset from the Mac, twice, to stand in for its power going, and the console watched. It read `offline` after 12.3 s and after 18.6 s. Let go, it read `online` again after 7.6 s and after 3.1 s. |
+| 11:54 | Its owner had reconnected the sound card and the turntable's driver was online again, silent. With the beacon on, `nowplaying/current` was the turntable, stopped, over the track still paused in iTunes: the hold. The board held in reset, current went to iTunes, paused, after 15.5 s; let go, back to the turntable after 3.2 s. |
 
 ## Departures
 
-- The turntable's driver on the Pi was reporting itself offline throughout,
-  so the hold itself has not been seen on the real bus: with the switch on
-  and no driver, iTunes stayed current, which is the rule. A needle lifted
-  with iTunes paused waits for the Pi to be listening again.
+- The turntable's driver on the Pi was offline when the services were
+  deployed, and with the switch on and no driver iTunes stayed current,
+  which is the rule. The hold was seen once the driver was back. A record
+  actually played and its needle lifted has still not been.
 - The will took up to 18.6 s, not "about fifteen". One and a half keepalives
   is when a broker may send it, and this one looks every few seconds.
 

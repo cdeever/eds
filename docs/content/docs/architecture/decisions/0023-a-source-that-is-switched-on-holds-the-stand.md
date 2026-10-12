@@ -166,7 +166,10 @@ starting ([CHG-0015](/docs/changes/2026/0015-the-turntables-power-beacon/)).
 That is a reset and not the strip switching on, and not where it will live.
 Held in reset to stand in for its power going, it read `offline` on the
 console after 12.3 and 18.6 seconds; let go, `online` after 7.6 and 3.1.
-nowplayd, deployed, named the switch as it started.
+nowplayd, deployed, named the switch as it started. With the turntable's
+driver online and silent and a track paused in iTunes, the turntable was
+current while the beacon was on, and iTunes 15.5 seconds after it was held
+in reset.
 
 Not yet shown:
 
@@ -175,5 +178,6 @@ Not yet shown:
 - [ ] A day on the strip's outlet without the connection coming and going.
 - [ ] A side turned over with iTunes left paused: the stand keeps the sleeve
   and `nowplaying/current` stays the turntable's.
-- [ ] The turntable switched off: `nowplaying/current` goes back to what
-  else there is.
+- [x] The beacon off: `nowplaying/current` goes back to what else there is.
+  Shown with the board held in reset; the turntable's own switch is the
+  first two items.
