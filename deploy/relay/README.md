@@ -75,6 +75,27 @@ that is off asks its player nothing and reads as offline on the bus. Its
 authorization stays on the Pi for when it is turned back on. **Spotify is
 off at present** (CHG-0011).
 
+## The turntable
+
+The turntable driver listens to a sound card plugged into the Pi, fed from
+the amplifier's tape output
+([ADR-0021](../../docs/content/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening.md)).
+Which input is the Pi's to be told:
+
+```bash
+make turntable DEVICE=plughw:UA4FX       # which input; arecord -L on the Pi lists them
+make drivers DRIVERS=itunes,turntable    # and the driver on
+make drivers DRIVERS=itunes              # and off: nothing is listened to, nothing is asked
+```
+
+A card for such a Pi is written with both:
+`make card DRIVERS=itunes,turntable TURNTABLE_DEVICE=plughw:UA4FX`.
+
+The input must be line level and after the phono stage. Set the interface so
+its peaks stay well below full scale; the driver takes anything under
+-55 dBFS for silence. `make status` checks the input is plugged in, the
+recogniser installed and its endpoint in reach.
+
 ## Changing a Pi in service
 
 ```bash

@@ -90,7 +90,7 @@ func usage() {
   spotify-devices  Spotify: list the account's devices, to choose which count
 
 Settings, from the environment:
-  NP_DRIVERS      which drivers run: itunes, spotify, or both (default: itunes)
+  NP_DRIVERS      which drivers run: itunes, spotify, turntable (default: itunes)
   NP_STATE_DIR    where the pairing and the authorization are kept
                   (default: the user config directory)
   NP_MQTT_*, NP_TOPIC_PREFIX   the broker, as for nowplayd
@@ -108,7 +108,15 @@ Settings, from the environment:
  Spotify
   NP_SPOTIFY_DEVICES    the devices whose playback counts, by name, with commas
   NP_SPOTIFY_INTERVAL   how often Spotify is asked (default 10s, at least 5s)
-  NP_SPOTIFY_CLIENT_ID  the app's client id; needed by spotify-auth only`)
+  NP_SPOTIFY_CLIENT_ID  the app's client id; needed by spotify-auth only
+
+ Turntable
+  NP_TURNTABLE_DEVICE      the input to listen to, as ALSA names it (plughw:...)
+  NP_TURNTABLE_RECOGNIZER  the program that names a clip
+                           (default /usr/local/bin/eds-recognize)
+  NP_TURNTABLE_INTERVAL    how often a clip is sent (default 20s, at least 10s)
+  NP_TURNTABLE_SILENCE_DB  the level below which nothing is playing (default -55)
+  NP_TURNTABLE_STOP_AFTER  how much silence means stopped (default 20s)`)
 }
 
 // --- state -------------------------------------------------------------------
@@ -499,6 +507,8 @@ func playerName(st contract.State) string {
 		return "MusicBee"
 	case "tidal":
 		return "TIDAL"
+	case "turntable":
+		return "the turntable"
 	case "":
 		return st.Source
 	}

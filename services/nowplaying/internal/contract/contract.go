@@ -80,7 +80,8 @@ type State struct {
 	// Source is the driver deployment that saw this, e.g. "itunes-den". It is
 	// also a level in the topic the state is published on.
 	Source string `json:"source,omitempty"`
-	// Player is the kind of player: itunes, music, spotify, tidal, musicbee.
+	// Player is the kind of player: itunes, music, spotify, tidal, musicbee,
+	// turntable.
 	Player string `json:"player,omitempty"`
 
 	State PlayState `json:"state"`

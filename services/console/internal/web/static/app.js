@@ -12,7 +12,7 @@ import { periodMs, render as renderStrip, validate } from "./effects.js";
 let leds = 18;
 const $ = (id) => document.getElementById(id);
 
-const PLAYERS = { itunes: "iTunes", music: "Music", spotify: "Spotify", musicbee: "MusicBee", tidal: "TIDAL" };
+const PLAYERS = { itunes: "iTunes", music: "Music", spotify: "Spotify", musicbee: "MusicBee", tidal: "TIDAL", turntable: "Turntable" };
 const playerName = (p) => (p && (PLAYERS[p.player] || p.player || p.source)) || "";
 
 function el(tag, className, text) {

@@ -21,7 +21,9 @@ NP    := $(REPO)/services/nowplaying
 # Where the flashed card's boot partition is mounted. macOS names it bootfs.
 BOOT ?= /Volumes/bootfs
 
-.PHONY: help image fetch card push spotify drivers status pair logs
+.PHONY: help image fetch card push spotify drivers turntable status pair logs
+
+comma := ,
 
 help:
 	@echo "relay - the now-playing agent on $(PI)"
@@ -34,7 +36,8 @@ help:
 	@echo "  pair    pair the agent with iTunes; prints a code to type in"
 	@echo "  spotify authorize the agent for Spotify in a browser here, and hand it to the Pi"
 	@echo "  drivers which players the Pi follows: DRIVERS=itunes turns Spotify off,"
-	@echo "          DRIVERS=itunes,spotify turns it back on"
+	@echo "          DRIVERS=itunes,spotify turns it back on; turntable is the third"
+	@echo "  turntable  which input the turntable driver listens to: DEVICE=plughw:UA4FX"
 	@echo "  logs    follow the agent on the Pi"
 	@echo
 	@echo "In order, for a new card: image, fetch, flash it, card, boot it, status, pair."
@@ -73,9 +76,17 @@ spotify:
 # turned off keeps its pairing or its authorization, and has it when turned
 # back on. The settings file holds the broker password and is never printed.
 drivers:
-	@case "$(DRIVERS)" in itunes|spotify|itunes,spotify|spotify,itunes) ;; \
-		*) echo "DRIVERS must be itunes, spotify, or itunes,spotify" >&2; exit 2;; esac
+	@case ",$(DRIVERS)," in ,,|*,,*) bad=1;; *) bad=0;; esac; \
+		for d in $(subst $(comma), ,$(DRIVERS)); do case "$$d" in itunes|spotify|turntable) ;; *) bad=1;; esac; done; \
+		if [ $$bad = 1 ]; then echo "DRIVERS must name itunes, spotify, turntable, with commas" >&2; exit 2; fi
 	ssh $(BUILDER) "ssh a_autoprov@$(PI) 'sudo sed -i -e \"/^NP_DRIVERS=/d\" -e \"\\\$$a NP_DRIVERS=$(DRIVERS)\" /etc/eds/npagent.env && sudo systemctl restart npagent && sleep 3 && systemctl is-active npagent && sudo grep ^NP_DRIVERS= /etc/eds/npagent.env'"
+
+# Which input the turntable driver listens to, as ALSA names it: plughw:<card>.
+# `arecord -L` on the Pi lists them. Like `drivers`, one line of the Pi's
+# settings and a restart; the driver itself is turned on with `drivers`.
+turntable:
+	@case "$(DEVICE)" in *[!A-Za-z0-9:,_=-]*|"") echo "DEVICE must be an ALSA name such as plughw:UA4FX" >&2; exit 2;; esac
+	ssh $(BUILDER) "ssh a_autoprov@$(PI) 'sudo sed -i -e \"/^NP_TURNTABLE_DEVICE=/d\" -e \"\\\$$a NP_TURNTABLE_DEVICE=$(DEVICE)\" /etc/eds/npagent.env && sudo systemctl restart npagent && sleep 3 && systemctl is-active npagent && sudo grep ^NP_TURNTABLE_DEVICE= /etc/eds/npagent.env'"
 
 # The Pi is reached through the Builder, as the site's automation reaches it:
 # it admits SSH on its wired side only, to the automation user.

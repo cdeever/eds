@@ -5,9 +5,10 @@
 # they arrive on the card's boot partition (eds-agent-import).
 #
 # Each driver then needs one thing a person does once: iTunes a pairing
-# (eds-agent-pair), Spotify an authorization (eds-agent-spotify). A driver
-# without its one thing reports itself offline and the other runs. With
-# neither, the agent exits 78 and is left stopped, not restarted for ever.
+# (eds-agent-pair), Spotify an authorization (eds-agent-spotify), the
+# turntable an input to listen to (NP_TURNTABLE_DEVICE). A driver without its
+# one thing reports itself offline and the others run. With none, the agent
+# exits 78 and is left stopped, not restarted for ever.
 [Unit]
 Description=EdS now-playing agent
 Documentation=https://github.com/cdeever/eds/tree/main/services/nowplaying
@@ -38,7 +39,11 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-PrivateDevices=true
+# Not PrivateDevices: the turntable driver listens to a sound card (ADR-0021).
+# Sound devices and nothing else, and only for the group that owns them.
+DevicePolicy=closed
+DeviceAllow=char-alsa rw
+SupplementaryGroups=audio
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

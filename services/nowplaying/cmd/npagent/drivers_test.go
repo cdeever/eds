@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -154,6 +155,28 @@ func TestDriversAreChosenByName(t *testing.T) {
 		if j.run != nil || j.err == nil {
 			t.Fatalf("%s: run=%v err=%v", j.name, j.run != nil, j.err)
 		}
+	}
+
+	// The turntable is one more, and no more ready than the others: nobody
+	// has said which input to listen to.
+	t.Setenv("NP_DRIVERS", "turntable")
+	jobs, err = drivers(quiet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs) != 1 || jobs[0].source != "turntable" || jobs[0].run != nil || jobs[0].err == nil || jobs[0].command != nil {
+		t.Fatalf("got %+v", jobs)
+	}
+	for key, bad := range map[string]string{
+		"NP_TURNTABLE_INTERVAL":   "1s",
+		"NP_TURNTABLE_STOP_AFTER": "soon",
+		"NP_TURNTABLE_SILENCE_DB": "55",
+	} {
+		t.Setenv(key, bad)
+		if _, err := drivers(quiet); err == nil {
+			t.Fatalf("%s=%q was accepted", key, bad)
+		}
+		os.Unsetenv(key)
 	}
 
 	for _, bad := range []string{"", "itunes,tidal", "spotify,spotify"} {

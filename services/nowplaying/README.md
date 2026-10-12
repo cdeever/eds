@@ -49,6 +49,7 @@ The design, and what was turned down, is recorded:
 | `nowplayd` on the workload | deployed ([`deploy`](../../deploy)). An album change in iTunes reaches the stand in about a second |
 | commands, the small cover | unit-tested, and run on a development broker: a cover published by hand came back as a 240-pixel baseline JPEG, and a command reached the current source's topic. **Not yet tried against iTunes**: the five requests are the ones the phone remote is documented to send, and nothing here has pressed them on the real player (ADR-0020) |
 | `spotifyauth`, `driver/spotify` | unit-tested against a stand-in for Spotify. Running on the agent Pi against the real account since 2026-10-11: tracks on the named computer are reported within a poll, playback on the phone is not, and the stand does not follow either ([CHG-0004](../../docs/content/docs/changes/2026/0004-spotify-on-the-agent-pi.md)) |
+| `driver/turntable` | unit-tested: a whole side is played to it in tests, in no time, because its clock is the audio. Its recogniser was tried by hand on the agent Pi on 2026-10-11, fourteen clips named out of fourteen. **The driver itself has not yet run on the Pi** ([ADR-0021](../../docs/content/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening.md), [CHG-0013](../../docs/content/docs/changes/2026/0013-the-turntable-driver.md)) |
 | the agent with two drivers | running on the Pi: each driver has its own connection and presence, and iTunes reports while Spotify is not set up |
 
 ## The iTunes driver
@@ -133,6 +134,53 @@ NP_DRIVERS=spotify NP_SPOTIFY_DEVICES="Study PC" bin/npagent watch
   says why; the driver reports itself offline and asks again every five
   minutes.
 
+## The turntable driver
+
+A turntable cannot be asked what it is playing. The driver listens instead:
+to the amplifier's tape output, through a sound card on the agent Pi, and it
+has a recogniser name what it hears
+([ADR-0021](../../docs/content/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening.md)).
+
+```bash
+NP_DRIVERS=turntable NP_TURNTABLE_DEVICE=plughw:UA4FX bin/npagent watch
+```
+
+Linux only, as it stands: it listens with `arecord`. `arecord -L` lists the
+inputs; a `plughw:` one lets ALSA do the converting to what the driver wants,
+mono at 16 kHz.
+
+- **It knows silence for certain, and nothing else.** Twenty seconds of
+  silence is `stopped`. Music is `playing`, with the track when the recogniser
+  names it and without one when it cannot. It is never made up.
+- **Its clock is the audio.** Everything is counted in tenths of a second
+  heard, not in time passed, so a sound card that stalls is not mistaken for
+  silence, and a test plays it a side in milliseconds.
+- **A clip is twelve seconds, sent every twenty** while music plays: three
+  requests a minute, and none in silence.
+- **The first answer after silence is believed. No single answer after that
+  is.** A new track is taken when two clips running agree on it. Four running
+  that nothing is known about let the track go.
+- **It keeps the album a side began with.** The recogniser names an album
+  with every track and does not agree with itself: two tracks of one LP came
+  back as the album and as a box set the album is in. One record has one
+  cover, so the first album named stays until the artist changes or the deck
+  has been silent for ten minutes. Turning the record over is not that long.
+- **It names no cover and takes no commands.**
+
+### The recogniser
+
+The driver knows its recogniser as a program: a WAV file on its standard
+input, one JSON object on its output - `artist`, `title`, `album` - or `{}`
+when it does not know. A failure is a non-zero exit, and is not mistaken for
+not knowing.
+
+On the Pi that program is `eds-recognize`
+([`images/agent/files`](../../images/agent/files)), and it is Shazam's
+recogniser through ShazamIO. **Nobody published the endpoint it speaks to**,
+and it can stop working on any day without anything here changing. It is
+behind the program so that mending or replacing it is that one file and its
+pinned requirements. Do not move knowledge of Shazam into the driver.
+
 ## More than one driver
 
 `NP_DRIVERS=itunes,spotify` runs both in one agent. Each has its own
@@ -148,8 +196,8 @@ publishes a few events to `<tenant>/log/<device>`, which the substrate carries
 into the tenant's log store, the same way the stand's go
 ([ADR-0017](../../docs/content/docs/architecture/decisions/0017-an-agent-pi-is-a-registered-device.md)):
 `agent.started`, `driver.online` and `driver.offline`, `track.playing`,
-`track.paused` and `track.stopped` with the artist, album and title, and
-Spotify's refusals. They are on the tenant's dashboard under *What played*
+`track.paused` and `track.stopped` with the artist, album and title,
+Spotify's refusals, and the turntable losing its input or its recogniser. They are on the tenant's dashboard under *What played*
 and *Device events*.
 
 A log line becomes an event by carrying an `event` attribute; the journal

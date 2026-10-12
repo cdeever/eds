@@ -91,8 +91,9 @@ make run                       # nowplayd on the dev broker, under edsdev/
 make broker-watch              # every edsdev/nowplaying topic; covers shown by size
 ```
 
-`bin/npagent` runs the drivers `NP_DRIVERS` names (`itunes`, `spotify`), each
-with its own broker connection; `pair` and `spotify-auth` set each up once.
+`bin/npagent` runs the drivers `NP_DRIVERS` names (`itunes`, `spotify`,
+`turntable`), each with its own broker connection; `pair` and `spotify-auth`
+set the first two up once.
 `make build-arm64` builds it for the agent Pi.
 
 **The stand does not follow Spotify, on purpose** (ADR-0016). The Spotify
@@ -112,6 +113,16 @@ through builder as `a_autoprov` (`make -C deploy/relay status|pair|logs`);
 `make drivers DRIVERS=…` chooses which drivers it runs. **Spotify is turned
 off there for now** (CHG-0011): the Pi runs `itunes` only. Everything it
 needs is kept; `DRIVERS=itunes,spotify` turns it back on.
+
+**The turntable driver listens, and asks a recogniser nobody promised**
+(ADR-0021). It hears the amplifier's tape output through a sound card on the
+agent Pi (`arecord`, no cgo) and reports only what it is sure of: silence is
+`stopped`, music it cannot name is `playing` with no track. Its recogniser is
+a program, `eds-recognize` in `images/agent/files`, which is Shazam's through
+an unpublished endpoint and may stop working any day. Keep every trace of
+Shazam in that file and its pinned requirements; the driver knows only "a WAV
+in, a name out". `make -C deploy/relay turntable DEVICE=…` names the input.
+**Not yet turned on** (CHG-0013 is planned).
 
 Integration tests are gated on `NP_TEST_BROKER`. This Makefile runs on macOS
 (make 3.81, `/bin/bash`); the lightd and palette ones hardcode `/usr/bin/bash`

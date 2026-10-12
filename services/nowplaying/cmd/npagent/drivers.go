@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +21,7 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/driver"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver/itunes"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver/spotify"
+	"github.com/cdeever/eds/services/nowplaying/internal/driver/turntable"
 	"github.com/cdeever/eds/services/nowplaying/internal/events"
 	"github.com/cdeever/eds/services/nowplaying/internal/spotifyauth"
 )
@@ -34,7 +37,7 @@ const exitNotConfigured = 78
 
 // A job is one driver, ready to run or not.
 type job struct {
-	name   string // the driver: itunes, spotify
+	name   string // the driver: itunes, spotify, turntable
 	source string // what it is called on the bus
 	// run follows the player until ctx ends, or until something a person has
 	// to fix. Nil when the driver could not be set up at all; err says why.
@@ -52,7 +55,7 @@ type job struct {
 func drivers(logger *slog.Logger) ([]job, error) {
 	names := config.List("NP_DRIVERS", "itunes")
 	if len(names) == 0 {
-		return nil, errors.New("NP_DRIVERS names no driver: itunes, spotify, or both")
+		return nil, errors.New("NP_DRIVERS names no driver: itunes, spotify, turntable")
 	}
 
 	var jobs []job
@@ -72,8 +75,10 @@ func drivers(logger *slog.Logger) ([]job, error) {
 			j, err = itunesJob(logger)
 		case "spotify":
 			j, err = spotifyJob(logger)
+		case "turntable":
+			j, err = turntableJob(logger)
 		default:
-			return nil, fmt.Errorf("NP_DRIVERS: there is no driver called %q (known: itunes, spotify)", name)
+			return nil, fmt.Errorf("NP_DRIVERS: there is no driver called %q (known: itunes, spotify, turntable)", name)
 		}
 		if err != nil {
 			// A setting that cannot be read is a mistake to stop for. A
@@ -179,6 +184,63 @@ func spotifyJob(logger *slog.Logger) (job, error) {
 			Devices:  devices,
 			Interval: interval,
 		}
+		return d.Run(ctx)
+	}
+	return j, nil
+}
+
+// The turntable driver takes no commands either: there is nothing on a
+// turntable for one to reach.
+func turntableJob(logger *slog.Logger) (job, error) {
+	j := job{name: "turntable", source: "turntable"}
+
+	// The recogniser publishes no limit. Ten seconds is as often as this
+	// will ask it whatever it is told; twenty is three clips a minute.
+	interval, err := config.Duration("NP_TURNTABLE_INTERVAL", 20*time.Second, 10*time.Second, 5*time.Minute)
+	if err != nil {
+		return j, err
+	}
+	// Five seconds is longer than the gap between two tracks. Less would
+	// make every gap a stop.
+	stopAfter, err := config.Duration("NP_TURNTABLE_STOP_AFTER", 20*time.Second, 5*time.Second, 5*time.Minute)
+	if err != nil {
+		return j, err
+	}
+	silence := turntable.DefaultSilenceDB
+	if v, ok := os.LookupEnv("NP_TURNTABLE_SILENCE_DB"); ok {
+		silence, err = strconv.ParseFloat(v, 64)
+		if err != nil || silence > -10 || silence < -90 {
+			return j, fmt.Errorf("NP_TURNTABLE_SILENCE_DB=%q: a level in dBFS between -90 and -10", v)
+		}
+	}
+
+	device := config.Str("NP_TURNTABLE_DEVICE", "")
+	recognizer := config.Str("NP_TURNTABLE_RECOGNIZER", "/usr/local/bin/eds-recognize")
+	if device == "" {
+		j.err = errors.New("NP_TURNTABLE_DEVICE names no input to listen to: `arecord -L` lists them")
+		return j, nil
+	}
+	if _, err := exec.LookPath("arecord"); err != nil {
+		j.err = errors.New("arecord is not installed, and it is what listens")
+		return j, nil
+	}
+	if _, err := exec.LookPath(recognizer); err != nil {
+		j.err = fmt.Errorf("the recogniser cannot be run: %w", err)
+		return j, nil
+	}
+
+	j.run = func(ctx context.Context, sink driver.Sink) error {
+		d := &turntable.Driver{
+			Source:     j.source,
+			Capture:    turntable.ALSA{Device: device},
+			Recognizer: turntable.Command{Path: recognizer},
+			Sink:       sink,
+			Logger:     logger.With("driver", j.name),
+			Interval:   interval,
+			SilenceDB:  silence,
+			StopAfter:  stopAfter,
+		}
+		logger.Info("listening to the turntable", "driver", j.name, "device", device, "recognizer", recognizer, "rules", d.String())
 		return d.Run(ctx)
 	}
 	return j, nil
