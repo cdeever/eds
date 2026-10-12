@@ -33,3 +33,12 @@ resource "grafana_dashboard" "lp_stand" {
   folder      = grafana_folder.eds.uid
   config_json = file("${path.module}/dashboards/lp-stand.json")
 }
+
+# What EdS asks of other people's services, and how often (ADR-0027). It
+# reads two partitions: the agent Pi's events, which arrive as a device's,
+# and nowplayd's, which it writes to the workload partition itself.
+resource "grafana_dashboard" "outside_services" {
+  org_id      = deevnet_tenant.eds.dashboard_org_id
+  folder      = grafana_folder.eds.uid
+  config_json = file("${path.module}/dashboards/outside-services.json")
+}

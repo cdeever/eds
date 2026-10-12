@@ -156,6 +156,11 @@ type Nowplayd struct {
 	// NoControls names sources a controller should offer nothing for
 	// (ADR-0025).
 	NoControls []string
+	// LogEndpoint and LogToken are the tenant's log store and the token
+	// that writes to its workload partition, for the counts of what is
+	// asked of outside services (ADR-0027). Either one empty and the counts
+	// go to the journal only. The token is secret.
+	LogEndpoint, LogToken string
 }
 
 // LoadNowplayd builds nowplayd's configuration.
@@ -236,5 +241,8 @@ func LoadNowplayd(version string) (Nowplayd, error) {
 		}
 		cfg.Power[source] = beacon
 	}
+	// The substrate's names, as kit.env gives them, unless EdS's own are set.
+	cfg.LogEndpoint = Str("NP_LOG_ENDPOINT", Str("LOG_ENDPOINT", ""))
+	cfg.LogToken = Str("NP_LOG_INGEST_TOKEN", Str("LOG_INGEST_TOKEN", ""))
 	return cfg, nil
 }

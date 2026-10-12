@@ -66,6 +66,13 @@ the same UID in every tenant's organization. `terraform output dashboard` says
 where to log in; the password is the second half of `GRAFANA_AUTH` in
 `terraform output -raw kit_env`.
 
+A second dashboard, **Outside Services** (`dashboards/outside-services.json`,
+ADR-0027), shows what EdS asks of other people's services and how often: the
+turntable's recognizer and Spotify from the agent Pi, Discogs and the cover
+catalogs from `nowplayd`. It reads `deevnet-logs-devices` for the Pi and
+`deevnet-logs-workloads` for `nowplayd`, which writes its counts there itself
+with the tenant's ingest token.
+
 ## On another machine
 
 Three files are not committed and have to be put in this directory:

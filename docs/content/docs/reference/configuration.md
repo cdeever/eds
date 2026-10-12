@@ -53,6 +53,7 @@ A value that cannot be used stops the program.
 | `NP_IDLE_AFTER` | `15s` | how long a track may sit paused, or nobody report, before `current` says stopped with no track and the cover topics are emptied, which dims the stand ([ADR-0024](/docs/architecture/decisions/0024-paused-long-enough-is-not-playing/)). `0s` is never; at most an hour |
 | `NP_IDLE_AFTER_STOPPED` | `1s` | the same wait for a source that is stopped and still current: a turntable switched on with nothing playing. Short, because its driver has already waited out twenty seconds of silence. `0s` is never; at most a day |
 | `NP_NO_CONTROLS_SOURCES` | none | sources a controller is told to offer nothing for ([ADR-0025](/docs/architecture/decisions/0025-current-says-when-there-are-no-controls/)). `turntable` on the workload |
+| `NP_LOG_ENDPOINT`, `NP_LOG_INGEST_TOKEN` | `LOG_ENDPOINT` and `LOG_INGEST_TOKEN`, as `kit.env` gives them | the tenant's log store and the token that writes to its workload partition: where the counts of calls to outside services go once a minute (ADR-0027). Without both, the counts are in the journal only. The token is secret |
 | `NP_SOURCE_POWER` | none | `source=beacon` pairs: a source whose equipment has a beacon on its switch. While the beacon is connected that source is current; while it is not, the source is not heard; a beacon never heard from changes nothing ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)). `turntable=turntable-power-01` on the workload |
 
 ## console
