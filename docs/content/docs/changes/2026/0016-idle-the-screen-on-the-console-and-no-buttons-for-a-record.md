@@ -91,6 +91,8 @@ otherwise.
 |---|---|
 | 12:12 | The tenant was planned: 0 to add, 1 to change in place (the console's account, one subscription), 0 to destroy. The apply was left to its owner. |
 | 12:12 | The board on `/dev/cu.usbserial-2120` said it was `cover-screen`, and was flashed with `6dab15e`. It started, found its credentials, connected, and read the current track: stopped, no cover. The stand, on the other port, was not touched. |
+| 12:18 | Its owner had applied the tenant, and the services were deployed from the Builder (`049e1e6`). All four came back active. The console listed `cover-screen-01`, online, beside the beacon. `nowplayd` said it was telling controllers to offer nothing for the turntable. |
+| 12:18 | What was current was the turntable, held and silent, its beacon on. So idle had nothing to act on: the track paused in iTunes was not the winner, a held source does not go idle, and the stand was lit at full from a cover still retained from before. Nothing was playing and the room did not say so. |
 
 ## Departures
 
@@ -101,5 +103,6 @@ otherwise.
 
 - [ ] The evidence the two decisions ask for.
 - [ ] A turntable left on with no record keeps the last sleeve lit for as
-  long as it is on. Whether a held source should go idle too, and after how
-  long, was not asked and is not decided.
+  long as it is on, and was seen doing it within a minute of the deploy.
+  Whether a held source should go idle too, and after how long, is its
+  owner's to say.
