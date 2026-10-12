@@ -82,6 +82,7 @@ Either order: the two halves do not depend on each other.
 
 | When (UTC) | What happened |
 |---|---|
+| 21:36 | The agent was pushed to the Pi by its owner (`65e6dfc`); the push was refused to the assistant. It came back active with both drivers online, listening to `plughw:UA4FX`. The turntable was silent, so nothing about the gap was seen. |
 
 ## Departures
 
