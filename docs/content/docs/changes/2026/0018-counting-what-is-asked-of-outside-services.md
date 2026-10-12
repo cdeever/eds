@@ -7,9 +7,9 @@ weight: 18
 
 | | |
 |---|---|
-| **Date** | Unscheduled |
+| **Date** | 2026-10-12 |
 | **Change type** | Upgrade |
-| **Status** | {{< status-badge "planned" "Planned" >}} |
+| **Status** | {{< status-badge "in-progress" "In progress" >}} |
 | **Systems** | `npagent` and its recognizer on the agent Pi (`np-relay`); `nowplayd` on the workload; the tenant's Terraform (one dashboard added) |
 | **How** | `make plan apply` in `infra/deevnet-tenant-eds`; `make -C deploy/relay push`; `make -C deploy deploy WHERE=builder` |
 | **Risk** | Low. Nothing that lights the room changes. Most likely to go wrong: the log store refuses `nowplayd`, and its counts stay in the journal |
@@ -75,6 +75,7 @@ Any order. The dashboard is empty until the other two are done.
 
 | When (UTC) | What happened |
 |---|---|
+| 21:53 | The agent and the recognizer were pushed to the Pi by its owner (`23e4dfb`, this branch on top of CHG-0017's, which had been merged). The agent came back active with both drivers online. The turntable was silent and Spotify's driver is off, so nothing was asked of anybody and there was no count to see. |
 
 ## Departures
 
