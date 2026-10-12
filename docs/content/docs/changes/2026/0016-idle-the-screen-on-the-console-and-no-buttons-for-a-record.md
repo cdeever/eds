@@ -93,9 +93,12 @@ otherwise.
 | 12:12 | The board on `/dev/cu.usbserial-2120` said it was `cover-screen`, and was flashed with `6dab15e`. It started, found its credentials, connected, and read the current track: stopped, no cover. The stand, on the other port, was not touched. |
 | 12:18 | Its owner had applied the tenant, and the services were deployed from the Builder (`049e1e6`). All four came back active. The console listed `cover-screen-01`, online, beside the beacon. `nowplayd` said it was telling controllers to offer nothing for the turntable. |
 | 12:18 | What was current was the turntable, held and silent, its beacon on. So idle had nothing to act on: the track paused in iTunes was not the winner, a held source does not go idle, and the stand was lit at full from a cover still retained from before. Nothing was playing and the room did not say so. |
+| 12:23 | A wait of its own for a source stopped and still current, five minutes, was deployed (`bed378c`). The turntable had been silent for hours, so it was idle at once: `nowplayd` said so, the cover topics were emptied, `lightd` sent the idle scene, and the stand reported taking it, solid at 0.15. The console showed no cover and the stand dim. |
 
 ## Departures
 
+- A second deploy, for the wait that was missing. The first left the room
+  lit with nothing playing.
 - The screen was flashed before the tenant was applied and the workload
   deployed, not after. Either order is safe, and the board was to hand.
 
