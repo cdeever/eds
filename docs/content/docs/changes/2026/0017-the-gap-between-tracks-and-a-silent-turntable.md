@@ -83,8 +83,15 @@ Either order: the two halves do not depend on each other.
 | When (UTC) | What happened |
 |---|---|
 | 21:36 | The agent was pushed to the Pi by its owner (`65e6dfc`); the push was refused to the assistant. It came back active with both drivers online, listening to `plughw:UA4FX`. The turntable was silent, so nothing about the gap was seen. |
+| 21:38 | The workload's deploy, run by its owner from the worktree, built and loaded the four images and then stopped: the tenant's directory was not passed, and the worktree has none. Nothing was installed or restarted. |
+| 21:39 | `make units`, with the tenant's directory named, installed the settings and restarted the four services (`2b486a2`). All four came back active. What was current was iTunes, paused long before, so `nowplayd` was idle at once, `lightd` heard no cover and sent the idle scene, solid at 0.15. The turntable was not on, so the new wait had nothing to act on. |
 
 ## Departures
+
+- Both halves were run by the owner; the assistant was refused the push.
+- The workload was deployed from a worktree, which has neither the tenant's
+  backend settings nor `discogs.env`. The first was named with `INFRA=`, the
+  second copied in. The first try lost `INFRA=` to a line break.
 
 ## Follow-ups
 
