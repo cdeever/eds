@@ -118,7 +118,10 @@ needs is kept; `DRIVERS=itunes,spotify` turns it back on.
 **The turntable driver listens, and asks a recognizer nobody promised**
 (ADR-0021). It hears the amplifier's tape output through a sound card on the
 agent Pi (`arecord`, no cgo) and reports only what it is sure of: silence is
-`stopped`, music it cannot name is `playing` with no track. Its recognizer is
+`stopped`, music it cannot name is `playing` with no track. A second of
+quiet with music after it is a gap between two tracks: the listening starts
+over, and the one clip that follows is believed alone, as the first after the
+needle comes down is (ADR-0026); no other single answer replaces a track. Its recognizer is
 a program, `eds-recognize` in `images/agent/files`, which is Shazam's through
 an unpublished endpoint and may stop working any day. Keep every trace of
 Shazam in that file and its pinned requirements; the driver knows only "a WAV
@@ -294,8 +297,9 @@ pressed, and **empties** the cover topics. An emptied cover topic is the one
 way `lightd` is told there is no cover, and it answers with its idle scene
 (`scene.Idle`, the firmware's own starting scene). A cover merely not sent
 still leaves the room as it was (ADR-0016); do not confuse the two. A source
-that is stopped and held waits longer, `NP_IDLE_AFTER_STOPPED` (5 m), so a
-record can be turned over.
+that is stopped and held has its own wait, `NP_IDLE_AFTER_STOPPED` (1 s): the
+turntable's driver has already heard twenty seconds of silence, and the
+lights are on for music, so turning a record over dims the room (ADR-0026).
 
 **`current` says when there are no controls** (ADR-0025):
 `"no_controls": true` for the sources in `NP_NO_CONTROLS_SOURCES`, the

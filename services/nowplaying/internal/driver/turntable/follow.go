@@ -26,6 +26,12 @@ const missesBeforeUnknown = 4
 // silence too, and must not: so it is long.
 const forgetAfter = 10 * time.Minute
 
+// gapAfter is how much quiet, with music on both sides of it, is taken for
+// the gap between two tracks (ADR-0026). A quiet passage is as long, and is
+// answered the same way: by asking. Asking costs one clip and changes
+// nothing when the answer is the track already playing.
+const gapAfter = time.Second
+
 // follower turns what is heard, and what the recognizer says about it, into
 // what is playing. It has no clock but the audio and does nothing but decide,
 // which is what lets a test put it through a whole side in no time.
@@ -34,6 +40,7 @@ type follower struct {
 	interval  int // blocks between clips
 	stopAfter int // blocks of silence that mean stopped
 	forget    int // blocks of silence that end an album
+	gap       int // blocks of quiet that are a gap between two tracks
 	silence   float64
 
 	ring  []int16 // the last clip's worth of audio
@@ -41,6 +48,14 @@ type follower struct {
 	quiet int     // blocks of silence in a row
 	since int     // blocks since a clip was last sent
 	busy  bool    // a clip is with the recognizer
+
+	// A gap starts the listening over: what is in the ring is the track
+	// before it. The clip that follows is all one track, which no clip sent
+	// by the clock can be counted on to be, and so its answer is believed
+	// alone, as the first after the needle comes down is.
+	fresh     bool // the ring was begun after a gap, and no clip sent from it
+	sentFresh bool // the clip with the recognizer is that one
+	sinceGap  int  // blocks since a gap last started the listening over
 
 	hearing  bool // music is playing
 	answered bool // the recognizer has answered since it started
@@ -62,6 +77,7 @@ func newFollower(interval, stopAfter time.Duration, silenceDB float64) *follower
 		interval:  blocks(interval),
 		stopAfter: blocks(stopAfter),
 		forget:    blocks(forgetAfter),
+		gap:       blocks(gapAfter),
 		silence:   silenceDB,
 		quiet:     blocks(stopAfter), // nothing has been heard yet
 	}
@@ -78,6 +94,18 @@ func (f *follower) hear(block []int16) []int16 {
 			f.hearing = true
 			f.ring, f.loud = f.ring[:0], f.loud[:0]
 			f.since = f.interval
+			f.fresh = false
+			// The needle coming down is not a gap. One that follows it
+			// closely is: the thump, the lead-in, and then the record.
+			f.sinceGap = f.interval
+		} else if f.quiet >= f.gap && f.sinceGap >= f.interval {
+			// Music again after a gap. Gaps closer together than the
+			// interval are let pass: music that keeps stopping would
+			// otherwise never fill a clip, and never be asked about.
+			f.ring, f.loud = f.ring[:0], f.loud[:0]
+			f.since = f.interval
+			f.pending = nil
+			f.fresh, f.sinceGap = true, 0
 		}
 		f.quiet = 0
 	} else if f.quiet < f.forget {
@@ -103,6 +131,7 @@ func (f *follower) hear(block []int16) []int16 {
 		f.loud = f.loud[over:]
 	}
 	f.since++
+	f.sinceGap++
 
 	// A different track heard once is asked about again as soon as there is
 	// a clip that shares nothing with the last one; otherwise a change of
@@ -115,6 +144,7 @@ func (f *follower) hear(block []int16) []int16 {
 		return nil
 	}
 	f.busy, f.since = true, 0
+	f.sentFresh, f.fresh = f.fresh, false
 	return append([]int16(nil), f.ring...)
 }
 
@@ -132,7 +162,8 @@ func (f *follower) mostlyMusic() bool {
 
 // answer takes what the recognizer said about the last clip.
 func (f *follower) answer(m Match, err error) {
-	f.busy = false
+	fresh := f.sentFresh
+	f.busy, f.sentFresh = false, false
 	if !f.hearing {
 		// The needle was lifted while it was thinking.
 		return
@@ -157,7 +188,7 @@ func (f *follower) answer(m Match, err error) {
 			f.adopt(m)
 		case f.track.same(m):
 			f.pending = nil
-		case f.pending != nil && f.pending.same(m):
+		case fresh, f.pending != nil && f.pending.same(m):
 			f.adopt(m)
 		default:
 			f.pending = &m

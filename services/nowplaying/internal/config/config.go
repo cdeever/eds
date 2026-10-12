@@ -149,7 +149,9 @@ type Nowplayd struct {
 	IdleAfter time.Duration
 	// StoppedIdleAfter is the same wait for a source that is stopped and
 	// still current: one held while its equipment is on, with nothing
-	// playing on it. Longer, so a record can be turned over.
+	// playing on it. A second: the driver has already waited out its own
+	// silence before saying "stopped", and the lights follow the music
+	// (ADR-0026).
 	StoppedIdleAfter time.Duration
 	// NoControls names sources a controller should offer nothing for
 	// (ADR-0025).
@@ -202,7 +204,7 @@ func LoadNowplayd(version string) (Nowplayd, error) {
 		return cfg, err
 	}
 
-	if cfg.StoppedIdleAfter, err = Duration("NP_IDLE_AFTER_STOPPED", 5*time.Minute, 0, 24*time.Hour); err != nil {
+	if cfg.StoppedIdleAfter, err = Duration("NP_IDLE_AFTER_STOPPED", time.Second, 0, 24*time.Hour); err != nil {
 		return cfg, err
 	}
 

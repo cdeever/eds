@@ -82,6 +82,7 @@ function drawNow(page) {
     $("album").textContent = "";
     $("cover-note").textContent = page.current ? "" : "Nothing has been heard from nowplayd yet.";
     img.hidden = true;
+    img.removeAttribute("src");
     $("cover-empty").textContent = "";
     document.title = "EdS";
     return;
