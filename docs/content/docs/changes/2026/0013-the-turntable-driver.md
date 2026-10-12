@@ -9,7 +9,7 @@ weight: 13
 |---|---|
 | **Date** | 2026-10-11 |
 | **Change type** | Deployment |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} — the driver is on and a record reaches the bus; the stand was offline and has not been seen to follow it |
+| **Status** | {{< status-badge "in-progress" "In progress" >}} — the driver is on, the stand follows a record and the needle lifting is seen; the interface has not been unplugged |
 | **Systems** | the tenant (one broker account), the agent Pi (its agent, its unit, a recogniser installed, two lines of its settings) |
 | **How** | `make apply` in the tenant; `make -C deploy/relay push`, `turntable`, `drivers` |
 | **Risk** | Medium. Most likely to go wrong: the agent's unit, which changes how it is confined, not starting, which would stop iTunes being followed too |
@@ -111,10 +111,11 @@ from the commit before this one.
 | 03:43 | The line put back by hand. The agent started `itunes,turntable`; the track was named again fourteen seconds later. Spotify reads as offline. |
 | 03:44 | The target mended (below) and run twice running: `NP_DRIVERS=itunes,turntable` both times. |
 | 03:45 | On the console: `current` is the turntable's track, playing, with an album and a cover nowplayd found in the iTunes catalogue, and `lit_cover` is that cover, so lightd has sent a scene from it. **`lp-stand-01` was offline**, so the stand itself was not seen to change. |
+| 03:45 | The stand back online. It reported the scene for the record's cover as applied: `chase`, four colours. |
+| 03:45:33 | The needle lifted, by the owner. The turntable reported `stopped`, about twenty seconds after. |
+| 03:45 | `current` then passed to iTunes, which was paused on another album, and the stand was lit from that album's cover. See the follow-ups. |
 
-Still to do: see the stand follow a record, lift the needle and see
-`stopped`, and unplug the interface and see `offline` with iTunes carrying
-on.
+Still to do: unplug the interface and see `offline` with iTunes carrying on.
 
 ### Departures from the plan
 
@@ -135,6 +136,13 @@ on.
   tested on a desk.
 
 ## Follow-ups
+
+- [ ] **Lifting the needle lights the stand from whatever iTunes has
+  paused.** A paused source outranks a stopped one
+  ([ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/)),
+  so when the record stops, a track paused in iTunes hours ago becomes
+  current and the room is repainted for it. Nothing here is broken; whether a
+  record ending should do that is a question for the arbiter, and a decision.
 
 - [ ] The evidence [ADR-0021](/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening/)
   waits on.
