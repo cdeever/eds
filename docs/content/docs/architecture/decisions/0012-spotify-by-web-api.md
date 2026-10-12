@@ -38,7 +38,7 @@ but it means impersonating a first-party client.
 
 ## Decision
 
-The Spotify driver polls `GET /v1/me/player` every ten seconds and honours
+The Spotify driver polls `GET /v1/me/player` every ten seconds and honors
 `Retry-After`. It runs **in the agent, on the agent Pi**, beside the iTunes
 driver.
 
@@ -87,7 +87,7 @@ anything played in a private session are reported as `stopped`.
   apps.
 - Spotify's API pages carry the line *"You may not synchronize any sound
   recordings with any visual media."* With the lights not following Spotify
-  and its artwork never fetched, this design steps round that question rather
+  and its artwork never fetched, this design steps around that question rather
   than answering it.
 
 ## What changed on 2026-10-11

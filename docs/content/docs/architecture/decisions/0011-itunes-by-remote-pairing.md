@@ -88,7 +88,7 @@ test client (`npagent pair`, `npagent watch`) on a Mac on the same LAN.
   Remote button; the code was typed in; iTunes called back to `/pair` and the
   client then logged in with the pairing GUID. No Apple ID, no Home Sharing.
 - **The phone remote still works.** It was already paired, stayed paired, and
-  connected afterwards. iTunes holds several remotes.
+  connected afterward. iTunes holds several remotes.
 - **Changes are pushed.** Play, next track, pause and a change of album each
   arrived within the same second, on the request left hanging for them.
 - **The cover comes from iTunes.** Three covers, as JPEG (41 KB, 48 KB) and
@@ -110,7 +110,7 @@ No Remote button appeared at first. iTunes was reachable on port 3689 and
 answered `server-info`, but the PC answered no Bonjour query, so iTunes never
 saw the remote's advertisement. The cause: the network was set to *Private*
 and the firewall allowed **Bonjour Service** on *Public* networks only.
-Ticking *Private* for Bonjour Service (and for iTunes) under *Allow an app
+Checking *Private* for Bonjour Service (and for iTunes) under *Allow an app
 through Windows Firewall* fixed it at once. Worth checking first on any other
 PC: from another machine, `dig @224.0.0.251 -p 5353 -x <the PC's address>`
 answers with its name when Bonjour is getting through.
@@ -129,7 +129,7 @@ None of these would change the decision; each shapes the driver.
 - [Apple: use the iTunes Remote app (iTunes 12.13 for Windows)](https://support.apple.com/en-au/guide/itunes/itnsa1c27e74/12.13/windows/10) — both pairing modes still documented
 - [DACP, reverse-engineered](http://dacp.jsharkey.org/) (2008) — pairing, login, the long-poll, the response tags
 - [pyatv protocol notes](https://pyatv.dev/documentation/protocols/) and [its pairing code](https://github.com/postlund/pyatv/blob/master/pyatv/protocols/dmap/pairing.py)
-- [OwnTone's server side](https://github.com/owntone/owntone-server/blob/master/src/httpd_dacp.c) — confirms the long-poll's behaviour
+- [OwnTone's server side](https://github.com/owntone/owntone-server/blob/master/src/httpd_dacp.c) — confirms the long-poll's behavior
 - [Report: Remote button missing on 12.13.3.2](https://discussions.apple.com/thread/255771984)
 - [Apple Music for Windows does not support the Remote app](https://discussions.apple.com/thread/255807548)
 - [iTunes-SMTC](https://github.com/thewizrd/iTunes-SMTC/blob/master/iTunes.SMTC/iTunes/iTunesController.cs) — COM in use in 2025, and "the iTunes OnPlayerPlayEvent does not always fire"

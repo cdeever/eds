@@ -50,8 +50,8 @@ the Pi's image, Spotify.
 | The board's own firmware is lost | the board | the whole flash is read to `firmware/cover-screen/backup/` before the first write |
 | The plan changes something other than what was written | the tenant | the plan is read before it is applied: one device and one account added, two accounts changed in place, nothing replaced. A replaced account is a new password and a stand or a Pi that stops connecting |
 | The substrate refuses a wildcard in a publish grant | the tenant | seen in the plan or the apply; `nowplayd` runs without it and commands simply go nowhere |
-| `nowplayd` does not come back | the workload | the deploy reports it; the console shows the current track afterwards |
-| The agent does not come back, or stops reporting because its new subscription is refused | the Pi | the subscription is optional by construction and a refusal is only logged; `make -C deploy/relay status` and the console afterwards |
+| `nowplayd` does not come back | the workload | the deploy reports it; the console shows the current track afterward |
+| The agent does not come back, or stops reporting because its new subscription is refused | the Pi | the subscription is optional by construction and a refusal is only logged; `make -C deploy/relay status` and the console afterward |
 | A command is carried out that nobody pressed | iTunes | commands are never retained, a retained one is ignored twice over, and the screen never queues one |
 
 ## Procedure
@@ -59,7 +59,7 @@ the Pi's image, Spotify.
 Ordered so that each step is safe without the ones after it.
 
 1. **The board, with no network.** `make backup`, `make flash`. Check the
-   picture is the right way up and in the right colours, and that touches
+   picture is the right way up and in the right colors, and that touches
    land where the finger is; set the panel and touch settings until they do.
 2. **The tenant.** `make plan`, read it, `make apply`.
 3. **The workload.** `make -C deploy deploy WHERE=builder`.
@@ -97,8 +97,8 @@ Ordered so that each step is safe without the ones after it.
 | 23:31 | The screen was provisioned. It joined `DVNTM-IOT` as 10.20.30.205, connected to the broker over TLS 1.4 seconds later, read the current track as playing with a cover, and received a small cover of 8,504 bytes. The decoder reported no fault. |
 | 23:56 | Its owner pressed the buttons. **The first eight presses, made over ten seconds, reached `nowplayd` together**, within 100 ms: the screen's connection had stopped carrying anything and delivered them when it recovered. iTunes skipped two tracks at once. The screen's own events show the same ten seconds, each sent several times over. After that, each press arrived as it was made. |
 | 23:57 | `play_pause` paused iTunes and resumed it, each within 20 ms of being passed on. `next` and `previous` changed the track. Volume commands were carried out without error. The agent logged every command, and both the screen's and the agent's events reached the log store. |
-| 23:57 | Its owner reported the cover perfect, and the buttons turned round: top was next, bottom was previous. |
-| 23:58 | Reflashed with the touch axes swapped and both turned round, as the defaults for this board. |
+| 23:57 | Its owner reported the cover perfect, and the buttons turned around: top was next, bottom was previous. |
+| 23:58 | Reflashed with the touch axes swapped and both turned around, as the defaults for this board. |
 | 00:04 | Reflashed again: a command is now sent only when the broker has answered within three seconds or answers a question first, and WiFi power saving is off. It started, connected, and drew the cover of what was playing. Neither change has been tried by hand yet. |
 
 ### Departures from the plan

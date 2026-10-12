@@ -25,7 +25,7 @@ firmware's own lookup table:
 The boot row is so small because the default scene's 0.15 brightness on
 (255, 170, 90) becomes PWM duties of 2, 1 and 0 out of 255. Almost all of that
 current is the controller ICs idling. The "unconfigured stand shows warm white"
-behaviour is effectively free even on a full strip.
+behavior is effectively free even on a full strip.
 
 ## Bench testing on USB
 
@@ -65,14 +65,14 @@ in `menuconfig` under Strip → Data GPIO. It is the only GPIO the strip needs:
 a WS2812 has no clock line.
 
 Branch at the supply or at the strip's input, so the strip's current does not
-pass through the board. The board takes its 5 V on the pin labelled 5V, VIN or
+pass through the board. The board takes its 5 V on the pin labeled 5V, VIN or
 VBUS, which feeds the onboard regulator. **Never the 3V3 pin.**
 
 For the stand's 18 LEDs the worst case is 18 × 61 mA, about 1.1 A, plus the
 board: a **5 V 2 A** supply covers it with room to spare.
 
 **The diode is for reflashing in place.** With USB plugged in and the supply
-off, the strip would otherwise draw from the USB port, backwards through the
+off, the strip would otherwise draw from the USB port, backward through the
 board's 5 V pin. The diode lets current into the board and none out, so USB
 powers the board alone. Use a Schottky (1N5817 to 1N5819): it drops about
 0.3 V, which still leaves the regulator enough. A 1N4001 drops too much.

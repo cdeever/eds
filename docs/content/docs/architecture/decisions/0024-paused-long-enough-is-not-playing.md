@@ -108,7 +108,7 @@ steady, warm, and dim.**
 ## What would settle it
 
 Tested as sequences of events in nowplayd's hub and publisher, and in
-lightd's server; the broker test for an emptied topic was turned round, from
+lightd's server; the broker test for an emptied topic was turned around, from
 "not handed on" to "handed on as no cover".
 
 Not yet shown:

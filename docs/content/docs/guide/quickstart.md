@@ -42,8 +42,8 @@ curl -F image=@jacket.jpg http://localhost:8732/v1/cover
 ```
 
 A scene should appear on `eds/lightstand/lp-stand-01/scene`. Because gamma is
-applied on the device rather than on the wire, the colours you see here are the
-colours actually intended.
+applied on the device rather than on the wire, the colors you see here are the
+colors actually intended.
 
 To exercise a specific effect without hunting for cover art that produces it:
 

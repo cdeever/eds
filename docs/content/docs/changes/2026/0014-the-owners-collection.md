@@ -31,7 +31,7 @@ its own sleeve, and the stand is lit from that sleeve.
 - nowplayd starts, lists the collection, and says how many records it found.
 - A record that is in the collection is `current` with the record's own
   title, and `art.from` is `discogs`.
-- A record that is not is completed from the catalogues, as before.
+- A record that is not is completed from the catalogs, as before.
 - iTunes is completed exactly as before.
 
 ## Scope
@@ -50,8 +50,8 @@ stand. No broker account changes: nowplayd publishes where it always has.
 | The unit names `discogs.env` and the file is not there | the workload | `make units` refuses to run without it, and installs it with the others |
 | The token is wrong, or the collection cannot be read | nowplayd | not fatal: said once in the log, and every track is completed the ordinary way |
 | The token leaks | the repository, the logs | the file is gitignored and `0600`; nowplayd logs whether there is a token, never the token |
-| A wrong record is named | the room | the catalogues are still there for what the collection lacks; `NP_COLLECTION_SOURCES` emptied is the old behaviour |
-| Discogs' limit is met | nowplayd | a tracklist read is waited out; a lookup that does not finish in time falls back to the catalogues |
+| A wrong record is named | the room | the catalogs are still there for what the collection lacks; `NP_COLLECTION_SOURCES` emptied is the old behavior |
+| Discogs' limit is met | nowplayd | a tracklist read is waited out; a lookup that does not finish in time falls back to the catalogs |
 
 ## Procedure
 
@@ -84,7 +84,7 @@ and the unit can stay.
 | 04:04 | `make -C deploy deploy WHERE=builder`, from `f6020bd` plus the commit that puts an album before a compilation. Four images built on the Builder and loaded; settings and units installed, `discogs.env` among them. |
 | 04:05 | All four services active. nowplayd logged `looking these sources up in the owner's collection first sources=[turntable] discogs_user=… token=true`, and three seconds later `the collection was listed records=226`. |
 | 04:06 | On the console: iTunes current, paused, with the player's own cover, as before. The turntable online and stopped. The stand online. |
-| 04:07 | A record played, by the owner. The turntable reported *Who'll Stop The Rain* by Creedence Clearwater Revival, on what the recogniser called "Chronicle: The 20 Greatest Hits (Remastered 2023 / Hi Res)". `current` named the album *Cosmo's Factory*, with `art.from` of `discogs`; lightd lit from that cover and the stand reported the scene applied. |
+| 04:07 | A record played, by the owner. The turntable reported *Who'll Stop The Rain* by Creedence Clearwater Revival, on what the recognizer called "Chronicle: The 20 Greatest Hits (Remastered 2023 / Hi Res)". `current` named the album *Cosmo's Factory*, with `art.from` of `discogs`; lightd lit from that cover and the stand reported the scene applied. |
 
 Still to do: a record that is not in the collection.
 

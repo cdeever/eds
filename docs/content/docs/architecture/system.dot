@@ -62,7 +62,7 @@ digraph eds {
         label="EdS tenant · services workload"; labeljust=l; style="rounded,filled"; fillcolor="#fff8e1"; color="#d6c06a";
         nowplayd [label="nowplayd\npicks what is current, completes it,\npasses commands on", fillcolor="#fdecb0"];
         lightd   [label="lightd\na cover becomes a scene", fillcolor="#fdecb0"];
-        palette  [label="palette\nan image becomes colours", fillcolor="#fdecb0"];
+        palette  [label="palette\nan image becomes colors", fillcolor="#fdecb0"];
         console  [label="console\none page; it only looks", fillcolor="#fdecb0"];
     }
 
@@ -73,7 +73,7 @@ digraph eds {
     }
 
     discogs    [label="Discogs\nthe owner's record collection", fillcolor="#f4f4f4", color="#9aa1aa"];
-    catalogues [label="Catalogues\nDeezer · iTunes · MusicBrainz", fillcolor="#f4f4f4", color="#9aa1aa"];
+    catalogues [label="Catalogs\nDeezer · iTunes · MusicBrainz", fillcolor="#f4f4f4", color="#9aa1aa"];
     browser    [label="A browser\non the site", fillcolor="#f4f4f4", color="#9aa1aa"];
 
     // ---- columns ----------------------------------------------------------

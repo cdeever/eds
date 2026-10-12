@@ -30,7 +30,7 @@ builds the monorepo as a whole; work inside one project directory at a time.
 | `images` | Ansible / shell | `make -C deploy/relay image fetch` (builds on builder) |
 
 Each project's README carries the design rationale in depth. Read the relevant
-one before changing behaviour — the choices there are argued, not incidental.
+one before changing behavior — the choices there are argued, not incidental.
 
 ## Decisions are recorded — read them first
 
@@ -115,10 +115,10 @@ through builder as `a_autoprov` (`make -C deploy/relay status|pair|logs`);
 off there for now** (CHG-0011): the Pi runs `itunes` only. Everything it
 needs is kept; `DRIVERS=itunes,spotify` turns it back on.
 
-**The turntable driver listens, and asks a recogniser nobody promised**
+**The turntable driver listens, and asks a recognizer nobody promised**
 (ADR-0021). It hears the amplifier's tape output through a sound card on the
 agent Pi (`arecord`, no cgo) and reports only what it is sure of: silence is
-`stopped`, music it cannot name is `playing` with no track. Its recogniser is
+`stopped`, music it cannot name is `playing` with no track. Its recognizer is
 a program, `eds-recognize` in `images/agent/files`, which is Shazam's through
 an unpublished endpoint and may stop working any day. Keep every trace of
 Shazam in that file and its pinned requirements; the driver knows only "a WAV
@@ -202,21 +202,21 @@ The layering is the point, and violations of it are the main hazard when
 editing. Each layer is deliberately ignorant of the one below.
 
 - **`palette` knows nothing about music, MQTT or LEDs.** Image bytes in,
-  perceptual colour data out. No role assignment (primary/accent), no LED
+  perceptual color data out. No role assignment (primary/accent), no LED
   correction. This boundary is what lets it be tuned against a folder of JPEGs
   with zero infrastructure. Do not add hardware awareness here.
-- **`lightd` owns the hardware-facing colour decisions**: rejecting low-chroma
+- **`lightd` owns the hardware-facing color decisions**: rejecting low-chroma
   swatches, chroma boost in OKLab, gamut mapping by walking chroma down (never
   clipping channels, which shifts hue). It maps swatches → scene.
 - **Firmware owns gamma**, because the right curve is a property of *this*
   driver and diffuser. Keeping it out of the wire format means `mosquitto_sub`
-  shows the colours actually intended.
+  shows the colors actually intended.
 - **The device renders effects locally, never receives frames.** Per-pixel
   streaming over WiFi turns latency into stutter and freezes mid-sweep on a
   broker outage.
 
 OKLab math is implemented independently in all three (`palette/oklab.py`,
-`lightd/internal/oklab`, firmware effects); changing conversion behaviour in one
+`lightd/internal/oklab`, firmware effects); changing conversion behavior in one
 place means checking the others.
 
 ### Contracts
@@ -268,7 +268,7 @@ A few albums have a look of their own (ADR-0019). `nowplayd` holds the list
 it belongs to; `lightd` holds what the name looks like
 (`internal/scene/looks.go`) and sends it as an ordinary scene. Add an album on
 the music side and a preset on the light side; never an album name in lightd,
-never a colour in nowplayd.
+never a color in nowplayd.
 
 **Playback can be controlled, by one route** (ADR-0020). A controller
 publishes `{"v":1,"command":"next"}` to `nowplaying/command`; `nowplayd`
@@ -336,7 +336,7 @@ Pi is a registered device too (`np-relay`, ADR-0017) and reports the same way:
 in `npagent`, a log line with an `event` attribute is also published there.
 Workloads (`lightd`, `nowplayd`) are not devices and cannot use this route.
 
-**Retention on `scene` is load-bearing, not an optimisation.** A stand that
+**Retention on `scene` is load-bearing, not an optimization.** A stand that
 reboots pulls the current scene down instead of sitting dark mid-album. There is
 an integration test that publishes *then* connects a subscriber specifically to
 protect this.
@@ -350,6 +350,15 @@ tenant fabric has no inbound path by design (Deevnet ADR-0001, Deevnet ADR-0003)
 broker into the tenant is an ADR, not a config change.
 
 ## Conventions that matter
+
+- **Write American English**, everywhere a person reads: the docs site, the
+  READMEs, records, comments, log lines and the console's page. "Color",
+  "catalog", "recognizer", "gray", "behavior"; "around", not "round";
+  "parentheses", not "brackets". Its owner is American, and the docs were
+  swept on 2026-10-12. A name that already exists is left as it is: an
+  identifier, a setting (`NP_CATALOGUES`), a file name, a URL, or text quoted
+  from a program. Spelling is not a reason to rename something that is
+  referred to.
 
 - **Configuration is all environment variables in lightd**, no config file — the
   broker credentials must never land on disk in the repository, and one binary

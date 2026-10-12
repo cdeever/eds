@@ -88,4 +88,4 @@ for it:
   It waits two seconds for the cover rather than look one up.
 
 To see what a cover produced: `make logs`, and `lightd`'s `published scene`
-line carries each colour and its share of the strip.
+line carries each color and its share of the strip.

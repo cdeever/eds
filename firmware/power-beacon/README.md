@@ -51,7 +51,7 @@ name, with `nowplayd`'s `NP_SOURCE_POWER`, is all that says "turntable".
 Shorter is not simply better. Each keepalive is a round trip over WiFi, and
 one that is missed is a turntable reported off while a record plays.
 
-### Failure behaviour
+### Failure behavior
 
 All of it is the stand's, copied.
 

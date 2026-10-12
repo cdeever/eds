@@ -50,7 +50,7 @@ the day it is turned back on.
 |---|---|---|
 | The agent does not restart | the Pi | the target reports whether it is active; iTunes reporting is checked after |
 | The settings file is damaged | the Pi | one line is deleted and one appended; the file holds the broker password and is not printed, only the one line read back |
-| Spotify is left looking online | the bus | its status is a last will; checked on the console afterwards |
+| Spotify is left looking online | the bus | its status is a last will; checked on the console afterward |
 
 ## Procedure
 

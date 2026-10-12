@@ -20,11 +20,11 @@ weight: 18
 What EdS is doing was visible in three places, none of them a picture: the
 tenant's Grafana dashboard, which lists events; `mosquitto_sub`; and the
 services' journals. The stand has no LEDs attached yet, so nothing at all
-showed its colours.
+showed its colors.
 
 A panel that drew the stand was tried in Grafana first. Grafana takes its
-colours from thresholds fixed in a dashboard and cannot colour anything from
-a value in the data. The way round that worked: the log query assembled an
+colors from thresholds fixed in a dashboard and cannot color anything from
+a value in the data. The way around that worked: the log query assembled an
 SVG, as a `data:` address, from the palette in the stand's own event, and a
 table showed it as an image. It worked, and it was a four-kilobyte query
 building markup by string formatting, in a tool that was being worked
@@ -65,7 +65,7 @@ bus and serves one page.
 - **The browser is pushed changes** over one long-lived request (server-sent
   events), not polled.
 - **The stand is drawn in the browser** from the scene descriptor, animated
-  by a port of the firmware's effects. It shows the colours as sent, before
+  by a port of the firmware's effects. It shows the colors as sent, before
   gamma, which is what the wire format is for
   ([ADR-0002](/docs/architecture/decisions/0002-gamma-in-firmware/)).
 - **It is reached at `https://console.eds.mobile.deevnet.net/`**, from the
@@ -112,7 +112,7 @@ bus and serves one page.
 ## What would settle it
 
 1. The page, in a browser on the site, shows the track playing, its cover,
-   and the stand in the colours `lightd` logged for it. **Settled 2026-10-11:**
+   and the stand in the colors `lightd` logged for it. **Settled 2026-10-11:**
    seen by its owner.
 2. A track change reaches the page without a reload. **Settled 2026-10-11:**
    watched changing as tracks were played.

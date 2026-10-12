@@ -41,8 +41,8 @@ The design, and what was turned down, is recorded:
 | `contract`, `arbiter`, `resolve`, `current`, `config` | unit-tested, no network |
 | `bus` | tested against a real broker with `-race` (`make test-integration`) |
 | `nowplayd` | run locally end to end: a source state published by hand became a current track with a looked-up album and cover, and `lightd` lit a scene from it |
-| the three catalogues | each checked once against the live service on 2026-10-10 |
-| `discogs` | unit-tested against a stand-in. Asked of the real collection on 2026-10-12: 226 records listed, and the tracks played on the bench each found on the record they were played from, with its sleeve. Being told to wait by Discogs was met once, and waited out. Deployed on the workload on 2026-10-12 ([CHG-0014](../../docs/content/docs/changes/2026/0014-the-owners-collection.md)): a track the recogniser put on a greatest hits was shown as on the owner's *Cosmo's Factory*, with that sleeve, and the stand lit from it |
+| the three catalogs | each checked once against the live service on 2026-10-10 |
+| `discogs` | unit-tested against a stand-in. Asked of the real collection on 2026-10-12: 226 records listed, and the tracks played on the bench each found on the record they were played from, with its sleeve. Being told to wait by Discogs was met once, and waited out. Deployed on the workload on 2026-10-12 ([CHG-0014](../../docs/content/docs/changes/2026/0014-the-owners-collection.md)): a track the recognizer put on a greatest hits was shown as on the owner's *Cosmo's Factory*, with that sleeve, and the stand lit from it |
 | `dacp`, `driver/itunes` | unit-tested, including a replay of a session recorded from the real iTunes |
 | `npagent` | paired with iTunes 12.13.10.3 on Windows and run end to end on a development broker: iTunes → driver → nowplayd → lightd → scene ([ADR-0011](../../docs/content/docs/architecture/decisions/0011-itunes-by-remote-pairing.md)) |
 | the agent Pi | running as a relay on `dv02rpi002p01`: paired with iTunes on the home LAN and publishing to the real broker ([`images`](../../images), [`deploy/relay`](../../deploy/relay)) |
@@ -50,7 +50,7 @@ The design, and what was turned down, is recorded:
 | `nowplayd` on the workload | deployed ([`deploy`](../../deploy)). An album change in iTunes reaches the stand in about a second |
 | commands, the small cover | unit-tested, and run on a development broker: a cover published by hand came back as a 240-pixel baseline JPEG, and a command reached the current source's topic. **Not yet tried against iTunes**: the five requests are the ones the phone remote is documented to send, and nothing here has pressed them on the real player (ADR-0020) |
 | `spotifyauth`, `driver/spotify` | unit-tested against a stand-in for Spotify. Running on the agent Pi against the real account since 2026-10-11: tracks on the named computer are reported within a poll, playback on the phone is not, and the stand does not follow either ([CHG-0004](../../docs/content/docs/changes/2026/0004-spotify-on-the-agent-pi.md)) |
-| `driver/turntable` | unit-tested: a whole side is played to it in tests, in no time, because its clock is the audio. Running on the agent Pi since 2026-10-12: a record was named within half a minute and lit the stand, the needle lifting was reported as stopped twenty seconds later, and the sound card unplugged and put back was lost and found without a restart. Not yet tried: a needle put down mid-track, a record its recogniser does not know, a whole side ([ADR-0021](../../docs/content/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening.md), [CHG-0013](../../docs/content/docs/changes/2026/0013-the-turntable-driver.md)) |
+| `driver/turntable` | unit-tested: a whole side is played to it in tests, in no time, because its clock is the audio. Running on the agent Pi since 2026-10-12: a record was named within half a minute and lit the stand, the needle lifting was reported as stopped twenty seconds later, and the sound card unplugged and put back was lost and found without a restart. Not yet tried: a needle put down mid-track, a record its recognizer does not know, a whole side ([ADR-0021](../../docs/content/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening.md), [CHG-0013](../../docs/content/docs/changes/2026/0013-the-turntable-driver.md)) |
 | the agent with two drivers | running on the Pi: each driver has its own connection and presence, and iTunes reports while Spotify is not set up |
 
 ## The iTunes driver
@@ -87,7 +87,7 @@ driver now does (ADR-0020): `play_pause`, `next`, `previous`, `volume_up` and
 
 - Each is one short request to the player, beside the one held open. The
   driver says nothing on the bus about having done it: the player reports the
-  change it caused, as it reports any other, and that is the acknowledgement.
+  change it caused, as it reports any other, and that is the acknowledgment.
 - Volume moves by 5 of 100 a press, and stops at its ends. The player is asked
   where it is first, because its own slider moves it too.
 - A command that arrives with no session is refused and not kept. A "next"
@@ -139,7 +139,7 @@ NP_DRIVERS=spotify NP_SPOTIFY_DEVICES="Study PC" bin/npagent watch
 
 A turntable cannot be asked what it is playing. The driver listens instead:
 to the amplifier's tape output, through a sound card on the agent Pi, and it
-has a recogniser name what it hears
+has a recognizer name what it hears
 ([ADR-0021](../../docs/content/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening.md)).
 
 ```bash
@@ -151,7 +151,7 @@ inputs; a `plughw:` one lets ALSA do the converting to what the driver wants,
 mono at 16 kHz.
 
 - **It knows silence for certain, and nothing else.** Twenty seconds of
-  silence is `stopped`. Music is `playing`, with the track when the recogniser
+  silence is `stopped`. Music is `playing`, with the track when the recognizer
   names it and without one when it cannot. It is never made up.
 - **Its clock is the audio.** Everything is counted in tenths of a second
   heard, not in time passed, so a sound card that stalls is not mistaken for
@@ -161,23 +161,23 @@ mono at 16 kHz.
 - **The first answer after silence is believed. No single answer after that
   is.** A new track is taken when two clips running agree on it. Four running
   that nothing is known about let the track go.
-- **It keeps the album a side began with.** The recogniser names an album
+- **It keeps the album a side began with.** The recognizer names an album
   with every track and does not agree with itself: two tracks of one LP came
   back as the album and as a box set the album is in. One record has one
   cover, so the first album named stays until the artist changes or the deck
   has been silent for ten minutes. Turning the record over is not that long.
 - **It names no cover and takes no commands.**
 
-### The recogniser
+### The recognizer
 
-The driver knows its recogniser as a program: a WAV file on its standard
+The driver knows its recognizer as a program: a WAV file on its standard
 input, one JSON object on its output - `artist`, `title`, `album` - or `{}`
 when it does not know. A failure is a non-zero exit, and is not mistaken for
 not knowing.
 
 On the Pi that program is `eds-recognize`
 ([`images/agent/files`](../../images/agent/files)), and it is Shazam's
-recogniser through ShazamIO. **Nobody published the endpoint it speaks to**,
+recognizer through ShazamIO. **Nobody published the endpoint it speaks to**,
 and it can stop working on any day without anything here changing. It is
 behind the program so that mending or replacing it is that one file and its
 pinned requirements. Do not move knowledge of Shazam into the driver.
@@ -198,7 +198,7 @@ into the tenant's log store, the same way the stand's go
 ([ADR-0017](../../docs/content/docs/architecture/decisions/0017-an-agent-pi-is-a-registered-device.md)):
 `agent.started`, `driver.online` and `driver.offline`, `track.playing`,
 `track.paused` and `track.stopped` with the artist, album and title,
-Spotify's refusals, and the turntable losing its input or its recogniser. They are on the tenant's dashboard under *What played*
+Spotify's refusals, and the turntable losing its input or its recognizer. They are on the tenant's dashboard under *What played*
 and *Device events*.
 
 A log line becomes an event by carrying an `event` attribute; the journal
@@ -299,7 +299,7 @@ goes the same way after the same wait.
 
 ## Albums with a look of their own
 
-A few albums are lit by something other than their cover's colours
+A few albums are lit by something other than their cover's colors
 ([ADR-0019](../../docs/content/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own.md)).
 The list is in `internal/looks`, matched on the artist and album the track
 already carries, and it is short on purpose: the one entry is *The Dark Side
@@ -307,7 +307,7 @@ of the Moon*, whose look is `spectrum`.
 
 nowplayd publishes the look's **name** on `…/current/look`, retained, with
 the hash of the cover it belongs to, just before that cover. It says what an
-album is called and nothing about colours or effects: what `spectrum` looks
+album is called and nothing about colors or effects: what `spectrum` looks
 like is lightd's. A cover whose album has no look gets a message that says
 so, so a look cannot outlive its album.
 
@@ -338,17 +338,17 @@ nothing about who wants it: the size is "small", not the size of a screen.
 While something is playing, `current` carries a **title, an album and art**,
 whichever driver reported it.
 
-- **The player's own cover always wins.** It is the right cover; a catalogue's
+- **The player's own cover always wins.** It is the right cover; a catalog's
   is a good guess. It counts only when its hash matches the one the state
   names, so a track change never goes out with the previous track's image.
 - Otherwise the cover is looked up, in order: **Deezer**, the **iTunes Search
   API**, then **MusicBrainz** with the Cover Art Archive. None needs a key.
 - A missing **album** is looked up by artist and title. A known album is never
-  renamed to a catalogue's "…(Legacy Edition)".
+  renamed to a catalog's "…(Legacy Edition)".
 - An answer about a different artist, album or track is **refused**. A
   confident wrong cover lights the room for a record that is not playing.
 - **One lookup per album**, remembered, misses included. That is what keeps it
-  far inside the catalogues' limits; the tightest is about twenty calls a
+  far inside the catalogs' limits; the tightest is about twenty calls a
   minute.
 - When nobody has the cover, the track is published **without one** rather
   than withheld.
@@ -357,7 +357,7 @@ whichever driver reported it.
 - A source's state and its cover are two messages, and a broker handing over
   retained messages promises no order. A state that names a cover nowplayd
   does not yet hold is **held for up to two seconds** for it, rather than
-  completed from a catalogue and then corrected.
+  completed from a catalog and then corrected.
 
 ## Configuration
 
@@ -374,9 +374,9 @@ be used stops the program.
 | `NP_MQTT_INSECURE` | `false` | bring-up only; anything but a boolean is an error |
 | `NP_TOPIC_PREFIX` | `$DEEVNET_TENANT`, else `eds` | one topic level |
 | `NP_CATALOGUES` | `deezer,itunes,musicbrainz` | where to look, in order; empty switches lookups off |
-| `NP_LOOKUP_TIMEOUT` | `10s` | for one catalogue request; 1s to 1m |
-| `NP_CONTACT` | this repository's URL | goes in the User-Agent; catalogues require a way to reach the caller |
-| `NP_COLLECTION_SOURCES` | none | sources that play the owner's own records, looked up in the owner's Discogs collection before any catalogue ([ADR-0022](../../docs/content/docs/architecture/decisions/0022-the-owners-collection-names-the-record.md)). `turntable` on the workload |
+| `NP_LOOKUP_TIMEOUT` | `10s` | for one catalog request; 1s to 1m |
+| `NP_CONTACT` | this repository's URL | goes in the User-Agent; catalogs require a way to reach the caller |
+| `NP_COLLECTION_SOURCES` | none | sources that play the owner's own records, looked up in the owner's Discogs collection before any catalog ([ADR-0022](../../docs/content/docs/architecture/decisions/0022-the-owners-collection-names-the-record.md)). `turntable` on the workload |
 | `NP_DISCOGS_USER` | none | whose collection. Required when a source is named above |
 | `NP_DISCOGS_TOKEN` | none | a personal access token; needed for a private collection, and raises Discogs' limit from 25 requests a minute to 60. **Secret** |
 | `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](../../docs/content/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover.md)). `spotify` on the workload, which is what keeps the stand from following it |
@@ -388,7 +388,7 @@ be used stops the program.
 ## The owner's collection
 
 A source that hears a track cannot know which record it is on. The
-recogniser behind the turntable names an album with each track, and names a
+recognizer behind the turntable names an album with each track, and names a
 compilation or a reissue as often as not. But the record on the platter is
 one its owner has, and the owner's collection at Discogs says which
 ([ADR-0022](../../docs/content/docs/architecture/decisions/0022-the-owners-collection-names-the-record.md)).
@@ -398,7 +398,7 @@ first, by artist and title:
 
 - **The record's title becomes the album**, replacing what the source called
   it, and **its sleeve becomes the cover**: the pressing that is owned, not a
-  catalogue's guess at an edition. `art.from` is `discogs`.
+  catalog's guess at an edition. `art.from` is `discogs`.
 - **A track on several records** goes to an album before a compilation,
   always; then the one named as the source named the album, the one last
   answered with (a side is played through), vinyl before a disc, the
@@ -406,7 +406,7 @@ first, by artist and title:
   where that album is owned, and its own sleeve for the rest. That is the
   owner's choice.
 - **A track the collection does not have** is completed the ordinary way,
-  from the catalogues.
+  from the catalogs.
 - **Only those sources.** iTunes says which album it is playing, and knows.
 
 The list of records is read when nowplayd starts and again every six hours. A
@@ -429,9 +429,9 @@ Two things it gets wrong, both by not knowing what it has not been told:
   works on its album search; `artist:"…" track:"…"` finds nothing or something
   unrelated. Track lookups use plain text and check every result. Found by
   running against the live service, after tests against a stand-in had passed.
-- **Catalogues do not always agree on the album.** Asked which album a track
+- **Catalogs do not always agree on the album.** Asked which album a track
   is on, Deezer may name the single and iTunes the album.
-- **A catalogue's cover is not byte-stable.** The same image fetched twice can
+- **A catalog's cover is not byte-stable.** The same image fetched twice can
   differ, so its hash can too. Within one run that is hidden by the cache; a
   restarted nowplayd may publish the "same" cover as a new one, once.
 - **`bus.Connect` does not return until its subscriptions are acknowledged.**

@@ -28,8 +28,8 @@ playing?" or starts playback will need the same report.
 There is also a reason that is not a preference.
 [ADR-0012](/docs/architecture/decisions/0012-spotify-by-web-api/) recorded a
 line from Spotify's API pages about not synchronizing recordings with visual
-media, and left it as the owner's judgement. Not lighting the stand for
-Spotify, and never fetching its artwork, steps round that question.
+media, and left it as the owner's judgment. Not lighting the stand for
+Spotify, and never fetching its artwork, steps around that question.
 
 `lightd` reacts to one thing: a cover arriving on `nowplaying/current/art`
 ([ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/)).
@@ -56,7 +56,7 @@ When such a source is current, `nowplayd`:
 
 - publishes `current` with the track and **no `art`**;
 - publishes **nothing** to `current/art`, which keeps whatever it last held;
-- does **not look a cover up** in a catalogue. A catalogue's cover would light
+- does **not look a cover up** in a catalog. A catalog's cover would light
   the stand exactly as the player's own would.
 
 Spotify is named. Its driver goes further and never asks Spotify for an image
@@ -83,5 +83,5 @@ at all, so there is no artwork to mishandle anywhere in the path.
   publishes to it, so that reversing this is a setting and not also a change
   of account.
 - Reversing it is small: remove the setting, and the stand follows Spotify
-  through catalogue covers. Using Spotify's own artwork would be a further
+  through catalog covers. Using Spotify's own artwork would be a further
   decision, with the terms question to answer first.

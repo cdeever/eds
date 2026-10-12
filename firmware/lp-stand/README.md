@@ -75,13 +75,13 @@ retained scene moments after subscribing is the normal case, not an edge one.
 adding one means reflashing every stand.
 
 `sweep` lays the palette out in proportion to the weights lightd sent, so a
-colour covering 60% of the sleeve covers 60% of the strip, and cross-fades at
+color covering 60% of the sleeve covers 60% of the strip, and cross-fades at
 the seams: hard edges on a diffused strip look like a fault in the diffuser.
 
-`morph` and `chase` use the accents, the colours of a cover that are not its
-dominant one. `morph` turns the whole strip from the dominant colour to each
+`morph` and `chase` use the accents, the colors of a cover that are not its
+dominant one. `morph` turns the whole strip from the dominant color to each
 accent and back, giving each a turn that is half by its weight and half equal.
-`chase` keeps the dominant colour as the ground and sends each accent round
+`chase` keeps the dominant color as the ground and sends each accent around
 over it as a soft-edged patch, alternate ones in opposite directions.
 
 The strip is 18 LEDs (`LP_LED_COUNT`), the number that fit across the front
@@ -96,7 +96,7 @@ after a week advances in jumps. There is a test that renders five weeks in.
 
 An **unknown effect name falls back to `solid`** rather than being refused. A
 publisher that learns a new effect before the stands do is expected; a lit stand
-showing the right colours with the wrong animation beats a dark one.
+showing the right colors with the wrong animation beats a dark one.
 
 ### Gamma lives here
 
@@ -104,9 +104,9 @@ lightd deliberately does not gamma-correct. WS2812 PWM is linear in duty cycle
 while perception is not, so an uncorrected fade rushes through the dark end and
 then stalls — but the right curve is a property of *this* driver and diffuser.
 Correcting at the output stage keeps it next to the hardware it corrects, and
-keeps the wire format showing the colours actually intended.
+keeps the wire format showing the colors actually intended.
 
-### Failure behaviour
+### Failure behavior
 
 Everything below is a deliberate choice, not an accident:
 

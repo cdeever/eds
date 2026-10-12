@@ -76,7 +76,7 @@ A drawn record, its label lit while something plays. It is shown when the
 track names no cover, as a Spotify track does not, even though the cover
 topic still holds an earlier album's.
 
-### Failure behaviour
+### Failure behavior
 
 Each is a choice against a screen that looks broken:
 
@@ -137,9 +137,9 @@ What to check, in order, with the settings that fix each:
 
 1. **The picture is upside down**: Panel → *Turn the picture upside down*.
 2. **Red and blue are swapped**: Panel → *wired blue-green-red*.
-3. **It looks like a negative**: Panel → *Invert colours*.
+3. **It looks like a negative**: Panel → *Invert colors*.
 4. **Touches land in the wrong place.** The defaults are right for this
-   board: axes swapped, both turned round. For another, each press prints a
+   board: axes swapped, both turned around. For another, each press prints a
    line on the serial console:
 
    ```

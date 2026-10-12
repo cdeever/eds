@@ -11,7 +11,7 @@ cover image ──▶ lightd ──▶ palette ──▶ lightd ──▶ mqtt01
 ```
 
 A cover image arrives at `lightd` over HTTP. `lightd` asks `palette` for the
-colours in it, maps those onto a scene the stand can render, and publishes that
+colors in it, maps those onto a scene the stand can render, and publishes that
 scene **retained** to the stand's MQTT topic. The stand animates it locally.
 
 ## Why the broker is not in the tenant
@@ -43,7 +43,7 @@ by eye in `mosquitto_sub`.
 
 ## Why the scene topic is retained
 
-Retention is load-bearing, not an optimisation.
+Retention is load-bearing, not an optimization.
 
 A stand that reboots — power blip, reflash, WiFi drop — pulls the current scene
 down on reconnect instead of sitting dark until the next record. Without it the

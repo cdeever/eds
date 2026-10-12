@@ -1,9 +1,9 @@
 ---
-title: "CHG-0008: The Stand Reports Its Colours"
+title: "CHG-0008: The Stand Reports Its Colors"
 weight: 8
 ---
 
-# CHG-0008: The Stand Reports Its Colours
+# CHG-0008: The Stand Reports Its Colors
 
 | | |
 |---|---|
@@ -20,8 +20,8 @@ weight: 8
 
 ## Summary
 
-When the stand applies a scene it reports the effect, how many colours and the
-brightness. It does not say which colours. The firmware that does has been on
+When the stand applies a scene it reports the effect, how many colors and the
+brightness. It does not say which colors. The firmware that does has been on
 `main` since it was written for a dashboard panel that was not kept, and has
 never been on the stand.
 
@@ -48,7 +48,7 @@ not written by a flash; the effects; the LEDs, which are still not attached.
 | Risk | Where | Guard |
 |---|---|---|
 | The flash erases the credentials partition | the stand, off the network | `idf.py flash` writes the bootloader, the partition table and the application, each at its own offset; `creds` is none of them. If it happens, `make provision` puts them back |
-| The larger event does not fit | every scene would go unreported | host tests hold the largest scene, eight colours, to fitting in one event |
+| The larger event does not fit | every scene would go unreported | host tests hold the largest scene, eight colors, to fitting in one event |
 | The stand is dark while it restarts | the room | it has no LEDs attached |
 
 ## Procedure
@@ -63,7 +63,7 @@ make -C firmware/lp-stand build flash PORT=/dev/cu.usbserial-0001
 
 - `make -C firmware/lp-stand logs` shows `system.boot`, then the network and
   broker events, then `scene.applied` with a `palette`.
-- A new album in iTunes produces another, with that cover's colours.
+- A new album in iTunes produces another, with that cover's colors.
 
 ## Undo
 
@@ -78,7 +78,7 @@ either way.
 | 19:06:27 | The stand started (`reason=power`), joined `DVNTM-IOT` on the first attempt and reached the broker 3.1 s after boot, with nothing provisioned again. |
 | 19:06:27 | It applied the retained scene and reported it: `effect=breathe colors=3 brightness=0.8 speed=0.4 palette=#2a2a81 80%, #ec1800 16%, #f0da85 4%`. |
 
-All of the goal's checks hold. The colours are the ones `lightd` sent for the
+All of the goal's checks hold. The colors are the ones `lightd` sent for the
 album loaded in iTunes at the time.
 
 ### Departures from the plan
@@ -92,5 +92,5 @@ album loaded in iTunes at the time.
 ## Follow-ups
 
 - [ ] The strip is still not attached.
-- [ ] `breathe` lights the dominant colour alone. With the palette now in
-  each event, the other colours are visibly unused by the default effect.
+- [ ] `breathe` lights the dominant color alone. With the palette now in
+  each event, the other colors are visibly unused by the default effect.

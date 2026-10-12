@@ -31,6 +31,13 @@ what lets a change made in a hurry be understood a month later.
 Records move in the same commit as the work they describe, like the rest of
 this site.
 
+## Language
+
+Records, like the rest of this site, are written in American English:
+"color", "catalog", "recognizer", "behavior". A name that already exists
+keeps its spelling, whatever it is: a setting, a file, a link, or words
+quoted from a program.
+
 ## Numbering
 
 Each kind has its own series — `ADR-0001`, `CHG-0001`, `INC-0001` — numbered

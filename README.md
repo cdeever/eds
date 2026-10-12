@@ -7,7 +7,7 @@ This is a monorepo. Each project below is a distinct piece of that system.
 
 | Project | Language | What it is |
 |---|---|---|
-| [`services/palette`](services/palette) | Python | Album cover art in, ranked colour swatches out |
+| [`services/palette`](services/palette) | Python | Album cover art in, ranked color swatches out |
 | [`services/lightd`](services/lightd) | Go | Cover image in, MQTT scene out |
 | [`services/nowplaying`](services/nowplaying) | Go | What is playing, on the bus: drivers per player, and the one current track with its cover |
 | [`firmware/lp-stand`](firmware/lp-stand) | C / ESP-IDF | The LP jacket stand: MQTT subscriber driving an addressable RGB strip |
@@ -20,7 +20,7 @@ This is a monorepo. Each project below is a distinct piece of that system.
 
 A stand that props up the LP jacket while vinyl spins, lit by an RGB strip that
 reacts to the record's cover art. It touches every layer — firmware, a
-tenant-hosted service, the MQTT boundary between house and datacentre, and the
+tenant-hosted service, the MQTT boundary between house and datacenter, and the
 deevnet substrate — while depending on none of the still-unscoped parts
 (listening, identification, playback, personality).
 

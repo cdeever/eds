@@ -21,7 +21,7 @@ weight: 6
 ## Summary
 
 EdS gains a page of its own: what is playing and on which player, its cover,
-each stand drawn in the colours and motion it was sent, and whether each part
+each stand drawn in the colors and motion it was sent, and whether each part
 is up. It is served from the workload at `http://console.eds.mobile.deevnet.net/`
 and only looks.
 
@@ -96,7 +96,7 @@ watched it in a browser with tracks changing, which was the last check.
 | 16:5x | 1 | The plan showed one account and one DNS record created. Applied. The nine subscriptions came back granted exactly as the console asks for them. |
 | 16:56 | 2 | Four images built on the Builder and loaded; `http` opened in the workload's firewall; four units active. `consoled` logged `connected to broker topics=9` and `listening addr=:80`: binding port 80 as a user who is not root, with that one capability, works. |
 | 16:57 | — | From the desk, `/api/state` named the track paused in iTunes with its cover, both sources online, the stand **offline** with the scene waiting for it, and both services online. The stand had been unplugged, so that is right. |
-| 16:57 | — | The page rendered in a headless browser on the desk: the track, the cover's top edge still loading, the stand drawn dimmed and marked offline, its four colours and shares. |
+| 16:57 | — | The page rendered in a headless browser on the desk: the track, the cover's top edge still loading, the stand drawn dimmed and marked offline, its four colors and shares. |
 
 ### Departures from the plan
 
