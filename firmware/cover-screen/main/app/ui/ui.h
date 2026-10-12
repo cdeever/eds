@@ -15,6 +15,10 @@
 //     resistive panel reports a lift late and a remote that lags feels broken.
 //   - Volume repeats while held. The others do not.
 //   - The buttons go away by themselves a few seconds after the last touch.
+//   - When what is playing has no controls - a record on the turntable,
+//     which nothing here can skip - a touch does nothing at all, and the
+//     cover stays the whole screen (ADR-0025). Buttons that do nothing are
+//     worse than none.
 //   - With no broker a press sends nothing, and says so by doing nothing: a
 //     command queued for later would skip a track the listener has moved on
 //     from.
@@ -72,6 +76,7 @@ typedef struct {
     cs_link_t link;
     cs_play_t play;
     bool has_art;     // the current track names a cover
+    bool no_controls; // what is playing takes no commands, so no buttons
     bool cover_ready; // and the screen holds one it can draw
 
     bool overlay;
@@ -112,6 +117,11 @@ void cs_ui_set_link(cs_ui_t *ui, cs_link_t link);
 // cs_ui_set_playing is what the current track says: its state, and whether it
 // names a cover.
 void cs_ui_set_playing(cs_ui_t *ui, cs_play_t play, bool has_art);
+// cs_ui_set_controls says whether what is playing can be told anything. It is
+// what the current track says of itself, and until it says otherwise the
+// buttons are offered: a message with no word on it is from before there was
+// one. Taking them away takes down any that are up.
+void cs_ui_set_controls(cs_ui_t *ui, bool offered);
 // cs_ui_set_cover says whether the screen holds a cover it can draw. Call it
 // with true for each new one, even after another: the picture has changed.
 void cs_ui_set_cover(cs_ui_t *ui, bool ready);

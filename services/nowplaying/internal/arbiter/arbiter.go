@@ -6,6 +6,11 @@
 // changed wins, and when it stops, whatever else is still playing takes over
 // (ADR-0008).
 //
+// One thing comes before that rule. A source whose equipment says it is
+// switched on is what its owner is listening to, whatever else is loaded
+// elsewhere, and a source whose equipment says it is off is not playing
+// whatever it reports (ADR-0023).
+//
 // It is pure: no clock of its own, no network, no goroutines. Everything it
 // does is a function of the events it is handed, which is what lets the rule
 // be tested as a table of sequences.
@@ -18,10 +23,25 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 )
 
+// power is what a source's equipment says of itself, for a source that has
+// something to say it: a beacon on the same switch (ADR-0023).
+type power int
+
+const (
+	// powerUnknown is every source without a beacon, and one whose beacon
+	// has not been heard yet. It changes nothing: the source is treated as
+	// it would be with no beacon at all, the way a source is taken to be
+	// online until it says otherwise.
+	powerUnknown power = iota
+	powerOff
+	powerOn
+)
+
 type source struct {
 	state   contract.State
 	online  bool
 	hasSeen bool
+	power   power
 
 	// since is when this source last did something a listener would notice:
 	// started playing, or changed track. It is nowplayd's clock, not the
@@ -110,6 +130,20 @@ func (a *Arbiter) Presence(id string, online bool) (*contract.State, bool) {
 	return a.decide()
 }
 
+// Power records that a source's equipment was switched on or off, as its
+// beacon says, and reports the current track and whether it changed.
+//
+// It may come before the source has said anything, and often does: the
+// equipment is switched on, and the source reports some time after.
+func (a *Arbiter) Power(id string, on bool) (*contract.State, bool) {
+	s := a.get(id)
+	s.power = powerOff
+	if on {
+		s.power = powerOn
+	}
+	return a.decide()
+}
+
 // Current is the current track, or nil when no source has anything to say.
 func (a *Arbiter) Current() *contract.State {
 	return a.last
@@ -127,14 +161,17 @@ func (a *Arbiter) decide() (*contract.State, bool) {
 	return winner, true
 }
 
-// pick applies the rule. Among sources that are online and have reported:
-// one that is playing beats one that is not, and within either group the most
-// recently noticeable wins. Ties are broken by name so the answer does not
-// depend on map order.
+// pick applies the rule. Among sources that are online, have reported and
+// are not switched off: one that is switched on beats one that does not say,
+// then one that is playing beats one that is not, and within any group the
+// most recently noticeable wins. Ties are broken by name so the answer does
+// not depend on map order.
 func (a *Arbiter) pick() *contract.State {
 	ids := make([]string, 0, len(a.sources))
 	for id, s := range a.sources {
-		if s.online && s.hasSeen {
+		// Switched off, a source has nothing to say whatever it reports:
+		// what it hears is not its own.
+		if s.online && s.hasSeen && s.power != powerOff {
 			ids = append(ids, id)
 		}
 	}
@@ -144,6 +181,12 @@ func (a *Arbiter) pick() *contract.State {
 
 	sort.Slice(ids, func(i, j int) bool {
 		x, y := a.sources[ids[i]], a.sources[ids[j]]
+		// Switched on comes before everything, and so before "stopped": a
+		// record between its sides is still what is on, and a track left
+		// paused elsewhere does not take its place.
+		if xo, yo := x.power == powerOn, y.power == powerOn; xo != yo {
+			return xo
+		}
 		// Playing beats paused, and paused beats stopped, before recency is
 		// asked. A source with nothing loaded has nothing to say: a driver
 		// that starts up and reports "stopped" must not take the place of a

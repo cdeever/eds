@@ -15,7 +15,7 @@ The topic prefix defaults to `eds` and must match on both sides — `lightd`'s
 | `eds/lightstand/<id>/state` | device → broker | yes | what it is rendering now |
 | `eds/lightd/status` | lightd → broker | yes (LWT) | the publisher's presence |
 | `eds/console/status` | console → broker | yes (LWT) | the console's presence; the only thing it publishes |
-| `eds/log/<id>` | device or agent Pi → broker | no | key events, for the log store: the stand's, the cover screen's, and the now-playing agent's (`np-relay`) |
+| `eds/log/<id>` | device or agent Pi → broker | no | key events, for the log store: the stand's, the cover screen's, the power beacon's, and the now-playing agent's (`np-relay`) |
 | `eds/nowplaying/source/<id>/…` | a driver → nowplayd | yes | what one player is doing; see [Now Playing](../now-playing/) |
 | `eds/nowplaying/current` | nowplayd → subscribers | yes | the one current track |
 | `eds/nowplaying/current/art` | nowplayd → subscribers | yes | its cover, as image bytes; lightd lights the stand from it |
@@ -23,6 +23,7 @@ The topic prefix defaults to `eds` and must match on both sides — `lightd`'s
 | `eds/nowplaying/command` | a controller → nowplayd | **never** | a button press, for whatever is current; see [Now Playing](../now-playing/#commands) |
 | `eds/nowplaying/source/<id>/command` | nowplayd → a driver | **never** | the same press, passed to the current source |
 | `eds/screen/<id>/status` | device → broker | yes (LWT) | the cover screen's presence |
+| `eds/beacon/<id>/status` | device → broker | yes (LWT) | whether the switch a beacon is on has power: `online` while it does, the will's `offline` when it has not. nowplayd reads the one that speaks for the turntable ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)) |
 | `eds/nowplaying/current/look` | nowplayd → lightd | yes | whether that cover's album has a look of its own, by name; see [Now Playing](../now-playing/#looks) |
 
 ## The log topic

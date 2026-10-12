@@ -142,6 +142,50 @@ static void test_the_first_touch_only_brings_the_buttons_up(void)
     CHECK(tap(&ui, NEXT_X, MID_Y, CS_BTN_NEXT) == 1, "the second touch did not send next");
 }
 
+// ADR-0025: a record on the turntable cannot be skipped from here, so the
+// screen offers nothing, and the cover is all there is.
+static void test_with_no_controls_a_touch_does_nothing(void)
+{
+    cs_ui_t ui = connected();
+    cs_view_t view;
+    cs_ui_set_controls(&ui, false);
+    cs_ui_take_dirty(&ui);
+
+    CHECK(hold(&ui, NEXT_X, MID_Y, 2000, CS_BTN_NEXT) == 0, "a touch sent a command with no controls");
+    rest(&ui, 100);
+    CHECK(tap(&ui, NEXT_X, MID_Y, CS_BTN_NEXT) == 0, "a second touch sent a command with no controls");
+    CHECK(hold(&ui, MID_X, 20, 3000, CS_BTN_VOLUME_UP) == 0, "volume repeated with no controls");
+    cs_ui_view(&ui, &view);
+    CHECK(!view.overlay, "the buttons came up with nothing to offer");
+    CHECK(!cs_ui_take_dirty(&ui), "a touch that does nothing asked for a redraw");
+    rest(&ui, 100);
+
+    // The next track is one that can be told things: the buttons are back.
+    cs_ui_set_controls(&ui, true);
+    tap(&ui, MID_X, MID_Y, CS_BTN_NONE);
+    cs_ui_view(&ui, &view);
+    CHECK(view.overlay, "the buttons did not come back with the controls");
+    CHECK(tap(&ui, NEXT_X, MID_Y, CS_BTN_NEXT) == 1, "next was not sent once there were controls again");
+}
+
+static void test_losing_the_controls_takes_the_buttons_down(void)
+{
+    cs_ui_t ui = connected();
+    cs_view_t view;
+    tap(&ui, MID_X, MID_Y, CS_BTN_NONE);
+    cs_ui_view(&ui, &view);
+    CHECK(view.overlay, "the buttons are not up to begin with");
+    cs_ui_take_dirty(&ui);
+
+    // A finger on volume-up when the turntable takes over.
+    CHECK(hold(&ui, MID_X, 20, 200, CS_BTN_VOLUME_UP) == 1, "volume up was not sent");
+    cs_ui_set_controls(&ui, false);
+    cs_ui_view(&ui, &view);
+    CHECK(!view.overlay && view.pressed == CS_BTN_NONE, "the buttons stayed up with nothing to offer");
+    CHECK(cs_ui_take_dirty(&ui), "taking the buttons down did not ask for a redraw");
+    CHECK(hold(&ui, MID_X, 20, 3000, CS_BTN_VOLUME_UP) == 0, "the held button went on repeating");
+}
+
 static void test_a_button_acts_once_when_pressed(void)
 {
     struct {
@@ -734,6 +778,8 @@ int main(int argc, char **argv)
     } tests[] = {
         {"zones cover the whole screen", test_zones_cover_the_whole_screen},
         {"the first touch only brings the buttons up", test_the_first_touch_only_brings_the_buttons_up},
+        {"with no controls a touch does nothing", test_with_no_controls_a_touch_does_nothing},
+        {"losing the controls takes the buttons down", test_losing_the_controls_takes_the_buttons_down},
         {"a button acts once when pressed", test_a_button_acts_once_when_pressed},
         {"volume repeats while held", test_volume_repeats_while_held},
         {"a flicker is not a touch", test_a_flicker_is_not_a_touch},

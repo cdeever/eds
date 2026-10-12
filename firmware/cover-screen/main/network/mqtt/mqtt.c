@@ -76,9 +76,9 @@ static void on_current(const char *json, size_t len)
                           "Ignored a track: it is not one this firmware reads");
         return;
     }
-    ESP_LOGI(TAG, "current: %s, %s", now.play == CS_PLAY_PLAYING ? "playing" : now.play == CS_PLAY_PAUSED ? "paused" : "stopped",
-             now.has_art ? "with a cover" : "no cover");
-    cs_screen_playing(now.play, now.has_art);
+    ESP_LOGI(TAG, "current: %s, %s%s", now.play == CS_PLAY_PLAYING ? "playing" : now.play == CS_PLAY_PAUSED ? "paused" : "stopped",
+             now.has_art ? "with a cover" : "no cover", now.no_controls ? ", no controls" : "");
+    cs_screen_playing(now.play, now.has_art, !now.no_controls);
 }
 
 static bool topic_is(const esp_mqtt_event_handle_t event, const char *topic)

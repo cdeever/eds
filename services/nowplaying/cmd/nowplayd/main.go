@@ -8,6 +8,9 @@
 //
 // It also carries the one thing that travels the other way: a controller's
 // command, passed to the source that is current (ADR-0020).
+//
+// And it hears, for a source whose equipment has a beacon on its switch,
+// whether that equipment is on (ADR-0023).
 package main
 
 import (
@@ -49,6 +52,8 @@ func main() {
 type decision struct {
 	winner *contract.State
 	cover  *current.Image
+	// idle: nothing is playing as far as a room is concerned (ADR-0024).
+	idle bool
 }
 
 func run(logger *slog.Logger) error {
@@ -91,15 +96,39 @@ func run(logger *slog.Logger) error {
 		}
 	}
 
-	sources := hub.New(cfg.Prefix, func(d hub.Decision) { submit(decision{winner: d.Winner, cover: d.Cover}) }, logger)
+	sources := hub.New(cfg.Prefix, func(d hub.Decision) { submit(decision{winner: d.Winner, cover: d.Cover, idle: d.Idle}) }, logger)
+	sources.IdleAfter = cfg.IdleAfter
+	sources.StoppedIdleAfter = cfg.StoppedIdleAfter
 
 	// Commands for whatever is current (ADR-0020). The router is given its
 	// bus once there is one, and drops what it is handed before that.
 	commands := &command.Router{Prefix: cfg.Prefix, Logger: logger}
 	commandTopic := contract.CommandTopic(cfg.Prefix)
+
+	// Whether a source's equipment is switched on, for the sources that have
+	// a beacon to say so (ADR-0023). Anything a beacon says that is not
+	// "online" is off, as with a source's own presence.
+	switches := make(map[string][]string, len(cfg.Power)) // beacon topic to its sources
+	optional := []string{commandTopic}
+	for source, beacon := range cfg.Power {
+		topic := contract.BeaconStatusTopic(cfg.Prefix, beacon)
+		if len(switches[topic]) == 0 {
+			optional = append(optional, topic)
+		}
+		switches[topic] = append(switches[topic], source)
+	}
+
 	handle := func(msg bus.Message) {
 		if msg.Topic == commandTopic {
 			commands.Handle(msg)
+			return
+		}
+		if held, ok := switches[msg.Topic]; ok {
+			on := string(msg.Payload) == contract.Online
+			for _, source := range held {
+				logger.Info("a source's equipment was switched", "source", source, "on", on, "topic", msg.Topic)
+				sources.Power(source, on)
+			}
 			return
 		}
 		// Everything else is a source's. The filter for those also matches
@@ -119,10 +148,16 @@ func run(logger *slog.Logger) error {
 		StatusTopics:       []string{contract.StatusTopic(cfg.Prefix)},
 		// Passing commands on is something nowplayd can do without, and
 		// saying what is playing is not. An account that has not been
-		// granted the command topic yet must not stop the rest.
-		OptionalTopics: []string{commandTopic},
+		// granted the command topic yet must not stop the rest. The same
+		// goes for a beacon: unheard, its source is arbitrated as it was
+		// before there was one.
+		OptionalTopics: optional,
 		OnRefused: func(topic string, err error) {
-			logger.Warn("commands will not be passed on until the broker account is granted the topic", "topic", topic, "error", err)
+			if topic == commandTopic {
+				logger.Warn("commands will not be passed on until the broker account is granted the topic", "topic", topic, "error", err)
+				return
+			}
+			logger.Warn("a source's switch will not be heard until the broker account is granted the topic", "sources", switches[topic], "topic", topic, "error", err)
 		},
 	}, []string{contract.AllSourcesTopic(cfg.Prefix)}, handle)
 	if err != nil {
@@ -138,6 +173,9 @@ func run(logger *slog.Logger) error {
 		"commands", commandTopic,
 		"catalogues", cfg.Catalogues,
 	)
+	if len(cfg.Power) > 0 {
+		logger.Info("these sources are held while their equipment is on, and unheard while it is off", "switches", cfg.Power)
+	}
 
 	coverless := make(map[string]bool, len(cfg.Coverless))
 	for _, source := range cfg.Coverless {
@@ -147,15 +185,30 @@ func run(logger *slog.Logger) error {
 		logger.Info("reporting these sources without a cover", "sources", cfg.Coverless)
 	}
 
+	noControls := make(map[string]bool, len(cfg.NoControls))
+	for _, source := range cfg.NoControls {
+		noControls[source] = true
+	}
+	if len(noControls) > 0 {
+		logger.Info("telling controllers to offer nothing for these sources", "sources", cfg.NoControls)
+	}
+	if cfg.IdleAfter > 0 {
+		logger.Info("a track paused this long is no longer said to be playing, and its cover is taken away", "after", cfg.IdleAfter)
+	}
+	if cfg.StoppedIdleAfter > 0 {
+		logger.Info("a source held with nothing playing on it this long has its cover taken away", "after", cfg.StoppedIdleAfter)
+	}
+
 	publisher := &current.Publisher{
-		Bus:       client,
-		Resolver:  resolver,
-		Coverless: coverless,
-		Looks:     looks.For,
-		Small:     smallcover.Make,
-		Prefix:    cfg.Prefix,
-		Timeout:   cfg.LookupTimeout,
-		Logger:    logger,
+		Bus:        client,
+		Resolver:   resolver,
+		Coverless:  coverless,
+		NoControls: noControls,
+		Looks:      looks.For,
+		Small:      smallcover.Make,
+		Prefix:     cfg.Prefix,
+		Timeout:    cfg.LookupTimeout,
+		Logger:     logger,
 	}
 	// The owner's records, for the sources that play them (ADR-0022). The
 	// token is never logged; whether there is one is.
@@ -193,7 +246,16 @@ func run(logger *slog.Logger) error {
 			return nil
 
 		case d := <-decisions:
-			published, sent, err := publisher.Publish(ctx, d.winner, d.cover)
+			var (
+				published contract.State
+				sent      bool
+				err       error
+			)
+			if d.idle {
+				published, sent, err = publisher.PublishIdle(ctx, d.winner)
+			} else {
+				published, sent, err = publisher.Publish(ctx, d.winner, d.cover)
+			}
 			if err != nil {
 				// Not fatal: the bus reconnects by itself, and the next
 				// decision publishes in full.
@@ -203,6 +265,9 @@ func run(logger *slog.Logger) error {
 			// Whoever is current is who a command is for, from now.
 			commands.SetCurrent(published.Source)
 			if sent {
+				if d.idle {
+					logger.Info("idle: nothing has played for a while, and the cover is taken away", "source", published.Source)
+				}
 				logCurrent(logger, published)
 			}
 		}

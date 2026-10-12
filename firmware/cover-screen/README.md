@@ -64,6 +64,11 @@ that takes has not been timed on the board.
 - The whole screen is a button: the middle is play and pause, and the rest is
   split along its diagonals. A finger does not have to find the icon.
 - The buttons go away five seconds after the last touch.
+- **When what is playing has no controls, a touch does nothing.**
+  `current` says so with `no_controls`
+  ([ADR-0025](../../docs/content/docs/architecture/decisions/0025-current-says-when-there-are-no-controls.md)),
+  as it does for a record on the turntable. The screen still knows no
+  player: it is told there is nothing to offer, not why.
 
 ### No cover
 

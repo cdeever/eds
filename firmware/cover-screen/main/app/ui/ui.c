@@ -68,6 +68,13 @@ cs_button_t cs_ui_touch(cs_ui_t *ui, bool touching, int x, int y, uint32_t now_m
         ui->down = true;
         ui->last_touch_ms = now_ms;
 
+        // Nothing to offer, so nothing is raised and nothing is sent. The
+        // touch is still followed, so that one held across a change of track
+        // has to lift before it means anything.
+        if (ui->no_controls) {
+            return CS_BTN_NONE;
+        }
+
         if (!ui->overlay) {
             ui->overlay = true;
             ui->armed = false;
@@ -94,7 +101,7 @@ cs_button_t cs_ui_touch(cs_ui_t *ui, bool touching, int x, int y, uint32_t now_m
 
         // Unsigned differences throughout, so the clock wrapping after seven
         // weeks is one ordinary repeat and not a stuck button.
-        if (repeats(ui->held) && ui->link == CS_LINK_UP &&
+        if (repeats(ui->held) && ui->link == CS_LINK_UP && !ui->no_controls &&
             now_ms - ui->held_since_ms >= CS_REPEAT_AFTER_MS &&
             now_ms - ui->last_repeat_ms >= CS_REPEAT_EVERY_MS) {
             ui->last_repeat_ms = now_ms;
@@ -132,6 +139,25 @@ void cs_ui_set_playing(cs_ui_t *ui, cs_play_t play, bool has_art)
         ui->play = play;
         ui->has_art = has_art;
         ui->dirty = true;
+    }
+}
+
+void cs_ui_set_controls(cs_ui_t *ui, bool offered)
+{
+    if (ui->no_controls == !offered) {
+        return;
+    }
+    ui->no_controls = !offered;
+    if (!offered) {
+        // Any buttons that are up go down now, and a finger on one is let go
+        // of: it was pressing something that is no longer there.
+        if (ui->overlay || ui->lit != CS_BTN_NONE) {
+            ui->dirty = true;
+        }
+        ui->overlay = false;
+        ui->armed = false;
+        ui->held = CS_BTN_NONE;
+        ui->lit = CS_BTN_NONE;
     }
 }
 

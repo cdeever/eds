@@ -99,6 +99,14 @@ func TestInvalidValuesStopTheProgram(t *testing.T) {
 		"a coverless wildcard":           {"NP_COVERLESS_SOURCES": "itunes,+"},
 		"a collection source misspelt":   {"NP_COLLECTION_SOURCES": "Turntable", "NP_DISCOGS_USER": "someone"},
 		"a collection with no owner":     {"NP_COLLECTION_SOURCES": "turntable"},
+		"idle after a day":               {"NP_IDLE_AFTER": "24h"},
+		"stopped idle after a week":      {"NP_IDLE_AFTER_STOPPED": "168h"},
+		"idle after something else":      {"NP_IDLE_AFTER": "soon"},
+		"a source without controls, +":   {"NP_NO_CONTROLS_SOURCES": "turntable,+"},
+		"a switch with no beacon":        {"NP_SOURCE_POWER": "turntable"},
+		"a switch for no source":         {"NP_SOURCE_POWER": "=turntable-power-01"},
+		"a switch that is a wildcard":    {"NP_SOURCE_POWER": "turntable=+"},
+		"a source with two switches":     {"NP_SOURCE_POWER": "turntable=a,turntable=b"},
 	}
 	for name, env := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -142,5 +150,32 @@ func TestCollectionSources(t *testing.T) {
 	cfg, err = LoadNowplayd("0.1")
 	if err != nil || len(cfg.Owned) != 1 || cfg.Owned[0] != "turntable" || cfg.DiscogsUser != "someone" || cfg.DiscogsToken != "secret" {
 		t.Errorf("owned = %v, user = %q, err = %v", cfg.Owned, cfg.DiscogsUser, err)
+	}
+}
+
+func TestSourcePower(t *testing.T) {
+	cfg, err := LoadNowplayd("0.1")
+	if err != nil || len(cfg.Power) != 0 {
+		t.Fatalf("by default no source has a switch: %v, %v", cfg.Power, err)
+	}
+
+	t.Setenv("NP_SOURCE_POWER", " turntable = turntable-power-01 , tape=deck-power-01")
+	cfg, err = LoadNowplayd("0.1")
+	if err != nil || len(cfg.Power) != 2 || cfg.Power["turntable"] != "turntable-power-01" || cfg.Power["tape"] != "deck-power-01" {
+		t.Errorf("power = %v, %v", cfg.Power, err)
+	}
+}
+
+func TestIdleAfterAndNoControls(t *testing.T) {
+	cfg, err := LoadNowplayd("0.1")
+	if err != nil || cfg.IdleAfter != 15*time.Second || cfg.StoppedIdleAfter != 5*time.Minute || len(cfg.NoControls) != 0 {
+		t.Fatalf("defaults: idle %v, no controls %v, %v", cfg.IdleAfter, cfg.NoControls, err)
+	}
+
+	t.Setenv("NP_IDLE_AFTER", "0s")
+	t.Setenv("NP_NO_CONTROLS_SOURCES", "turntable")
+	cfg, err = LoadNowplayd("0.1")
+	if err != nil || cfg.IdleAfter != 0 || len(cfg.NoControls) != 1 || cfg.NoControls[0] != "turntable" {
+		t.Errorf("idle %v, no controls %v, %v", cfg.IdleAfter, cfg.NoControls, err)
 	}
 }

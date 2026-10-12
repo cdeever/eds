@@ -235,3 +235,150 @@ func TestWhatIsNotAnImageClearsTheCover(t *testing.T) {
 		t.Fatalf("decisions = %+v", got)
 	}
 }
+
+// A switch is a decision like a presence: it goes to the publisher at once,
+// with the cover of whoever it leaves current (ADR-0023).
+func TestASwitchDecidesAndCarriesTheRightCover(t *testing.T) {
+	b := newBench()
+	b.art("itunes", coverA)
+	b.state("itunes", "Paused", coverA, contract.Paused)
+	b.state("turntable", "Record", nil, contract.Playing)
+	b.take()
+
+	b.hub.Power("turntable", false)
+	got := b.take()
+	if len(got) != 1 || title(got[0]) != "Paused" || got[0].Cover == nil {
+		t.Fatalf("switched off: decisions = %+v", got)
+	}
+
+	b.hub.Power("turntable", false)
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("said twice: decisions = %+v", got)
+	}
+
+	b.hub.Power("turntable", true)
+	got = b.take()
+	if len(got) != 1 || title(got[0]) != "Record" || got[0].Cover != nil {
+		t.Fatalf("switched on: decisions = %+v", got)
+	}
+}
+
+// idleBench is a bench whose hub goes idle, with the time held too.
+func idleBench() (*bench, *time.Time) {
+	b := newBench()
+	now := time.Now()
+	b.hub.IdleAfter = 15 * time.Second
+	b.hub.Now = func() time.Time { return now }
+	return b, &now
+}
+
+// ADR-0024: paused long enough is not playing.
+func TestAPausedTrackGoesIdleWhenItsTimeIsUp(t *testing.T) {
+	b, _ := idleBench()
+	b.state("itunes", "One", nil, contract.Playing)
+	b.elapse()
+	if got := b.take(); len(got) != 1 || got[0].Idle {
+		t.Fatalf("playing: decisions = %+v", got)
+	}
+
+	b.state("itunes", "One", nil, contract.Paused)
+	if got := b.take(); len(got) != 1 || got[0].Idle || title(got[0]) != "One" {
+		t.Fatalf("paused, at first: decisions = %+v", got)
+	}
+
+	b.elapse()
+	got := b.take()
+	if len(got) != 1 || !got[0].Idle || got[0].Winner == nil || got[0].Winner.Source != "itunes" {
+		t.Fatalf("paused, later: decisions = %+v", got)
+	}
+}
+
+func TestPlayingAgainOvertakesTheIdleThatWasComing(t *testing.T) {
+	b, _ := idleBench()
+	b.state("itunes", "One", nil, contract.Paused)
+	b.state("itunes", "One", nil, contract.Playing)
+	b.take()
+
+	b.elapse()
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("an idle came for a track that is playing: %+v", got)
+	}
+}
+
+// A track paused an hour ago is idle at once, as when this program starts and
+// is handed what was retained.
+func TestATrackPausedLongAgoIsIdleAtOnce(t *testing.T) {
+	b, now := idleBench()
+	*now = now.Add(time.Hour)
+	b.state("itunes", "One", nil, contract.Paused) // dated by the bench an hour before "now"
+
+	got := b.take()
+	if len(got) != 1 || !got[0].Idle || got[0].Cover != nil {
+		t.Fatalf("decisions = %+v", got)
+	}
+	if len(b.timers) != 0 {
+		t.Errorf("a timer was set for what is already idle")
+	}
+}
+
+func TestNobodyReportingGoesIdleToo(t *testing.T) {
+	b, _ := idleBench()
+	b.state("itunes", "One", nil, contract.Playing)
+	b.status("itunes", contract.Offline)
+	b.take()
+
+	b.elapse()
+	if got := b.take(); len(got) != 1 || !got[0].Idle || got[0].Winner != nil {
+		t.Fatalf("decisions = %+v", got)
+	}
+}
+
+// A record between its sides is held, stopped (ADR-0023), and is not a room
+// to turn the lights down in: it has a longer wait of its own.
+func TestAStoppedWinnerWaitsItsOwnLongerWait(t *testing.T) {
+	b, now := idleBench()
+	b.hub.StoppedIdleAfter = 5 * time.Minute
+	var waits []time.Duration
+	b.hub.After = func(d time.Duration, f func()) { waits = append(waits, d); b.timers = append(b.timers, f) }
+
+	b.hub.Power("turntable", true)
+	b.state("turntable", "Side One", nil, contract.Playing)
+	b.state("turntable", "Side One", nil, contract.Stopped)
+	if got := b.take(); len(got) != 2 || got[1].Idle {
+		t.Fatalf("the needle lifted: decisions = %+v", got)
+	}
+	if len(waits) != 1 || waits[0] < 4*time.Minute || waits[0] > 5*time.Minute {
+		t.Fatalf("waits = %v, want one of about five minutes", waits)
+	}
+
+	// The other side, before the time is up: nothing dims.
+	b.state("turntable", "Side Two", nil, contract.Playing)
+	b.take()
+	b.elapse()
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("an idle came for a record that is playing: %+v", got)
+	}
+
+	// Left on with nothing on it.
+	b.state("turntable", "Side Two", nil, contract.Stopped)
+	b.take()
+	*now = now.Add(6 * time.Minute)
+	b.elapse()
+	got := b.take()
+	if len(got) != 1 || !got[0].Idle || got[0].Winner == nil || got[0].Winner.Source != "turntable" {
+		t.Fatalf("left on: decisions = %+v", got)
+	}
+}
+
+func TestAStoppedWinnerNeverGoesIdleWhenItsWaitIsOff(t *testing.T) {
+	b, _ := idleBench()
+	b.hub.Power("turntable", true)
+	b.state("turntable", "Side One", nil, contract.Playing)
+	b.state("turntable", "Side One", nil, contract.Stopped)
+	b.take()
+
+	b.elapse()
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("a held, stopped source went idle: %+v", got)
+	}
+}

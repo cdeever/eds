@@ -254,6 +254,49 @@ current, paused: "paused on B" is more use than silence.
   retained state arrives at once: then the senders' own times decide, held to
   the present so a fast clock cannot win forever.
 
+### A source that is switched on
+
+One thing comes before all of that
+([ADR-0023](../../docs/content/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand.md)).
+A source can have a beacon: a device on the same switch as its equipment,
+connected to the broker while that equipment has power. `NP_SOURCE_POWER`
+says which beacon speaks for which source, and nowplayd reads
+`<prefix>/beacon/<id>/status`.
+
+- **On**, the source is current, whatever else is playing and whatever it is
+  doing itself. The turntable between its sides is the turntable, stopped,
+  and a track left paused in iTunes does not take its place.
+- **Off**, the source is not heard, whatever its driver reports. What the
+  turntable's driver hears with the turntable off is not a record.
+- **Not heard from**, the beacon changes nothing. The setting can be in
+  place before the beacon is, and a subscription the broker refuses is a
+  warning in the log.
+- The switch does not stand in for the driver: a source that is on, and
+  offline or never heard from, holds nothing.
+
+While a source that takes no commands is held, a controller's commands go
+nowhere. That is what "current" means, and it is the turntable's case. So
+`current` says `no_controls` for it, and the cover screen draws no buttons
+([ADR-0025](../../docs/content/docs/architecture/decisions/0025-current-says-when-there-are-no-controls.md)).
+
+### Paused long enough is not playing
+
+A track left paused stays current for `NP_IDLE_AFTER`, fifteen seconds, and
+then nothing is said to be playing
+([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)):
+`current` is `stopped` with no track, and the cover topics are emptied,
+which is what tells `lightd` to dim the stand. The source is still named, so
+a command still reaches it and play can be pressed. Nobody reporting at all
+goes the same way after the same wait.
+
+- The wait is counted from when the source says it paused, so a track paused
+  an hour ago is idle at once when nowplayd starts, and not lit again first.
+- A source that is stopped and still current, which is one being held, has
+  a longer wait of its own, `NP_IDLE_AFTER_STOPPED`, five minutes: a record
+  between its sides keeps its sleeve, and a turntable left on with nothing
+  on it does not light the room all night.
+- Playing again publishes everything again, the same cover included.
+
 ## Albums with a look of their own
 
 A few albums are lit by something other than their cover's colours
@@ -337,6 +380,10 @@ be used stops the program.
 | `NP_DISCOGS_USER` | none | whose collection. Required when a source is named above |
 | `NP_DISCOGS_TOKEN` | none | a personal access token; needed for a private collection, and raises Discogs' limit from 25 requests a minute to 60. **Secret** |
 | `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](../../docs/content/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover.md)). `spotify` on the workload, which is what keeps the stand from following it |
+| `NP_IDLE_AFTER` | `15s` | how long a track may sit paused, or nobody report, before nothing is said to be playing and the cover topics are emptied ([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)). `0s` is never; at most an hour |
+| `NP_IDLE_AFTER_STOPPED` | `5m` | the same wait for a source that is stopped and still current: a turntable switched on with nothing playing. Longer, so a record can be turned over. `0s` is never; at most a day |
+| `NP_NO_CONTROLS_SOURCES` | none | sources a controller is told to offer nothing for, as `no_controls` in `current` ([ADR-0025](../../docs/content/docs/architecture/decisions/0025-current-says-when-there-are-no-controls.md)). `turntable` on the workload |
+| `NP_SOURCE_POWER` | none | `source=beacon` pairs: a source whose equipment has a beacon on its switch, and so can say it is on ([ADR-0023](../../docs/content/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand.md)). `turntable=turntable-power-01` on the workload |
 
 ## The owner's collection
 

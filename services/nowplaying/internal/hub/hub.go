@@ -22,6 +22,10 @@ import (
 type Decision struct {
 	Winner *contract.State
 	Cover  *current.Image
+	// Idle says the winner has been paused, or there has been no winner,
+	// for long enough that nothing is playing as far as a room is concerned
+	// (ADR-0024). The winner is still named: it is who a command is for.
+	Idle bool
 }
 
 // Hub holds the state of every source.
@@ -42,13 +46,28 @@ type Hub struct {
 	// player's own cover twenty-four milliseconds later.
 	Grace time.Duration
 
-	// After schedules f. It exists so tests can hold the clock.
+	// IdleAfter is how long a track may sit paused, or nothing be reporting,
+	// before the decision is made again as idle (ADR-0024). Zero is never.
+	IdleAfter time.Duration
+	// StoppedIdleAfter is the same for a winner that says "stopped": a
+	// source held while its equipment is on (ADR-0023), with nothing on it.
+	// It is longer, because a record being turned over is stopped too.
+	StoppedIdleAfter time.Duration
+
+	// After schedules f, and Now is the time. They exist so tests can hold
+	// the clock.
 	After func(d time.Duration, f func())
+	Now   func() time.Time
 
 	mu      sync.Mutex
 	arb     *arbiter.Arbiter
 	covers  map[string]*current.Image // by source
 	waiting uint64                    // changes whenever a wait is started or overtaken
+
+	// What has been quiet - paused, or nobody at all - and since when.
+	quiet      bool
+	quietKey   string
+	quietSince time.Time
 }
 
 // New builds a Hub.
@@ -62,6 +81,7 @@ func New(prefix string, submit func(Decision), logger *slog.Logger) *Hub {
 		Submit: submit,
 		Grace:  2 * time.Second,
 		After:  func(d time.Duration, f func()) { time.AfterFunc(d, f) },
+		Now:    time.Now,
 		arb:    arbiter.New(nil),
 		covers: make(map[string]*current.Image),
 	}
@@ -118,19 +138,30 @@ func (h *Hub) Handle(msg bus.Message) {
 	}
 }
 
+// Power takes what a source's beacon said: that the source's equipment is
+// switched on, or is not (ADR-0023).
+func (h *Hub) Power(source string, on bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if winner, changed := h.arb.Power(source, on); changed {
+		h.decide(winner)
+	}
+}
+
 // decide submits the decision for a winner, unless the winner names a cover
 // that has not arrived, in which case it waits for it. Called with the lock.
 func (h *Hub) decide(winner *contract.State) {
 	h.waiting++ // whatever was being waited for has been overtaken
 
 	if winner == nil {
-		h.Submit(Decision{})
+		h.submit(nil, nil)
 		return
 	}
 
 	cover := h.covers[winner.Source]
 	if winner.Art == nil || (cover != nil && cover.SHA256 == winner.Art.SHA256) {
-		h.Submit(Decision{Winner: winner, Cover: cover})
+		h.submit(winner, cover)
 		return
 	}
 
@@ -146,10 +177,71 @@ func (h *Hub) decide(winner *contract.State) {
 		// It did not come. Go ahead; the publisher will look one up.
 		h.Logger.Info("a cover a source named did not arrive", "source", winner.Source, "waited", h.Grace)
 		now := h.arb.Current()
-		d := Decision{Winner: now}
+		var cover *current.Image
 		if now != nil {
-			d.Cover = h.covers[now.Source]
+			cover = h.covers[now.Source]
 		}
-		h.Submit(d)
+		h.submit(now, cover)
+	})
+}
+
+// submit hands a decision on, and keeps the time for it going idle: a track
+// left paused, or nobody reporting, is not something playing for ever
+// (ADR-0024). Called with the lock.
+//
+// Stopped has a wait of its own. A source that says "stopped" and is still
+// the winner is one that is being held (ADR-0023), and a record between its
+// sides is not a room to turn the lights down in - but a turntable left on
+// with nothing on it is.
+func (h *Hub) submit(winner *contract.State, cover *current.Image) {
+	wait := time.Duration(0)
+	switch {
+	case winner == nil || winner.State == contract.Paused:
+		wait = h.IdleAfter
+	case winner.State == contract.Stopped:
+		wait = h.StoppedIdleAfter
+	}
+	if wait <= 0 {
+		h.quiet = false
+		h.Submit(Decision{Winner: winner, Cover: cover})
+		return
+	}
+
+	// Since when is asked once, when the quiet began, and not each time the
+	// same paused track is decided again: its cover arriving late is not the
+	// pause starting over.
+	key := ""
+	if winner != nil {
+		key = winner.Source + "\x00" + string(winner.State) + "\x00"
+		if winner.Track != nil {
+			key += winner.Track.Key()
+		}
+	}
+	now := h.Now()
+	if !h.quiet || h.quietKey != key {
+		h.quiet, h.quietKey, h.quietSince = true, key, now
+		// A pause is dated by whoever paused, when that is in the past: it
+		// is how a track paused an hour ago is not lit again for a quarter
+		// of a minute each time this program starts.
+		if winner != nil && !winner.ChangedAt.IsZero() && winner.ChangedAt.Before(now) {
+			h.quietSince = winner.ChangedAt
+		}
+	}
+
+	left := wait - now.Sub(h.quietSince)
+	if left <= 0 {
+		h.Submit(Decision{Winner: winner, Idle: true})
+		return
+	}
+
+	h.Submit(Decision{Winner: winner, Cover: cover})
+	ticket := h.waiting
+	h.After(left, func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		if h.waiting != ticket || !h.quiet {
+			return // something was decided since
+		}
+		h.Submit(Decision{Winner: winner, Idle: true})
 	})
 }

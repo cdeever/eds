@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -890,5 +891,103 @@ func TestASourceThatIsNotNamedIsNeverAskedOfTheCollection(t *testing.T) {
 	}
 	if len(col.asked) != 0 || out.Track.Album != "Kind of Blue" || out.Art.From != "deezer" {
 		t.Fatalf("asked %v, album %q, art %+v", col.asked, out.Track.Album, out.Art)
+	}
+}
+
+// Idle (ADR-0024): the track is taken away, the cover topics are emptied, and
+// the source is still named, because a pause is undone from where it was made.
+func TestIdleTakesTheTrackAndTheCoverAwayAndKeepsTheSource(t *testing.T) {
+	bus, s := &fakeBus{}, &shrunk{}
+	cover := NewImage(pngA)
+	p := withSmall(bus, nil, s)
+
+	paused := covered("So What", cover)
+	paused.State = contract.Paused
+	_, _, _ = p.Publish(context.Background(), paused, cover)
+	bus.take()
+
+	out, sent, err := p.PublishIdle(context.Background(), paused)
+	if err != nil || !sent {
+		t.Fatalf("idle: sent=%v err=%v", sent, err)
+	}
+	if out.State != contract.Stopped || out.Track != nil || out.Art != nil || out.Source != paused.Source {
+		t.Errorf("idle state = %+v", out)
+	}
+
+	got := bus.take()
+	want := []string{"eds/nowplaying/current", "eds/nowplaying/current/art", "eds/nowplaying/current/art/small"}
+	if names := topics(got); len(names) != 3 || names[0] != want[0] || names[1] != want[1] || names[2] != want[2] {
+		t.Fatalf("published %v, want %v", topics(got), want)
+	}
+	if len(got[1].payload) != 0 || len(got[2].payload) != 0 || !got[1].retained || !got[2].retained {
+		t.Errorf("the cover topics were not emptied: %d and %d bytes", len(got[1].payload), len(got[2].payload))
+	}
+
+	// Said again, as it is when a late cover makes the hub decide again.
+	if _, sent, _ := p.PublishIdle(context.Background(), paused); sent {
+		t.Errorf("idle said twice published again: %v", topics(bus.take()))
+	}
+}
+
+// Play pressed after an idle: the same track and the same cover, and all of
+// it has to go out again, because the topics no longer hold it.
+func TestTheSameCoverIsPublishedAgainAfterIdle(t *testing.T) {
+	bus, s := &fakeBus{}, &shrunk{}
+	cover := NewImage(pngA)
+	p := withSmall(bus, nil, s)
+
+	_, _, _ = p.Publish(context.Background(), covered("So What", cover), cover)
+	_, _, _ = p.PublishIdle(context.Background(), covered("So What", cover))
+	bus.takeAll()
+
+	_, _, _ = p.Publish(context.Background(), covered("So What", cover), cover)
+	got := topics(bus.takeAll())
+	want := []string{"eds/nowplaying/current/look", "eds/nowplaying/current/art", "eds/nowplaying/current/art/small", "eds/nowplaying/current"}
+	if len(got) != len(want) {
+		t.Fatalf("published %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("published %v, want %v", got, want)
+		}
+	}
+}
+
+func TestIdleWithNobodyReportingNamesNoSource(t *testing.T) {
+	bus := &fakeBus{}
+	out, sent, err := publisher(bus, nil).PublishIdle(context.Background(), nil)
+	if err != nil || !sent || out.Source != "" || out.State != contract.Stopped {
+		t.Fatalf("out=%+v sent=%v err=%v", out, sent, err)
+	}
+	// No small cover is made by this publisher, so that topic is not its to empty.
+	if got := topics(bus.take()); len(got) != 2 || got[1] != "eds/nowplaying/current/art" {
+		t.Errorf("published %v", got)
+	}
+}
+
+// ADR-0025: whoever draws buttons is told when there is nothing they would do.
+func TestASourceWithoutControlsSaysSoInCurrent(t *testing.T) {
+	bus := &fakeBus{}
+	p := publisher(bus, nil)
+	p.NoControls = map[string]bool{"turntable": true}
+
+	record := playing("So What", "Kind of Blue")
+	record.Source, record.Player = "turntable", "turntable"
+	out, _, _ := p.Publish(context.Background(), record, nil)
+	if !out.NoControls {
+		t.Errorf("the turntable's state does not say it has no controls: %+v", out)
+	}
+	sent := bus.take()
+	if got := decode(t, sent[len(sent)-1]); !got.NoControls {
+		t.Errorf("published without it: %s", sent[len(sent)-1].payload)
+	}
+
+	out, _, _ = p.Publish(context.Background(), playing("So What", "Kind of Blue"), nil)
+	if out.NoControls {
+		t.Errorf("iTunes was said to have no controls: %+v", out)
+	}
+	sent = bus.take()
+	if strings.Contains(string(sent[len(sent)-1].payload), "no_controls") {
+		t.Errorf("the field is written where it is not so: %s", sent[len(sent)-1].payload)
 	}
 }

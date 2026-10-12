@@ -61,7 +61,11 @@ type Server struct {
 	held heldCover
 	// early is a look that arrived before its cover. It is kept until that
 	// cover comes, and never applied to the one held meanwhile.
-	early  coverLook
+	early coverLook
+	// idle says the last thing sent to the default stand from the topic was
+	// the idle scene, so being told again that there is no cover sends
+	// nothing.
+	idle   bool
 	render sync.Mutex // one lighting of the room at a time
 }
 
@@ -285,6 +289,42 @@ func (s *Server) ApplyLook(ctx context.Context, payload []byte) error {
 	return s.light(ctx)
 }
 
+// ClearCover takes the word that there is no cover: the cover topic was
+// emptied, which is how whoever publishes it says nothing is playing
+// (ADR-0024). The default stand is sent the idle scene, and the cover held
+// is let go, so the same cover coming back lights the room again.
+//
+// What stopped playing, and why, is not lightd's to know. It is told there
+// is no image, and that is all.
+func (s *Server) ClearCover(ctx context.Context) error {
+	s.render.Lock()
+	defer s.render.Unlock()
+
+	s.mu.Lock()
+	already := s.idle
+	s.held = heldCover{}
+	s.mu.Unlock()
+	if already {
+		return nil
+	}
+
+	idle := scene.Idle()
+	if err := s.publish(s.opts.DefaultStand, idle); err != nil {
+		return &coverError{http.StatusBadGateway, err}
+	}
+	s.mu.Lock()
+	s.idle = true
+	s.mu.Unlock()
+	s.opts.Logger.Info("published scene",
+		"via", "topic",
+		"stand", s.opts.DefaultStand,
+		"idle", true,
+		"effect", idle.Effect,
+		"brightness", idle.Brightness,
+	)
+	return nil
+}
+
 // light makes the stand show what the held cover should look like now: its
 // look, if one was named for it and is known here, else its own colours. It
 // does nothing when that is already what was sent, so the look and the cover
@@ -449,6 +489,11 @@ func (s *Server) publish(stand string, sc scene.Scene) error {
 
 	s.mu.Lock()
 	s.last[stand] = sc
+	// Whatever this was, it is the last thing the stand was sent. ClearCover
+	// says so itself when it was the idle scene.
+	if stand == s.opts.DefaultStand {
+		s.idle = false
+	}
 	s.mu.Unlock()
 	return nil
 }

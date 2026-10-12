@@ -91,3 +91,6 @@ and incidents under the same names. To keep the two apart:
 | [0020](0020-a-touch-screen-that-can-change-what-plays/) | 2026-10-11 | A touch screen shows the cover and can change what plays, by asking nowplayd | {{< adr-status "Proposed" >}} |
 | [0021](0021-the-turntable-is-identified-by-listening/) | 2026-10-11 | The turntable is identified by listening, with a recogniser that can be replaced | {{< adr-status "Proposed" >}} |
 | [0022](0022-the-owners-collection-names-the-record/) | 2026-10-12 | For a source that plays the owner's records, the owner's collection names the record | {{< adr-status "Proposed" >}} |
+| [0023](0023-a-source-that-is-switched-on-holds-the-stand/) | 2026-10-12 | A source's equipment can say it is on, and a source that is on holds the stand | {{< adr-status "Proposed" >}} |
+| [0024](0024-paused-long-enough-is-not-playing/) | 2026-10-12 | A track left paused is not playing for ever, and a room with nothing playing is dim | {{< adr-status "Proposed" >}} |
+| [0025](0025-current-says-when-there-are-no-controls/) | 2026-10-12 | The current track says when there is nothing a controller could do | {{< adr-status "Proposed" >}} |

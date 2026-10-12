@@ -1,0 +1,27 @@
+# Defaults that make a fresh checkout build into something that runs.
+
+# The board: an ESP32-S2 with 4MB of flash. Another chip is this line and
+# nothing else; the program uses WiFi and no pin.
+CONFIG_IDF_TARGET="esp32s2"
+
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=4096
+
+# The WiFi handler runs on the system event task and formats an event for
+# the log there. The 2304-byte default was sized for handlers that only set a
+# flag.
+CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
+
+# The beacon sends a word and a few event lines, and is sent nothing.
+CONFIG_MQTT_BUFFER_SIZE=1024
+
+# Recover rather than sulk: an unattended beacon should come back on its own.
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=y
+
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# The two OTA slots in partitions.csv need 3.25MB, so the 2MB default cannot
+# hold the table. Declared here rather than left to menuconfig: a flash size
+# smaller than the partition table is a build failure, not a preference.
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y

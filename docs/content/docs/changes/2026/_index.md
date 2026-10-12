@@ -22,3 +22,5 @@ bookCollapseSection: true
 | CHG-0012 | 2026-10-11 | [The Cover Screen](0012-the-cover-screen/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0013 | 2026-10-11 | [The Turntable Driver](0013-the-turntable-driver/) | Deployment | {{< status-badge "complete" "Complete" >}} |
 | CHG-0014 | 2026-10-12 | [The Owner's Collection](0014-the-owners-collection/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0015 | 2026-10-12 | [The Turntable's Power Beacon](0015-the-turntables-power-beacon/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0016 | 2026-10-12 | [Idle, the Screen on the Console, and No Buttons for a Record](0016-idle-the-screen-on-the-console-and-no-buttons-for-a-record/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |

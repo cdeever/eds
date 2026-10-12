@@ -34,6 +34,14 @@ cover, retained, and lightd follows it.
   what the image is a cover of; the topic is a setting, not knowledge.
 - The topic is retained, so a lightd that restarts lights the room from the
   current cover by itself.
+- **An emptied topic means there is no cover**, and the default stand is
+  sent the idle scene: solid, warm white, at 0.15
+  ([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)).
+  It is the scene the firmware starts with, so an idle stand and one just
+  switched on look the same, and neither is dark. lightd is not told why
+  there is no cover.
+- An emptied retained topic is not delivered to a late subscriber, so lightd
+  takes five seconds of nothing after subscribing as an empty topic too.
 - Covers are handled one at a time and **the newest wins**: one that arrives
   while another is being handled replaces any still waiting.
 - A cover that cannot be used is logged and ignored, and the stand keeps the

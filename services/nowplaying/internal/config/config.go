@@ -140,6 +140,20 @@ type Nowplayd struct {
 	// DiscogsUser is whose collection that is. DiscogsToken is a personal
 	// access token for it, needed when the collection is private.
 	DiscogsUser, DiscogsToken string
+	// Power names, for a source whose equipment has a beacon on its switch,
+	// that beacon: source id to beacon id (ADR-0023).
+	Power map[string]string
+	// IdleAfter is how long a track may sit paused, or nothing be reporting,
+	// before nothing is said to be playing and the cover is taken away
+	// (ADR-0024). Zero is never.
+	IdleAfter time.Duration
+	// StoppedIdleAfter is the same wait for a source that is stopped and
+	// still current: one held while its equipment is on, with nothing
+	// playing on it. Longer, so a record can be turned over.
+	StoppedIdleAfter time.Duration
+	// NoControls names sources a controller should offer nothing for
+	// (ADR-0025).
+	NoControls []string
 }
 
 // LoadNowplayd builds nowplayd's configuration.
@@ -182,6 +196,43 @@ func LoadNowplayd(version string) (Nowplayd, error) {
 	// would do nothing, and nothing would say so.
 	if len(cfg.Owned) > 0 && cfg.DiscogsUser == "" {
 		return cfg, fmt.Errorf("config: NP_COLLECTION_SOURCES is set and NP_DISCOGS_USER is not: whose collection?")
+	}
+
+	if cfg.IdleAfter, err = Duration("NP_IDLE_AFTER", 15*time.Second, 0, time.Hour); err != nil {
+		return cfg, err
+	}
+
+	if cfg.StoppedIdleAfter, err = Duration("NP_IDLE_AFTER_STOPPED", 5*time.Minute, 0, 24*time.Hour); err != nil {
+		return cfg, err
+	}
+
+	cfg.NoControls = List("NP_NO_CONTROLS_SOURCES", "")
+	for _, source := range cfg.NoControls {
+		if !contract.ValidSourceID(source) {
+			return cfg, fmt.Errorf("config: NP_NO_CONTROLS_SOURCES names %q, which cannot be a source", source)
+		}
+	}
+
+	// Each entry is source=beacon. Both become topic levels, and a typo in
+	// either is a source that is never held, or never let go, with nothing
+	// to say why.
+	for _, entry := range List("NP_SOURCE_POWER", "") {
+		source, beacon, ok := strings.Cut(entry, "=")
+		source, beacon = strings.TrimSpace(source), strings.TrimSpace(beacon)
+		switch {
+		case !ok:
+			return cfg, fmt.Errorf("config: NP_SOURCE_POWER has %q, which is not source=beacon", entry)
+		case !contract.ValidSourceID(source):
+			return cfg, fmt.Errorf("config: NP_SOURCE_POWER names %q, which cannot be a source", source)
+		case !contract.ValidSourceID(beacon):
+			return cfg, fmt.Errorf("config: NP_SOURCE_POWER names %q, which cannot be a beacon", beacon)
+		case cfg.Power[source] != "":
+			return cfg, fmt.Errorf("config: NP_SOURCE_POWER names %q twice: a source has one switch", source)
+		}
+		if cfg.Power == nil {
+			cfg.Power = make(map[string]string)
+		}
+		cfg.Power[source] = beacon
 	}
 	return cfg, nil
 }

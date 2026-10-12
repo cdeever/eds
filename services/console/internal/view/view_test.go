@@ -163,6 +163,46 @@ func TestAStandsSceneStateAndPresence(t *testing.T) {
 	}
 }
 
+func TestABeaconsPresence(t *testing.T) {
+	v := New("eds")
+	if v.Apply("eds/beacon/turntable-power-01/status", []byte("on")) {
+		t.Fatal("a word that is neither online nor offline is not a change")
+	}
+	if got := v.Snapshot().Beacons; len(got) != 0 {
+		t.Fatalf("a beacon was made from a word that says nothing: %+v", got)
+	}
+
+	if !v.Apply("eds/beacon/turntable-power-01/status", []byte("online")) {
+		t.Fatal("a beacon coming on is a change")
+	}
+	if v.Apply("eds/beacon/turntable-power-01/status", []byte("online")) {
+		t.Fatal("said twice is not a change")
+	}
+	v.Apply("eds/beacon/another-01/status", []byte("offline"))
+
+	got := v.Snapshot().Beacons
+	if len(got) != 2 || got[0].ID != "another-01" || *got[0].Online ||
+		got[1].ID != "turntable-power-01" || !*got[1].Online {
+		t.Fatalf("beacons %+v", got)
+	}
+}
+
+func TestAScreensPresence(t *testing.T) {
+	v := New("eds")
+	if v.Apply("eds/screen/cover-screen-01/status", []byte("")) {
+		t.Fatal("an emptied topic is not a change")
+	}
+	if !v.Apply("eds/screen/cover-screen-01/status", []byte("online")) {
+		t.Fatal("a screen coming on is a change")
+	}
+	v.Apply("eds/screen/cover-screen-01/status", []byte("offline"))
+
+	got := v.Snapshot().Screens
+	if len(got) != 1 || got[0].ID != "cover-screen-01" || *got[0].Online {
+		t.Fatalf("screens %+v", got)
+	}
+}
+
 func TestASceneIsHeldToWhatAStandWouldTake(t *testing.T) {
 	v := New("eds")
 	if v.Apply("eds/lightstand/a/scene", []byte(`{"v":1,"effect":"solid","palette":[]}`)) {
@@ -247,7 +287,8 @@ func TestTopicsCoverWhatApplyReads(t *testing.T) {
 		"eds/nowplaying/current": true, "eds/nowplaying/current/art": true, "eds/nowplaying/status": true,
 		"eds/nowplaying/source/+/state": true, "eds/nowplaying/source/+/status": true,
 		"eds/lightstand/+/scene": true, "eds/lightstand/+/state": true, "eds/lightstand/+/status": true,
-		"eds/lightd/status": true,
+		"eds/lightd/status": true, "eds/beacon/+/status": true,
+		"eds/screen/+/status": true,
 	}
 	got := Topics("eds")
 	if len(got) != len(want) {

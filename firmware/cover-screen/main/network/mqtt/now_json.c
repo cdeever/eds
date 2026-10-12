@@ -33,6 +33,10 @@ bool cs_now_parse(const char *json, size_t len, cs_now_t *now)
         const cJSON *art = cJSON_GetObjectItemCaseSensitive(root, "art");
         const cJSON *hash = cJSON_IsObject(art) ? cJSON_GetObjectItemCaseSensitive(art, "sha256") : NULL;
         now->has_art = cJSON_IsString(hash) && hash->valuestring[0] != '\0';
+
+        // Only the word itself, and only "true": anything else, or nothing,
+        // leaves the buttons where they were.
+        now->no_controls = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(root, "no_controls"));
     }
 
     cJSON_Delete(root);

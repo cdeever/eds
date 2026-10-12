@@ -208,7 +208,7 @@ func TestRetainedCoverReachesALateSubscriber(t *testing.T) {
 	}
 }
 
-func TestCoversKeepArrivingAndAnEmptyOneIsNotACover(t *testing.T) {
+func TestCoversKeepArrivingAndAnEmptiedTopicIsSaidAsNoCover(t *testing.T) {
 	url := testBroker(t)
 	prefix := "edstest-cover-live"
 	topic := CoverTopic(prefix, "nowplaying/current/art")
@@ -232,12 +232,16 @@ func TestCoversKeepArrivingAndAnEmptyOneIsNotACover(t *testing.T) {
 		t.Errorf("cover = %q", cover)
 	}
 
-	// Clearing a retained topic publishes nothing-at-all, which must not be
-	// handed on as an image. The cover after it shows the subscription lived.
+	// Emptying the topic is how its publisher says there is no cover now
+	// (ADR-0024). It is handed on as no bytes at all, never as an image, and
+	// the cover after it shows the subscription lived.
 	publishRaw(t, url, topic, []byte{}, false)
+	if cover := await(t, got, "the emptied topic"); len(cover) != 0 {
+		t.Errorf("an emptied topic was handed on as %q", cover)
+	}
 	publishRaw(t, url, topic, []byte("SECOND"), false)
 	if cover := await(t, got, "second cover"); string(cover) != "SECOND" {
-		t.Errorf("cover = %q, want SECOND - the empty message was handed on", cover)
+		t.Errorf("cover = %q, want SECOND", cover)
 	}
 }
 

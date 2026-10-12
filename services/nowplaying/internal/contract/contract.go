@@ -96,6 +96,12 @@ type State struct {
 	ChangedAt time.Time `json:"changed_at"`
 
 	Art *Art `json:"art,omitempty"`
+
+	// NoControls is said on the current topic only, and only by nowplayd:
+	// that a controller should offer nothing for this source, because there
+	// is nothing a command to it would do (ADR-0025). Left out, controls
+	// are offered, which is what every reader before this field does.
+	NoControls bool `json:"no_controls,omitempty"`
 }
 
 var sourceID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
@@ -155,7 +161,7 @@ func Same(a, b *State) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if a.Source != b.Source || a.Player != b.Player || a.State != b.State {
+	if a.Source != b.Source || a.Player != b.Player || a.State != b.State || a.NoControls != b.NoControls {
 		return false
 	}
 	if (a.Track == nil) != (b.Track == nil) {
@@ -219,6 +225,14 @@ func CurrentSmallArtTopic(prefix string) string { return prefix + "/nowplaying/c
 // playing (ADR-0020). It names no source, because a controller does not know
 // one: nowplayd passes the command to the source that is current.
 func CommandTopic(prefix string) string { return prefix + "/nowplaying/command" }
+
+// BeaconStatusTopic is where a beacon says it has power: "online" while it
+// does, and the broker's "offline" for it when it has not (ADR-0023). It is
+// outside nowplaying/, because a beacon is not a source and reports no
+// playing: it is a device on a switch, and says only that the switch is on.
+func BeaconStatusTopic(prefix, id string) string {
+	return prefix + "/beacon/" + id + "/status"
+}
 
 // SourceCommandTopic is where one driver hears commands meant for its player.
 func SourceCommandTopic(prefix, id string) string {

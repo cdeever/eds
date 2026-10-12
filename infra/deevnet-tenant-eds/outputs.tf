@@ -156,6 +156,17 @@ output "cover_screen_01_broker" {
   }
 }
 
+output "turntable_power_01_broker" {
+  description = "What the turntable's power beacon is provisioned with, beside the Wi-Fi key above (ADR-0023)."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.turntable_power_01.username
+    password  = deevnet_iot_broker_account.turntable_power_01.password
+    publish   = deevnet_iot_broker_account.turntable_power_01.granted_publish
+    subscribe = deevnet_iot_broker_account.turntable_power_01.granted_subscribe
+  }
+}
+
 # EdS's own log store credentials (Deevnet ADR-0027, Deevnet CHG-0020).
 #
 # The stand does NOT use these: it publishes its events to MQTT, and the
