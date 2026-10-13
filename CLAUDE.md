@@ -250,9 +250,13 @@ lightd's own HTTP surface: `GET /healthz`, `POST /v1/cover` (image bytes),
 `POST /v1/scene` (publish a scene by hand — how the stand gets exercised with
 no image path), `GET /v1/scene` (last sent).
 
-The stand follows what is playing: the agent Pi reports iTunes to the broker,
-`nowplayd` on the workload publishes the current track and its cover, and
-`lightd` lights the stand from the cover. `make -C deploy deploy WHERE=builder`
+The stand follows the record that is playing: the agent Pi reports the
+turntable and iTunes to the broker, `nowplayd` on the workload publishes the
+current track and its cover, and `lightd` lights the stand from the cover.
+**The stand is lit for records only** (ADR-0028): `NP_DARK_SOURCES=itunes`
+makes `nowplayd` publish iTunes' cover with the look `dark`, which `lightd`
+draws as `scene.Dark`. The screen and the console still show that cover. Do
+not "fix" the dark stand; lights for iTunes are to be their own thing. `make -C deploy deploy WHERE=builder`
 deploys all four services (the Mac has no container tool; the Builder builds).
 
 The console (`services/console`, ADR-0018) is the page a person looks at:
@@ -306,8 +310,13 @@ source's own status topic: that is the driver's word about its sound card.
 (15 s) of a paused winner, or of nobody reporting, `nowplayd` publishes
 `current` as stopped with no track, still naming the source so play can be
 pressed, and **empties** the cover topics. An emptied cover topic is the one
-way `lightd` is told there is no cover, and it answers with its idle scene
-(`scene.Idle`, the firmware's own starting scene). A cover merely not sent
+way `lightd` is told there is no cover. **It answers dark, and dim only
+while something is switched on** (ADR-0028): before emptying the topics
+`nowplayd` publishes a look that names no cover, `standby` when any
+`NP_SOURCE_POWER` beacon is on and none otherwise, and `lightd` draws
+`standby` as `scene.Idle` (the firmware's own starting scene) and anything
+else as `scene.Dark`. `lightd` still knows no beacon; do not teach it one.
+A cover merely not sent
 still leaves the room as it was (ADR-0016); do not confuse the two. A source
 that is stopped and held has its own wait, `NP_IDLE_AFTER_STOPPED` (1 s): the
 turntable's driver has already heard twenty seconds of silence, and the

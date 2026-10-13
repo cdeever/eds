@@ -906,7 +906,7 @@ func TestIdleTakesTheTrackAndTheCoverAwayAndKeepsTheSource(t *testing.T) {
 	_, _, _ = p.Publish(context.Background(), paused, cover)
 	bus.take()
 
-	out, sent, err := p.PublishIdle(context.Background(), paused)
+	out, sent, err := p.PublishIdle(context.Background(), paused, false)
 	if err != nil || !sent {
 		t.Fatalf("idle: sent=%v err=%v", sent, err)
 	}
@@ -924,7 +924,7 @@ func TestIdleTakesTheTrackAndTheCoverAwayAndKeepsTheSource(t *testing.T) {
 	}
 
 	// Said again, as it is when a late cover makes the hub decide again.
-	if _, sent, _ := p.PublishIdle(context.Background(), paused); sent {
+	if _, sent, _ := p.PublishIdle(context.Background(), paused, false); sent {
 		t.Errorf("idle said twice published again: %v", topics(bus.take()))
 	}
 }
@@ -937,7 +937,7 @@ func TestTheSameCoverIsPublishedAgainAfterIdle(t *testing.T) {
 	p := withSmall(bus, nil, s)
 
 	_, _, _ = p.Publish(context.Background(), covered("So What", cover), cover)
-	_, _, _ = p.PublishIdle(context.Background(), covered("So What", cover))
+	_, _, _ = p.PublishIdle(context.Background(), covered("So What", cover), false)
 	bus.takeAll()
 
 	_, _, _ = p.Publish(context.Background(), covered("So What", cover), cover)
@@ -955,13 +955,69 @@ func TestTheSameCoverIsPublishedAgainAfterIdle(t *testing.T) {
 
 func TestIdleWithNobodyReportingNamesNoSource(t *testing.T) {
 	bus := &fakeBus{}
-	out, sent, err := publisher(bus, nil).PublishIdle(context.Background(), nil)
+	out, sent, err := publisher(bus, nil).PublishIdle(context.Background(), nil, false)
 	if err != nil || !sent || out.Source != "" || out.State != contract.Stopped {
 		t.Fatalf("out=%+v sent=%v err=%v", out, sent, err)
 	}
 	// No small cover is made by this publisher, so that topic is not its to empty.
 	if got := topics(bus.take()); len(got) != 2 || got[1] != "eds/nowplaying/current/art" {
 		t.Errorf("published %v", got)
+	}
+}
+
+// ADR-0028: an idle room is told whether anything is switched on, as the
+// look of no cover, before the cover is taken away, and again when the
+// switch changes with nothing else to say.
+func TestIdleNamesTheLookOfNoCover(t *testing.T) {
+	bus := &fakeBus{}
+	cover := NewImage(pngA)
+	p := publisher(bus, nil)
+	_, _, _ = p.Publish(context.Background(), covered("So What", cover), cover)
+	bus.takeAll()
+
+	_, _, _ = p.PublishIdle(context.Background(), nil, true)
+	got := bus.takeAll()
+	if names := topics(got); len(names) != 3 || names[1] != "eds/nowplaying/current/look" || names[2] != "eds/nowplaying/current/art" {
+		t.Fatalf("published %v", names)
+	}
+	if string(got[1].payload) != `{"v":1,"look":"standby","art":""}` || !got[1].retained {
+		t.Errorf("look = %s retained=%v", got[1].payload, got[1].retained)
+	}
+
+	// Switched off, in a room already idle: the look alone.
+	_, sent, _ := p.PublishIdle(context.Background(), nil, false)
+	got = bus.takeAll()
+	if !sent || len(got) != 1 || string(got[0].payload) != `{"v":1,"art":""}` {
+		t.Fatalf("switched off: sent=%v published %v %s", sent, topics(got), got[0].payload)
+	}
+	if _, sent, _ := p.PublishIdle(context.Background(), nil, false); sent {
+		t.Errorf("said twice published again: %v", topics(bus.takeAll()))
+	}
+}
+
+// ADR-0028: a source no room is lit for still has its cover published, and
+// with it the look that says to light nothing.
+func TestADarkSourcesCoverIsPublishedWithTheDarkLook(t *testing.T) {
+	bus := &fakeBus{}
+	cover := NewImage(pngA)
+	p := publisher(bus, nil)
+	p.Looks = func(contract.Track) string { return "spectrum" }
+	st := covered("So What", cover)
+	p.Dark = map[string]bool{st.Source: true}
+
+	out, _, err := p.Publish(context.Background(), st, cover)
+	if err != nil || out.Art == nil {
+		t.Fatalf("out=%+v err=%v", out, err)
+	}
+	got := bus.takeAll()
+	if names := topics(got); len(names) != 3 || names[0] != "eds/nowplaying/current/look" || names[1] != "eds/nowplaying/current/art" {
+		t.Fatalf("published %v", names)
+	}
+	if want := `{"v":1,"look":"dark","art":"` + cover.SHA256 + `"}`; string(got[0].payload) != want {
+		t.Errorf("look = %s, want %s", got[0].payload, want)
+	}
+	if string(got[1].payload) != string(pngA) {
+		t.Error("the cover itself was not published")
 	}
 }
 

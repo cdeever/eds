@@ -179,3 +179,17 @@ func TestIdleAfterAndNoControls(t *testing.T) {
 		t.Errorf("idle %v, no controls %v, %v", cfg.IdleAfter, cfg.NoControls, err)
 	}
 }
+
+func TestDarkSources(t *testing.T) {
+	if cfg, err := LoadNowplayd("0.1"); err != nil || len(cfg.Dark) != 0 {
+		t.Fatalf("default: dark %v, %v", cfg.Dark, err)
+	}
+	t.Setenv("NP_DARK_SOURCES", "itunes")
+	if cfg, err := LoadNowplayd("0.1"); err != nil || len(cfg.Dark) != 1 || cfg.Dark[0] != "itunes" {
+		t.Errorf("dark %v, %v", cfg.Dark, err)
+	}
+	t.Setenv("NP_DARK_SOURCES", "not a source")
+	if _, err := LoadNowplayd("0.1"); err == nil {
+		t.Error("a name that cannot be a source was accepted")
+	}
+}

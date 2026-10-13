@@ -56,6 +56,8 @@ type decision struct {
 	cover  *current.Image
 	// idle: nothing is playing as far as a room is concerned (ADR-0024).
 	idle bool
+	// on: some source's equipment is switched on (ADR-0028).
+	on bool
 }
 
 func run(logger *slog.Logger) error {
@@ -114,7 +116,7 @@ func run(logger *slog.Logger) error {
 		}
 	}
 
-	sources := hub.New(cfg.Prefix, func(d hub.Decision) { submit(decision{winner: d.Winner, cover: d.Cover, idle: d.Idle}) }, logger)
+	sources := hub.New(cfg.Prefix, func(d hub.Decision) { submit(decision{winner: d.Winner, cover: d.Cover, idle: d.Idle, on: d.On}) }, logger)
 	sources.IdleAfter = cfg.IdleAfter
 	sources.StoppedIdleAfter = cfg.StoppedIdleAfter
 
@@ -183,6 +185,7 @@ func run(logger *slog.Logger) error {
 	}
 	defer client.Close()
 	commands.SetBus(client)
+	sources.Settle()
 
 	logger.Info("connected to broker",
 		"url", cfg.Broker.URL,
@@ -210,6 +213,13 @@ func run(logger *slog.Logger) error {
 	if len(noControls) > 0 {
 		logger.Info("telling controllers to offer nothing for these sources", "sources", cfg.NoControls)
 	}
+	dark := make(map[string]bool, len(cfg.Dark))
+	for _, source := range cfg.Dark {
+		dark[source] = true
+	}
+	if len(dark) > 0 {
+		logger.Info("publishing these sources' covers with the look that lights nothing", "sources", cfg.Dark)
+	}
 	if cfg.IdleAfter > 0 {
 		logger.Info("a track paused this long is no longer said to be playing, and its cover is taken away", "after", cfg.IdleAfter)
 	}
@@ -222,6 +232,7 @@ func run(logger *slog.Logger) error {
 		Resolver:   resolver,
 		Coverless:  coverless,
 		NoControls: noControls,
+		Dark:       dark,
 		Looks:      looks.For,
 		Small:      smallcover.Make,
 		Prefix:     cfg.Prefix,
@@ -270,7 +281,7 @@ func run(logger *slog.Logger) error {
 				err       error
 			)
 			if d.idle {
-				published, sent, err = publisher.PublishIdle(ctx, d.winner)
+				published, sent, err = publisher.PublishIdle(ctx, d.winner, d.on)
 			} else {
 				published, sent, err = publisher.Publish(ctx, d.winner, d.cover)
 			}
@@ -284,7 +295,7 @@ func run(logger *slog.Logger) error {
 			commands.SetCurrent(published.Source)
 			if sent {
 				if d.idle {
-					logger.Info("idle: nothing has played for a while, and the cover is taken away", "source", published.Source)
+					logger.Info("idle: nothing has played for a while, and the cover is taken away", "source", published.Source, "switched_on", d.on)
 				}
 				logCurrent(logger, published)
 			}

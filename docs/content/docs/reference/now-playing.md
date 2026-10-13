@@ -25,7 +25,7 @@ All under the tenant's prefix, `eds/`.
 | `nowplaying/current` | nowplayd | yes | the one current track |
 | `nowplaying/current/art` | nowplayd | yes | its cover, as image bytes |
 | `nowplaying/current/art/small` | nowplayd | yes | the same cover, small: a baseline JPEG, 240 pixels on its longer side |
-| `nowplaying/current/look` | nowplayd | yes | whether that cover's album has a look of its own |
+| `nowplaying/current/look` | nowplayd | yes | whether that cover's album has a look of its own; with no cover, whether the room is waiting for one |
 | `nowplaying/command` | a controller | **never** | a button press, for whatever is current |
 | `nowplaying/source/<id>/command` | nowplayd | **never** | that press, passed to the current source |
 | `nowplaying/status` | nowplayd | yes (last will) | `online` / `offline` |
@@ -109,7 +109,7 @@ A few albums are lit by something other than their cover's colors
 |---|---|
 | `v` | `1`. Another version is refused |
 | `look` | the look's name; left out when the album has none |
-| `art` | the SHA-256 of the cover this is about, as in `current` |
+| `art` | the SHA-256 of the cover this is about, as in `current`. Empty, the look is for there being no cover: see [Idle](#idle) |
 
 A look belongs to the cover it names and to no other, so the two messages
 can arrive in either order. What a name looks like is `lightd`'s to say; a
@@ -120,6 +120,12 @@ matched on the track's own tags: an album that starts with that title, the
 leading "The" or not, by an artist that includes Pink Floyd. A remaster with
 its year in parentheses matches; a copy tagged some other way does not, and is
 lit from its cover.
+
+A second look, `dark`, is not an album's. It is given to every cover from a
+source in `NP_DARK_SOURCES`, before any look the album has, and means that
+nothing is to be lit from this cover
+([ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/)).
+The cover itself is published as usual. `itunes` is such a source.
 
 Nothing is said about a look when no cover is published, so a source reported
 without its cover never has one.
@@ -161,7 +167,14 @@ After `NP_IDLE_AFTER`, fifteen seconds on the workload, nowplayd says so:
   topic means there is no cover, which is different from a cover not being
   sent: Spotify's track sends none and leaves the last one standing
   ([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
-  `lightd` answers an emptied topic with its idle scene, dim and warm.
+  `lightd` answers an emptied topic by resting the stand: see below.
+- Before they are emptied, `current/look` is given **the look of no cover**:
+  `{"v":1,"look":"standby","art":""}` when the equipment of any source in
+  `NP_SOURCE_POWER` is switched on, and `{"v":1,"art":""}` when none is
+  ([ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/)).
+  `lightd` shows `standby` as its idle scene, dim and warm, and anything
+  else as dark. A switch going on or off while the room is idle publishes
+  this look again, alone.
 - The same goes for nobody reporting at all, after the same wait, with no
   source named.
 - When something plays again, everything is published again in full, the

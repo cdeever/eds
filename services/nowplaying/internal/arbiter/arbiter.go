@@ -144,6 +144,18 @@ func (a *Arbiter) Power(id string, on bool) (*contract.State, bool) {
 	return a.decide()
 }
 
+// AnyOn reports whether any source's equipment says it is switched on. It
+// asks nothing of the source: one whose driver is offline has its equipment
+// on all the same, and somebody switched it on (ADR-0028).
+func (a *Arbiter) AnyOn() bool {
+	for _, s := range a.sources {
+		if s.power == powerOn {
+			return true
+		}
+	}
+	return false
+}
+
 // Current is the current track, or nil when no source has anything to say.
 func (a *Arbiter) Current() *contract.State {
 	return a.last

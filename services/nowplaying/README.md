@@ -291,9 +291,21 @@ A track left paused stays current for `NP_IDLE_AFTER`, fifteen seconds, and
 then nothing is said to be playing
 ([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)):
 `current` is `stopped` with no track, and the cover topics are emptied,
-which is what tells `lightd` to dim the stand. The source is still named, so
-a command still reaches it and play can be pressed. Nobody reporting at all
-goes the same way after the same wait.
+which is what tells `lightd` there is nothing to light the stand from. The
+source is still named, so a command still reaches it and play can be
+pressed. Nobody reporting at all goes the same way after the same wait.
+
+The stand is for records. A source in `NP_DARK_SOURCES`, `itunes` on the
+workload, has its cover published as usual and given the look `dark`, and
+`lightd` lights nothing from it.
+
+An idle room is dark unless something is switched on
+([ADR-0028](../../docs/content/docs/architecture/decisions/0028-the-stand-is-for-records.md)).
+Before the cover topics are emptied, `current/look` is given the look of no
+cover, `{"v":1,"look":"standby","art":""}`, when the beacon of any source in
+`NP_SOURCE_POWER` says it is on, and `{"v":1,"art":""}` when none does.
+`lightd` draws the first dim and the second dark. A beacon going on or off
+in an idle room publishes the look again, and nothing else.
 
 - The wait is counted from when the source says it paused, so a track paused
   an hour ago is idle at once when nowplayd starts, and not lit again first.
@@ -301,7 +313,8 @@ goes the same way after the same wait.
   a wait of its own, `NP_IDLE_AFTER_STOPPED`, one second. The turntable's
   driver has heard twenty seconds of silence before it says `stopped`, so
   the room is dim about twenty seconds after the music ends, and a record
-  being turned over dims it too (ADR-0026).
+  being turned over dims it too (ADR-0026). Dim and not dark: the turntable
+  is on.
 - Playing again publishes everything again, the same cover included.
 
 ## What is asked of other people's services
@@ -420,6 +433,7 @@ be used stops the program.
 | `NP_DISCOGS_USER` | none | whose collection. Required when a source is named above |
 | `NP_DISCOGS_TOKEN` | none | a personal access token; needed for a private collection, and raises Discogs' limit from 25 requests a minute to 60. **Secret** |
 | `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](../../docs/content/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover.md)). `spotify` on the workload, which is what keeps the stand from following it |
+| `NP_DARK_SOURCES` | none | sources no room is lit for: their covers are published as usual, with the look `dark`, which `lightd` answers by sending the stand dark ([ADR-0028](../../docs/content/docs/architecture/decisions/0028-the-stand-is-for-records.md)). `itunes` on the workload: the stand is for records |
 | `NP_IDLE_AFTER` | `15s` | how long a track may sit paused, or nobody report, before nothing is said to be playing and the cover topics are emptied ([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)). `0s` is never; at most an hour |
 | `NP_IDLE_AFTER_STOPPED` | `1s` | the same wait for a source that is stopped and still current: a turntable switched on with nothing playing. Short, because its driver has already waited out twenty seconds of silence. `0s` is never; at most a day |
 | `NP_NO_CONTROLS_SOURCES` | none | sources a controller is told to offer nothing for, as `no_controls` in `current` ([ADR-0025](../../docs/content/docs/architecture/decisions/0025-current-says-when-there-are-no-controls.md)). `turntable` on the workload |

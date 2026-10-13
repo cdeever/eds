@@ -60,15 +60,46 @@ func Look(name string, opts Options, look LookOptions) (Scene, bool) {
 			Brightness: opts.Brightness,
 			Palette:    palette,
 		}, true
+	case LookDark:
+		return Dark(), true
 	}
 	return Scene{}, false
 }
 
-// Idle is what a stand shows when there is no cover to light it from: nothing
-// is playing (ADR-0024). It is the scene the firmware starts with before it
-// has heard anything - a steady, dim, warm white - so a stand that is idle
-// and one that has just been switched on look the same, and neither is dark.
-// A dark stand cannot be told from a dead one.
+// LookDark is a cover the stand is not to be lit for (ADR-0028). Whose
+// cover that is, and why, is whoever names it's to know.
+const LookDark = "dark"
+
+// LookStandby is the look of no cover at all, where whoever says there is
+// none says also that the room is waiting for one (ADR-0028).
+const LookStandby = "standby"
+
+// NoCover is what a stand shows when there is no cover to light it from, for
+// the look that was named for that, if one was: waiting is Idle, and
+// anything else is Dark. A name that is not known is no name.
+func NoCover(look string) Scene {
+	if look == LookStandby {
+		return Idle()
+	}
+	return Dark()
+}
+
+// Dark is a stand with nothing to show and nobody said to be waiting: every
+// LED off (ADR-0028). It is a scene like any other, sent and retained, so a
+// stand that restarts goes dark again once it has heard it.
+//
+// The color is Idle's, and is not seen. A scene has to carry one.
+func Dark() Scene {
+	dark := Idle()
+	dark.Brightness = 0
+	return dark
+}
+
+// Idle is what a stand shows when there is no cover to light it from, and
+// the room is waiting for one (ADR-0024, ADR-0028). It is the scene the
+// firmware starts with before it has heard anything - a steady, dim, warm
+// white - so a stand that is waiting and one that has just been switched on
+// look the same.
 //
 // It is not the usual brightness turned down. The room is not being lit for
 // a record, and how bright that is has its own answer.

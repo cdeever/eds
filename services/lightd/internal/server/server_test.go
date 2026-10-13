@@ -604,9 +604,28 @@ func TestDescribe(t *testing.T) {
 	}
 }
 
-// ADR-0024: the cover topic emptied is nothing playing, and the stand is sent
-// the idle scene - once, however often it is said.
-func TestClearCoverSendsTheIdleSceneOnce(t *testing.T) {
+// lastScene is the scene most recently published.
+func lastScene(t *testing.T, pub *fakePublisher) scene.Scene {
+	t.Helper()
+	var got scene.Scene
+	if err := json.Unmarshal(pub.payloads[len(pub.payloads)-1], &got); err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func noCoverLook(t *testing.T, srv *Server, look string) {
+	t.Helper()
+	payload, _ := json.Marshal(map[string]any{"v": scene.ContractVersion, "look": look, "art": ""})
+	if err := srv.ApplyLook(context.Background(), payload); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// ADR-0024, ADR-0028: the cover topic emptied is nothing playing, and with
+// nobody said to be waiting the stand is sent dark - once, however often it
+// is said.
+func TestClearCoverSendsTheStandDarkOnce(t *testing.T) {
 	pub := &fakePublisher{}
 	srv := newServer(t, &fakeExtractor{resp: goodPalette()}, pub)
 	if err := srv.ApplyCover(context.Background(), []byte("COVER")); err != nil {
@@ -620,20 +639,65 @@ func TestClearCoverSendsTheIdleSceneOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	if pub.count() != 2 {
+		t.Fatalf("published %d scenes, want the cover's and one dark", pub.count())
+	}
+
+	got := lastScene(t, pub)
+	if got.V != scene.ContractVersion || got.Effect != "solid" || got.Brightness != 0 || len(got.Palette) != 1 {
+		t.Errorf("dark scene = %+v", got)
+	}
+}
+
+// ADR-0028: the look of no cover says the room is waiting, and then no cover
+// is the idle scene, dim and lit. The look comes before the topic is emptied.
+func TestNoCoverInAWaitingRoomIsDim(t *testing.T) {
+	pub := &fakePublisher{}
+	srv := newServer(t, &fakeExtractor{resp: goodPalette()}, pub)
+	_ = srv.ApplyCover(context.Background(), []byte("COVER"))
+
+	noCoverLook(t, srv, scene.LookStandby)
+	if pub.count() != 1 {
+		t.Fatalf("published %d scenes; the look of no cover changed a room that has one", pub.count())
+	}
+	_ = srv.ClearCover(context.Background())
+	if pub.count() != 2 {
 		t.Fatalf("published %d scenes, want the cover's and one idle", pub.count())
 	}
 
-	var got scene.Scene
-	if err := json.Unmarshal(pub.payloads[1], &got); err != nil {
-		t.Fatal(err)
-	}
-	want := scene.Idle()
-	if got.V != scene.ContractVersion || got.Effect != "solid" || got.Brightness != want.Brightness ||
-		len(got.Palette) != 1 || got.Palette[0].RGB != want.Palette[0].RGB {
+	got, want := lastScene(t, pub), scene.Idle()
+	if got.Effect != "solid" || got.Brightness != want.Brightness || len(got.Palette) != 1 || got.Palette[0].RGB != want.Palette[0].RGB {
 		t.Errorf("idle scene = %+v", got)
 	}
 	if got.Brightness <= 0 || got.Brightness > 0.2 {
 		t.Errorf("idle is not dim and lit: brightness %v", got.Brightness)
+	}
+}
+
+// The switch going on or off in a room with nothing playing: only the look
+// is said, and the stand follows it both ways, once each.
+func TestTheLookOfNoCoverChangesARoomThatHasNone(t *testing.T) {
+	pub := &fakePublisher{}
+	srv := newServer(t, &fakeExtractor{resp: goodPalette()}, pub)
+	_ = srv.ClearCover(context.Background())
+	if got := lastScene(t, pub); pub.count() != 1 || got.Brightness != 0 {
+		t.Fatalf("no cover, nobody waiting: %d scenes, last %+v", pub.count(), got)
+	}
+
+	noCoverLook(t, srv, scene.LookStandby)
+	noCoverLook(t, srv, scene.LookStandby)
+	if got := lastScene(t, pub); pub.count() != 2 || got.Brightness != scene.Idle().Brightness {
+		t.Fatalf("switched on: %d scenes, last %+v", pub.count(), got)
+	}
+
+	noCoverLook(t, srv, "")
+	if got := lastScene(t, pub); pub.count() != 3 || got.Brightness != 0 {
+		t.Fatalf("switched off: %d scenes, last %+v", pub.count(), got)
+	}
+
+	// A name this does not know is no name.
+	noCoverLook(t, srv, "fireworks")
+	if pub.count() != 4 || lastScene(t, pub).Brightness != 0 {
+		t.Errorf("an unknown look of no cover lit the stand: %+v", lastScene(t, pub))
 	}
 }
 

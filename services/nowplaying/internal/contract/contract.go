@@ -315,8 +315,25 @@ type Look struct {
 	V int `json:"v"`
 	// Look is a name, or empty. What a name looks like is the subscriber's.
 	Look string `json:"look,omitempty"`
-	// Art is the SHA-256 of the cover this is for.
+	// Art is the SHA-256 of the cover this is for. Empty, the look is for
+	// there being no cover (ADR-0028).
 	Art string `json:"art"`
+}
+
+// LookStandby is the look of no cover at all, in a room where something is
+// switched on and nothing is playing yet (ADR-0028). Like any look it is a
+// name: what it looks like is the subscriber's.
+const LookStandby = "standby"
+
+// LookDark is the look of a cover the room is not to be lit for: it is
+// shown on a screen, and that is all (ADR-0028).
+const LookDark = "dark"
+
+// EncodeNoCoverLook is the look of there being no cover: a name, or none,
+// and no cover named. It goes out before the cover topics are emptied, as a
+// cover's look goes out before its cover.
+func EncodeNoCoverLook(look string) ([]byte, error) {
+	return json.Marshal(Look{V: Version, Look: look})
 }
 
 // EncodeLook is a Look as it goes on the bus.

@@ -382,3 +382,76 @@ func TestAStoppedWinnerNeverGoesIdleWhenItsWaitIsOff(t *testing.T) {
 		t.Fatalf("a held, stopped source went idle: %+v", got)
 	}
 }
+
+// ADR-0028: an idle decision says whether anything is switched on, and a
+// switch that changes no winner still says it again.
+func TestAnIdleRoomIsToldWhenASwitchChanges(t *testing.T) {
+	b, _ := idleBench()
+	b.state("itunes", "One", nil, contract.Paused)
+	b.elapse()
+	got := b.take()
+	if last := got[len(got)-1]; !last.Idle || last.On {
+		t.Fatalf("paused, nothing switched on: decisions = %+v", got)
+	}
+
+	// The turntable is switched on, and its driver has said nothing: iTunes
+	// is still who is current.
+	b.hub.Power("turntable", true)
+	got = b.take()
+	if len(got) != 1 || !got[0].Idle || !got[0].On || got[0].Winner == nil || got[0].Winner.Source != "itunes" {
+		t.Fatalf("switched on: decisions = %+v", got)
+	}
+	b.hub.Power("turntable", true)
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("said on twice: decisions = %+v", got)
+	}
+
+	b.hub.Power("turntable", false)
+	if got := b.take(); len(got) != 1 || !got[0].Idle || got[0].On {
+		t.Fatalf("switched off: decisions = %+v", got)
+	}
+}
+
+// A switch does not make a room idle that is not: a track playing elsewhere
+// is not decided again for it.
+func TestASwitchThatChangesNoWinnerLeavesAPlayingRoomAlone(t *testing.T) {
+	b, _ := idleBench()
+	b.state("itunes", "One", nil, contract.Playing)
+	b.take()
+	b.hub.Power("turntable", false)
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("decisions = %+v", got)
+	}
+}
+
+// Started with every source offline: nothing changes the winner from none,
+// and it has to be decided all the same, or the room is never told.
+func TestNobodyReportingAtTheStartIsDecidedAndGoesIdle(t *testing.T) {
+	b, _ := idleBench()
+	b.status("turntable", "offline")
+	b.hub.Power("turntable", true)
+	b.hub.Settle()
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("before the retained messages are in: decisions = %+v", got)
+	}
+
+	b.elapse()
+	if got := b.take(); len(got) != 1 || got[0].Idle || got[0].Winner != nil {
+		t.Fatalf("settled: decisions = %+v", got)
+	}
+	b.elapse()
+	if got := b.take(); len(got) != 1 || !got[0].Idle || !got[0].On || got[0].Winner != nil {
+		t.Fatalf("later: decisions = %+v", got)
+	}
+}
+
+func TestSettlingDecidesNothingWhenASourceAlreadyHas(t *testing.T) {
+	b, _ := idleBench()
+	b.state("itunes", "One", nil, contract.Playing)
+	b.hub.Settle()
+	b.take()
+	b.elapse()
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("decisions = %+v", got)
+	}
+}
