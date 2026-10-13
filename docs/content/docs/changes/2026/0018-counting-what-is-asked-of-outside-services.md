@@ -78,6 +78,8 @@ Any order. The dashboard is empty until the other two are done.
 | 21:53 | The agent and the recognizer were pushed to the Pi by its owner (`23e4dfb`, this branch on top of CHG-0017's, which had been merged). The agent came back active with both drivers online. The turntable was silent and Spotify's driver is off, so nothing was asked of anybody and there was no count to see. |
 | 21:54 | The workload was deployed by its owner (`3de0662`). All four services came back active. `nowplayd` said it was counting for the log store at `https://logs.mobile.deevnet.net`, and listed the collection, 226 records. |
 | 21:55 | The first summary: `3 calls to discogs`, none refused, none failed, the slowest 993 ms, 58 left of Discogs' sixty. Nothing was said about the store refusing it, and read back from the workload partition the line was there, with its numbers as fields and `app` as `nowplayd`. |
+| 21:58 | This branch was merged, and the tenant planned from the main checkout: 1 to add, `grafana_dashboard.outside_services`, 0 to change, 0 to destroy. The apply was left to its owner. |
+| 22:00 | Its owner applied it: 1 added, 0 changed, 0 destroyed. The dashboard is `eds-outside-services`, in the folder EdS. It has not yet been looked at. |
 
 ## Departures
 
@@ -89,3 +91,6 @@ Any order. The dashboard is empty until the other two are done.
 ## Follow-ups
 
 - [ ] The evidence ADR-0027 asks for.
+- [ ] The dashboard opened: whether the panels that read two partitions
+  draw anything.
+- [ ] A count from the agent Pi, which waits on a record being played.
