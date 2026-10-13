@@ -27,3 +27,4 @@ bookCollapseSection: true
 | CHG-0017 | 2026-10-12 | [The Gap Between Tracks, and a Silent Turntable](0017-the-gap-between-tracks-and-a-silent-turntable/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0018 | 2026-10-12 | [Counting What Is Asked of Outside Services](0018-counting-what-is-asked-of-outside-services/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0019 | 2026-10-13 | [The Stand Is for Records](0019-the-stand-is-for-records/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0020 | 2026-10-13 | [The Stand Starts Dark, Blinks, Opens and Scans](0020-the-stand-starts-dark-blinks-opens-and-scans/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |

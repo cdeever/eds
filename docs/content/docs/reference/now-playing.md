@@ -121,8 +121,16 @@ leading "The" or not, by an artist that includes Pink Floyd. A remaster with
 its year in parentheses matches; a copy tagged some other way does not, and is
 lit from its cover.
 
+One look is a single track's: `scanner`, for the theme from *Knight Rider*
+([ADR-0030](/docs/architecture/decisions/0030-a-piece-of-music-can-have-a-look-from-any-source/)).
+It is matched on the title alone - `knight rider`, with or without `theme`,
+`from`, `main title` and the like, and whatever is in parentheses - and comes
+before the album's look. The look is published again, for the same cover,
+when the next track's is different.
+
 A second look, `dark`, is not an album's. It is given to every cover from a
-source in `NP_DARK_SOURCES`, before any look the album has, and means that
+source in `NP_DARK_SOURCES`, before any look the album has - but not before
+`scanner`, which is shown from any source - and means that
 nothing is to be lit from this cover
 ([ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/)).
 The cover itself is published as usual. `itunes` is such a source.

@@ -9,6 +9,7 @@ static const char *const effect_names[LP_EFFECT_COUNT] = {
     [LP_EFFECT_SWEEP] = "sweep",
     [LP_EFFECT_MORPH] = "morph",
     [LP_EFFECT_CHASE] = "chase",
+    [LP_EFFECT_SCANNER] = "scanner",
 };
 
 lp_effect_t lp_effect_from_name(const char *name)
@@ -39,7 +40,9 @@ void lp_scene_default(lp_scene_t *scene)
     memset(scene, 0, sizeof(*scene));
     scene->effect = LP_EFFECT_SOLID;
     scene->speed = 0.0f;
-    scene->brightness = 0.15f;
+    // Dark. The color is carried because a scene has to carry one, and is
+    // the one a waiting stand is sent (lightd's scene.Idle).
+    scene->brightness = 0.0f;
     scene->palette[0].rgb = (lp_rgb_t){.r = 255, .g = 170, .b = 90};
     scene->palette[0].weight = 1.0f;
     scene->palette_len = 1;

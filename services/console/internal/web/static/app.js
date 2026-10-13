@@ -225,6 +225,7 @@ function pace(scene) {
   switch (scene.effect) {
     case "breathe": return ` · a breath every ${seconds(cycle)}`;
     case "sweep": return ` · once around every ${seconds(cycle)}`;
+    case "scanner": return ` · there and back every ${seconds(cycle)}`;
     case "chase": return scene.palette.length > 1 ? ` · a lap every ${seconds(cycle * 2)}` : "";
     case "morph": return scene.palette.length > 1 ? ` · through every color in ${seconds(cycle * 2 * scene.palette.length)}` : "";
     default: return "";

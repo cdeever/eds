@@ -18,6 +18,17 @@ static const char *TAG = "mqtt";
 static esp_mqtt_client_handle_t client;
 static lp_scene_handler scene_handler;
 static volatile bool connected;
+static volatile bool refused;
+
+bool lp_mqtt_connected(void)
+{
+    return connected;
+}
+
+bool lp_mqtt_refused(void)
+{
+    return refused;
+}
 
 static void on_connected(void)
 {
@@ -35,6 +46,7 @@ static void on_connected(void)
     char extra[64];
     snprintf(extra, sizeof(extra), "\"ip\":\"%s\",\"rssi\":%d", lp_wifi_ip(), lp_wifi_rssi());
     lp_event_log_with(LP_EVENT_INFO, "mqtt.connected", extra, "Connected to the broker");
+    refused = false;
     connected = true;
 }
 
@@ -112,7 +124,9 @@ static void on_mqtt_event(void *handler_args, esp_event_base_t base, int32_t id,
         // Serial only: none of this can be published, by definition. A
         // refusal names the account; anything else is the network or TLS, and
         // the handshake wants tens of KB at once and fails oddly without it.
-        if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED) {
+        // Which of the two it was is also what the strip blinks (status.h).
+        refused = event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED;
+        if (refused) {
             ESP_LOGE(TAG, "the broker refused the connection (code %d)",
                      event->error_handle->connect_return_code);
         } else {

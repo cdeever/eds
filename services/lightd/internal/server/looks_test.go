@@ -269,3 +269,26 @@ func TestACoverNamedDarkLightsNothing(t *testing.T) {
 		t.Fatalf("the cover after was not lit: %d scenes", pub.count())
 	}
 }
+
+// The scanner: a look with a speed and brightness of its own, and one that
+// a cover can take up and put down as its tracks change.
+func TestTheScannerComesAndGoesOnOneCover(t *testing.T) {
+	ex, pub := &fakeExtractor{resp: goodPalette()}, &fakePublisher{}
+	s := newServer(t, ex, pub)
+	ctx := context.Background()
+	s.ApplyCover(ctx, prism)
+	if got := sceneAt(t, pub, 0); got.Effect == "scanner" {
+		t.Fatalf("a cover with no look is the scanner: %+v", got)
+	}
+
+	s.ApplyLook(ctx, lookFor(prism, scene.LookScanner))
+	got := sceneAt(t, pub, 1)
+	if got.Effect != "scanner" || got.Brightness != 1 || len(got.Palette) != 1 || got.Palette[0].RGB != [3]uint8{255, 0, 0} {
+		t.Fatalf("scanner scene = %+v", got)
+	}
+
+	s.ApplyLook(ctx, lookFor(prism, scene.LookDark))
+	if pub.count() != 3 || sceneAt(t, pub, 2).Brightness != 0 {
+		t.Fatalf("after the scanner's track: %d scenes", pub.count())
+	}
+}

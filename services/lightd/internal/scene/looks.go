@@ -60,11 +60,26 @@ func Look(name string, opts Options, look LookOptions) (Scene, bool) {
 			Brightness: opts.Brightness,
 			Palette:    palette,
 		}, true
+	case LookScanner:
+		// Its own speed and its own brightness, where the spectrum takes the
+		// stand's: it is nothing if it is slow, and one point of light has
+		// to carry the whole strip. There and back in a second and a half.
+		return Scene{
+			V:          ContractVersion,
+			Effect:     "scanner",
+			Speed:      0.9,
+			Brightness: 1,
+			Palette:    []Color{{RGB: [3]uint8{255, 0, 0}, Weight: 1}},
+		}, true
 	case LookDark:
 		return Dark(), true
 	}
 	return Scene{}, false
 }
+
+// LookScanner is one red point going from end to end of the strip and back,
+// with a tail behind it.
+const LookScanner = "scanner"
 
 // LookDark is a cover the stand is not to be lit for (ADR-0028). Whose
 // cover that is, and why, is whoever names it's to know.
@@ -96,10 +111,10 @@ func Dark() Scene {
 }
 
 // Idle is what a stand shows when there is no cover to light it from, and
-// the room is waiting for one (ADR-0024, ADR-0028). It is the scene the
-// firmware starts with before it has heard anything - a steady, dim, warm
-// white - so a stand that is waiting and one that has just been switched on
-// look the same.
+// the room is waiting for one (ADR-0024, ADR-0028): a steady, dim, warm
+// white. It was once also what the firmware showed before it had heard
+// anything. The firmware now starts dark (ADR-0029), with this color at
+// brightness 0.
 //
 // It is not the usual brightness turned down. The room is not being lit for
 // a record, and how bright that is has its own answer.

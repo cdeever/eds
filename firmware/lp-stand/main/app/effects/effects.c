@@ -31,6 +31,17 @@
 #define CHASE_MIN_WIDTH 0.12f
 #define CHASE_MAX_WIDTH 0.30f
 
+// Scanner: one point of light going from end to end and back. The eye is
+// this much of the strip to either side of its center, soft-edged, which on
+// eighteen LEDs is three or four lit at once: narrower, and it steps from
+// LED to LED and does not glide. Behind it, where it has just been, fades
+// over a few more. The fade is drawn as the eye's own earlier positions,
+// each dimmer than the one after it: so many of them, this much of the cycle
+// apart.
+#define SCANNER_EYE 0.10f
+#define SCANNER_TRAIL 8
+#define SCANNER_TRAIL_STEP 0.02f
+
 // M_PI is a POSIX extension, not ISO C, and is absent under a strict -std=c11.
 // Defining it here keeps the module free of feature-test-macro guesswork.
 #define LP_TWO_PI 6.28318530717958647692f
@@ -209,6 +220,32 @@ static lp_rgb_t chase_color(const lp_scene_t *scene, float u, float phase)
     return color;
 }
 
+// scanner_level is how bright the pixel centered at u (0..1 along the strip)
+// is when the scanner's cycle is at `phase`: 1 under the eye, less in what
+// trails it, 0 everywhere else.
+static float scanner_level(float u, float phase)
+{
+    float level = 0.0f;
+    for (int k = 0; k < SCANNER_TRAIL; k++) {
+        float then = phase - (float)k * SCANNER_TRAIL_STEP;
+        if (then < 0.0f) {
+            then += 1.0f;
+        }
+        // Out for the first half of the cycle and back for the second.
+        float eye = then < 0.5f ? 2.0f * then : 2.0f - 2.0f * then;
+        float distance = fabsf(u - eye);
+        if (distance >= SCANNER_EYE) {
+            continue;
+        }
+        float fade = 1.0f - (float)k / (float)SCANNER_TRAIL;
+        float here = (0.5f + 0.5f * cosf(LP_TWO_PI * 0.5f * distance / SCANNER_EYE)) * fade * fade;
+        if (here > level) {
+            level = here;
+        }
+    }
+    return level;
+}
+
 void lp_effects_render(const lp_scene_t *scene, uint32_t t_ms, lp_rgb_t *out, size_t count)
 {
     if (out == NULL || count == 0) {
@@ -257,6 +294,16 @@ void lp_effects_render(const lp_scene_t *scene, uint32_t t_ms, lp_rgb_t *out, si
         for (size_t i = 0; i < count; i++) {
             float u = (float)i / (float)count;
             out[i] = dim(chase_color(scene, u, phase), brightness);
+        }
+        break;
+    }
+
+    case LP_EFFECT_SCANNER: {
+        // There and back in one of the scene's cycles.
+        float phase = phase01(t_ms, scene->speed);
+        for (size_t i = 0; i < count; i++) {
+            float u = ((float)i + 0.5f) / (float)count;
+            out[i] = dim(dominant, brightness * scanner_level(u, phase));
         }
         break;
     }

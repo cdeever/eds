@@ -14,11 +14,14 @@ const SWEEP_BLEND = 0.06;
 const MORPH_BLEND = 0.45;
 const CHASE_MIN_WIDTH = 0.12;
 const CHASE_MAX_WIDTH = 0.3;
+const SCANNER_EYE = 0.1;
+const SCANNER_TRAIL = 8;
+const SCANNER_TRAIL_STEP = 0.02;
 const MAX_COLORS = 8;
 
 // The effects the firmware knows. A name it does not know is shown as solid,
 // which is what a stand does with one.
-export const EFFECTS = ["solid", "breathe", "sweep", "morph", "chase"];
+export const EFFECTS = ["solid", "breathe", "sweep", "morph", "chase", "scanner"];
 
 const clamp01 = (v) => (v > 0 ? (v < 1 ? v : 1) : 0); // NaN falls to 0
 
@@ -131,6 +134,23 @@ function sweepColor(scene, u) {
   return scene.palette[0].rgb;
 }
 
+// scannerLevel is how bright the pixel centered at u is when the scanner's
+// cycle is at `phase`: 1 under the eye, less in what trails it, else 0.
+function scannerLevel(u, phase) {
+  let level = 0;
+  for (let k = 0; k < SCANNER_TRAIL; k++) {
+    let then = phase - k * SCANNER_TRAIL_STEP;
+    if (then < 0) then += 1;
+    const eye = then < 0.5 ? 2 * then : 2 - 2 * then;
+    const distance = Math.abs(u - eye);
+    if (distance >= SCANNER_EYE) continue;
+    const fade = 1 - k / SCANNER_TRAIL;
+    const here = (0.5 + 0.5 * Math.cos((Math.PI * distance) / SCANNER_EYE)) * fade * fade;
+    if (here > level) level = here;
+  }
+  return level;
+}
+
 // render returns `count` pixels, each [r, g, b], for a validated scene at
 // tMs milliseconds.
 export function render(scene, tMs, count) {
@@ -157,6 +177,11 @@ export function render(scene, tMs, count) {
   if (scene.effect === "chase" && scene.palette.length > 1) {
     const phase = phaseIn(tMs, periodMs(scene.speed) * 2);
     for (let i = 0; i < count; i++) out[i] = dim(chaseColor(scene, i / count, phase), brightness);
+    return out;
+  }
+  if (scene.effect === "scanner") {
+    const phase = phase01(tMs, scene.speed);
+    for (let i = 0; i < count; i++) out[i] = dim(dominant, brightness * scannerLevel((i + 0.5) / count, phase));
     return out;
   }
   return out.fill(dim(dominant, brightness));

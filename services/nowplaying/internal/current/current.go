@@ -102,11 +102,14 @@ type Publisher struct {
 	// Dark names sources no room is lit for (ADR-0028). Their covers are
 	// published like any other, for whoever shows a cover, and each is given
 	// the look that says not to light anything from it.
-	Dark    map[string]bool
-	Prefix  string
-	Timeout time.Duration // for one catalog lookup
-	Logger  *slog.Logger
-	Now     func() time.Time
+	Dark map[string]bool
+	// AnySource says a look is shown whatever source its track is from, a
+	// dark one included (ADR-0030). Nil is none.
+	AnySource func(look string) bool
+	Prefix    string
+	Timeout   time.Duration // for one catalog lookup
+	Logger    *slog.Logger
+	Now       func() time.Time
 
 	// What was last put on the bus, so nothing is published twice. Retained
 	// messages mean a subscriber that reconnects gets the same cover again
@@ -149,8 +152,9 @@ func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSou
 			look = p.Looks(*out.Track)
 		}
 		// Before any look the album has: a room that is not lit for this
-		// source is not lit for its best-known record either.
-		if p.Dark[out.Source] {
+		// source is not lit for its best-known record either. The few looks
+		// that are for any source are the exception, and the only one.
+		if p.Dark[out.Source] && !(look != "" && p.AnySource != nil && p.AnySource(look)) {
 			look = contract.LookDark
 		}
 		if !p.lookSent || look != p.lastLook || cover.SHA256 != p.lastLookArt {

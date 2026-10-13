@@ -24,7 +24,7 @@ container without knowing which.
 | `LIGHTD_MQTT_USERNAME` / `_PASSWORD` | — | broker credentials |
 | `LIGHTD_MQTT_CA_FILE` | — | CA for the broker's certificate |
 | `LIGHTD_MQTT_INSECURE` | `false` | bring-up only; never with a real cert |
-| `LIGHTD_EFFECT` | `breathe` | default effect: `solid`, `breathe`, `sweep`, `morph` or `chase` |
+| `LIGHTD_EFFECT` | `breathe` | default effect: `solid`, `breathe`, `sweep`, `morph`, `chase` or `scanner` |
 | `LIGHTD_SPEED` / `LIGHTD_BRIGHTNESS` | `0.4` / `0.8` | |
 | `LIGHTD_SWATCHES` | `6` | swatches requested from palette |
 | `LIGHTD_MIN_CHROMA` | `0.05` | below this a swatch is a gray |

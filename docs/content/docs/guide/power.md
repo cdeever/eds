@@ -17,15 +17,17 @@ firmware's own lookup table:
 
 | Scenario | mA/LED | 8 | 16 | 30 | 60 |
 |---|---:|---:|---:|---:|---:|
-| Boot default (solid warm white, brightness 0.15) | 1.2 | 10 | 20 | 37 | 74 |
+| Waiting for a record (solid warm white, brightness 0.15) | 1.2 | 10 | 20 | 37 | 74 |
 | lightd default, breathe peak on orange | 10.3 | 82 | 164 | 308 | 615 |
 | Saturated red at brightness 0.8 | 12.2 | 98 | 195 | 366 | 733 |
 | Worst case: full white, brightness 1.0 | 61.0 | 488 | 976 | 1830 | 3660 |
 
-The boot row is so small because the default scene's 0.15 brightness on
+The first row is so small because the idle scene's 0.15 brightness on
 (255, 170, 90) becomes PWM duties of 2, 1 and 0 out of 255. Almost all of that
-current is the controller ICs idling. The "unconfigured stand shows warm white"
-behavior is effectively free even on a full strip.
+current is the controller ICs idling. It is what a stand is sent while the
+turntable is on and silent. At power on the strip is dark
+([ADR-0029](/docs/architecture/decisions/0029-the-stand-starts-dark-and-blinks-what-is-wrong/)),
+and a stand that cannot reach the broker lights one LED, red, in blinks.
 
 ## Bench testing on USB
 

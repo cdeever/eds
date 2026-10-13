@@ -97,3 +97,5 @@ and incidents under the same names. To keep the two apart:
 | [0026](0026-what-silence-means-on-the-turntable/) | 2026-10-12 | A gap between tracks is listened for, and a silent turntable is idle in twenty seconds | {{< adr-status "Proposed" >}} |
 | [0027](0027-what-is-asked-of-outside-services-is-counted/) | 2026-10-12 | What EdS asks of other people's services is counted, a minute at a time, and nowplayd writes its counts to the log store itself | {{< adr-status "Proposed" >}} |
 | [0028](0028-the-stand-is-for-records/) | 2026-10-13 | The stand is lit for records only, and is dim only while the turntable is on | {{< adr-status "Proposed" >}} |
+| [0029](0029-the-stand-starts-dark-and-blinks-what-is-wrong/) | 2026-10-13 | The stand starts dark, and says in red blinks how far it got | {{< adr-status "Proposed" >}} |
+| [0030](0030-a-piece-of-music-can-have-a-look-from-any-source/) | 2026-10-13 | One piece of music can have a look of its own, shown whatever plays it, and the stand learns to scan | {{< adr-status "Proposed" >}} |
