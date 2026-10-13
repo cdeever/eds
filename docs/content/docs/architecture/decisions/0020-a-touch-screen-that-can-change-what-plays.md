@@ -11,6 +11,7 @@ weight: 20
 | **Date** | 2026-10-11 |
 | **Scope** | A second device, a small touch screen, that shows the cover of what is playing and has five buttons: play or pause, previous, next, volume up, volume down. This is the first thing in EdS that changes anything outside itself. |
 | **Extends** | [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), in which a driver reports and reads nothing, and [ADR-0011](/docs/architecture/decisions/0011-itunes-by-remote-pairing/), which paired with iTunes as a remote and used the pairing only to read |
+| **Extended by** | [ADR-0032](/docs/architecture/decisions/0032-spotify-takes-commands/): Spotify's driver carries the commands out too |
 | **Related** | [ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/), [ADR-0010](/docs/architecture/decisions/0010-home-lan-relay/), [ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/), [ADR-0018](/docs/architecture/decisions/0018-a-console-of-eds-own/), which said controls would be a decision of their own |
 
 ---

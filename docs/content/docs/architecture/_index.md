@@ -272,8 +272,8 @@ pressing play on the screen resumes it.
 ## Spotify
 
 Spotify is read from the account. A driver on the agent Pi asks Spotify's
-Web API what the account is playing, every ten seconds, with read-only
-permission
+Web API what the account is playing, every ten seconds, with permission to
+read playback and to change it
 ([ADR-0012](/docs/architecture/decisions/0012-spotify-by-web-api/)).
 
 It is shown as iTunes is
@@ -286,8 +286,9 @@ no cover at all
 
 It differs from iTunes in these ways:
 
-- **It takes no commands.** The driver only reads. A button pressed while
-  Spotify is current goes nowhere.
+- **Its commands go by way of Spotify's servers**, not the home network
+  ([ADR-0032](/docs/architecture/decisions/0032-spotify-takes-commands/)),
+  and only for playback on a device that counts.
 - **Only named devices count.** Playback elsewhere on the account, a phone
   in a car, is reported as stopped.
 - **It was turned off for a time**

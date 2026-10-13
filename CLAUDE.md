@@ -103,8 +103,9 @@ asks for, once for each album and without the account's token; `spotify` is
 in `NP_DARK_SOURCES` beside `itunes`, so the screens show its cover and the
 stand stays dark, but for a look that is for any source (ADR-0030). It was
 coverless until 2026-10-13 (ADR-0016); `NP_COVERLESS_SOURCES` remains, with
-no source in it. The Spotify authorization asks for read-only
-scopes; do not widen them without a decision. The app's Client ID lives in
+no source in it. The Spotify authorization asks to read playback and to
+change it (`user-modify-playback-state`, ADR-0032) and for nothing else; do
+not widen it further without a decision. The app's Client ID lives in
 gitignored `deploy/relay/spotify.conf` and is never committed.
 
 EdS's Pi images are its own (`images/`, ADR-0015): Deevnet IoTaaS's base image
@@ -297,10 +298,11 @@ another is a decision, not a line added to `looks.AnySource`.
 **Playback can be controlled, by one route** (ADR-0020). A controller
 publishes `{"v":1,"command":"next"}` to `nowplaying/command`; `nowplayd`
 passes it to the current source's `nowplaying/source/<id>/command`; the
-iTunes driver carries it out over its pairing. The commands are `play_pause`,
+iTunes driver carries it out over its pairing, and the Spotify driver through
+Spotify's Web API, only for playback on a device that counts (ADR-0032). The commands are `play_pause`,
 `next`, `previous`, `volume_up`, `volume_down`, and adding one is a decision.
 **A command is never retained and a retained one is ignored**; the screen
-sends at QoS 0 and never queues one. Spotify takes none. A controller never
+sends at QoS 0 and never queues one. The turntable takes none. A controller never
 names a source, and the console still only looks.
 
 **A source whose equipment is switched on holds the stand** (ADR-0023). For

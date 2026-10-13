@@ -182,9 +182,9 @@ func (c *countedRecognizer) Recognize(ctx context.Context, clip []int16) (turnta
 	return m, err
 }
 
-// The Spotify driver takes no commands, and so has none here: it reads the
-// account with scopes that only read (ADR-0012, ADR-0016), and a command for
-// it would need more than it was authorized for.
+// The Spotify driver takes commands (ADR-0032). An authorization given
+// before that decision only reads: Spotify refuses each command, the refusal
+// is logged, and reading goes on as it did.
 func spotifyJob(logger *slog.Logger) (job, error) {
 	j := job{name: "spotify", source: "spotify"}
 
@@ -214,20 +214,23 @@ func spotifyJob(logger *slog.Logger) (job, error) {
 		return j, nil
 	}
 
+	// Built here and not in run, as iTunes' is: a command has to find the
+	// same driver.
+	d := &spotify.Driver{
+		Source:   j.source,
+		HTTP:     spotifyHTTP(),
+		Tokens:   tokens,
+		Logger:   logger.With("driver", j.name),
+		Devices:  devices,
+		Interval: interval,
+	}
 	j.run = func(ctx context.Context, sink driver.Sink) error {
 		logger.Info("following the account", "driver", j.name, "devices", devices, "every", interval,
 			"authorized_until", tokens.Token().Expires().Format("2006-01-02"))
-		d := &spotify.Driver{
-			Source:   j.source,
-			HTTP:     spotifyHTTP(),
-			Tokens:   tokens,
-			Sink:     sink,
-			Logger:   logger.With("driver", j.name),
-			Devices:  devices,
-			Interval: interval,
-		}
+		d.Sink = sink
 		return d.Run(ctx)
 	}
+	j.command = d.Command
 	return j, nil
 }
 

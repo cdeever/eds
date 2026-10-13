@@ -102,8 +102,13 @@ driver now does (ADR-0020): `play_pause`, `next`, `previous`, `volume_up` and
   the topic says so (`driver.commands_refused`) and reports what is playing
   regardless.
 
-The Spotify driver takes no commands and subscribes to nothing. Its
-authorization only reads, and widening it is a decision.
+The Spotify driver takes the same five
+([ADR-0032](../../docs/content/docs/architecture/decisions/0032-spotify-takes-commands.md)),
+through Spotify's Web API, and only while its last answer was a track on a
+device that counts: a press here does not pause a phone somewhere else. A
+device whose volume Spotify may not set is told nothing about volume. An
+authorization given before ADR-0032 only reads, and Spotify refuses each
+command until it is given again (`make -C deploy/relay spotify AGAIN=1`).
 
 ## The Spotify driver
 
@@ -117,7 +122,8 @@ bin/npagent spotify-devices                       # the account's devices, by na
 NP_DRIVERS=spotify NP_SPOTIFY_DEVICES="Study PC" bin/npagent watch
 ```
 
-- **It asks to read playback and nothing else**, by PKCE, so the app's secret
+- **It asks to read playback and to change it** - play, pause, skip, volume
+  - **and nothing else**, by PKCE, so the app's secret
   is never used. The app's redirect URI must be exactly
   `http://127.0.0.1:8898/callback`.
 - **Only named devices count.** Playback anywhere else on the account is

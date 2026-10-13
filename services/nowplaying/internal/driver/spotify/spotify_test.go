@@ -580,3 +580,169 @@ func TestListDevices(t *testing.T) {
 		t.Fatalf("got %+v", devices)
 	}
 }
+
+// --- commands (ADR-0032) -------------------------------------------------------------
+
+// told is Spotify taking commands: it records each, and answers as told to.
+type told struct {
+	mu      sync.Mutex
+	asked   []string // method, path and query
+	bearers []string
+	lengths []int64
+	status  []int // one for each request, the last repeated; none is 204
+	body    string
+}
+
+func (s *told) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	what := r.Method + " " + r.URL.Path
+	if r.URL.RawQuery != "" {
+		what += "?" + r.URL.RawQuery
+	}
+	s.asked = append(s.asked, what)
+	s.bearers = append(s.bearers, strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	s.lengths = append(s.lengths, r.ContentLength)
+	status := http.StatusNoContent
+	if n := len(s.status); n > 0 {
+		status = s.status[min(len(s.asked)-1, n-1)]
+	}
+	body := s.body
+	s.mu.Unlock()
+	w.WriteHeader(status)
+	_, _ = io.WriteString(w, body)
+}
+
+// commanded is a driver whose last answer was `now`, and the Spotify it tells.
+func commanded(t *testing.T, now here, status ...int) (*Driver, *told, *tokens) {
+	t.Helper()
+	s, tk := &told{status: status}, &tokens{}
+	server := httptest.NewServer(s)
+	t.Cleanup(server.Close)
+	d := &Driver{Source: "spotify", API: server.URL, HTTP: server.Client(), Tokens: tk, Logger: quiet, Devices: []string{"Study PC"}}
+	d.here = now
+	return d, s, tk
+}
+
+func cmd(name string) contract.Command { return contract.Command{V: contract.Version, Command: name} }
+
+func TestEachCommandIsTheRequestSpotifyDocuments(t *testing.T) {
+	for _, c := range []struct {
+		command string
+		now     here
+		want    string
+	}{
+		{contract.PlayPause, here{track: true, playing: true}, "PUT /v1/me/player/pause"},
+		{contract.PlayPause, here{track: true, playing: false}, "PUT /v1/me/player/play"},
+		{contract.Next, here{track: true, playing: true}, "POST /v1/me/player/next"},
+		{contract.Previous, here{track: true, playing: true}, "POST /v1/me/player/previous"},
+		{contract.VolumeUp, here{track: true, volume: 40, hasVolume: true}, "PUT /v1/me/player/volume?volume_percent=45"},
+		{contract.VolumeDown, here{track: true, volume: 40, hasVolume: true}, "PUT /v1/me/player/volume?volume_percent=35"},
+		{contract.VolumeUp, here{track: true, volume: 98, hasVolume: true}, "PUT /v1/me/player/volume?volume_percent=100"},
+		{contract.VolumeDown, here{track: true, volume: 3, hasVolume: true}, "PUT /v1/me/player/volume?volume_percent=0"},
+	} {
+		d, s, _ := commanded(t, c.now)
+		if err := d.Command(context.Background(), cmd(c.command)); err != nil {
+			t.Errorf("%s: %v", c.command, err)
+			continue
+		}
+		if len(s.asked) != 1 || s.asked[0] != c.want {
+			t.Errorf("%s with %+v asked %v, want %s", c.command, c.now, s.asked, c.want)
+		}
+		// Spotify refuses a PUT that does not say how long its nothing is.
+		if s.bearers[0] != "access-1" || s.lengths[0] != 0 {
+			t.Errorf("%s: bearer %q, content length %d", c.command, s.bearers[0], s.lengths[0])
+		}
+	}
+}
+
+// A press in this house is for what is playing in this house.
+func TestACommandIsNotCarriedOutWhenNothingCountsHere(t *testing.T) {
+	d, s, _ := commanded(t, here{})
+	for _, name := range []string{contract.PlayPause, contract.Next, contract.Previous, contract.VolumeUp} {
+		if err := d.Command(context.Background(), cmd(name)); !errors.Is(err, ErrNotHere) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if len(s.asked) != 0 {
+		t.Fatalf("Spotify was told %v", s.asked)
+	}
+}
+
+// The driver learns what counts from the answers it is given.
+func TestWhatACommandActsOnIsTheLastAnswer(t *testing.T) {
+	body := strings.Replace(playing("Study PC", "Sail", "Megalithic Symphony", true),
+		`"is_private_session": false`, `"is_private_session": false, "volume_percent": 55, "supports_volume": true`, 1)
+	var d *Driver
+	r := follow(t, 1, func(made *Driver) { d = made }, ok(body))
+	if len(r.sink.states()) != 1 {
+		t.Fatal("nothing was published")
+	}
+	if d.here != (here{track: true, playing: true, volume: 55, hasVolume: true}) {
+		t.Errorf("here = %+v", d.here)
+	}
+
+	// On a device that does not count, there is nothing here to command.
+	r = follow(t, 1, func(made *Driver) { d = made }, ok(playing("A Phone In A Car", "Sail", "Megalithic Symphony", true)))
+	if d.here.track {
+		t.Errorf("a device that does not count can be commanded: %+v", d.here)
+	}
+	_ = r
+}
+
+func TestVolumeThatIsNotSpotifysToSetIsSaidSo(t *testing.T) {
+	d, s, _ := commanded(t, here{track: true, playing: true, volume: 50})
+	if err := d.Command(context.Background(), cmd(contract.VolumeUp)); !errors.Is(err, ErrNoVolume) {
+		t.Errorf("err = %v", err)
+	}
+	d2, s2, _ := commanded(t, here{track: true, volume: 100, hasVolume: true})
+	if err := d2.Command(context.Background(), cmd(contract.VolumeUp)); err != nil {
+		t.Errorf("already at full: %v", err)
+	}
+	if len(s.asked)+len(s2.asked) != 0 {
+		t.Errorf("Spotify was told %v %v", s.asked, s2.asked)
+	}
+}
+
+// Two presses of play/pause before Spotify has been asked again are a pause
+// and then a play, not two pauses.
+func TestACommandIsBelievedUntilTheNextAnswer(t *testing.T) {
+	d, s, _ := commanded(t, here{track: true, playing: true, volume: 40, hasVolume: true})
+	for _, name := range []string{contract.PlayPause, contract.PlayPause, contract.VolumeUp, contract.VolumeUp} {
+		if err := d.Command(context.Background(), cmd(name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []string{"PUT /v1/me/player/pause", "PUT /v1/me/player/play",
+		"PUT /v1/me/player/volume?volume_percent=45", "PUT /v1/me/player/volume?volume_percent=50"}
+	if strings.Join(s.asked, "|") != strings.Join(want, "|") {
+		t.Errorf("asked %v, want %v", s.asked, want)
+	}
+	select {
+	case <-d.pokes():
+	default:
+		t.Error("the driver was not told to ask Spotify again soon")
+	}
+}
+
+func TestARefusedCommandSaysWhatSpotifySaid(t *testing.T) {
+	// An authorization from before ADR-0032 only reads.
+	d, s, _ := commanded(t, here{track: true, playing: true}, http.StatusForbidden)
+	s.body = `{"error":{"status":403,"message":"Insufficient client scope"}}`
+	err := d.Command(context.Background(), cmd(contract.Next))
+	if err == nil || !strings.Contains(err.Error(), "Insufficient client scope") {
+		t.Fatalf("err = %v", err)
+	}
+	// Refused, so not believed: it is still playing as far as this knows.
+	if !d.here.playing {
+		t.Error("a refused command changed what the driver believes")
+	}
+
+	// A stale token is refreshed and the command sent again, once.
+	d, s, tk := commanded(t, here{track: true, playing: true}, http.StatusUnauthorized, http.StatusNoContent)
+	if err := d.Command(context.Background(), cmd(contract.Next)); err != nil {
+		t.Fatal(err)
+	}
+	if len(s.asked) != 2 || s.bearers[0] != "access-1" || s.bearers[1] != "access-2" || tk.invalidated != 1 {
+		t.Errorf("asked %v with %v", s.asked, s.bearers)
+	}
+}
