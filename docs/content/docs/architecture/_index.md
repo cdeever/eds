@@ -31,7 +31,7 @@ full size.
 
 | Line | What it carries |
 |---|---|
-| Heavy blue | Sound: the record, as phono, then S/PDIF, then USB audio |
+| Heavy blue | Sound: the record, from the amplifier's tape output, then as S/PDIF, then as USB audio |
 | Dashed amber | AC power, from the strip's switched outlets |
 | Green | The beacon's one message: that it has power |
 | Gray | Everything else, almost all of it MQTT through the broker |

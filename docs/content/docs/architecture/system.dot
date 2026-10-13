@@ -26,7 +26,7 @@ digraph eds {
         label="Upstairs"; labeljust=l; style="rounded,filled"; fillcolor="#fdf3e3"; color="#d9b77a";
         turntable [label="Turntable\non the strip's master outlet", fillcolor="#fbe2b6"];
         strip     [label="Smart power strip\npowers its other outlets\nwhile the turntable draws power", style="filled"];
-        adc       [label="ADC\nphono in, S/PDIF out"];
+        adc       [label="ADC\nline in, S/PDIF out"];
         beacon    [label="Power beacon\nESP32-S2 · turntable-power-01\nsays only that it has power", fillcolor="#dcedd8"];
     }
 
@@ -94,7 +94,7 @@ digraph eds {
 
     // ---- sound: heavy blue -----------------------------------------------
     edge [style=bold, color="#2f5d8f", fontcolor="#24476d", penwidth=1.8];
-    turntable   -> adc      [label="phono"];
+    turntable   -> adc      [label="the amplifier's\ntape output"];
     adc         -> selector [label="S/PDIF, down the house"];
     mediaserver -> selector [label="S/PDIF"];
     selector    -> roland   [label="whichever is selected"];
