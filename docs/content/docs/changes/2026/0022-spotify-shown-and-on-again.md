@@ -77,6 +77,8 @@ do not change.
 | 21:39 | The agent was pushed to the Pi (`0ef1db8`) and came back active. The input chosen in CHG-0021, `plughw:CODEC`, was still its setting. |
 | 21:39 | `drivers DRIVERS=itunes,spotify,turntable`. The Spotify driver said it was online and that Spotify was stopped. `status`: authorized until 2027-04-09, the device that counts is `MEDIA-SERVER`, and Spotify's API reachable. iTunes paired and reachable; the turntable listening. |
 | 21:39 | `make units`, from the worktree. `nowplayd` restarted, no longer said it reports any source without a cover, and said it publishes `itunes` and `spotify` with the look that lights nothing. All four services active. With nothing playing anywhere and the turntable off, `current` was Spotify's, stopped, and the stand was solid at 0. |
+| 21:45 | The owner's phone was added to the devices that count: `MEDIA-SERVER,Chris's S22`, as Spotify listed them with the phone active, set with `eds-agent-spotify devices` and kept in the gitignored `spotify.conf`. The agent restarted and followed both. |
+| 21:45 | The phone was playing. Within two seconds the driver said "My Sharona" by The Knack from *Get The Knack*, with a cover of 104,405 bytes; `nowplayd` published it as current with `art_from=player`; `lightd` published the `dark` look for it, and the stand reported solid at 0. The console held that cover. |
 
 ## Departures
 
@@ -87,7 +89,9 @@ do not change.
 
 ## Follow-ups
 
-- [ ] Nothing was playing on Spotify. No cover has been fetched, and
-  `spotify-images` has not been counted.
+- [ ] The `spotify-images` count has not been looked for in the log store.
+- [ ] The theme from Spotify, and the scanner.
+- [ ] A phone counts wherever it is. Spotify played on it away from the
+  house is reported here as playing, and takes the screens.
 
 - [ ] What ADR-0031 lists as not yet shown.
