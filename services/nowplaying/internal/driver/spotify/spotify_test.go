@@ -32,11 +32,36 @@ type answer struct {
 type api struct {
 	mu      sync.Mutex
 	answers []answer
-	asked   []string // every request made, method and path
+	asked   []string // every request made of the API, method and path
 	bearers []string
+
+	// Pictures are on another host in life. Here they are any path outside
+	// the API's, and do not use up an answer.
+	pictures   []string // each one asked for
+	withBearer int      // how many of those carried the account's token
+	noPictures bool
 }
 
+// pictureOf is the image the stand-in serves for a path: a PNG by its first
+// bytes, and different for every path.
+func pictureOf(path string) []byte { return []byte("\x89PNG\r\n\x1a\n" + path) }
+
 func (a *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !strings.HasPrefix(r.URL.Path, "/v1/") {
+		a.mu.Lock()
+		a.pictures = append(a.pictures, r.URL.Path)
+		if r.Header.Get("Authorization") != "" {
+			a.withBearer++
+		}
+		none := a.noPictures
+		a.mu.Unlock()
+		if none {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write(pictureOf(r.URL.Path))
+		return
+	}
 	a.mu.Lock()
 	a.asked = append(a.asked, r.Method+" "+r.URL.Path)
 	a.bearers = append(a.bearers, strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
@@ -133,9 +158,8 @@ func (s *sink) presence() []bool {
 	return append([]bool(nil), s.online...)
 }
 
-// playing is Spotify's answer for a track, as its API documents it. The
-// images are there because Spotify always sends them; the driver must not
-// follow them.
+// playing is Spotify's answer for a track, as its API documents it, with the
+// album's picture in three sizes, widest first, as Spotify lists them.
 func playing(device, title, album string, isPlaying bool) string {
 	return fmt.Sprintf(`{
 	  "device": {"name": %q, "type": "Computer", "is_private_session": false},
@@ -149,10 +173,14 @@ func playing(device, title, album string, isPlaying bool) string {
 	    "album": {
 	      "name": %q,
 	      "artists": [{"name": "Awolnation"}],
-	      "images": [{"url": "IMAGE_HOST/cover-640.jpg", "width": 640, "height": 640}]
+	      "images": [
+	        {"url": "IMAGE_HOST/image/%[5]s-640", "width": 640, "height": 640},
+	        {"url": "IMAGE_HOST/image/%[5]s-300", "width": 300, "height": 300},
+	        {"url": "IMAGE_HOST/image/%[5]s-64", "width": 64, "height": 64}
+	      ]
 	    }
 	  }
-	}`, device, isPlaying, title, album)
+	}`, device, isPlaying, title, album, strings.ReplaceAll(album, " ", "-"))
 }
 
 type run struct {
@@ -334,20 +362,75 @@ func TestChangesArePublishedAndTimed(t *testing.T) {
 
 // Spotify is reported without its cover (ADR-0016). Its answers carry image
 // URLs all the same; the driver must not follow one, and must not pass one on.
-func TestNoPictureIsEverAskedFor(t *testing.T) {
-	r := follow(t, 3, nil,
+// ADR-0031: the album's picture is the cover, fetched once for each album,
+// and published with the state that names it.
+func TestTheAlbumsPictureIsItsCoverFetchedOnceForEachAlbum(t *testing.T) {
+	r := follow(t, 4, nil,
 		ok(playing("Study PC", "Sail", "Megalithic Symphony", true)),
+		ok(playing("Study PC", "Kill Your Heroes", "Megalithic Symphony", true)),
 		ok(playing("Study PC", "Bloodshot", "Bloodshot", true)),
 		ok(playing("Study PC", "Bloodshot", "Bloodshot", false)),
 	)
+	want := []string{"/image/Megalithic-Symphony-640", "/image/Bloodshot-640"}
+	if got := r.api.pictures; len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("pictures asked for: %v, want %v", got, want)
+	}
+	if r.api.withBearer != 0 {
+		t.Errorf("the account's token was sent to the pictures' host %d times", r.api.withBearer)
+	}
+
+	updates := r.sink.updates
+	if len(updates) != 4 {
+		t.Fatalf("published %d updates, want 4", len(updates))
+	}
+	// The cover goes out when it changes, and every state names the one it has.
+	if string(updates[0].Cover) != string(pictureOf(want[0])) || updates[1].Cover != nil ||
+		string(updates[2].Cover) != string(pictureOf(want[1])) || updates[3].Cover != nil {
+		t.Errorf("covers went out with the wrong updates")
+	}
+	first, third := updates[0].State.Art, updates[2].State.Art
+	if first == nil || third == nil || first.SHA256 == third.SHA256 || first.MIME != "image/png" {
+		t.Fatalf("art = %+v then %+v", first, third)
+	}
+	if got := updates[1].State.Art; got == nil || got.SHA256 != first.SHA256 {
+		t.Errorf("the second track of the album names %+v", got)
+	}
 	for _, request := range r.api.requests() {
 		if request != "GET /v1/me/player" {
-			t.Fatalf("the driver made a request it has no business making: %s", request)
+			t.Fatalf("the driver asked the API something else: %s", request)
 		}
 	}
-	for _, u := range r.sink.updates {
-		if u.Cover != nil || u.State.Art != nil {
-			t.Fatalf("a cover was reported: %+v", u.State)
+}
+
+// A picture that cannot be had is no cover: nowplayd will look one up.
+func TestACoverThatCannotBeHadIsNoCover(t *testing.T) {
+	gone := &api{noPictures: true}
+	server := httptest.NewServer(gone)
+	defer server.Close()
+	d := &Driver{Source: "spotify", API: server.URL, HTTP: server.Client(), Logger: quiet}
+	if art, cover := d.cover(context.Background(), server.URL+"/image/x"); art != nil || cover != nil {
+		t.Errorf("a picture that was not there became a cover: %+v", art)
+	}
+	if art, cover := d.cover(context.Background(), "ftp://example.invalid/x"); art != nil || cover != nil {
+		t.Errorf("a cover was fetched over something that is not HTTP")
+	}
+}
+
+func TestPickTakesTheLargestThatIsNotTooLarge(t *testing.T) {
+	for _, c := range []struct {
+		images []image
+		want   string
+	}{
+		{nil, ""},
+		{[]image{{"a", 640}, {"b", 300}, {"c", 64}}, "a"},
+		{[]image{{"c", 64}, {"a", 640}, {"b", 300}}, "a"},
+		{[]image{{"big", 2000}, {"b", 300}}, "b"},
+		{[]image{{"big", 2000}, {"bigger", 3000}}, "big"},
+		{[]image{{"first", 0}, {"second", 0}}, "first"},
+		{[]image{{"", 640}, {"b", 300}}, "b"},
+	} {
+		if got := pick(c.images); got != c.want {
+			t.Errorf("pick(%v) = %q, want %q", c.images, got, c.want)
 		}
 	}
 }

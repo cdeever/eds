@@ -11,6 +11,7 @@ weight: 12
 | **Date** | 2026-10-10 |
 | **Scope** | How the Spotify driver learns what is playing. |
 | **Amended** | 2026-10-11, before it was accepted: where the driver runs, how it is authorized, which devices count, and that it takes no artwork. The text below is the amended decision; [What changed](#what-changed-on-2026-10-11) lists the differences |
+| **Extended by** | [ADR-0031](/docs/architecture/decisions/0031-spotify-is-shown-like-itunes/): the driver takes the album's picture after all, from the answer it already asks for |
 | **Related** | [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), [ADR-0007](/docs/architecture/decisions/0007-drivers-are-portable-go/), [ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/) |
 
 ---

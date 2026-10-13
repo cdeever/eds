@@ -29,3 +29,4 @@ bookCollapseSection: true
 | CHG-0019 | 2026-10-13 | [The Stand Is for Records](0019-the-stand-is-for-records/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0020 | 2026-10-13 | [The Stand Starts Dark, Blinks, Opens and Scans](0020-the-stand-starts-dark-blinks-opens-and-scans/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0021 | 2026-10-13 | [A New Sound Card for the Turntable](0021-a-new-sound-card-for-the-turntable/) | Configuration | {{< status-badge "complete" "Complete" >}} |
+| CHG-0022 | 2026-10-13 | [Spotify Shown, and On Again](0022-spotify-shown-and-on-again/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |

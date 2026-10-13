@@ -8,12 +8,16 @@
 //
 //   - Only named devices count. The account plays wherever its owner is - a
 //     phone, a car - and the answer wanted is what is playing here.
-//   - It never fetches a picture. Spotify is reported without its cover
-//     (ADR-0016), so there is no request for one to make.
+//   - The cover is the album's picture as Spotify names it in the same
+//     answer, fetched once for each album (ADR-0031). It is asked for
+//     without the account's token: the picture is public, and the token is
+//     for Spotify's API and nothing else.
 package spotify
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -84,8 +88,54 @@ type player struct {
 			Artists []struct {
 				Name string `json:"name"`
 			} `json:"artists"`
+			Images []image `json:"images"`
 		} `json:"album"`
 	} `json:"item"`
+}
+
+// image is one size of an album's picture.
+type image struct {
+	URL   string `json:"url"`
+	Width int    `json:"width"`
+}
+
+// coverWidth is the size asked for: Spotify's largest, and about what the
+// other sources' covers are.
+const coverWidth = 640
+
+// maxCover is the most a picture may be. Spotify's are a tenth of this.
+const maxCover = 4 << 20
+
+// pick chooses the picture nearest coverWidth without going over, or the
+// smallest there is when all are larger. Spotify does not always say how
+// wide one is; it lists them widest first, so then the first is taken.
+func pick(images []image) string {
+	best := -1
+	for i, im := range images {
+		if im.URL == "" {
+			continue
+		}
+		switch {
+		case best < 0:
+			best = i
+		case im.Width == 0 || images[best].Width == 0:
+			// Unsized: keep the earlier one.
+		case images[best].Width > coverWidth && im.Width < images[best].Width:
+			best = i
+		case im.Width <= coverWidth && im.Width > images[best].Width:
+			best = i
+		}
+	}
+	if best < 0 {
+		return ""
+	}
+	return images[best].URL
+}
+
+// heard is one answer: the state, and where the album's picture is.
+type heard struct {
+	state contract.State
+	cover string // a URL, or "" when there is no track or no picture
 }
 
 // errForbidden is Spotify refusing the question itself, not the token: the
@@ -119,6 +169,12 @@ func (d *Driver) Run(ctx context.Context) error {
 		online    bool
 		failures  int
 		warned    time.Time
+
+		// The cover held, and the picture it was fetched from. One fetch
+		// for each album: the URL is the album's, and a track change on the
+		// same album asks for nothing.
+		art     *contract.Art
+		artFrom string
 	)
 
 	for {
@@ -128,7 +184,8 @@ func (d *Driver) Run(ctx context.Context) error {
 		}
 
 		wait := d.interval()
-		state, err := d.poll(ctx)
+		answer, err := d.poll(ctx)
+		state := answer.state
 		var limited errRateLimited
 		var forbidden errForbidden
 		switch {
@@ -178,8 +235,21 @@ func (d *Driver) Run(ctx context.Context) error {
 				changedAt = d.now()
 			}
 			state.ChangedAt = changedAt
-			if !contract.Same(last, &state) {
-				d.Sink.Publish(driver.Update{State: state})
+
+			update := driver.Update{}
+			if state.Track != nil && answer.cover != "" {
+				if answer.cover != artFrom {
+					art, update.Cover = d.cover(ctx, answer.cover)
+					artFrom = answer.cover
+				}
+				state.Art = art
+			} else {
+				art, artFrom = nil, ""
+			}
+
+			if !contract.Same(last, &state) || update.Cover != nil {
+				update.State = state
+				d.Sink.Publish(update)
 				kept := state
 				last = &kept
 			}
@@ -196,20 +266,57 @@ func (d *Driver) Run(ctx context.Context) error {
 // poll asks once. A refused access token is refreshed and the question asked
 // again, once: tokens are refused for being stale far more often than for
 // being wrong.
-func (d *Driver) poll(ctx context.Context) (contract.State, error) {
-	state, status, err := d.ask(ctx)
+func (d *Driver) poll(ctx context.Context) (heard, error) {
+	answer, status, err := d.ask(ctx)
 	if status == http.StatusUnauthorized {
 		d.Tokens.Invalidate()
-		state, status, err = d.ask(ctx)
+		answer, status, err = d.ask(ctx)
 		if status == http.StatusUnauthorized {
-			return state, errors.New("spotify: refused a freshly issued access token")
+			return answer, errors.New("spotify: refused a freshly issued access token")
 		}
 	}
-	return state, err
+	return answer, err
 }
 
-func (d *Driver) ask(ctx context.Context) (contract.State, int, error) {
-	stopped := contract.State{V: contract.Version, Source: d.Source, Player: "spotify", State: contract.Stopped}
+// cover fetches an album's picture. One that cannot be had is no cover:
+// nowplayd looks one up instead, as it does for any track without one.
+//
+// No Authorization header goes with it. The picture is on a host that is
+// not Spotify's API, and the account's token is not that host's to see.
+func (d *Driver) cover(ctx context.Context, url string) (*contract.Art, []byte) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil || (req.URL.Scheme != "https" && req.URL.Scheme != "http") {
+		d.logger().Warn("spotify named a cover that cannot be asked for")
+		return nil, nil
+	}
+	resp, err := d.HTTP.Do(req)
+	if err != nil {
+		d.logger().Warn("the cover could not be fetched", "error", err)
+		return nil, nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		d.logger().Warn("the cover could not be fetched", "status", resp.Status)
+		return nil, nil
+	}
+	picture, err := io.ReadAll(io.LimitReader(resp.Body, maxCover+1))
+	if err != nil || len(picture) == 0 || len(picture) > maxCover {
+		d.logger().Warn("the cover could not be read", "bytes", len(picture), "error", err)
+		return nil, nil
+	}
+	mime := http.DetectContentType(picture)
+	if !strings.HasPrefix(mime, "image/") {
+		d.logger().Warn("spotify sent something that is not an image", "type", mime)
+		return nil, nil
+	}
+	sum := sha256.Sum256(picture)
+	return &contract.Art{SHA256: hex.EncodeToString(sum[:]), MIME: mime}, picture
+}
+
+func (d *Driver) ask(ctx context.Context) (heard, int, error) {
+	stopped := heard{state: contract.State{V: contract.Version, Source: d.Source, Player: "spotify", State: contract.Stopped}}
 
 	token, err := d.Tokens.Access(ctx)
 	if err != nil {
@@ -257,7 +364,11 @@ func (d *Driver) ask(ctx context.Context) (contract.State, int, error) {
 	if err := json.Unmarshal(body, &p); err != nil {
 		return stopped, resp.StatusCode, fmt.Errorf("spotify's answer could not be read: %w", err)
 	}
-	return d.toState(p), resp.StatusCode, nil
+	answer := heard{state: d.toState(p)}
+	if answer.state.Track != nil && p.Item != nil {
+		answer.cover = pick(p.Item.Album.Images)
+	}
+	return answer, resp.StatusCode, nil
 }
 
 // toState applies the driver's rules. Everything that is not "a track, on a
