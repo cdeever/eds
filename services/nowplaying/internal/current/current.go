@@ -99,10 +99,14 @@ type Publisher struct {
 	// because a command to them does nothing (ADR-0025). It is said in the
 	// current state, for whoever draws buttons.
 	NoControls map[string]bool
-	Prefix     string
-	Timeout    time.Duration // for one catalog lookup
-	Logger     *slog.Logger
-	Now        func() time.Time
+	// Dark names sources no room is lit for (ADR-0028). Their covers are
+	// published like any other, for whoever shows a cover, and each is given
+	// the look that says not to light anything from it.
+	Dark    map[string]bool
+	Prefix  string
+	Timeout time.Duration // for one catalog lookup
+	Logger  *slog.Logger
+	Now     func() time.Time
 
 	// What was last put on the bus, so nothing is published twice. Retained
 	// messages mean a subscriber that reconnects gets the same cover again
@@ -143,6 +147,11 @@ func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSou
 		look := ""
 		if p.Looks != nil && out.Track != nil {
 			look = p.Looks(*out.Track)
+		}
+		// Before any look the album has: a room that is not lit for this
+		// source is not lit for its best-known record either.
+		if p.Dark[out.Source] {
+			look = contract.LookDark
 		}
 		if !p.lookSent || look != p.lastLook || cover.SHA256 != p.lastLookArt {
 			payload, err := contract.EncodeLook(look, cover.SHA256)
@@ -202,7 +211,13 @@ func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSou
 // was made. The cover topics are emptied, which is what whoever lights a
 // room from the cover is waiting to be told: an emptied cover is no cover,
 // where a cover merely not sent leaves the room as it was (ADR-0016).
-func (p *Publisher) PublishIdle(ctx context.Context, winner *contract.State) (contract.State, bool, error) {
+//
+// on says some source's equipment is switched on. Then the room is waiting
+// for a record, and the look of no cover is named so; otherwise it has no
+// look, and what a room with nothing in it looks like is whoever lights
+// it's to say (ADR-0028). The look is said each time it changes, the cover
+// topics emptied or not: a turntable can be switched on in an idle room.
+func (p *Publisher) PublishIdle(ctx context.Context, winner *contract.State, on bool) (contract.State, bool, error) {
 	out := contract.State{V: contract.Version, State: contract.Stopped, ChangedAt: p.now()}
 	if winner != nil {
 		out.Source, out.Player = winner.Source, winner.Player
@@ -225,6 +240,25 @@ func (p *Publisher) PublishIdle(ctx context.Context, winner *contract.State) (co
 		sent = true
 	}
 
+	// The look before the cover is taken away, as a cover's look goes
+	// before its cover: whoever lights the room is not left to guess, and
+	// does not light it twice.
+	look := ""
+	if on {
+		look = contract.LookStandby
+	}
+	if !p.lookSent || look != p.lastLook || p.lastLookArt != "" {
+		payload, err := contract.EncodeNoCoverLook(look)
+		if err != nil {
+			return out, sent, err
+		}
+		if err := p.Bus.Publish(contract.CurrentLookTopic(p.Prefix), payload, true); err != nil {
+			return out, sent, err
+		}
+		p.lastLook, p.lastLookArt, p.lookSent = look, "", true
+		sent = true
+	}
+
 	if !p.emptied {
 		topics := []string{contract.CurrentArtTopic(p.Prefix)}
 		if p.Small != nil {
@@ -237,7 +271,8 @@ func (p *Publisher) PublishIdle(ctx context.Context, winner *contract.State) (co
 		}
 		// Whatever comes next is published in full, the same cover included:
 		// the topics no longer hold it, and nobody lit from it still is.
-		p.emptied, p.lastArt, p.lastSmall, p.lookSent = true, "", "", false
+		// Its look goes again too, the look topic now holding no cover's.
+		p.emptied, p.lastArt, p.lastSmall = true, "", ""
 		sent = true
 	}
 	return out, sent, nil

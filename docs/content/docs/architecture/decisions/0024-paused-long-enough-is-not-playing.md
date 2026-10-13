@@ -11,6 +11,7 @@ weight: 24
 | **Date** | 2026-10-12 |
 | **Scope** | What nowplayd says when the current track has sat paused, or nobody is reporting; how that reaches the stand; what the stand shows then. |
 | **Extends** | [ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/), which left "what a subscriber does with stopped" to the subscriber and "paused on B is more use than silence" without an end. [ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/): an emptied cover topic now means something to lightd. |
+| **Extended by** | [ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/): the idle scene is for a room where something is switched on; with nothing switched on, a room with nothing playing is dark |
 | **Related** | [ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/), whose "no cover sent" this must not be mistaken for; [ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/), whose held source is left alone; [ADR-0020](/docs/architecture/decisions/0020-a-touch-screen-that-can-change-what-plays/), whose play button must go on working |
 
 ---

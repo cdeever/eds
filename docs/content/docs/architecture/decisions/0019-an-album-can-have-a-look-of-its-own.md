@@ -11,6 +11,7 @@ weight: 19
 | **Date** | 2026-10-11 |
 | **Scope** | How one particular album gets a scene that is not derived from its cover, without the part that makes scenes learning what an album is. |
 | **Extends** | [ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/), which gave `lightd` covers and kept tracks and albums on the other side of the topic |
+| **Extended by** | [ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/): a look can name no cover, and is then the look of there being none |
 | **Related** | [ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/), [ADR-0001](/docs/architecture/decisions/0001-device-renders-effects/) |
 
 ---

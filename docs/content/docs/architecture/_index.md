@@ -217,8 +217,10 @@ After twenty seconds of silence the driver says `stopped`. `nowplayd` then
 publishes `current` with no track and **empties** the cover topics, which is
 the one way anything is told there is no cover
 ([ADR-0024](/docs/architecture/decisions/0024-paused-long-enough-is-not-playing/)).
-`lightd` answers with its idle scene, dim and warm, and both screens drop
-the sleeve. Turning a record over does this too; the cover and the lights
+`lightd` answers with its idle scene, dim and warm, because the turntable is
+still switched on
+([ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/)),
+and both screens drop the sleeve. Turning a record over does this too; the cover and the lights
 come back with the first track named on the other side.
 
 When the turntable is switched off, the strip cuts the beacon's power. The
@@ -240,8 +242,14 @@ with no polling
 ([ADR-0011](/docs/architecture/decisions/0011-itunes-by-remote-pairing/)).
 It publishes the cover iTunes holds, then the state that names it. iTunes
 knows its own album, so the Discogs collection is not asked; `nowplayd`
-fills in only what is missing. From `current` onward the path is the one
-above: cover, colors, scene, stand.
+fills in only what is missing. Its cover goes to the cover screen and the
+console.
+
+**It does not light the stand.** The stand is for records
+([ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/)):
+`nowplayd` publishes iTunes' cover with the look `dark`, and `lightd` sends
+the stand dark for it. Lights for what iTunes plays are to be something of
+their own, later.
 
 **Control.** iTunes is the one source that can be controlled, and there is
 one route for it
@@ -258,8 +266,8 @@ A command is never retained: one the broker kept would be carried out again
 by every program that connected afterward.
 
 **Paused.** A track left paused for fifteen seconds is treated as nothing
-playing: the cover goes and the stand idles. iTunes is still named as the
-source, so pressing play on the screen resumes it.
+playing: the cover goes from the screens. iTunes is still named as the source, so
+pressing play on the screen resumes it.
 
 ## Spotify
 

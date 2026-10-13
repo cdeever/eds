@@ -70,7 +70,7 @@ func run(logger *slog.Logger) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 			if err := covers.ClearCover(ctx); err != nil {
-				logger.Warn("could not send the idle scene", "topic", topic, "error", err)
+				logger.Warn("could not send the scene for no cover", "topic", topic, "error", err)
 			}
 		}
 		err := publisher.SubscribeCovers(cfg.CoverTopic, func(image []byte) {

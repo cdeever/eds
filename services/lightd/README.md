@@ -34,12 +34,19 @@ cover, retained, and lightd follows it.
   what the image is a cover of; the topic is a setting, not knowledge.
 - The topic is retained, so a lightd that restarts lights the room from the
   current cover by itself.
-- **An emptied topic means there is no cover**, and the default stand is
-  sent the idle scene: solid, warm white, at 0.15
-  ([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)).
-  It is the scene the firmware starts with, so an idle stand and one just
-  switched on look the same, and neither is dark. lightd is not told why
-  there is no cover.
+- **An emptied topic means there is no cover**
+  ([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)),
+  and the default stand is sent **dark**: every LED off. lightd is not told
+  why there is no cover.
+- **A cover whose look is `dark` lights nothing**: the stand is sent dark,
+  and the extractor is not asked. Whose cover that is, lightd is not told.
+- **Unless the look of no cover is `standby`**
+  ([ADR-0028](../../docs/content/docs/architecture/decisions/0028-the-stand-is-for-records.md)).
+  A look that names no cover (`"art": ""`) on the look topic is the look of
+  there being none. `standby` is the idle scene: solid, warm white, at 0.15,
+  the scene the firmware starts with. Any other name, or none, is dark. The
+  look changing while the topic is empty changes the stand. lightd is not
+  told what is waiting, or for what.
 - An emptied retained topic is not delivered to a late subscriber, so lightd
   takes five seconds of nothing after subscribing as an empty topic too.
 - Covers are handled one at a time and **the newest wins**: one that arrives

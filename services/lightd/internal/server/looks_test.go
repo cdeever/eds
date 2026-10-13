@@ -218,7 +218,6 @@ func TestALookThatCannotBeReadIsRefused(t *testing.T) {
 		"not JSON":        "spectrum",
 		"another version": fmt.Sprintf(`{"v":2,"look":"spectrum","art":%q}`, shaOf(prism)),
 		"no version":      fmt.Sprintf(`{"look":"spectrum","art":%q}`, shaOf(prism)),
-		"no cover named":  `{"v":1,"look":"spectrum"}`,
 	} {
 		if err := s.ApplyLook(ctx, []byte(payload)); err == nil {
 			t.Errorf("%s was accepted", name)
@@ -226,5 +225,47 @@ func TestALookThatCannotBeReadIsRefused(t *testing.T) {
 	}
 	if pub.count() != 1 || isSpectrum(sceneAt(t, pub, 0)) {
 		t.Fatalf("a look that could not be read changed the room: %d scenes", pub.count())
+	}
+}
+
+// A look that names no cover is not a cover's look: it is the look of there
+// being none (ADR-0028), and the cover held does not take it.
+func TestALookForNoCoverIsNotTheHeldCovers(t *testing.T) {
+	ex, pub := &fakeExtractor{resp: goodPalette()}, &fakePublisher{}
+	s := newServer(t, ex, pub)
+	ctx := context.Background()
+	s.ApplyCover(ctx, prism)
+
+	if err := s.ApplyLook(ctx, []byte(`{"v":1,"look":"spectrum"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if pub.count() != 1 || isSpectrum(sceneAt(t, pub, 0)) {
+		t.Fatalf("a look for no cover changed a room that has one: %d scenes", pub.count())
+	}
+}
+
+// ADR-0028: a cover named dark lights nothing. The stand is sent dark, the
+// extractor is not asked, and the next cover is lit as usual.
+func TestACoverNamedDarkLightsNothing(t *testing.T) {
+	ex, pub := &fakeExtractor{resp: goodPalette()}, &fakePublisher{}
+	s := newServer(t, ex, pub)
+	ctx := context.Background()
+
+	look := fmt.Sprintf(`{"v":1,"look":%q,"art":%q}`, scene.LookDark, shaOf(prism))
+	if err := s.ApplyLook(ctx, []byte(look)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ApplyCover(ctx, prism); err != nil {
+		t.Fatal(err)
+	}
+	if pub.count() != 1 || sceneAt(t, pub, 0).Brightness != 0 {
+		t.Fatalf("%d scenes, first %+v", pub.count(), sceneAt(t, pub, 0))
+	}
+
+	if err := s.ApplyCover(ctx, []byte("ANOTHER")); err != nil {
+		t.Fatal(err)
+	}
+	if pub.count() != 2 || sceneAt(t, pub, 1).Brightness == 0 {
+		t.Fatalf("the cover after was not lit: %d scenes", pub.count())
 	}
 }

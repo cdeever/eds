@@ -26,6 +26,10 @@ type Decision struct {
 	// for long enough that nothing is playing as far as a room is concerned
 	// (ADR-0024). The winner is still named: it is who a command is for.
 	Idle bool
+	// On says some source's equipment is switched on (ADR-0023): somebody
+	// is in the room to play something, whether or not anything is playing
+	// yet. It is what an idle room is waiting for, or is not (ADR-0028).
+	On bool
 }
 
 // Hub holds the state of every source.
@@ -69,6 +73,11 @@ type Hub struct {
 	quiet      bool
 	quietKey   string
 	quietSince time.Time
+
+	// The last decision handed on, so that a switch which changes no winner
+	// can still change what an idle room is told.
+	sent bool
+	last Decision
 }
 
 // New builds a Hub.
@@ -147,7 +156,22 @@ func (h *Hub) Power(source string, on bool) {
 
 	if winner, changed := h.arb.Power(source, on); changed {
 		h.decide(winner)
+		return
 	}
+	// The winner is who it was. But an idle room is told whether anything
+	// is switched on, and that may just have changed: a turntable switched
+	// on whose driver has nothing to say yet (ADR-0028).
+	if h.sent && h.last.Idle && h.last.On != h.arb.AnyOn() {
+		h.send(h.last)
+	}
+}
+
+// send hands a decision on, saying with it whether anything is switched on.
+// Called with the lock.
+func (h *Hub) send(d Decision) {
+	d.On = h.arb.AnyOn()
+	h.sent, h.last = true, d
+	h.Submit(d)
 }
 
 // decide submits the decision for a winner, unless the winner names a cover
@@ -203,7 +227,7 @@ func (h *Hub) submit(winner *contract.State, cover *current.Image) {
 	}
 	if wait <= 0 {
 		h.quiet = false
-		h.Submit(Decision{Winner: winner, Cover: cover})
+		h.send(Decision{Winner: winner, Cover: cover})
 		return
 	}
 
@@ -230,11 +254,11 @@ func (h *Hub) submit(winner *contract.State, cover *current.Image) {
 
 	left := wait - now.Sub(h.quietSince)
 	if left <= 0 {
-		h.Submit(Decision{Winner: winner, Idle: true})
+		h.send(Decision{Winner: winner, Idle: true})
 		return
 	}
 
-	h.Submit(Decision{Winner: winner, Cover: cover})
+	h.send(Decision{Winner: winner, Cover: cover})
 	ticket := h.waiting
 	h.After(left, func() {
 		h.mu.Lock()
@@ -242,6 +266,6 @@ func (h *Hub) submit(winner *contract.State, cover *current.Image) {
 		if h.waiting != ticket || !h.quiet {
 			return // something was decided since
 		}
-		h.Submit(Decision{Winner: winner, Idle: true})
+		h.send(Decision{Winner: winner, Idle: true})
 	})
 }

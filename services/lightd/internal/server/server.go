@@ -62,11 +62,17 @@ type Server struct {
 	// early is a look that arrived before its cover. It is kept until that
 	// cover comes, and never applied to the one held meanwhile.
 	early coverLook
+	// cleared says the cover topic was last heard empty: there is no cover,
+	// and the stand shows what no cover looks like. noCoverLook is the look
+	// named for that, or "" (ADR-0028).
+	cleared     bool
+	noCoverLook string
 	// idle says the last thing sent to the default stand from the topic was
-	// the idle scene, so being told again that there is no cover sends
-	// nothing.
-	idle   bool
-	render sync.Mutex // one lighting of the room at a time
+	// the scene for no cover, and idleLook the look it was sent with, so
+	// being told the same again sends nothing.
+	idle     bool
+	idleLook string
+	render   sync.Mutex // one lighting of the room at a time
 }
 
 // heldCover is the cover the stand is, or is about to be, lit from.
@@ -245,6 +251,7 @@ func (s *Server) ApplyCover(ctx context.Context, image []byte) error {
 	sha := hex.EncodeToString(sum[:])
 
 	s.mu.Lock()
+	s.cleared = false
 	if s.held.sha != sha {
 		s.held = heldCover{image: image, sha: sha}
 		if s.early.art == sha {
@@ -263,6 +270,9 @@ func (s *Server) ApplyCover(ctx context.Context, image []byte) error {
 // holds. A look for a cover that is not the one held changes nothing in the
 // room: it is early, and is kept for its cover, or late, and its cover has
 // gone. The cover held keeps the look it has until its own is said again.
+//
+// A look that names no cover is the look of there being none (ADR-0028). It
+// is kept, and shown whenever the cover topic is empty.
 func (s *Server) ApplyLook(ctx context.Context, payload []byte) error {
 	var said struct {
 		V    int    `json:"v"`
@@ -275,8 +285,13 @@ func (s *Server) ApplyLook(ctx context.Context, payload []byte) error {
 	switch {
 	case said.V != scene.ContractVersion:
 		return fmt.Errorf("a look of version %d; this reads version %d", said.V, scene.ContractVersion)
-	case said.Art == "":
-		return errors.New("a look that names no cover")
+	}
+
+	if said.Art == "" {
+		s.mu.Lock()
+		s.noCoverLook = said.Look
+		s.mu.Unlock()
+		return s.rest()
 	}
 
 	s.mu.Lock()
@@ -291,36 +306,50 @@ func (s *Server) ApplyLook(ctx context.Context, payload []byte) error {
 
 // ClearCover takes the word that there is no cover: the cover topic was
 // emptied, which is how whoever publishes it says nothing is playing
-// (ADR-0024). The default stand is sent the idle scene, and the cover held
-// is let go, so the same cover coming back lights the room again.
+// (ADR-0024). The default stand is sent the scene for no cover, and the
+// cover held is let go, so the same cover coming back lights the room again.
 //
 // What stopped playing, and why, is not lightd's to know. It is told there
 // is no image, and that is all.
 func (s *Server) ClearCover(ctx context.Context) error {
+	s.mu.Lock()
+	s.held = heldCover{}
+	s.cleared = true
+	s.mu.Unlock()
+	return s.rest()
+}
+
+// rest makes the stand show what no cover looks like now, if there is no
+// cover: dim, where the look named for it says the room is waiting, and
+// otherwise dark (ADR-0028). It does nothing when that is already what was
+// sent, so the look and the emptied topic arriving in either order change
+// the room once where they can.
+func (s *Server) rest() error {
 	s.render.Lock()
 	defer s.render.Unlock()
 
-	s.mu.Lock()
-	already := s.idle
-	s.held = heldCover{}
-	s.mu.Unlock()
-	if already {
+	s.mu.RLock()
+	cleared, look := s.cleared, s.noCoverLook
+	already := s.idle && s.idleLook == look
+	s.mu.RUnlock()
+	if !cleared || already {
 		return nil
 	}
 
-	idle := scene.Idle()
-	if err := s.publish(s.opts.DefaultStand, idle); err != nil {
+	sc := scene.NoCover(look)
+	if err := s.publish(s.opts.DefaultStand, sc); err != nil {
 		return &coverError{http.StatusBadGateway, err}
 	}
 	s.mu.Lock()
-	s.idle = true
+	s.idle, s.idleLook = true, look
 	s.mu.Unlock()
 	s.opts.Logger.Info("published scene",
 		"via", "topic",
 		"stand", s.opts.DefaultStand,
 		"idle", true,
-		"effect", idle.Effect,
-		"brightness", idle.Brightness,
+		"look", look,
+		"effect", sc.Effect,
+		"brightness", sc.Brightness,
 	)
 	return nil
 }
@@ -490,7 +519,7 @@ func (s *Server) publish(stand string, sc scene.Scene) error {
 	s.mu.Lock()
 	s.last[stand] = sc
 	// Whatever this was, it is the last thing the stand was sent. ClearCover
-	// says so itself when it was the idle scene.
+	// says so itself when it was the scene for no cover.
 	if stand == s.opts.DefaultStand {
 		s.idle = false
 	}
