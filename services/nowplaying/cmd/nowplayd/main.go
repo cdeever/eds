@@ -185,6 +185,7 @@ func run(logger *slog.Logger) error {
 	}
 	defer client.Close()
 	commands.SetBus(client)
+	sources.Settle()
 
 	logger.Info("connected to broker",
 		"url", cfg.Broker.URL,

@@ -423,3 +423,35 @@ func TestASwitchThatChangesNoWinnerLeavesAPlayingRoomAlone(t *testing.T) {
 		t.Fatalf("decisions = %+v", got)
 	}
 }
+
+// Started with every source offline: nothing changes the winner from none,
+// and it has to be decided all the same, or the room is never told.
+func TestNobodyReportingAtTheStartIsDecidedAndGoesIdle(t *testing.T) {
+	b, _ := idleBench()
+	b.status("turntable", "offline")
+	b.hub.Power("turntable", true)
+	b.hub.Settle()
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("before the retained messages are in: decisions = %+v", got)
+	}
+
+	b.elapse()
+	if got := b.take(); len(got) != 1 || got[0].Idle || got[0].Winner != nil {
+		t.Fatalf("settled: decisions = %+v", got)
+	}
+	b.elapse()
+	if got := b.take(); len(got) != 1 || !got[0].Idle || !got[0].On || got[0].Winner != nil {
+		t.Fatalf("later: decisions = %+v", got)
+	}
+}
+
+func TestSettlingDecidesNothingWhenASourceAlreadyHas(t *testing.T) {
+	b, _ := idleBench()
+	b.state("itunes", "One", nil, contract.Playing)
+	b.hub.Settle()
+	b.take()
+	b.elapse()
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("decisions = %+v", got)
+	}
+}

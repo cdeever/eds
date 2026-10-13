@@ -148,6 +148,23 @@ func (h *Hub) Handle(msg bus.Message) {
 	}
 }
 
+// Settle is called once the bus is being listened to. Retained messages
+// arrive within moments of that, and if none of them made a decision there
+// is nobody reporting: every source is offline, or there are none. That is
+// decided too, so that it goes idle like any other silence (ADR-0024). It
+// would otherwise never be said, since no winner is what a hub starts with,
+// and the track that was current before this program started would stand
+// on its retained topic, and light a room, until a source came back.
+func (h *Hub) Settle() {
+	h.After(h.Grace, func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		if !h.sent {
+			h.decide(h.arb.Current())
+		}
+	})
+}
+
 // Power takes what a source's beacon said: that the source's equipment is
 // switched on, or is not (ADR-0023).
 func (h *Hub) Power(source string, on bool) {
