@@ -48,8 +48,16 @@ part of it. This is what happens, in order.
 
 The turntable is plugged into the master outlet of a smart power strip, which
 powers its other outlets only while the turntable draws power. Two things
-come on with it: the converter that turns its phono signal into S/PDIF, and
-the **power beacon**, an ESP32 with nothing attached.
+come on with it: the converter that turns the record into S/PDIF, and the
+**power beacon**, an ESP32 with nothing attached.
+
+The strip and the converter are older than EdS. The house already sends one
+digital feed to every room, and a selector in the basement hands that feed
+to the turntable whenever the converter is sending. Switching the converter
+with the turntable is how the selector knows a record is on
+([Background: Sound Around the House](spdif/)). The beacon was added to the
+same strip to learn the same thing, without touching the path the music
+takes.
 
 The beacon's connection is its message. It joins the WiFi, connects to the
 broker and publishes `online`, retained, to
@@ -253,6 +261,8 @@ It differs from the other two in three ways, all on purpose:
 - [The First Vertical](overview/): why the broker is not in the tenant, why
   the stand is never sent frames, why the scene is retained.
 - [Layer Boundaries](boundaries/): which layer owns which color decision.
+- [Background: Sound Around the House](spdif/): the whole-house audio
+  system that was here first, and what EdS borrows from it.
 - [Decisions](decisions/): every choice above, argued.
 - [Now Playing](/docs/reference/now-playing/) and
   [MQTT Topics](/docs/reference/mqtt-topics/): the contracts, field by
