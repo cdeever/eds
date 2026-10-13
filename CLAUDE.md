@@ -229,9 +229,10 @@ editing. Each layer is deliberately ignorant of the one below.
   streaming over WiFi turns latency into stutter and freezes mid-sweep on a
   broker outage.
 
-OKLab math is implemented independently in all three (`palette/oklab.py`,
-`lightd/internal/oklab`, firmware effects); changing conversion behavior in one
-place means checking the others.
+OKLab math is implemented twice, independently (`palette/oklab.py`,
+`lightd/internal/oklab`); changing conversion behavior in one means changing
+the other, and the reference values in lightd's `oklab_test.go`. The firmware
+has none: it mixes the RGB it is sent.
 
 ### Contracts
 

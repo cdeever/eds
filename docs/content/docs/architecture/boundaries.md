@@ -5,8 +5,18 @@ weight: 2
 
 # Layer Boundaries
 
-The most common way to break EdS is to put a decision in the wrong layer. Each
-layer below is ignorant of the next on purpose.
+Each component of EdS is built to do one well-defined job, and to do it
+without knowing how its neighbors do theirs. It takes a plain input, returns
+a plain output, and keeps everything in between to itself: much as
+abstraction and encapsulation work in object-oriented programming, applied to
+services and devices in place of classes.
+
+That is what lets each part be built, tested and tuned alone, and replaced
+without the others noticing. `palette` can be tuned against a folder of
+JPEGs with nothing else running. A different diffuser wants a different
+gamma curve, and that changes the firmware and nothing upstream of it.
+
+The sections below say what each layer owns, and what it leaves to the next.
 
 ## palette decides nothing about hardware
 
@@ -51,8 +61,37 @@ and keeps the wire format showing the colors actually intended. That matters
 the first time something looks wrong: `mosquitto_sub` shows what was meant, not
 what a particular strip needed.
 
-## A practical consequence
+## The color space they agree on
 
-OKLab conversion is implemented independently in all three places —
-`palette/oklab.py`, `lightd/internal/oklab`, and the firmware's effects. If you
-change conversion behavior in one, check the other two.
+The one thing two layers have in common is a definition, not code: OKLab.
+
+A picture stores color as red, green and blue, which describes what a
+screen emits and not what a person sees. Arithmetic on those numbers goes
+wrong in ways the eye notices at once. The average of a strong red and a
+strong blue is a gray-purple that is nowhere on the sleeve. Push a color
+to be more vivid and a channel runs out of room, the hue shifts, and a
+boosted orange arrives as some other color.
+
+[OKLab](https://bottosson.github.io/posts/oklab/) (Björn Ottosson, 2020)
+describes a color the way it is perceived: one number for lightness and two
+that place it between green and red and between blue and yellow. From those
+come a color's hue and its chroma, how far it is from gray. Equal steps look
+like equal changes, and the three can be moved independently, so the
+questions EdS asks have honest answers:
+
+| Question | Asked by | In OKLab |
+|---|---|---|
+| Which colors is this sleeve made of? | `palette` | the center of a cluster is a color a person would agree is in the image |
+| Is this swatch a color or a gray? | `lightd` | its chroma says so directly |
+| Make it more vivid for a strip | `lightd` | raise chroma; hue and lightness stay put |
+| It is now too vivid to display | `lightd` | walk chroma back down; it is still the same color |
+
+`palette` and `lightd` each carry their own copy of the conversion
+(`palette/oklab.py` in Python, `lightd/internal/oklab` in Go), so that neither
+needs the other to build or run. A test in `lightd` holds its copy to values
+printed from `palette`'s. The math is a published standard and should not
+need to change; if it is ever corrected in one, correct the other and the
+test's reference values with it.
+
+The firmware does none of this. It receives colors already chosen, as red,
+green and blue, and mixes between them as they are.
