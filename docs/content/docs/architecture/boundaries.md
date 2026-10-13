@@ -61,8 +61,15 @@ and keeps the wire format showing the colors actually intended. That matters
 the first time something looks wrong: `mosquitto_sub` shows what was meant, not
 what a particular strip needed.
 
-## A practical consequence
+## What the layers do share
 
-OKLab conversion is implemented independently in all three places —
-`palette/oklab.py`, `lightd/internal/oklab`, and the firmware's effects. If you
-change conversion behavior in one, check the other two.
+The layers share no code. What they share is a definition: OKLab, the color
+space all three work in. Each has its own copy of the conversion
+(`palette/oklab.py`, `lightd/internal/oklab`, and the firmware's effects),
+written in its own language, so that none depends on another to build or
+run.
+
+The price of that is small and worth knowing. OKLab is a published standard
+and its math should never need to change; but if the conversion is ever
+corrected in one place, the other two need the same correction, because
+nothing but a person keeps the three in step.
