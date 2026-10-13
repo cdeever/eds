@@ -17,8 +17,8 @@
 // beacon does not know.
 #define PB_TOPIC_STATUS PB_TOPIC_PREFIX "/beacon/" PB_BEACON_ID "/status"
 
-// Where the beacon's key events go: `<tenant>/log/<device name>`, the
-// substrate's shape, as the stand's are.
+// Where the beacon's key events go: `<tenant>/log/<device name>`,
+// Deevnet IoTaaS's shape, as the stand's are.
 #define PB_TOPIC_LOG    PB_TOPIC_PREFIX "/log/" PB_BEACON_ID
 
 #define PB_STATUS_ONLINE  "online"

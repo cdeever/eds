@@ -52,7 +52,7 @@ const char *pb_cred_mqtt_password(void);
 // proceeding unverified.
 //
 // Provisioned beside the credentials rather than compiled in, because it is
-// the site's and not the firmware's: the substrate has re-rooted its PKI more
+// the site's and not the firmware's: Deevnet IoTaaS has re-rooted its PKI more
 // than once, and each time that should cost a reprovision, not a rebuild of
 // every beacon. The certificate embedded under PB_MQTT_USE_TLS remains as the
 // fallback, the way each Kconfig value above does.

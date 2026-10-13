@@ -16,7 +16,7 @@ scene **retained** to the stand's MQTT topic. The stand animates it locally.
 
 ## Why the broker is not in the tenant
 
-`mqtt01` lives on the substrate's **IoT Backend** segment (VLAN 35), not on a
+`mqtt01` lives on Deevnet IoTaaS's **IoT Backend** segment (VLAN 35), not on a
 tenant VM, and the stand sits on the **IoT** segment (VLAN 30).
 
 That placement is forced rather than preferred. MQTT clients always dial the

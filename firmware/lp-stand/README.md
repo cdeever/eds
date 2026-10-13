@@ -43,7 +43,7 @@ in, so the same image serves every stand and a re-rooted PKI costs a
 reprovision rather than a rebuild. It refuses to write if the account was not
 granted the topics this firmware uses, because the broker would not say so: an
 ungranted publish is dropped silently. `make wifi-config` writes the same
-partition by hand, for a stand that is not on the substrate.
+partition by hand, for a stand that is not on Deevnet IoTaaS.
 
 ## How it works
 
@@ -135,7 +135,7 @@ Everything below is a deliberate choice, not an accident:
 ## Events
 
 The stand reports the few things worth knowing once the USB cable is gone, as
-one JSON object each on `eds/log/<id>`. The substrate's log bridge carries them
+one JSON object each on `eds/log/<id>`. Deevnet IoTaaS's log bridge carries them
 into EdS's device log partition; the stand holds no log store credential and
 has no route to the store.
 
@@ -174,7 +174,7 @@ Two ways to read them:
 
 ## Where it sits on the network
 
-The stand belongs on the substrate's **IoT segment (VLAN 30)** — the model's
+The stand belongs on Deevnet IoTaaS's **IoT segment (VLAN 30)** — the model's
 slot for "custom-developed embedded devices with controlled firmware" — and
 dials **`mqtt.mobile.deevnet.net` on IoT Backend (VLAN 35)**.
 

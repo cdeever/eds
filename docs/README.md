@@ -58,7 +58,7 @@ left alone.
 - `content/docs/incidents/<year>/NNNN-slug.md` — **incident records**.
 
 Each has its own number series, in the order opened, never reused. A bare
-`ADR-0006` in this repository is EdS's own; a substrate record is always
+`ADR-0006` in this repository is EdS's own; a Deevnet IoTaaS record is always
 written `Deevnet ADR-0012`. The rules and templates are under
 `content/docs/develop/records/`.
 

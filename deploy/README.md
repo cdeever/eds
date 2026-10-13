@@ -53,7 +53,7 @@ A replaced workload comes back empty; `make deploy` puts everything back.
 
 The console serves a page at `https://console.eds.mobile.deevnet.net/`; port
 80 only redirects there. `make units` opens `http` and `https` in the
-workload's own firewall, which otherwise admits SSH and nothing else. The substrate lets the site's trusted
+workload's own firewall, which otherwise admits SSH and nothing else. Deevnet IoTaaS lets the site's trusted
 and management networks reach a workload; the guest and IoT networks, and
 anything outside, cannot. The page only looks
 ([ADR-0018](../docs/content/docs/architecture/decisions/0018-a-console-of-eds-own.md)).

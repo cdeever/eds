@@ -2,7 +2,7 @@
 """
 Read the stands' events back from the EdS tenant's log store.
 
-A stand publishes its key events to its MQTT log topic, the substrate's bridge
+A stand publishes its key events to its MQTT log topic, Deevnet IoTaaS's bridge
 carries them into the tenant's device log partition, and this reads that
 partition. The endpoint and read token come from the tenant's Terraform
 outputs (infra/deevnet-tenant-eds), so nothing is typed or hardcoded.

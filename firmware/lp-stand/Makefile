@@ -31,7 +31,7 @@ help:
 	@echo "  flash       idf.py flash        (PORT=$(PORT))"
 	@echo "  monitor     idf.py monitor      (PORT=$(PORT))"
 	@echo "  provision   write what the EdS tenant issued this stand into flash (PORT=$(PORT))"
-	@echo "  wifi-config the same partition, typed by hand - for a stand off the substrate"
+	@echo "  wifi-config the same partition, typed by hand - for a stand off Deevnet IoTaaS"
 	@echo "  logs        the stands' events from the tenant's log store (ARGS='-f', ARGS='--since 1d')"
 	@echo "  clean       remove host test artifacts"
 	@echo

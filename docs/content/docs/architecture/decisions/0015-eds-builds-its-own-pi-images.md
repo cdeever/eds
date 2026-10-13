@@ -3,7 +3,7 @@ title: "ADR-0015: EdS Builds Its Own Pi Images"
 weight: 15
 ---
 
-# ADR-0015: EdS Builds Its Own Pi Images, on the Substrate's Base
+# ADR-0015: EdS Builds Its Own Pi Images, on Deevnet IoTaaS's Base
 
 | | |
 |---|---|
@@ -18,14 +18,14 @@ weight: 15
 ## Context
 
 The Pi that carries now-playing reports from the home LAN to the broker needed
-an image. The substrate has an image factory that builds Raspberry Pi images,
-and the first relay image was built there, as a new variant beside the
-substrate's own.
+an image. Deevnet IoTaaS has an image factory that builds Raspberry Pi images,
+and the first relay image was built there, as a new variant beside
+Deevnet IoTaaS's own.
 
 It worked, and it was in the wrong place. The variant held the EdS agent's
 service, its settings file, its pairing port and a status tool that knew what
 the agent needed. Nothing in it made sense outside EdS, and every change to
-the agent's needs would have been a change to a substrate repository for an
+the agent's needs would have been a change to a Deevnet IoTaaS repository for an
 EdS reason.
 
 Two further things were clear by then:
@@ -40,16 +40,16 @@ Two further things were clear by then:
 
 ## Options considered
 
-**Keep it in the substrate's image factory.** The build machinery is already
-there. But the substrate is supposed to be ignorant of what tenants run, and
+**Keep it in Deevnet IoTaaS's image factory.** The build machinery is already
+there. But Deevnet IoTaaS is supposed to be ignorant of what tenants run, and
 its one tenant-facing image, the take-home backend, is deliberately generic.
 
 **EdS's own images, built from scratch.** No dependency on the factory. But a
 Pi in the rack is reached by the site's automation user, and that user and
-its key are the substrate's to put in an image.
+its key are Deevnet IoTaaS's to put in an image.
 
-**EdS's own images, on the substrate's base.** The factory builds what is the
-substrate's: Raspberry Pi OS with the automation user. EdS applies everything
+**EdS's own images, on Deevnet IoTaaS's base.** The factory builds what is
+Deevnet IoTaaS's: Raspberry Pi OS with the automation user. EdS applies everything
 else.
 
 For the relay: **its own image**, or **a way of configuring the agent image**.
@@ -57,7 +57,7 @@ For the relay: **its own image**, or **a way of configuring the agent image**.
 ## Decision
 
 - **EdS's Pi images are defined in the EdS repository**, under `images/`, one
-  directory per image. Each is the substrate's base image with an EdS
+  directory per image. Each is Deevnet IoTaaS's base image with an EdS
   playbook applied to it offline.
 - **The factory keeps only the base.** `images/build.sh` builds it with the
   factory's own definition and adds nothing to the factory.
@@ -81,7 +81,7 @@ For the relay: **its own image**, or **a way of configuring the agent image**.
   from the factory would make it clean.
 - Builds still run on the Builder, since they need Linux, sudo and loop
   devices; the image definition is copied there for each build.
-- The Pi itself is still **the substrate's host**: in its inventory, with a
+- The Pi itself is still **Deevnet IoTaaS's host**: in its inventory, with a
   reserved address and the automation user. Whether an EdS Pi should instead
   be a device the tenant registers — which would also let it report to the
   log store — is not decided here. It is better asked when there are two.

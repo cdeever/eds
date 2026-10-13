@@ -1,7 +1,7 @@
 ---
 # EdS agent Pi image: offline configuration.
 #
-# Runs against a mounted Raspberry Pi OS image - the substrate's base image,
+# Runs against a mounted Raspberry Pi OS image - Deevnet IoTaaS's base image,
 # which already has its automation user - with the root at chroot_root and the
 # boot partition at chroot_root/boot. The image does not boot and needs no
 # network of its own; apt runs in the chroot over the build host's.
@@ -414,7 +414,7 @@
         cmd: "nft -c -f {{ chroot_root }}/etc/nftables.conf"
       changed_when: false
 
-    # The base image is the substrate's and brings its automation user, which
+    # The base image is Deevnet IoTaaS's and brings its automation user, which
     # is how the Pi is reached once it is in the rack. If it is missing, this
     # was not built on that base.
     - name: Check the automation user is still there

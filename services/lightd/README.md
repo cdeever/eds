@@ -182,7 +182,7 @@ the first time something looks wrong.
 
 ## The broker is not in the tenant
 
-The broker lives on the substrate's IoT Backend segment (VLAN 35), and lightd
+The broker lives on Deevnet IoTaaS's IoT Backend segment (VLAN 35), and lightd
 connects outbound to it from the EdS tenant.
 
 MQTT clients always dial the broker, so whichever segment holds it must accept

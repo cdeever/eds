@@ -169,8 +169,8 @@ output "turntable_power_01_broker" {
 
 # EdS's own log store credentials (Deevnet ADR-0027, Deevnet CHG-0020).
 #
-# The stand does NOT use these: it publishes its events to MQTT, and the
-# substrate's bridge carries them into this tenant's device partition. These
+# The stand does NOT use these: it publishes its events to MQTT, and
+# Deevnet IoTaaS's bridge carries them into this tenant's device partition. These
 # are for reading them back - firmware/lp-stand/tools/stand_logs.py does - and
 # they are the same values kit_env hands the services for their own logs.
 output "log_store" {

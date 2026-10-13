@@ -1,9 +1,9 @@
 ---
-title: "ADR-0003: The Broker Is the Substrate's"
+title: "ADR-0003: The Broker Is Deevnet IoTaaS's"
 weight: 3
 ---
 
-# ADR-0003: The MQTT Broker Is the Substrate's, Not a Tenant VM
+# ADR-0003: The MQTT Broker Is Deevnet IoTaaS's, Not a Tenant VM
 
 | | |
 |---|---|
@@ -17,27 +17,27 @@ weight: 3
 
 ## Context
 
-EdS's services run on a workload in its own tenant on the Deevnet substrate.
-Its devices are ESP32s on the substrate's IoT network. Both need a broker.
+EdS's services run on a workload in its own tenant on Deevnet IoTaaS.
+Its devices are ESP32s on Deevnet IoTaaS's IoT network. Both need a broker.
 
 MQTT clients always initiate: the stand dials the broker, never the reverse.
 So whichever network holds the broker must accept inbound connections. The
-tenant fabric has no inbound path by design: the substrate delivers tenants
+tenant fabric has no inbound path by design: Deevnet IoTaaS delivers tenants
 egress only, and its core router never learns tenant address space.
 
 ## Options considered
 
 **A broker on the EdS workload.** EdS would own it outright. But devices
-could not reach it without the substrate inventing an inbound path into a
-tenant, which is a change to the substrate's architecture, not a setting.
+could not reach it without Deevnet IoTaaS inventing an inbound path into a
+tenant, which is a change to Deevnet IoTaaS's architecture, not a setting.
 
-**The substrate's broker.** The substrate runs one on its IoT Backend
+**Deevnet IoTaaS's broker.** Deevnet IoTaaS runs one on its IoT Backend
 segment, which exists to accept exactly this, and issues each tenant accounts
 confined to its own topic prefix.
 
 ## Decision
 
-EdS uses the substrate's broker, `mqtt.mobile.deevnet.net:8883`. The stand
+EdS uses Deevnet IoTaaS's broker, `mqtt.mobile.deevnet.net:8883`. The stand
 reaches it from the IoT network; services reach it outbound from the tenant.
 
 ## Consequences
@@ -54,4 +54,4 @@ reaches it from the IoT network; services reach it outbound from the tenant.
   is away, the lights stop. Accepted, because mobile is the only site that
   exists.
 - Moving the broker into the tenant would need a new record here and a change
-  to the substrate; it is not a configuration change.
+  to Deevnet IoTaaS; it is not a configuration change.

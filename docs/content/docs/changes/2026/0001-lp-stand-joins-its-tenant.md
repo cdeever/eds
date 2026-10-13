@@ -22,7 +22,7 @@ weight: 1
 ## Summary
 
 The stand had been flashed once, on 2026-09-09, built for plaintext MQTT on
-port 1883 and never provisioned. The substrate's broker is TLS only, so it had
+port 1883 and never provisioned. Deevnet IoTaaS's broker is TLS only, so it had
 never reached the real broker; it sat lit in its default warm white, retrying
 WiFi with no key.
 

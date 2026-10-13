@@ -199,7 +199,7 @@ nothing able to run the agent exits 78, which its unit does not restart.
 ## What the agent reports about itself
 
 With `NP_LOG_DEVICE` set to the name the Pi is registered under, the agent
-publishes a few events to `<tenant>/log/<device>`, which the substrate carries
+publishes a few events to `<tenant>/log/<device>`, which Deevnet IoTaaS carries
 into the tenant's log store, the same way the stand's go
 ([ADR-0017](../../docs/content/docs/architecture/decisions/0017-an-agent-pi-is-a-registered-device.md)):
 `agent.started`, `driver.online` and `driver.offline`, `track.playing`,

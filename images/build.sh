@@ -3,9 +3,9 @@
 #
 #   build.sh <image>          e.g. build.sh agent
 #
-# An EdS image is the substrate's base image - Raspberry Pi OS with the site's
+# An EdS image is Deevnet IoTaaS's base image - Raspberry Pi OS with the site's
 # automation user - with one of this directory's playbooks applied to it
-# offline (ADR-0015). The substrate's image factory builds the base; nothing of
+# offline (ADR-0015). Deevnet IoTaaS's image factory builds the base; nothing of
 # EdS's is in the factory, and nothing of the factory's is copied here.
 #
 # It needs Linux, sudo, loop devices, podman, qemu-aarch64-static and ansible,

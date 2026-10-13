@@ -51,7 +51,7 @@ so a settled question is found rather than argued again:
   settle it. Put the evidence in the record when it arrives.
 - Records move in the same commit as the work, and each needs a row in its
   index table.
-- **A bare `ADR-0006` means an EdS record.** The substrate uses the same
+- **A bare `ADR-0006` means an EdS record.** Deevnet IoTaaS uses the same
   names: always write `Deevnet ADR-0012` for one of its.
 - Rules and templates: `docs/content/docs/develop/records/`.
 
@@ -104,8 +104,8 @@ Do not "fix" the missing cover. The Spotify authorization asks for read-only
 scopes; do not widen them without a decision. The app's Client ID lives in
 gitignored `deploy/relay/spotify.conf` and is never committed.
 
-EdS's Pi images are its own (`images/`, ADR-0015): the substrate's base image
-with an EdS playbook applied offline. Do not add EdS images to the substrate's
+EdS's Pi images are its own (`images/`, ADR-0015): Deevnet IoTaaS's base image
+with an EdS playbook applied offline. Do not add EdS images to Deevnet IoTaaS's
 `deevnet-image-factory`. An image carries no secret and no hostname; those are
 written to a flashed card by `deploy/relay` (`make card`). "The relay" is an
 agent Pi given a second network leg, not a separate image. The Pi is reached
@@ -342,8 +342,8 @@ on the console, which is told and cannot find out.
 | `eds/console/status` | console → broker | yes (LWT) |
 | `eds/log/<id>` | device or agent Pi → broker → log bridge | no |
 
-`eds/log/<id>` is the substrate's shape, not EdS's: `<tenant>/log/<device>` is
-the one topic under `log/` a device account may publish, and the substrate's
+`eds/log/<id>` is Deevnet IoTaaS's shape, not EdS's: `<tenant>/log/<device>` is
+the one topic under `log/` a device account may publish, and Deevnet IoTaaS's
 bridge carries it into the tenant's device log partition. The stand sends a few
 JSON events there (boot, network, scenes, health), not its serial log; the
 dashboard that reads them is `infra/deevnet-tenant-eds/dashboards/`. The agent
@@ -358,7 +358,7 @@ protect this.
 
 ### Network placement
 
-The broker `mqtt01` is on the substrate's IoT Backend segment (VLAN 35), **not**
+The broker `mqtt01` is on Deevnet IoTaaS's IoT Backend segment (VLAN 35), **not**
 a tenant VM, and the stand sits on IoT (VLAN 30). This is forced, not preferred:
 MQTT clients always dial the broker, so its segment must accept inbound, and the
 tenant fabric has no inbound path by design (Deevnet ADR-0001, Deevnet ADR-0003). Moving the
@@ -397,7 +397,7 @@ broker into the tenant is an ADR, not a config change.
   rather than committing images.
 - **k-means in palette uses a fixed seed.** A stable input must not repaint the
   room; do not introduce nondeterminism.
-- **Terraform: state is never committed** (it lives in the substrate's store,
+- **Terraform: state is never committed** (it lives in Deevnet IoTaaS's store,
   Deevnet ADR-0007), but `.terraform.lock.hcl` **is** — a module pinned by tag with
   floating providers is half a pin. The module is pinned to
   `tenant-module-v1.1.0`; moving tags needs an explicit `terraform init -upgrade`.

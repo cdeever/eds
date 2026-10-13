@@ -6,7 +6,7 @@ weight: 3
 # Tenant: deevnet-tenant-eds
 
 The EdS tenant as code: its overlay network, its workload and its DNS records,
-rebuildable from scratch against the substrate without a substrate commit
+rebuildable from scratch against Deevnet IoTaaS without a Deevnet IoTaaS commit
 (Deevnet ADR-0006).
 
 | | |
@@ -47,7 +47,7 @@ make plan DEEVNET_ROOT=/path/to/checkouts   # if yours live elsewhere
 
 ## State and pins
 
-State is **not** in this repository; it lives in the substrate's state store
+State is **not** in this repository; it lives in Deevnet IoTaaS's state store
 (Deevnet ADR-0007) under `tenants/eds/terraform.tfstate`, which also provides the
 locking a repository cannot.
 

@@ -8,7 +8,7 @@ is verified against.
 
 Every value is read from the tenant's Terraform outputs
 (infra/deevnet-tenant-eds), so nothing is typed, pasted or left in shell
-history. `make wifi-config` remains for a stand that is not on the substrate.
+history. `make wifi-config` remains for a stand that is not on Deevnet IoTaaS.
 
 Only the creds partition is written. The firmware and the WiFi driver's own
 NVS are untouched, so a stand can be reprovisioned without being rebuilt.

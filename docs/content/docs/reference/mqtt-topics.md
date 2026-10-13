@@ -29,7 +29,7 @@ The topic prefix defaults to `eds` and must match on both sides — `lightd`'s
 ## The log topic
 
 `eds/log/<id>` is not EdS's own layout. `<tenant>/log/<device>` is the one
-topic under `log/` the substrate lets a device account publish, and its log
+topic under `log/` Deevnet IoTaaS lets a device account publish, and its log
 bridge carries what arrives there into the tenant's device log partition. The
 stand sends one JSON object per event — boot, network, scenes, health — at
 QoS 1 and **not retained**: a log line replayed to every new subscriber would

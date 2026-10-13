@@ -26,8 +26,8 @@
 // The screen's own presence, with a last will.
 #define CS_TOPIC_STATUS  CS_TOPIC_PREFIX "/screen/" CS_SCREEN_ID "/status"
 
-// Where the screen's key events go: `<tenant>/log/<device name>`, the
-// substrate's shape, as the stand's are.
+// Where the screen's key events go: `<tenant>/log/<device name>`,
+// Deevnet IoTaaS's shape, as the stand's are.
 #define CS_TOPIC_LOG     CS_TOPIC_PREFIX "/log/" CS_SCREEN_ID
 
 #define CS_STATUS_ONLINE  "online"

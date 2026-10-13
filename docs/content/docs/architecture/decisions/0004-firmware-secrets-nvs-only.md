@@ -37,7 +37,7 @@ guarantee depends on nobody using it.
 gateway already works this way.
 
 For the CA: **embedded at build time**, or **provisioned beside the
-credentials**. The substrate re-rooted its PKI twice in the weeks before this
+credentials**. Deevnet IoTaaS re-rooted its PKI twice in the weeks before this
 decision; with an embedded CA each re-root is a rebuild and reflash of every
 stand.
 
@@ -51,7 +51,7 @@ stand.
   Kconfig default.
 - `make provision` writes the partition from the tenant's Terraform outputs,
   so nothing is typed. `make wifi-config` writes it by hand for a stand that
-  is not on the substrate.
+  is not on Deevnet IoTaaS.
 
 ## Consequences
 

@@ -76,7 +76,7 @@ an in-place update.
 
 ### Step 2: Build the image
 
-The substrate's base image with EdS's agent layer applied offline
+Deevnet IoTaaS's base image with EdS's agent layer applied offline
 (`images/agent`).
 
 ```bash
@@ -84,7 +84,7 @@ make -C deploy/relay image    # cross-compile the agent; build on the Builder
 make -C deploy/relay fetch    # the image and its checksum, here
 ```
 
-*As planned this was a new variant in the substrate's image factory. See the
+*As planned this was a new variant in Deevnet IoTaaS's image factory. See the
 outcome.*
 
 **Verify:** the build's own checks pass: no secret in the image, forwarding off
@@ -137,7 +137,7 @@ make -C deploy/relay pair     # type the code it prints into iTunes
 
 | When (UTC) | Step | What happened |
 |---|---|---|
-| 17:3x | 2 | Built as a variant in the substrate's image factory: 37 tasks, none failed, and the build's checks passed. 528 MB compressed. |
+| 17:3x | 2 | Built as a variant in Deevnet IoTaaS's image factory: 37 tasks, none failed, and the build's checks passed. 528 MB compressed. |
 | 17:4x | 1 | Applied: 2 added, 1 changed in place, 0 destroyed. Both new accounts then checked against the real broker: the relay's publish delivered, `nowplayd`'s one wildcard subscription admitted, and a publish outside the relay's grant not delivered. |
 | ~18:2x | 3, 4 | Card flashed, settings written, Pi booted. It took its reserved address at once: its switch port was already on the IoT segment. Every check passed on first boot except the two that wait on pairing. |
 | 18:2x | 5 | **No Remote button in iTunes.** Bonjour was not running on the Pi; see below. Fixed on the Pi. |

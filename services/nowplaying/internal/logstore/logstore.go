@@ -4,7 +4,7 @@
 // A device's lines go by MQTT and a bridge (ADR-0005). A workload is not a
 // device and has no such route: it is given an endpoint and a token that
 // writes to the tenant's workload partition, and posts there itself. That is
-// the substrate's arrangement (Deevnet ADR-0027), and this is the whole of
+// Deevnet IoTaaS's arrangement (Deevnet ADR-0027), and this is the whole of
 // EdS's side of it.
 //
 // It is not the service's log. The journal has that. This carries the few

@@ -1,7 +1,7 @@
 # deevnet-tenant-eds
 
 The EdS tenant, as code: its network, its workload and its DNS records, built
-through the Deevnet API and rebuildable without a substrate commit
+through the Deevnet API and rebuildable without a Deevnet IoTaaS commit
 ([Deevnet ADR-0015][adr15]).
 
 | | |
@@ -25,7 +25,7 @@ tenant's Terraform state, which is their authoritative copy.
 
 ## Running it
 
-EdS is the operator's own tenant, so the substrate's `a_autoprov` key is in
+EdS is the operator's own tenant, so Deevnet IoTaaS's `a_autoprov` key is in
 `ssh_keys` beside the operator's own keys. `deevnet-root-ca.pem` and `ssh.auto.tfvars`
 are local and gitignored.
 
@@ -35,7 +35,7 @@ are local and gitignored.
 2. `export DEEVNET_API_TOKEN=<enrollment token>`, then `make init && make apply`.
    That spends the token and returns EdS's own.
 3. `export DEEVNET_API_TOKEN=$(terraform output -raw api_token)` from then on.
-4. `make state-backend` moves state into the substrate's store
+4. `make state-backend` moves state into Deevnet IoTaaS's store
    ([Deevnet ADR-0007][adr7]): it writes `backend.tf` (commit it) and `.backend.env`
    (secret; every later command needs it).
 
@@ -49,7 +49,7 @@ is the services' environment for deevnet-kit.
 
 The LP stand does not ship logs itself. It publishes its key events to
 `eds/log/lp-stand-01`, the one topic under `log/` its broker account may write,
-and the substrate's bridge carries them into this tenant's device log
+and Deevnet IoTaaS's bridge carries them into this tenant's device log
 partition, `(2, 2)`. What the events are is in the
 [firmware's README](../../firmware/lp-stand/README.md#events).
 
@@ -105,7 +105,7 @@ token, so this directory is self-contained wherever it sits.
 
 ## Why the broker is not in this tenant
 
-EdS's MQTT broker belongs to the substrate, in the device messaging VM
+EdS's MQTT broker belongs to Deevnet IoTaaS, in the device messaging VM
 `dv02msg001v01` on the **IoT Backend** segment (VLAN 35), not in a VM here.
 That is forced rather than preferred. The VM exists, but the broker (VerneMQ,
 Deevnet ADR-0012 §8) isn't built yet.
@@ -128,7 +128,7 @@ because tenants are otherwise granted Platform only.
 - **Not enforced:** the core router's zone policy (Deevnet CHG-0007) hasn't been
   applied yet, and the router passes all traffic until it is.
 - **Where lightd's credentials will come from:** a broker account issued
-  through the Deevnet API (Deevnet ADR-0012 §3), not the substrate vault.
+  through the Deevnet API (Deevnet ADR-0012 §3), not Deevnet IoTaaS vault.
 
 ## Site: built on mobile, designed for home
 
@@ -155,8 +155,8 @@ bash install-provider.sh
 
 ## State
 
-State is **not** committed here. It holds every credential the substrate issued
-EdS ([Deevnet ADR-0015][adr15] §4), so it belongs in the substrate's state store under
+State is **not** committed here. It holds every credential Deevnet IoTaaS issued
+EdS ([Deevnet ADR-0015][adr15] §4), so it belongs in Deevnet IoTaaS's state store under
 `tenants/eds/terraform.tfstate`, which also gives the locking a repository
 cannot — or somewhere with the same care, if EdS keeps its own custody
 ([Deevnet ADR-0007][adr7]).

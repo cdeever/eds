@@ -1,7 +1,7 @@
 # EdS tenant. `make help` for the targets; README.md for the steps.
 #
 # EdS holds one credential: its Deevnet API token. No vault, no Proxmox
-# credential, no index. The substrate issues the rest through the API
+# credential, no index. Deevnet IoTaaS issues the rest through the API
 # (Deevnet ADR-0015), and it lands in this tenant's Terraform state.
 #
 # Plain recipes, one shell per line: macOS ships GNU make 3.81, which has no

@@ -27,7 +27,7 @@
 <g id="clust4" class="cluster">
 <title>cluster_substrate</title>
 <path fill="#eef7f1" stroke="#8fbf9f" d="M1534.55,-381C1534.55,-381 2084,-381 2084,-381 2090,-381 2096,-387 2096,-393 2096,-393 2096,-518 2096,-518 2096,-524 2090,-530 2084,-530 2084,-530 1534.55,-530 1534.55,-530 1528.55,-530 1522.55,-524 1522.55,-518 1522.55,-518 1522.55,-393 1522.55,-393 1522.55,-387 1528.55,-381 1534.55,-381"/>
-<text xml:space="preserve" text-anchor="middle" x="1585.3" y="-513.65" font-family="Helvetica,Arial,sans-serif" font-size="13.00">Deevnet substrate</text>
+<text xml:space="preserve" text-anchor="middle" x="1585.3" y="-513.65" font-family="Helvetica,Arial,sans-serif" font-size="13.00">Deevnet IoTaaS</text>
 </g>
 <g id="clust5" class="cluster">
 <title>cluster_workload</title>

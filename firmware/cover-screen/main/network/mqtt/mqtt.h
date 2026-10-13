@@ -1,7 +1,7 @@
 // MQTT: where the track and its cover come from, and where a button press
 // goes.
 //
-// The screen dials the broker on the substrate's IoT Backend segment, as the
+// The screen dials the broker on Deevnet IoTaaS's IoT Backend segment, as the
 // stand does and for the same reason: clients always initiate, and that is
 // the segment built to accept them.
 #pragma once

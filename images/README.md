@@ -2,9 +2,9 @@
 
 EdS's Raspberry Pi images.
 
-An EdS image is **the substrate's base image with an EdS layer applied**
+An EdS image is **Deevnet IoTaaS's base image with an EdS layer applied**
 ([ADR-0015](../docs/content/docs/architecture/decisions/0015-eds-builds-its-own-pi-images.md)).
-The substrate's image factory builds the base: Raspberry Pi OS with the site's
+Deevnet IoTaaS's image factory builds the base: Raspberry Pi OS with the site's
 automation user. Everything after that is EdS's and lives here, one directory
 per image. Nothing of EdS's is in the factory.
 
@@ -91,11 +91,11 @@ where three things happen to be:
 | What | Why the Builder | Whose concern |
 |---|---|---|
 | A Linux machine to run `build.sh` on | attaching an image as a disk, mounting its filesystem and running commands inside it needs Linux and sudo; macOS cannot mount the filesystem | convenience only |
-| The base image | it is built by the image factory's definition, and the factory's checkout is there. `build.sh` reaches into it by path: its Packer file, its container, the automation user's key | the substrate's |
+| The base image | it is built by the image factory's definition, and the factory's checkout is there. `build.sh` reaches into it by path: its Packer file, its container, the automation user's key | Deevnet IoTaaS's |
 | The way in to a Pi | a Pi admits SSH on its site side only, to the automation user, and from a desk the Builder is the hop | the site's |
 
 Only the first is an accident of where a script runs. The other two are about
-what belongs to the substrate and how the site is administered, and would
+what belongs to Deevnet IoTaaS and how the site is administered, and would
 stay whatever built the image.
 
 ### Future enhancement: build anywhere
@@ -113,7 +113,7 @@ a developer's machine alone:
    drop the emulation the Builder needs, since the Mac and the Pi share an
    architecture.
 
-The first is a change to the substrate and wants its own record there. Until
+The first is a change to Deevnet IoTaaS and wants its own record there. Until
 then the seam is noted in
 [ADR-0015](../docs/content/docs/architecture/decisions/0015-eds-builds-its-own-pi-images.md)
 and in [CHG-0002](../docs/content/docs/changes/2026/0002-relay-pi-and-now-playing-accounts.md)'s

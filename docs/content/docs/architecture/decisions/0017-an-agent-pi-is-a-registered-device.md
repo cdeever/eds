@@ -23,10 +23,10 @@ whether its drivers were working, was in its own journal, reached by SSH
 through the Builder.
 
 The agent's broker account had been declared with no device, on the reasoning
-that the Pi is the substrate's host and not something the tenant registered.
+that the Pi is Deevnet IoTaaS's host and not something the tenant registered.
 An account with no device cannot publish under `log/`.
 
-That reasoning was written while the Pi ran an image from the substrate's
+That reasoning was written while the Pi ran an image from Deevnet IoTaaS's
 factory. Since
 [ADR-0015](/docs/architecture/decisions/0015-eds-builds-its-own-pi-images/)
 it runs EdS's own.
@@ -35,11 +35,11 @@ it runs EdS's own.
 
 **Write to the log store directly, over HTTPS**, as a workload does. Checked
 from the Pi: the log store is not reachable from the IoT segment. Making it
-so would be a change to the substrate's network for one tenant's convenience,
+so would be a change to Deevnet IoTaaS's network for one tenant's convenience,
 and would put an ingest token on a machine with a leg on a home network.
 
-**Register the Pi as a device and report over MQTT**, as the stand does. The
-substrate's trust class `iot` is for devices whose firmware their owner
+**Register the Pi as a device and report over MQTT**, as the stand does.
+Deevnet IoTaaS's trust class `iot` is for devices whose firmware their owner
 controls. The Pi's image is EdS's. The route already exists, is already
 confined to one topic, and needs nothing new on the network.
 
@@ -70,7 +70,7 @@ journal still has every line; the store gets these.
 - What played, on which player, and when, is on the dashboard beside what the
   stand did about it.
 - **Track titles leave the Pi for the log store.** It is the tenant's own
-  store, kept as long as the substrate keeps device logs. It is still a
+  store, kept as long as Deevnet IoTaaS keeps device logs. It is still a
   listening history, and it is now written down somewhere.
 - Events never hold a driver up. They wait in a queue of 32; past that they
   are dropped and counted, and the next to arrive says how many were lost.

@@ -45,8 +45,8 @@ in the order records are opened and never renumbered or reused. Change and
 incident records are grouped in a folder per year; the number runs across
 years.
 
-EdS runs on the Deevnet substrate, which uses the same three names. A bare
-number in this repository is always EdS's own. A substrate record is always
+EdS runs on Deevnet IoTaaS, which uses the same three names. A bare
+number in this repository is always EdS's own. A Deevnet IoTaaS record is always
 written with its owner — **Deevnet ADR-0012** — and linked to
 [deevnet-docs](https://deevnet.github.io/deevnet-docs/).
 
