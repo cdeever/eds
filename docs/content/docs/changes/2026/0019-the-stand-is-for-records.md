@@ -80,9 +80,27 @@ already renders brightness 0 as off.
 
 | When (UTC) | What happened |
 |---|---|
+| 12:35 | The first try did not start: the Mac was on the home network, with no way to the Builder. Its owner moved it. |
+| 12:45 | Deployed (`e90b447`). All four services came back active, and `nowplayd` said it publishes `itunes` with the look that lights nothing. The beacon read `online`. But every source was offline - everything had been switched off the evening before, in the middle of a record - and `nowplayd` said nothing at all: the stand was lit again from the cover of that record, still retained from the day before, and the cover screen showed its sleeve. |
+| 12:47 | A second commit, so that `nowplayd` decides when nobody is reporting as it starts (`1460a08`). Shipping it stopped at the first image: `podman save` on the Builder and `podman load` on the workload each waited on the other for nineteen minutes. Its owner killed both; the assistant was refused. |
+| 13:06 | Shipped. Two seconds after starting, `nowplayd` published `current` as stopped with no source. Fifteen seconds after that it said idle, `switched_on=true`, and `lightd` published solid at 0.15 with `look=standby`. The stand reported applying it, and the console held no cover. |
 
 ## Departures
 
+- **A fault that was not this change's was found and mended in it.** With
+  every source offline, no winner is what `nowplayd` starts with, so nothing
+  was decided and nothing published: whatever was current before a restart
+  stood on its retained topics until a source came back. ADR-0024 says
+  nobody reporting goes idle; started that way, it never did. `nowplayd` now
+  decides once the retained messages are in.
+- Deployed from a worktree, with the tenant's directory named by `INFRA=`
+  and `discogs.env` copied in, as in CHG-0017.
+- The image load that hung is not explained. The same load took seconds
+  twenty minutes earlier; both machines had been up for about that long.
+
 ## Follow-ups
 
+- [ ] Dark has not been seen. The beacon was on throughout, so only dim
+  was: the beacon switched off, and the stand's scene at brightness 0.
+- [ ] iTunes playing with the turntable off: no source was online to try.
 - [ ] The five things ADR-0028 lists as not yet shown.
