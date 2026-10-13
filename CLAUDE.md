@@ -97,10 +97,13 @@ make broker-watch              # every edsdev/nowplaying topic; covers shown by 
 set the first two up once.
 `make build-arm64` builds it for the agent Pi.
 
-**The stand does not follow Spotify, on purpose** (ADR-0016). The Spotify
-driver never requests artwork, and `NP_COVERLESS_SOURCES=spotify` in
-`deploy/nowplayd.env` stops nowplayd publishing or looking up a cover for it.
-Do not "fix" the missing cover. The Spotify authorization asks for read-only
+**Spotify is shown as iTunes is, and the stand does not follow it**
+(ADR-0031). The driver takes the album's picture from the answer it already
+asks for, once for each album and without the account's token; `spotify` is
+in `NP_DARK_SOURCES` beside `itunes`, so the screens show its cover and the
+stand stays dark, but for a look that is for any source (ADR-0030). It was
+coverless until 2026-10-13 (ADR-0016); `NP_COVERLESS_SOURCES` remains, with
+no source in it. The Spotify authorization asks for read-only
 scopes; do not widen them without a decision. The app's Client ID lives in
 gitignored `deploy/relay/spotify.conf` and is never committed.
 
@@ -111,9 +114,7 @@ written to a flashed card by `deploy/relay` (`make card`). "The relay" is an
 agent Pi given a second network leg, not a separate image. The Pi is reached
 through builder as `a_autoprov` (`make -C deploy/relay status|pair|logs`);
 `make push` updates a Pi in service, `make spotify` authorizes it for Spotify,
-`make drivers DRIVERS=…` chooses which drivers it runs. **Spotify is turned
-off there for now** (CHG-0011): the Pi runs `itunes` only. Everything it
-needs is kept; `DRIVERS=itunes,spotify` turns it back on.
+`make drivers DRIVERS=…` chooses which drivers it runs.
 
 **The turntable driver listens, and asks a recognizer nobody promised**
 (ADR-0021). It hears the amplifier's tape output through a sound card on the
@@ -126,8 +127,8 @@ a program, `eds-recognize` in `images/agent/files`, which is Shazam's through
 an unpublished endpoint and may stop working any day. Keep every trace of
 Shazam in that file and its pinned requirements; the driver knows only "a WAV
 in, a name out". `make -C deploy/relay turntable DEVICE=…` names the input.
-**On, on the agent Pi, beside iTunes** (CHG-0013): the Pi runs
-`itunes,turntable`.
+**On, on the agent Pi, beside iTunes and Spotify** (CHG-0013, CHG-0022): the
+Pi runs `itunes,spotify,turntable`.
 
 **The record on the turntable is named by its owner's collection** (ADR-0022).
 For sources in `NP_COLLECTION_SOURCES`, nowplayd asks the owner's Discogs

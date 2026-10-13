@@ -11,7 +11,7 @@ weight: 16
 | **Date** | 2026-10-11 |
 | **Scope** | Whether everything that is reported as playing also lights the stand. |
 | **Extends** | [ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/), which promised that `current` carries a cover whenever something is playing |
-| **Extended by** | [ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/): a source can also be reported with its cover and still not lit, by a look that says so |
+| **Extended by** | [ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/): a source can also be reported with its cover and still not lit, by a look that says so. [ADR-0031](/docs/architecture/decisions/0031-spotify-is-shown-like-itunes/): Spotify is no longer reported this way. It has its cover, and is kept off the stand as iTunes is; the setting remains, with no source in it |
 | **Related** | [ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/), [ADR-0012](/docs/architecture/decisions/0012-spotify-by-web-api/) |
 
 ---

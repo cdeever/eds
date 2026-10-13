@@ -237,6 +237,7 @@ var names = []struct{ suffix, api string }{
 	{"coverartarchive.org", "coverartarchive"},
 	{"archive.org", "coverartarchive"}, // where the archive's pictures are kept
 	{"spotify.com", "spotify"},
+	{"scdn.co", "spotify-images"},
 }
 
 // Name is what a host's calls are counted under: the service it belongs to,

@@ -99,3 +99,4 @@ and incidents under the same names. To keep the two apart:
 | [0028](0028-the-stand-is-for-records/) | 2026-10-13 | The stand is lit for records only, and is dim only while the turntable is on | {{< adr-status "Proposed" >}} |
 | [0029](0029-the-stand-starts-dark-and-blinks-what-is-wrong/) | 2026-10-13 | The stand starts dark, and says in red blinks how far it got | {{< adr-status "Proposed" >}} |
 | [0030](0030-a-piece-of-music-can-have-a-look-from-any-source/) | 2026-10-13 | One piece of music can have a look of its own, shown whatever plays it, and the stand learns to scan | {{< adr-status "Proposed" >}} |
+| [0031](0031-spotify-is-shown-like-itunes/) | 2026-10-13 | Spotify is reported with its cover, and treated as iTunes is | {{< adr-status "Proposed" >}} |

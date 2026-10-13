@@ -88,12 +88,13 @@ still the track that is playing.
 
 **A source can be reported without its cover on purpose**
 ([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
-Spotify is. While it is current, `current` names the track with no `art`,
+No source is, at present: Spotify was until
+[ADR-0031](/docs/architecture/decisions/0031-spotify-is-shown-like-itunes/). While such a source is current, `current` names the track with no `art`,
 nothing is published to `current/art`, and that topic keeps the last cover it
 held, which belongs to an earlier track. A subscriber that wants the cover of
 the track that is playing must find `art` in `current` and match its
 `sha256`; one that only follows `current/art`, as the stand does, is not
-moved by Spotify at all.
+moved by it at all.
 
 ## Looks
 

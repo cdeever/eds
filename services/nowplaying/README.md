@@ -123,9 +123,11 @@ NP_DRIVERS=spotify NP_SPOTIFY_DEVICES="Study PC" bin/npagent watch
 - **Only named devices count.** Playback anywhere else on the account is
   reported as `stopped`. So are advertisements, podcast episodes, and
   anything in a private session.
-- **It never asks for a picture.** Spotify is reported without its cover, and
-  the stand does not follow it
-  ([ADR-0016](../../docs/content/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover.md)).
+- **The cover is the album's picture as Spotify names it**, in the answer
+  the driver already asks for, fetched once for each album and with no
+  token
+  ([ADR-0031](../../docs/content/docs/architecture/decisions/0031-spotify-is-shown-like-itunes.md)).
+  The stand does not follow it: Spotify is in `NP_DARK_SOURCES`.
 - **The authorization has one holder.** Spotify may replace the refresh token
   whenever it is used, and the old one stops working. Authorize on a desk,
   then move the file to where the driver runs; `deploy/relay` does this.
@@ -440,8 +442,8 @@ be used stops the program.
 | `NP_COLLECTION_SOURCES` | none | sources that play the owner's own records, looked up in the owner's Discogs collection before any catalog ([ADR-0022](../../docs/content/docs/architecture/decisions/0022-the-owners-collection-names-the-record.md)). `turntable` on the workload |
 | `NP_DISCOGS_USER` | none | whose collection. Required when a source is named above |
 | `NP_DISCOGS_TOKEN` | none | a personal access token; needed for a private collection, and raises Discogs' limit from 25 requests a minute to 60. **Secret** |
-| `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](../../docs/content/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover.md)). `spotify` on the workload, which is what keeps the stand from following it |
-| `NP_DARK_SOURCES` | none | sources no room is lit for: their covers are published as usual, with the look `dark`, which `lightd` answers by sending the stand dark ([ADR-0028](../../docs/content/docs/architecture/decisions/0028-the-stand-is-for-records.md)). `itunes` on the workload: the stand is for records |
+| `NP_COVERLESS_SOURCES` | none | sources reported without a cover: none is published for them and none is looked up ([ADR-0016](../../docs/content/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover.md)). No source on the workload: Spotify was one until [ADR-0031](../../docs/content/docs/architecture/decisions/0031-spotify-is-shown-like-itunes.md) |
+| `NP_DARK_SOURCES` | none | sources no room is lit for: their covers are published as usual, with the look `dark`, which `lightd` answers by sending the stand dark ([ADR-0028](../../docs/content/docs/architecture/decisions/0028-the-stand-is-for-records.md)). `itunes,spotify` on the workload: the stand is for records |
 | `NP_IDLE_AFTER` | `15s` | how long a track may sit paused, or nobody report, before nothing is said to be playing and the cover topics are emptied ([ADR-0024](../../docs/content/docs/architecture/decisions/0024-paused-long-enough-is-not-playing.md)). `0s` is never; at most an hour |
 | `NP_IDLE_AFTER_STOPPED` | `1s` | the same wait for a source that is stopped and still current: a turntable switched on with nothing playing. Short, because its driver has already waited out twenty seconds of silence. `0s` is never; at most a day |
 | `NP_NO_CONTROLS_SOURCES` | none | sources a controller is told to offer nothing for, as `no_controls` in `current` ([ADR-0025](../../docs/content/docs/architecture/decisions/0025-current-says-when-there-are-no-controls.md)). `turntable` on the workload |

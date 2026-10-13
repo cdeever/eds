@@ -276,21 +276,23 @@ Web API what the account is playing, every ten seconds, with read-only
 permission
 ([ADR-0012](/docs/architecture/decisions/0012-spotify-by-web-api/)).
 
-It differs from the other two in three ways, all on purpose:
+It is shown as iTunes is
+([ADR-0031](/docs/architecture/decisions/0031-spotify-is-shown-like-itunes/)):
+the driver takes the album's picture from the same answer as the track, the
+cover screen and the console show it, and the stand stays dark, as it does
+for everything that is not a record. Until 2026-10-13 it was reported with
+no cover at all
+([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
 
-- **The stand does not follow it.** The stand was built to stand beside a
-  record that is playing, and streaming is a different kind of listening;
-  the owner chose that the lights not follow it. It also steps around a line
-  in Spotify's API pages about not synchronizing its recordings with visual
-  media. So Spotify's track is reported with no cover, and `nowplayd`
-  neither publishes nor looks one up: the room keeps the last sleeve it was
-  lit from
-  ([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
+It differs from iTunes in these ways:
+
 - **It takes no commands.** The driver only reads. A button pressed while
   Spotify is current goes nowhere.
-- **It is turned off for now.** Everything it needs is kept, and one setting
-  on the Pi turns it back on
-  ([CHG-0011](/docs/changes/2026/0011-spotify-turned-off/)).
+- **Only named devices count.** Playback elsewhere on the account, a phone
+  in a car, is reported as stopped.
+- **It was turned off for a time**
+  ([CHG-0011](/docs/changes/2026/0011-spotify-turned-off/)) and is on again
+  ([CHG-0022](/docs/changes/2026/0022-spotify-shown-and-on-again/)).
 
 ## Where to go from here
 
