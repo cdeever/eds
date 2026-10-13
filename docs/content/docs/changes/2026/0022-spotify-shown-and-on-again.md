@@ -74,9 +74,20 @@ do not change.
 
 | When (UTC) | What happened |
 |---|---|
+| 21:39 | The agent was pushed to the Pi (`0ef1db8`) and came back active. The input chosen in CHG-0021, `plughw:CODEC`, was still its setting. |
+| 21:39 | `drivers DRIVERS=itunes,spotify,turntable`. The Spotify driver said it was online and that Spotify was stopped. `status`: authorized until 2027-04-09, the device that counts is `MEDIA-SERVER`, and Spotify's API reachable. iTunes paired and reachable; the turntable listening. |
+| 21:39 | `make units`, from the worktree. `nowplayd` restarted, no longer said it reports any source without a cover, and said it publishes `itunes` and `spotify` with the look that lights nothing. All four services active. With nothing playing anywhere and the turntable off, `current` was Spotify's, stopped, and the stand was solid at 0. |
 
 ## Departures
 
+- Deployed from the branch before it was merged, on the owner's word to do
+  it.
+- `make units` was run from a worktree: the tenant's directory named with
+  `INFRA=`, and `discogs.env` copied in, as in CHG-0017.
+
 ## Follow-ups
+
+- [ ] Nothing was playing on Spotify. No cover has been fetched, and
+  `spotify-images` has not been counted.
 
 - [ ] What ADR-0031 lists as not yet shown.
