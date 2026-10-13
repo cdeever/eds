@@ -376,6 +376,9 @@ broker into the tenant is an ADR, not a config change.
   event name already in the log store, a page's URL
   (`0008-the-stand-reports-its-colours`), or text quoted from what a program
   once printed. Spelling is not a reason to break a reference.
+- **The platform EdS runs on is "Deevnet IoTaaS"**, not "the substrate":
+  renamed throughout on 2026-10-12. The page
+  `0003-broker-is-the-substrates` keeps its URL, for the reason above.
 - **Configuration is all environment variables in lightd**, no config file — the
   broker credentials must never land on disk in the repository, and one binary
   must work under systemd or a container. Invalid values stop the daemon rather
