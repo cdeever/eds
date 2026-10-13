@@ -11,6 +11,7 @@ weight: 2
 | **Date** | 2026-09-07 |
 | **Scope** | Which layer makes which color decision between a cover image and the strip. |
 | **Backfilled** | Decided with the first vertical and argued in the project READMEs and [Boundaries](/docs/architecture/boundaries/); written up here on 2026-10-10. |
+| **Corrected** | 2026-10-13: the consequence about OKLab said the conversion is implemented three times, in Python, Go and C. It is in two, and never was in the firmware. The decision is unchanged. |
 | **Related** | [ADR-0001](/docs/architecture/decisions/0001-device-renders-effects/) |
 
 ---
@@ -52,8 +53,16 @@ ignorant of the layer below:
 - `palette` can be developed and tested with no infrastructure at all.
 - What `mosquitto_sub` shows is the color actually intended.
 - A stand with a different strip or diffuser needs only its own curve.
-- OKLab conversion is implemented three times, in Python, Go and C. A change
-  to it in one place means checking the other two.
+- `palette` and `lightd` both work in OKLab, a color space built to match
+  what a person sees, because the questions they ask (which colors a sleeve
+  is made of, whether a swatch is a color or a gray, how to make one more
+  vivid without shifting its hue) have no good answer in red, green and
+  blue. Each carries its own copy of the conversion, in Python and in Go, so
+  that neither needs the other to build or run. A test in `lightd` holds
+  its copy to values taken from `palette`'s; a change to the math in one is
+  a change to the other and to those values. The firmware has no copy: it
+  is sent colors already chosen and mixes them as they are
+  ([Layer Boundaries](/docs/architecture/boundaries/#the-color-space-they-agree-on)).
 - New knowledge has to be placed deliberately. Track and album metadata, for
   instance, belong to none of these three layers
   ([ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/),
