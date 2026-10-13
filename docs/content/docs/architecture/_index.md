@@ -11,7 +11,7 @@ microcontrollers, all bound together by an MQTT messaging bus.
 | | What | Where |
 |---|---|---|
 | **Backend services** | `nowplayd` decides what is playing and completes it; `lightd` turns a cover into a light scene; `palette` finds the colors in an image; the console is the page a person looks at | one workload in the EdS tenant |
-| **Drivers** | one small program per source of music, each reporting what its player is doing | an agent Pi in the basement |
+| **Drivers** | one small program per source of music, each reporting what its player is doing | an agent Pi in the basement, beside what they report on: the sound card the turntable is heard through, and the home network iTunes is on |
 | **API integrations** | a recognizer that names a clip of sound; Discogs for the owner's record collection; Deezer, iTunes and MusicBrainz for albums and covers; Spotify for an account | other people's services |
 | **Microcontrollers** | the LP stand and its light strip; the cover screen; a beacon that says the turntable has power | ESP32s in the house |
 
@@ -73,6 +73,9 @@ paused in another room.
 
 ### 2. The record is heard
 
+A turntable has no data output. It cannot say what is on it; sound is all it
+gives, so EdS listens.
+
 The sound goes from the converter down the house as S/PDIF, through a
 selector it shares with the media server, and into a USB sound card on the
 agent Pi. The **turntable driver** listens to that input all the time and
@@ -94,6 +97,11 @@ an artist and an album. The driver knows only "a WAV in, a name out"; the
 recognizer uses an endpoint nobody promised, and is the one file that would
 change if it stopped working.
 
+It was chosen because it costs nothing, which was enough to get the
+turntable going. A paid service with a published API, or fingerprinting the
+record locally and asking nobody, are both being considered for later.
+Either would replace that one file and nothing else.
+
 - The first answer after the needle comes down is believed alone.
 - After that a different name needs two clips that agree, so one wrong
   answer does not repaint the room mid-song.
@@ -110,6 +118,11 @@ send.
 `nowplayd` subscribes to every source and to the beacon, and publishes one
 answer for everyone else: `eds/nowplaying/current`
 ([ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/)).
+
+One program decides so that everything agrees. The stand, the screen and the
+console cannot differ about what is playing, because none of them works it
+out. It also means each lookup is made once and not once per subscriber,
+which keeps what EdS asks of other people's services small.
 
 A source that hears a track cannot know which record it is on: the same
 song is on the album, a compilation and a box set. So for the turntable,
@@ -157,6 +170,15 @@ show back in without shifting its hue
 The result is a **scene**: an effect by name, a speed, a brightness and a
 short palette. `lightd` publishes it, retained, to
 `eds/lightstand/<id>/scene`.
+
+The palette is short, four colors at most, because a strip needs only a main
+color for its ground and a few accents to play with. The effect is `chase`
+unless something says otherwise: the main color holds the strip and each
+accent travels around it.
+
+Some sleeves still want work. One that is all white, all black, black and
+white, or a single color leaves little to choose from, and how those should
+be lit is not settled.
 
 A few albums are lit by something other than their cover. `nowplayd` names
 the look and `lightd` holds what it looks like; *The Dark Side of the Moon*
@@ -207,7 +229,9 @@ room, and whatever else is playing takes it.
 ## iTunes
 
 iTunes is asked, not heard. It runs on a computer on the home network, and
-the agent Pi has a second network leg there to reach it
+the broker is inside the Deevnet site, with no path between the two. So the
+agent Pi stands in both: one leg at home, where iTunes can be found, and
+one where the broker is
 ([ADR-0010](/docs/architecture/decisions/0010-home-lan-relay/)).
 
 **What is playing.** The iTunes driver pairs with iTunes once, the way a
@@ -246,9 +270,13 @@ permission
 
 It differs from the other two in three ways, all on purpose:
 
-- **The stand does not follow it.** Spotify's track is reported with no
-  cover, and `nowplayd` neither publishes nor looks one up, so the room
-  keeps the last sleeve it was lit from
+- **The stand does not follow it.** The stand was built to stand beside a
+  record that is playing, and streaming is a different kind of listening;
+  the owner chose that the lights not follow it. It also steps around a line
+  in Spotify's API pages about not synchronizing its recordings with visual
+  media. So Spotify's track is reported with no cover, and `nowplayd`
+  neither publishes nor looks one up: the room keeps the last sleeve it was
+  lit from
   ([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
 - **It takes no commands.** The driver only reads. A button pressed while
   Spotify is current goes nowhere.
