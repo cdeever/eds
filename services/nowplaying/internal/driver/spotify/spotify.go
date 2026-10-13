@@ -8,6 +8,11 @@
 //
 //   - Only named devices count. The account plays wherever its owner is - a
 //     phone, a car - and the answer wanted is what is playing here.
+//   - A command is for what is playing here. Spotify's own idea of "the
+//     player" is whichever device the account last used, anywhere; a press
+//     on a screen in this house must not pause a phone in a car. So a
+//     command is carried out only while the last answer was a track on a
+//     device that counts (ADR-0032).
 //   - The cover is the album's picture as Spotify names it in the same
 //     answer, fetched once for each album (ADR-0031). It is asked for
 //     without the account's token: the picture is public, and the token is
@@ -26,6 +31,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
@@ -66,13 +72,155 @@ type Driver struct {
 
 	// after is time.After, replaceable so tests can see how long was waited.
 	after func(time.Duration) <-chan time.Time
+
+	// What the last answer said, for a command to act on. Commands arrive
+	// from the bus, on a goroutine that is not the one asking Spotify.
+	mu     sync.Mutex
+	here   here
+	poke   chan struct{}
+	poking sync.Once
+}
+
+// here is what a command needs to know of the last answer.
+type here struct {
+	track     bool // a track, on a device that counts
+	playing   bool
+	volume    int  // of 100
+	hasVolume bool // the device lets Spotify set it; a phone often does not
+}
+
+// VolumeStep is how far one volume command moves the player, of 100: the
+// same as iTunes', so a press means the same whatever is playing.
+const VolumeStep = 5
+
+// ErrNotHere means a command arrived while nothing was playing on a device
+// that counts. Whatever the account is doing elsewhere is left alone.
+var ErrNotHere = errors.New("spotify: nothing is playing on a device that counts")
+
+// ErrNoVolume means the device's volume is not Spotify's to set.
+var ErrNoVolume = errors.New("spotify: this device does not let its volume be set")
+
+// afterCommand is how soon Spotify is asked again once a command has been
+// carried out, so that what the command did is reported in a moment and not
+// at the next ten seconds. Spotify needs a little while to have done it.
+const afterCommand = 700 * time.Millisecond
+
+// Command does what a controller asked, on the device that is playing
+// (ADR-0020, ADR-0032). It needs the authorization to allow changing
+// playback, which one given before ADR-0032 does not: Spotify refuses, and
+// the refusal is returned as it was given.
+func (d *Driver) Command(ctx context.Context, c contract.Command) error {
+	d.mu.Lock()
+	now := d.here
+	d.mu.Unlock()
+	if !now.track {
+		return ErrNotHere
+	}
+
+	method, path := http.MethodPost, ""
+	after := now
+	switch c.Command {
+	case contract.PlayPause:
+		method, path = http.MethodPut, "/v1/me/player/play"
+		if now.playing {
+			path = "/v1/me/player/pause"
+		}
+		after.playing = !now.playing
+	case contract.Next:
+		path = "/v1/me/player/next"
+	case contract.Previous:
+		path = "/v1/me/player/previous"
+	case contract.VolumeUp, contract.VolumeDown:
+		if !now.hasVolume {
+			return ErrNoVolume
+		}
+		step := VolumeStep
+		if c.Command == contract.VolumeDown {
+			step = -VolumeStep
+		}
+		to := min(max(now.volume+step, 0), 100)
+		if to == now.volume {
+			return nil // already as far as it goes
+		}
+		method, path = http.MethodPut, "/v1/me/player/volume?volume_percent="+strconv.Itoa(to)
+		after.volume = to
+	default:
+		return fmt.Errorf("spotify: no such command %q", c.Command)
+	}
+
+	status, err := d.tell(ctx, method, path)
+	if status == http.StatusUnauthorized {
+		d.Tokens.Invalidate()
+		status, err = d.tell(ctx, method, path)
+		if status == http.StatusUnauthorized {
+			return errors.New("spotify: refused a freshly issued access token")
+		}
+	}
+	if err != nil {
+		return err
+	}
+
+	// Believed until Spotify says otherwise, so a second press before the
+	// next answer is not the first one over again.
+	d.mu.Lock()
+	d.here = after
+	d.mu.Unlock()
+	select {
+	case d.pokes() <- struct{}{}:
+	default:
+	}
+	return nil
+}
+
+// tell sends one command to Spotify.
+func (d *Driver) tell(ctx context.Context, method, path string) (int, error) {
+	token, err := d.Tokens.Access(ctx)
+	if err != nil {
+		return 0, err
+	}
+	req, err := http.NewRequestWithContext(ctx, method, d.api()+path, http.NoBody)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := d.HTTP.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case http.StatusOK, http.StatusAccepted, http.StatusNoContent:
+		return resp.StatusCode, nil
+	case http.StatusUnauthorized:
+		return resp.StatusCode, nil
+	}
+	return resp.StatusCode, refusal(resp)
+}
+
+func (d *Driver) pokes() chan struct{} {
+	d.poking.Do(func() { d.poke = make(chan struct{}, 1) })
+	return d.poke
+}
+
+// note keeps what a command will need of an answer.
+func (d *Driver) note(answer heard) {
+	d.mu.Lock()
+	d.here = here{
+		track:     answer.state.Track != nil,
+		playing:   answer.state.State == contract.Playing,
+		volume:    answer.volume,
+		hasVolume: answer.hasVolume,
+	}
+	d.mu.Unlock()
 }
 
 // player is the part of Spotify's answer the driver reads.
 type player struct {
 	Device struct {
-		Name    string `json:"name"`
-		Private bool   `json:"is_private_session"`
+		Name           string `json:"name"`
+		Private        bool   `json:"is_private_session"`
+		VolumePercent  *int   `json:"volume_percent"`
+		SupportsVolume bool   `json:"supports_volume"`
 	} `json:"device"`
 	IsPlaying  bool   `json:"is_playing"`
 	Type       string `json:"currently_playing_type"`
@@ -136,6 +284,10 @@ func pick(images []image) string {
 type heard struct {
 	state contract.State
 	cover string // a URL, or "" when there is no track or no picture
+
+	// The device's volume, and whether Spotify may set it.
+	volume    int
+	hasVolume bool
 }
 
 // errForbidden is Spotify refusing the question itself, not the token: the
@@ -227,6 +379,7 @@ func (d *Driver) Run(ctx context.Context) error {
 
 		default:
 			failures = 0
+			d.note(answer)
 			if !online {
 				online = true
 				d.Sink.Online(true)
@@ -259,6 +412,14 @@ func (d *Driver) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-d.sleep(wait):
+		case <-d.pokes():
+			// A command was just carried out. Ask again soon, and say what
+			// it did.
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(afterCommand):
+			}
 		}
 	}
 }
@@ -367,6 +528,9 @@ func (d *Driver) ask(ctx context.Context) (heard, int, error) {
 	answer := heard{state: d.toState(p)}
 	if answer.state.Track != nil && p.Item != nil {
 		answer.cover = pick(p.Item.Album.Images)
+		if p.Device.VolumePercent != nil {
+			answer.volume, answer.hasVolume = *p.Device.VolumePercent, p.Device.SupportsVolume
+		}
 	}
 	return answer, resp.StatusCode, nil
 }

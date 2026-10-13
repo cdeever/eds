@@ -28,9 +28,11 @@ import (
 	"time"
 )
 
-// Scopes are what the agent asks to be allowed to do: see what is playing,
-// and on which device.
-var Scopes = []string{"user-read-playback-state", "user-read-currently-playing"}
+// Scopes are what the agent asks to be allowed to do: see what is playing
+// and on which device, and - since ADR-0032 - play, pause, skip and set the
+// volume, which is all the third scope allows. It asks for nothing about
+// the account, its library or its playlists.
+var Scopes = []string{"user-read-playback-state", "user-read-currently-playing", "user-modify-playback-state"}
 
 // Lifetime is how long an authorization lasts. Since mid-2026 Spotify ends
 // one six months after it was granted, and refreshing does not extend it.

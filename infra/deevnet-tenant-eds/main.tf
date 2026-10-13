@@ -317,8 +317,9 @@ resource "deevnet_iot_broker_account" "np_relay" {
     "nowplaying/source/itunes/state",
     "nowplaying/source/itunes/status",
     "nowplaying/source/itunes/art",
-    # Spotify is reported without a cover (ADR-0016); the art topic is granted
-    # so that changing that decision is not also a change to this account.
+    # Spotify was reported without a cover (ADR-0016) and now has one
+    # (ADR-0031). The art topic was granted from the start, so that changing
+    # that decision was not also a change to this account.
     "nowplaying/source/spotify/state",
     "nowplaying/source/spotify/status",
     "nowplaying/source/spotify/art",
@@ -330,14 +331,14 @@ resource "deevnet_iot_broker_account" "np_relay" {
     "log/np-relay", # its own events, into the tenant's log store, as the stand's go
   ]
   # The one thing the agent is told rather than tells (ADR-0020): play, pause,
-  # next, previous, louder, quieter, for iTunes. It arrives from nowplayd and
-  # from nowhere else, since no other account may publish here.
+  # next, previous, louder, quieter, for iTunes and, since ADR-0032, for
+  # Spotify. It arrives from nowplayd and from nowhere else, since no other
+  # account may publish here.
   #
-  # Spotify has no such line and is not to be given one without a decision:
-  # the agent's authorization there only reads (ADR-0016).
   # The turntable has none because there is nothing on it for one to reach.
   subscribe = [
     "nowplaying/source/itunes/command",
+    "nowplaying/source/spotify/command",
   ]
 }
 

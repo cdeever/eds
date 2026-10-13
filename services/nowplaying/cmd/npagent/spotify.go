@@ -58,8 +58,8 @@ func spotifyAuth(ctx context.Context) error {
 	defer server.Close()
 
 	page := spotifyauth.Spotify.AuthorizeURL(clientID, state, spotifyauth.Challenge(verifier))
-	fmt.Println("Asking Spotify for permission to see what this account is playing.")
-	fmt.Println("It asks to read playback, and for nothing else:", strings.Join(spotifyauth.Scopes, ", "))
+	fmt.Println("Asking Spotify for permission to see what this account is playing, and to")
+	fmt.Println("play, pause, skip and set the volume. It asks for nothing else:", strings.Join(spotifyauth.Scopes, ", "))
 	fmt.Println()
 	fmt.Println("A browser should open. If it does not, open this:")
 	fmt.Println()

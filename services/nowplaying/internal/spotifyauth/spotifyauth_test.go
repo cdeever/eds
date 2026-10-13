@@ -61,13 +61,16 @@ func TestTheAuthorizeURLAsksOnlyToRead(t *testing.T) {
 	if q.Get("redirect_uri") != "http://127.0.0.1:8898/callback" {
 		t.Errorf("redirect = %q", q.Get("redirect_uri"))
 	}
-	// Reading what is playing, and nothing that changes it.
+	// Reading what is playing, and changing it (ADR-0032). Nothing about the
+	// account, its library or its playlists, and not playing through this.
 	scope := q.Get("scope")
-	if scope != "user-read-playback-state user-read-currently-playing" {
+	if scope != "user-read-playback-state user-read-currently-playing user-modify-playback-state" {
 		t.Errorf("scope = %q", scope)
 	}
-	if strings.Contains(scope, "modify") || strings.Contains(scope, "streaming") {
-		t.Errorf("asked for more than reading: %q", scope)
+	for _, more := range []string{"streaming", "library", "playlist", "user-read-private", "user-read-email"} {
+		if strings.Contains(scope, more) {
+			t.Errorf("asked for more than playback: %q", scope)
+		}
 	}
 }
 
