@@ -5,8 +5,18 @@ weight: 2
 
 # Layer Boundaries
 
-The most common way to break EdS is to put a decision in the wrong layer. Each
-layer below is ignorant of the next on purpose.
+Each component of EdS is built to do one well-defined job, and to do it
+without knowing how its neighbors do theirs. It takes a plain input, returns
+a plain output, and keeps everything in between to itself: much as
+abstraction and encapsulation work in object-oriented programming, applied to
+services and devices in place of classes.
+
+That is what lets each part be built, tested and tuned alone, and replaced
+without the others noticing. `palette` can be tuned against a folder of
+JPEGs with nothing else running. A different strip of LEDs changes the
+firmware and nothing upstream of it.
+
+The sections below say what each layer owns, and what it leaves to the next.
 
 ## palette decides nothing about hardware
 
