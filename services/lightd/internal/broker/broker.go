@@ -1,6 +1,6 @@
 // Package broker publishes scenes to MQTT.
 //
-// The broker is mqtt01 on the substrate's IoT Backend segment, not a tenant
+// The broker is mqtt01 on Deevnet IoTaaS's IoT Backend segment, not a tenant
 // VM. MQTT clients always dial the broker, so whichever segment holds it must
 // accept inbound - and the tenant fabric has no inbound path by design. IoT
 // Backend is the segment already defined to accept exactly this, so lightd

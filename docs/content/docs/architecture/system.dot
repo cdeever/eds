@@ -51,7 +51,7 @@ digraph eds {
     // ---- the middle -------------------------------------------------------
 
     subgraph cluster_substrate {
-        label="Deevnet substrate"; labeljust=l; style="rounded,filled"; fillcolor="#eef7f1"; color="#8fbf9f";
+        label="Deevnet IoTaaS"; labeljust=l; style="rounded,filled"; fillcolor="#eef7f1"; color="#8fbf9f";
         broker   [label="MQTT broker\nmqtt01 · IoT Backend, VLAN 35\n\neverything meets here", shape=cylinder, fillcolor="#cfe9d8", margin="0.25,0.2", fontsize=12];
         logstore [label="Log store and Grafana\nwhat each device reported"];
     }

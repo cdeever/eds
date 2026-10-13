@@ -84,7 +84,7 @@ inside the site. It doubles as a development box.
   admits Bonjour and one fixed port, and nothing else — not SSH.
 - **The image carries no secret.** The home Wi-Fi key and the agent's broker
   account are written to the card after it is flashed and imported at boot.
-- The image was first built as a variant in the substrate's image factory,
+- The image was first built as a variant in Deevnet IoTaaS's image factory,
   and moved to EdS the same day
   ([ADR-0015](/docs/architecture/decisions/0015-eds-builds-its-own-pi-images/)):
   it is `images/agent`, and the card's settings are written by `deploy/relay`.

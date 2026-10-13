@@ -241,7 +241,7 @@ func LoadNowplayd(version string) (Nowplayd, error) {
 		}
 		cfg.Power[source] = beacon
 	}
-	// The substrate's names, as kit.env gives them, unless EdS's own are set.
+	// Deevnet IoTaaS's names, as kit.env gives them, unless EdS's own are set.
 	cfg.LogEndpoint = Str("NP_LOG_ENDPOINT", Str("LOG_ENDPOINT", ""))
 	cfg.LogToken = Str("NP_LOG_INGEST_TOKEN", Str("LOG_INGEST_TOKEN", ""))
 	return cfg, nil

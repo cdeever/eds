@@ -1,6 +1,6 @@
 // Package events reports what the agent does to the tenant's log store, the
 // way a stand does (ADR-0005, ADR-0017): a few JSON lines on
-// <tenant>/log/<device>, which the substrate's bridge files under the device.
+// <tenant>/log/<device>, which Deevnet IoTaaS's bridge files under the device.
 //
 // It is not the agent's log. The journal has everything; this carries the
 // handful of lines worth seeing beside the stand's on a dashboard - a track
@@ -21,7 +21,7 @@ import (
 // Key marks a log line as an event, and names it: "track.playing".
 const Key = "event"
 
-// Topic is where a device's events go. The shape is the substrate's, not
+// Topic is where a device's events go. The shape is Deevnet IoTaaS's, not
 // EdS's: it is the one topic under log/ a device's account may publish to.
 func Topic(prefix, device string) string { return prefix + "/log/" + device }
 

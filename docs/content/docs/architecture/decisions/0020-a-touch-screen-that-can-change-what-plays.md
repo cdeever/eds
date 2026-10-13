@@ -183,7 +183,7 @@ Nothing else.
    backward against the panel, so top was next and bottom was previous. The
    defaults are now what this board wants. The corrected firmware has not
    yet been tried by hand.
-6. The substrate grants `nowplaying/source/+/command` to publish, with its
+6. Deevnet IoTaaS grants `nowplaying/source/+/command` to publish, with its
    wildcard. **Settled 2026-10-11:** granted as written.
 
 ## What building it found

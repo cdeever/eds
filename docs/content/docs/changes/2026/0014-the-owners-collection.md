@@ -94,6 +94,6 @@ Still to do: a record that is not in the collection.
 
 - [ ] The evidence [ADR-0022](/docs/architecture/decisions/0022-the-owners-collection-names-the-record/)
   waits on.
-- [ ] The token is a file kept by hand. If the substrate comes to offer
+- [ ] The token is a file kept by hand. If Deevnet IoTaaS comes to offer
   tenants a place for secrets, it belongs there.
 - [ ] Compilations of several artists.

@@ -53,7 +53,7 @@ const char *cs_cred_mqtt_password(void);
 // proceeding unverified.
 //
 // Provisioned beside the credentials rather than compiled in, because it is
-// the site's and not the firmware's: the substrate has re-rooted its PKI more
+// the site's and not the firmware's: Deevnet IoTaaS has re-rooted its PKI more
 // than once, and each time that should cost a reprovision, not a rebuild of
 // every screen. The certificate embedded under CS_MQTT_USE_TLS remains as the
 // fallback, the way each Kconfig value above does.

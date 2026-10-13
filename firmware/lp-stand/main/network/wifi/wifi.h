@@ -1,6 +1,6 @@
 // Station-mode WiFi.
 //
-// The stand lives on the substrate's IoT segment (VLAN 30), which is where the
+// The stand lives on Deevnet IoTaaS's IoT segment (VLAN 30), which is where the
 // segmentation model puts "custom-developed embedded devices with controlled
 // firmware". It takes a DHCP lease there and reaches the broker on IoT Backend.
 #pragma once

@@ -1,4 +1,4 @@
-# Terraform state is NOT committed: it holds every credential the substrate
+# Terraform state is NOT committed: it holds every credential Deevnet IoTaaS
 # issued this tenant (Deevnet ADR-0015 §4).
 terraform.tfstate
 terraform.tfstate.backup

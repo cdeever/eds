@@ -126,7 +126,7 @@ What to carry into the next change, stated so it applies beyond this one.
 ## Related
 
 The change that caused it, the changes that fixed it, any ADR it led to, and
-the substrate's record if the cause was there.
+Deevnet IoTaaS's record if the cause was there.
 ````
 
 ## Filling it in

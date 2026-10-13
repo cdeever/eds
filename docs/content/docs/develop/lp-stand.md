@@ -55,7 +55,7 @@ GPIO. It does **not** cover credentials — see
 ## Seeing what a stand is doing
 
 Once it is off the USB cable, a stand reports its key events — boot, network,
-scenes, health — to `eds/log/<id>`, and the substrate carries them into the
+scenes, health — to `eds/log/<id>`, and Deevnet IoTaaS carries them into the
 tenant's log store:
 
 ```bash

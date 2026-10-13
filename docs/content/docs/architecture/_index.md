@@ -44,7 +44,7 @@ Gray boxes are someone else's service. A dashed box is turned off.
 - **Spotify is read from the account**, and is turned off for now
   ([CHG-0011](/docs/changes/2026/0011-spotify-turned-off/)).
 - **Nothing on the bus talks to anything else directly.** Every MQTT line
-  goes to the broker, which is the substrate's and not the tenant's
+  goes to the broker, which is Deevnet IoTaaS's and not the tenant's
   ([ADR-0003](/docs/architecture/decisions/0003-broker-is-the-substrates/)).
 
 The picture is drawn by GraphViz from `system.dot`, beside this page. Change

@@ -7,7 +7,7 @@
 // USB cable is gone - the screen starting, the network coming and going, a
 // cover shown or refused, a button pressed - as one JSON object each. The MQTT
 // task takes them from the queue and publishes them to the screen's log topic,
-// where the substrate's bridge carries them into EdS's device log partition.
+// where Deevnet IoTaaS's bridge carries them into EdS's device log partition.
 //
 // It follows the firmware's other failure choices: recording an event never
 // blocks on the network, never fails the caller, and a screen with no broker

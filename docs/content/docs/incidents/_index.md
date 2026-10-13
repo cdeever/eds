@@ -26,9 +26,9 @@ New records start from the
 [incident record template](/docs/develop/records/incident-record/), which
 also defines the statuses used below.
 
-A bare **INC-0001** means an EdS record. A substrate incident is always
-written **Deevnet INC-0004**. An EdS failure caused by the substrate gets an
-EdS record that links to the substrate's.
+A bare **INC-0001** means an EdS record. A Deevnet IoTaaS incident is always
+written **Deevnet INC-0004**. An EdS failure caused by Deevnet IoTaaS gets an
+EdS record that links to Deevnet IoTaaS's.
 
 ## Records
 

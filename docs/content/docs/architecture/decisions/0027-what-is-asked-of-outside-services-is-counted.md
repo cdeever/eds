@@ -58,10 +58,10 @@ has whatever the client logged about it.
 ### How nowplayd's counts get there
 
 **Through the broker, as a device does.** A workload's account cannot
-publish under `log/`, by the substrate's design, and nowplayd is not a
+publish under `log/`, by Deevnet IoTaaS's design, and nowplayd is not a
 device.
 
-**The substrate's way for a workload**: post lines to the store with the
+**Deevnet IoTaaS's way for a workload**: post lines to the store with the
 tenant's ingest token, which writes to the tenant's workload partition and
 nothing else. `kit.env` already hands nowplayd the endpoint and the token.
 No EdS workload has used them.

@@ -6,7 +6,7 @@
 #
 # Everything here goes through the Deevnet API (Deevnet ADR-0015): the tenant's
 # network, its workload and its names. EdS holds one credential, its Deevnet
-# token, and no substrate credential at all.
+# token, and no Deevnet IoTaaS credential at all.
 #
 # Unlike the pattern in Deevnet ADR-0006, where the repository *is* the tenant, this
 # tenant lives inside the EdS monorepo so the application and the
@@ -35,7 +35,7 @@ terraform {
   }
 
   # No backend here. The first apply keeps state on this machine; after it,
-  # `make state-backend` writes backend.tf for the state store the substrate
+  # `make state-backend` writes backend.tf for the state store Deevnet IoTaaS
   # issued this tenant (Deevnet ADR-0007), from this tenant's own outputs.
 }
 
@@ -116,9 +116,9 @@ resource "deevnet_certificate" "console" {
 
 # The Wi-Fi credential EdS's devices are flashed with (Deevnet ADR-0012 §3, Deevnet CHG-0013).
 #
-# One key serves every device: the LP stand, and any later one. The substrate
+# One key serves every device: the LP stand, and any later one. Deevnet IoTaaS
 # does not know those devices individually, and a MAC binding would buy no
-# enforcement while making a first flash wait on a substrate registration.
+# enforcement while making a first flash wait on a Deevnet IoTaaS registration.
 #
 # EdS chooses the trust class and nothing else. `iot` is for devices whose
 # firmware its owner controls, which is what the stand is. The SSID and the VLAN
@@ -146,7 +146,7 @@ resource "deevnet_iot_wifi_key" "devices" {
 # is the class for devices whose firmware its owner controls. That is the stand.
 #
 # The MAC is deliberately not set. It is a label for the owner's own inventory
-# and the substrate enforces nothing with it, so recording one here would only
+# and Deevnet IoTaaS enforces nothing with it, so recording one here would only
 # make a first flash wait on a registration.
 resource "deevnet_iot_device" "lp_stand_01" {
   tenant      = deevnet_tenant.eds.name
@@ -164,7 +164,7 @@ resource "deevnet_iot_device" "lp_stand_01" {
 # "lightstand/+/scene", never "eds/lightstand/+/scene". They come back absolute
 # in granted_publish / granted_subscribe, which is what the broker enforces.
 #
-# These are the permissions that lived in the substrate's inventory as
+# These are the permissions that lived in Deevnet IoTaaS's inventory as
 # `mqtt_acls` until this resource existed. lightd publishes scenes to any stand
 # and reads their presence; it never writes a stand's own status.
 resource "deevnet_iot_broker_account" "lightd" {
@@ -289,7 +289,7 @@ resource "deevnet_iot_broker_account" "console" {
 
 # The agent Pi, as a device of this tenant (ADR-0017).
 #
-# The Pi is hardware the substrate knows, but what runs on it is EdS's own
+# The Pi is hardware Deevnet IoTaaS knows, but what runs on it is EdS's own
 # image (ADR-0015): firmware its owner controls, which is what trust class
 # `iot` is for. Registering it is what lets its account publish under log/,
 # and so lets the agent report what it does beside the stand.

@@ -1,6 +1,6 @@
 // MQTT: where scenes come from.
 //
-// The stand dials the broker on the substrate's IoT Backend segment. That is not an
+// The stand dials the broker on Deevnet IoTaaS's IoT Backend segment. That is not an
 // arbitrary placement - MQTT clients always initiate, so whichever segment
 // holds the broker must accept inbound, and the tenant fabric has no inbound
 // path by design. IoT Backend is the segment defined to accept exactly this.

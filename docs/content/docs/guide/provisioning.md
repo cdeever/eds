@@ -13,7 +13,7 @@ cannot hold one.
 
 ## From the tenant
 
-A stand on the Deevnet substrate is flashed with what the EdS tenant issued:
+A stand on Deevnet IoTaaS is flashed with what the EdS tenant issued:
 
 ```bash
 cd firmware/lp-stand
@@ -29,7 +29,7 @@ the broker drops an ungranted publish without saying so.
 
 ## By hand
 
-For a stand that is not on the substrate — a local broker on the bench:
+For a stand that is not on Deevnet IoTaaS — a local broker on the bench:
 
 ```bash
 make wifi-config PORT=/dev/cu.usbserial-0001

@@ -1,4 +1,4 @@
-# EdS declares what its services run on, and nothing about the substrate.
+# EdS declares what its services run on, and nothing about Deevnet IoTaaS.
 #
 # The index, subnet, gateway, VMID, MAC and address are the API's to issue
 # (Deevnet ADR-0015), so the site selectors this file used to carry - site_octet, VNI
@@ -30,7 +30,7 @@ variable "ssh_keys" {
     Public halves only. Keys are written when the VM is built, so changing
     this list means `terraform apply -replace=deevnet_workload.services`.
 
-    EdS is the operator's own tenant, so the substrate's a_autoprov key is on
+    EdS is the operator's own tenant, so Deevnet IoTaaS's a_autoprov key is on
     this list deliberately: it lets the Builder's automation reach the VM. A
     tenant someone else owns would never carry it (Deevnet ADR-0028).
   EOT
@@ -40,12 +40,12 @@ variable "broker_host" {
   type        = string
   default     = "mqtt.mobile.deevnet.net"
   description = <<-EOT
-    The substrate's MQTT broker. A variable rather than a hardcoded string
-    because it is a SUBSTRATE name, not EdS's - moving EdS to another site
+    Deevnet IoTaaS's MQTT broker. A variable rather than a hardcoded string
+    because it is a Deevnet IoTaaS name, not EdS's - moving EdS to another site
     means pointing at that site's broker.
 
     It is not an attribute of the tenant because the API does not issue one
-    today; every other substrate value EdS uses (the DNS server, the state
+    today; every other Deevnet IoTaaS value EdS uses (the DNS server, the state
     endpoint, the Wi-Fi SSID) comes back from the API, and this is the one
     that still has to be named here.
 

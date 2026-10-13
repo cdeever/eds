@@ -21,7 +21,7 @@ weight: 7
 ## Summary
 
 The console is served in the clear, because when it was built nothing on the
-site would certify a name a tenant serves. The substrate now has a Tenant
+site would certify a name a tenant serves. Deevnet IoTaaS now has a Tenant
 Service CA (Deevnet ADR-0037), and a tenant can ask it for a server
 certificate for a name in its own zone.
 

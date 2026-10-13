@@ -51,7 +51,7 @@ menu "LP jacket stand"
             string "Broker URI"
             default "mqtts://mqtt.mobile.deevnet.net:8883"
             help
-                The substrate's broker is TLS only: nothing listens on 1883.
+                Deevnet IoTaaS's broker is TLS only: nothing listens on 1883.
                 mqtt:// is for bring-up against a local broker. `mqtt` is a
                 service name on IoT Backend (VLAN 35), so the host behind it
                 can move without reflashing every stand.

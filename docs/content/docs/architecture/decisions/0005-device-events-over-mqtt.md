@@ -21,7 +21,7 @@ A stand on a shelf has no console. It fails soft by design, which makes its
 failures quiet: one that keeps showing the last good scene looks, from the
 room, exactly like one that was sent nothing.
 
-The substrate offers each tenant a log store. A device may publish to
+Deevnet IoTaaS offers each tenant a log store. A device may publish to
 `<tenant>/log/<device>`, the one topic under `log/` its account can write,
 and a bridge carries what arrives into the tenant's device log partition. The
 device needs no log store credential and no route to the store. The Ma Bell

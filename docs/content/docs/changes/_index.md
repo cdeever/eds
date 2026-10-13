@@ -36,7 +36,7 @@ New records start from the
 numbered `CHG-NNNN` in the order they are opened, across years, and a number
 is never reused, even for a change that was abandoned.
 
-A bare **CHG-0001** means an EdS record. A substrate change is always written
+A bare **CHG-0001** means an EdS record. A Deevnet IoTaaS change is always written
 **Deevnet CHG-0021**.
 
 ## Records

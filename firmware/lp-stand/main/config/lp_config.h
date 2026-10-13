@@ -26,9 +26,9 @@
 #define LP_TOPIC_STATUS LP_TOPIC_PREFIX "/lightstand/" LP_STAND_ID "/status"
 #define LP_TOPIC_STATE  LP_TOPIC_PREFIX "/lightstand/" LP_STAND_ID "/state"
 
-// Where the stand's key events go. The shape is the substrate's, not EdS's:
+// Where the stand's key events go. The shape is Deevnet IoTaaS's, not EdS's:
 // `<tenant>/log/<device name>`, the one topic under log/ this stand's broker
-// account may publish to, which the substrate's bridge carries into the
+// account may publish to, which Deevnet IoTaaS's bridge carries into the
 // tenant's device log partition. So the prefix here has to be the tenant's
 // name and the id the device's name in the registry - which they are.
 #define LP_TOPIC_LOG    LP_TOPIC_PREFIX "/log/" LP_STAND_ID

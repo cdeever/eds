@@ -1,6 +1,6 @@
 // MQTT: the beacon's whole purpose.
 //
-// The beacon dials the broker on the substrate's IoT Backend segment, as the
+// The beacon dials the broker on Deevnet IoTaaS's IoT Backend segment, as the
 // stand does, says "online" and keeps the connection. It subscribes to
 // nothing. What it is for is what the broker says when the connection goes:
 // the will, "offline", which is how the room learns that the switch the

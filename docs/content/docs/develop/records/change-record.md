@@ -10,7 +10,7 @@ a new file, fill it in **before** the change runs, and complete **Outcome**
 after. [CHG-0001](/docs/changes/2026/0001-lp-stand-joins-its-tenant/) is a
 worked example.
 
-It follows the substrate's template, trimmed to what an application needs: no
+It follows Deevnet IoTaaS's template, trimmed to what an application needs: no
 site or maintenance window, because EdS changes one tenant and its own
 devices.
 

@@ -57,12 +57,12 @@ it. If not, supersede it.
 
 ## EdS records and Deevnet records
 
-EdS runs on the Deevnet substrate, which keeps its own ADRs, change records
+EdS runs on Deevnet IoTaaS, which keeps its own ADRs, change records
 and incidents under the same names. To keep the two apart:
 
 - A bare **ADR-0006**, **CHG-0001** or **INC-0001** anywhere in this
   repository means an **EdS** record, on this site.
-- A substrate record is always written **Deevnet ADR-0012**, and links to
+- A Deevnet IoTaaS record is always written **Deevnet ADR-0012**, and links to
   [deevnet-docs](https://deevnet.github.io/deevnet-docs/docs/architecture/decisions/).
 
 ## Records
@@ -71,7 +71,7 @@ and incidents under the same names. To keep the two apart:
 |---|---|---|---|
 | [0001](0001-device-renders-effects/) | 2026-09-07 | The stand renders effects locally and never receives frames | {{< adr-status "Accepted" >}} |
 | [0002](0002-gamma-in-firmware/) | 2026-09-07 | Gamma belongs to the firmware, not the wire | {{< adr-status "Accepted" >}} |
-| [0003](0003-broker-is-the-substrates/) | 2026-09-07 | The MQTT broker is the substrate's, not a tenant VM | {{< adr-status "Accepted" >}} |
+| [0003](0003-broker-is-the-substrates/) | 2026-09-07 | The MQTT broker is Deevnet IoTaaS's, not a tenant VM | {{< adr-status "Accepted" >}} |
 | [0004](0004-firmware-secrets-nvs-only/) | 2026-10-10 | Firmware secrets are NVS-only, and the broker's CA is provisioned | {{< adr-status "Accepted" >}} |
 | [0005](0005-device-events-over-mqtt/) | 2026-10-10 | A device reports key events over MQTT, not its serial log | {{< adr-status "Accepted" >}} |
 | [0006](0006-now-playing-bus-of-drivers/) | 2026-10-10 | Now playing is a bus of small drivers behind one contract | {{< adr-status "Accepted" >}} |
@@ -83,7 +83,7 @@ and incidents under the same names. To keep the two apart:
 | [0012](0012-spotify-by-web-api/) | 2026-10-10 | Spotify is read from the account, through the Web API | {{< adr-status "Accepted" >}} |
 | [0013](0013-musicbee-by-remote-protocol/) | 2026-10-10 | MusicBee is read through the MusicBee Remote plugin's protocol | {{< adr-status "Proposed" >}} |
 | [0014](0014-tidal-by-lastfm/) | 2026-10-10 | TIDAL is read through Last.fm, because nothing better is offered | {{< adr-status "Proposed" >}} |
-| [0015](0015-eds-builds-its-own-pi-images/) | 2026-10-10 | EdS builds its own Pi images, on the substrate's base; a relay is an agent Pi with a second leg | {{< adr-status "Accepted" >}} |
+| [0015](0015-eds-builds-its-own-pi-images/) | 2026-10-10 | EdS builds its own Pi images, on Deevnet IoTaaS's base; a relay is an agent Pi with a second leg | {{< adr-status "Accepted" >}} |
 | [0016](0016-a-source-can-be-reported-without-its-cover/) | 2026-10-11 | A source can be reported without its cover, and Spotify is: known, and not lit | {{< adr-status "Accepted" >}} |
 | [0017](0017-an-agent-pi-is-a-registered-device/) | 2026-10-11 | An agent Pi is a registered device, and reports its events like one | {{< adr-status "Accepted" >}} |
 | [0018](0018-a-console-of-eds-own/) | 2026-10-11 | EdS has a console of its own, fed from the bus, and it only looks | {{< adr-status "Accepted" >}} |

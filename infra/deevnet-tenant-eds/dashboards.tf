@@ -1,6 +1,6 @@
 # The stands' dashboard, in EdS's Grafana organization (Deevnet ADR-0024).
 #
-# A stand publishes its key events to its MQTT log topic, the substrate's
+# A stand publishes its key events to its MQTT log topic, Deevnet IoTaaS's
 # bridge carries them into this tenant's device log partition, and the
 # organization the tenant was issued already has that partition wired in as
 # the data source `deevnet-logs-devices`. What is declared here is only the

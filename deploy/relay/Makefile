@@ -1,7 +1,7 @@
 # The relay: an agent Pi with a second leg, on the Deevnet site by Ethernet
 # and the home LAN by Wi-Fi (ADR-0010).
 #
-# The image is EdS's own (images/agent), built on the substrate's base. This
+# The image is EdS's own (images/agent), built on Deevnet IoTaaS's base. This
 # directory is the rest: getting the image built, and writing a flashed card's
 # settings - which are secret, and are in no image.
 #
