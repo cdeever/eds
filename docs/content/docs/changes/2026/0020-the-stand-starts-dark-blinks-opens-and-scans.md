@@ -80,6 +80,9 @@ still version 1: an effect name is added, and nothing else.
 | 16:47 | The board on `/dev/cu.usbserial-0001` was an ESP32-D0WD-V3 whose application in flash was `lp-stand`, built from `9d39658` on 2026-10-11. |
 | 16:48 | Flashed from the worktree: the bootloader, the OTA data and the application, each verified. |
 | 16:49 | Reset and watched for 25 seconds. Credentials read from `creds`, all of them provisioned; joined `DVNTM-IOT` in 1.9 seconds; connected to the broker over TLS at 3.6; received its retained scene, solid at brightness 0. No fault was said. |
+| 16:52 | The workload was shipped (`90d85f3`). All four services came back active; with every source offline `nowplayd` said stopped, then idle fifteen seconds later, and the stand was sent dark and said it had applied it. |
+| 16:52 | A `scanner` scene, red, sent to the stand by hand through `lightd`'s `POST /v1/scene`. The stand applied it - and a second and a half later `nowplayd`'s idle arrived and `lightd` sent dark over it, as it should. |
+| 16:52 | Sent again once that had passed. The stand reported `scanner` at brightness 1 for twelve seconds, then solid at 0 when it was sent dark again. |
 
 ## Departures
 
@@ -91,7 +94,8 @@ still version 1: an effect name is added, and nothing else.
 
 ## Follow-ups
 
-- [ ] The workload: not deployed yet.
+- [ ] The theme itself: every source was offline, so `nowplayd` has not yet
+  named the track and published the look. The scanner was sent by hand.
 - [ ] Everything ADR-0029 and ADR-0030 list as not yet shown. None of the
   blinks, the opening and closing, or the scanner has been looked at by a
   person.
