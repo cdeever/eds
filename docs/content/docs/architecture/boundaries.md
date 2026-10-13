@@ -13,8 +13,8 @@ services and devices in place of classes.
 
 That is what lets each part be built, tested and tuned alone, and replaced
 without the others noticing. `palette` can be tuned against a folder of
-JPEGs with nothing else running. A different strip of LEDs changes the
-firmware and nothing upstream of it.
+JPEGs with nothing else running. A different diffuser wants a different
+gamma curve, and that changes the firmware and nothing upstream of it.
 
 The sections below say what each layer owns, and what it leaves to the next.
 
