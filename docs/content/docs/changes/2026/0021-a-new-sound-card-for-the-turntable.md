@@ -47,7 +47,7 @@ a stand that did nothing for a record.
 
 | When (UTC) | What happened |
 |---|---|
-| 21:20 | The turntable was switched on: the beacon said so, and the stand opened to dim. A record played and the stand stayed dim. |
+| 21:20 | The turntable was switched on: the beacon said so, and the stand was sent its dim scene. A record played and, by its owner's account, the lights did not respond. |
 | 21:25 | `status`: `plughw:UA4FX is not plugged in`, `arecord` unable to open it, and the cards present were `Headphones`, `vc4hdmi0`, `vc4hdmi1` and `CODEC`. iTunes' computer was not answering either. |
 | 21:25 | The input was set to `plughw:CODEC` and the agent restarted. |
 | 21:26 | The agent said it was playing The Doors, "The WASP (Texas Radio And The Big Beat)", from *L.A. Woman*; `nowplayd` made it current with the sleeve from the owner's collection; the stand reported a chase in four colors at 0.8. iTunes' driver came online in the same minute, stopped. |
