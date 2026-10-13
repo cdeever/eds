@@ -1021,6 +1021,31 @@ func TestADarkSourcesCoverIsPublishedWithTheDarkLook(t *testing.T) {
 	}
 }
 
+// ADR-0030: a look that is for any source is published for a dark one too.
+func TestALookForAnySourceIsNotDarkened(t *testing.T) {
+	bus := &fakeBus{}
+	cover := NewImage(pngA)
+	p := publisher(bus, nil)
+	p.Looks = func(contract.Track) string { return "scanner" }
+	p.AnySource = func(look string) bool { return look == "scanner" }
+	st := covered("Knight Rider Theme", cover)
+	p.Dark = map[string]bool{st.Source: true}
+
+	_, _, _ = p.Publish(context.Background(), st, cover)
+	got := bus.takeAll()
+	if want := `{"v":1,"look":"scanner","art":"` + cover.SHA256 + `"}`; string(got[0].payload) != want {
+		t.Errorf("look = %s, want %s", got[0].payload, want)
+	}
+
+	// The next track on the same record has no look, and is dark again.
+	p.Looks = func(contract.Track) string { return "" }
+	_, _, _ = p.Publish(context.Background(), covered("Another", cover), cover)
+	got = bus.takeAll()
+	if want := `{"v":1,"look":"dark","art":"` + cover.SHA256 + `"}`; len(got) == 0 || string(got[0].payload) != want {
+		t.Errorf("after it: published %v", topics(got))
+	}
+}
+
 // ADR-0025: whoever draws buttons is told when there is nothing they would do.
 func TestASourceWithoutControlsSaysSoInCurrent(t *testing.T) {
 	bus := &fakeBus{}

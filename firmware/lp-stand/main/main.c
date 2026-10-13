@@ -25,6 +25,8 @@
 #include "mqtt.h"
 #include "nvs_flash.h"
 #include "scene.h"
+#include "status.h"
+#include "transition.h"
 #include "wifi.h"
 
 static const char *TAG = "lp-stand";
@@ -83,6 +85,11 @@ static void render_task(void *arg)
 {
     (void)arg;
 
+    // Static: it holds two scenes, and the task's stack has better uses.
+    static lp_transition_t transition;
+    lp_status_t status = {0};
+    lp_fault_t said = LP_FAULT_NONE;
+
     TickType_t last_wake = xTaskGetTickCount();
     for (;;) {
         lp_scene_t scene;
@@ -96,8 +103,27 @@ static void render_task(void *arg)
             continue;
         }
 
-        lp_effects_render(&scene, (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS),
-                          frame, LP_LED_COUNT);
+        const uint32_t now = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+        // The scene, opening from the middle if the strip was dark and
+        // closing to it if it is to be.
+        lp_transition_render(&transition, &scene, now, frame, LP_LED_COUNT);
+
+        // What is wrong, if anything has been for long enough, over whatever
+        // the scene is: the stand starts dark, and this is how a dark stand
+        // that cannot reach the broker differs from a dead one (ADR-0029).
+        const lp_link_t link = {
+            .provisioned = lp_credentials_provisioned(),
+            .wifi = lp_wifi_ip()[0] != '\0',
+            .broker = lp_mqtt_connected(),
+            .refused = lp_mqtt_refused(),
+        };
+        const lp_fault_t fault = lp_status_step(&status, lp_fault_of(&link), now);
+        if (fault != said) {
+            // Serial only: a fault is, by definition, not being able to report.
+            ESP_LOGW(TAG, "fault shown on the strip: %d blinks", (int)fault);
+            said = fault;
+        }
+        lp_status_overlay(fault, now, frame, LP_LED_COUNT);
         lp_strip_show(frame, LP_LED_COUNT);
 
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(LP_FRAME_INTERVAL_MS));
@@ -137,8 +163,8 @@ void app_main(void)
     current_lock = xSemaphoreCreateMutex();
     ESP_ERROR_CHECK(current_lock == NULL ? ESP_ERR_NO_MEM : ESP_OK);
 
-    // Something deliberate on the strip before the network exists, so an
-    // unconfigured or unreachable stand does not look broken.
+    // Dark until a scene arrives (ADR-0029). The render task says what is
+    // wrong, in blinks, if the stand cannot get as far as being sent one.
     lp_scene_default(&current);
     ESP_ERROR_CHECK(lp_strip_init());
 
@@ -146,8 +172,8 @@ void app_main(void)
     ESP_LOGI(TAG, "rendering at %d ms/frame on %d LEDs",
              LP_FRAME_INTERVAL_MS, LP_LED_COUNT);
 
-    // A failure to associate is not fatal: the strip is already lit, and WiFi
-    // keeps retrying underneath.
+    // A failure to associate is not fatal: the strip is already being drawn,
+    // and WiFi keeps retrying underneath.
     lp_wifi_start();
 
     ESP_ERROR_CHECK(lp_mqtt_start(on_scene));

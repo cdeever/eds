@@ -24,7 +24,7 @@ The payload `lightd` publishes and the LP stand renders. It is a description of
 | Field | Type | Meaning |
 |---|---|---|
 | `v` | int | Contract version. Currently `1`. |
-| `effect` | string | `solid`, `breathe`, `sweep`, `morph` or `chase`. |
+| `effect` | string | `solid`, `breathe`, `sweep`, `morph`, `chase` or `scanner`. |
 | `speed` | float | `0..1` dial, not a frequency. |
 | `brightness` | float | `0..1`, applied before gamma on the device. |
 | `palette` | array | Colors already corrected for the strip, ranked by weight. |
@@ -74,6 +74,13 @@ dominant one.
   opposite ways, so they pass through one another. One lap takes two cycles.
 
 With a palette of one color, both show that color.
+
+`scanner`
+: One point of the dominant color going from one end of the strip to the
+  other and back, with what it has just passed fading behind it, and the
+  rest of the strip dark. There and back takes one cycle. Only the first
+  color of the palette is used
+  ([ADR-0030](/docs/architecture/decisions/0030-a-piece-of-music-can-have-a-look-from-any-source/)).
 
 ## Speed
 

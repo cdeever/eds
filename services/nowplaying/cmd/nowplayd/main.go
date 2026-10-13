@@ -233,6 +233,7 @@ func run(logger *slog.Logger) error {
 		Coverless:  coverless,
 		NoControls: noControls,
 		Dark:       dark,
+		AnySource:  looks.AnySource,
 		Looks:      looks.For,
 		Small:      smallcover.Make,
 		Prefix:     cfg.Prefix,

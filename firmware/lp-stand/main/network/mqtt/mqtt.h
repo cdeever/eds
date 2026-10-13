@@ -6,6 +6,8 @@
 // path by design. IoT Backend is the segment defined to accept exactly this.
 #pragma once
 
+#include <stdbool.h>
+
 #include "esp_err.h"
 #include "scene.h"
 
@@ -17,6 +19,14 @@ typedef void (*lp_scene_handler)(const lp_scene_t *scene);
 // presence and starts forwarding the event log to this stand's log topic. It returns as soon as the client is started; connection happens in
 // the background and is retried indefinitely.
 esp_err_t lp_mqtt_start(lp_scene_handler on_scene);
+
+// lp_mqtt_connected reports whether the broker is there now.
+bool lp_mqtt_connected(void);
+
+// lp_mqtt_refused reports whether the broker's last answer was to refuse
+// this stand's login: reached, and not let in. It is false again once a
+// connection is made, or fails for some other reason.
+bool lp_mqtt_refused(void);
 
 // lp_mqtt_publish_state reports what is currently being rendered, retained, so
 // the answer to "what is the stand doing" survives everyone disconnecting.

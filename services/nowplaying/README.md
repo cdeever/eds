@@ -358,6 +358,14 @@ The list is in `internal/looks`, matched on the artist and album the track
 already carries, and it is short on purpose: the one entry is *The Dark Side
 of the Moon*, whose look is `spectrum`.
 
+One piece of music has a look too, whatever record it is on and whoever
+plays it
+([ADR-0030](../../docs/content/docs/architecture/decisions/0030-a-piece-of-music-can-have-a-look-from-any-source.md)):
+the theme from *Knight Rider*, `scanner`. It is matched on the track's title
+alone, which must be `knight rider` once the words that only say "this is a
+theme" are set aside. It comes before the album's look, and it is the one
+look published for a source in `NP_DARK_SOURCES`: `looks.AnySource` says so.
+
 nowplayd publishes the look's **name** on `…/current/look`, retained, with
 the hash of the cover it belongs to, just before that cover. It says what an
 album is called and nothing about colors or effects: what `spectrum` looks

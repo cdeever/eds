@@ -40,6 +40,9 @@ typedef enum {
     // dominant one.
     LP_EFFECT_MORPH, // the whole strip, turning from one color to the next
     LP_EFFECT_CHASE, // the accents traveling around over the dominant color
+    // One point of the dominant color going from end to end and back, with
+    // what it has just passed fading behind it, on a dark strip.
+    LP_EFFECT_SCANNER,
     LP_EFFECT_COUNT,
 } lp_effect_t;
 
@@ -62,9 +65,9 @@ lp_effect_t lp_effect_from_name(const char *name);
 // lp_effect_name is the inverse, for the state topic and logs.
 const char *lp_effect_name(lp_effect_t effect);
 
-// lp_scene_default fills a scene the stand can show before it has ever heard
-// from the broker - a dim warm white, so an unconfigured stand looks
-// deliberate rather than broken.
+// lp_scene_default fills the scene the stand shows before it has ever heard
+// from the broker: every LED off (ADR-0029). A stand is lit when it is told
+// to be. One that cannot be told says so itself; see status.h.
 void lp_scene_default(lp_scene_t *scene);
 
 // lp_scene_validate clamps a scene into range and normalizes its weights in

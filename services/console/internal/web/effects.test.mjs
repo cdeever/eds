@@ -170,6 +170,9 @@ test("with one color the accent effects are that color", () => {
 // the firmware works in single precision and this in double.
 const FIRMWARE = {
   morph9000: [118, 36, 121],
+  // Red at 0.8 and speed 0.9, on a strip of eighteen: going out, and coming back.
+  scanner375: [[0,0,0],[0,0,0],[0,0,0],[3,0,0],[14,0,0],[37,0,0],[73,0,0],[114,0,0],[168,0,0],[168,0,0],[14,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
+  scanner1000: [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[14,0,0],[168,0,0],[168,0,0],[114,0,0],[73,0,0],[37,0,0],[14,0,0],[3,0,0]],
   chase875: [[33,40,198],[49,39,183],[77,38,158],[113,36,126],[151,34,91],[187,32,59],[214,31,35],[228,30,22],[228,30,22],[214,31,35],[187,32,59],[151,34,91],[113,36,126],[77,38,158],[49,39,183],[33,40,198],[30,40,200],[30,40,200],[37,46,196],[77,80,175],[138,133,143],[198,184,112],[235,216,93],[235,216,93],[198,184,112],[138,133,143],[77,80,175],[37,46,196],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200],[30,40,200]],
 };
 
@@ -179,6 +182,11 @@ test("the port lands on the firmware's pixels", () => {
   close(render(accented(), 9000, STRIP)[0], FIRMWARE.morph9000, "morph at 9 s");
   const chase = render(accented({ effect: "chase" }), 875, STRIP);
   chase.forEach((p, i) => close(p, FIRMWARE.chase875[i], `chase pixel ${i}`));
+  const eye = validate({ effect: "scanner", speed: 0.9, brightness: 0.8, palette: [{ rgb: [255, 0, 0], weight: 1 }] });
+  assert.equal(eye.effect, "scanner", "scanner is shown as solid");
+  for (const t of [375, 1000]) {
+    render(eye, t, 18).forEach((p, i) => close(p, FIRMWARE[`scanner${t}`][i], `scanner at ${t} ms, pixel ${i}`));
+  }
   // And the sample is of something: patches, not sixty pixels of background.
   assert.ok(FIRMWARE.chase875.filter((p) => far(p, [30, 40, 200]) !== 0).length > 8);
 });

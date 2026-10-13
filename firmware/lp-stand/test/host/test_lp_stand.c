@@ -16,6 +16,8 @@
 #include "event_format.h"
 #include "gamma.h"
 #include "scene.h"
+#include "status.h"
+#include "transition.h"
 
 static int failures = 0;
 static int checks = 0;
@@ -176,16 +178,358 @@ static void test_validate_caps_palette_length(void)
     CHECK(s.palette_len == LP_MAX_COLORS, "palette_len = %zu", s.palette_len);
 }
 
-static void test_default_scene_is_lit(void)
+// ADR-0029: a stand is dark until it is sent a scene.
+static void test_default_scene_is_dark(void)
 {
     lp_scene_t s;
     lp_scene_default(&s);
 
     CHECK(lp_scene_validate(&s), "the default scene is not renderable");
     lp_effects_render(&s, 0, pixels, STRIP);
-    // An unconfigured stand should look deliberate, not broken or dead.
-    CHECK(pixels[0].r > 0, "the default scene renders black");
-    CHECK(pixels[0].r < 255, "the default scene renders at full brightness");
+    for (int i = 0; i < STRIP; i++) {
+        CHECK(pixels[i].r == 0 && pixels[i].g == 0 && pixels[i].b == 0, "pixel %d is lit before any scene", i);
+    }
+}
+
+// --- status ----------------------------------------------------------------
+
+static void test_fault_is_the_first_step_not_reached(void)
+{
+    lp_link_t link = {0};
+    CHECK(lp_fault_of(&link) == LP_FAULT_UNPROVISIONED, "nothing provisioned: %d", lp_fault_of(&link));
+    link.provisioned = true;
+    CHECK(lp_fault_of(&link) == LP_FAULT_NO_WIFI, "no WiFi: %d", lp_fault_of(&link));
+    link.wifi = true;
+    CHECK(lp_fault_of(&link) == LP_FAULT_NO_BROKER, "no broker: %d", lp_fault_of(&link));
+    link.refused = true;
+    CHECK(lp_fault_of(&link) == LP_FAULT_REFUSED, "refused: %d", lp_fault_of(&link));
+    // A refusal heard before the WiFi went is not what is wrong now.
+    link.wifi = false;
+    CHECK(lp_fault_of(&link) == LP_FAULT_NO_WIFI, "refused, then no WiFi: %d", lp_fault_of(&link));
+    link.wifi = true;
+    link.broker = true;
+    CHECK(lp_fault_of(&link) == LP_FAULT_NONE, "connected: %d", lp_fault_of(&link));
+    CHECK(lp_fault_of(NULL) == LP_FAULT_NONE, "NULL is a fault");
+
+    // The numbers are what a person counts, and are written in the README.
+    CHECK(LP_FAULT_UNPROVISIONED == 1 && LP_FAULT_NO_WIFI == 2 && LP_FAULT_NO_BROKER == 3 && LP_FAULT_REFUSED == 4,
+          "the blink counts moved");
+}
+
+static void test_fault_is_not_said_before_its_grace(void)
+{
+    lp_status_t st = {0};
+    CHECK(lp_status_step(&st, LP_FAULT_NO_WIFI, 1000) == LP_FAULT_NONE, "said at once");
+    CHECK(lp_status_step(&st, LP_FAULT_NO_WIFI, 1000 + LP_FAULT_GRACE_MS - 1) == LP_FAULT_NONE, "said early");
+    CHECK(lp_status_step(&st, LP_FAULT_NO_WIFI, 1000 + LP_FAULT_GRACE_MS) == LP_FAULT_NO_WIFI, "not said in time");
+
+    // One fault turning into another is the same trouble, and no new wait.
+    CHECK(lp_status_step(&st, LP_FAULT_NO_BROKER, 1000 + LP_FAULT_GRACE_MS + 5) == LP_FAULT_NO_BROKER,
+          "a change of fault started the wait again");
+
+    // Working, however briefly, ends it; the next trouble waits its own time.
+    CHECK(lp_status_step(&st, LP_FAULT_NONE, 60000) == LP_FAULT_NONE, "a fault with nothing wrong");
+    CHECK(lp_status_step(&st, LP_FAULT_NO_BROKER, 60010) == LP_FAULT_NONE, "said at once the second time");
+    CHECK(lp_status_step(&st, LP_FAULT_NO_BROKER, 60010 + LP_FAULT_GRACE_MS) == LP_FAULT_NO_BROKER, "never said again");
+
+    // The grace is counted across the timestamp wrapping.
+    lp_status_t wrap = {0};
+    lp_status_step(&wrap, LP_FAULT_NO_WIFI, UINT32_MAX - 100);
+    CHECK(lp_status_step(&wrap, LP_FAULT_NO_WIFI, LP_FAULT_GRACE_MS) == LP_FAULT_NO_WIFI, "lost across the wrap");
+    CHECK(lp_status_step(NULL, LP_FAULT_NO_WIFI, 0) == LP_FAULT_NONE, "NULL status");
+}
+
+// Counts the blinks in one cycle the way a person would: dark to lit.
+static int blinks_in_a_cycle(lp_fault_t fault)
+{
+    const uint32_t cycle = (uint32_t)fault * (LP_FAULT_BLINK_ON_MS + LP_FAULT_BLINK_OFF_MS) + LP_FAULT_PAUSE_MS;
+    int count = 0;
+    bool was = false;
+    for (uint32_t t = 0; t < cycle; t += 10) {
+        bool lit = lp_status_lit(fault, t);
+        if (lit && !was) {
+            count++;
+        }
+        was = lit;
+    }
+    return count;
+}
+
+static void test_fault_blinks_its_own_number(void)
+{
+    for (int fault = LP_FAULT_UNPROVISIONED; fault <= LP_FAULT_REFUSED; fault++) {
+        CHECK(blinks_in_a_cycle((lp_fault_t)fault) == fault, "fault %d blinks %d times", fault,
+              blinks_in_a_cycle((lp_fault_t)fault));
+        // The pause after the count is dark, or the count cannot be read.
+        const uint32_t counted = (uint32_t)fault * (LP_FAULT_BLINK_ON_MS + LP_FAULT_BLINK_OFF_MS);
+        for (uint32_t t = counted; t < counted + LP_FAULT_PAUSE_MS; t += 50) {
+            CHECK(!lp_status_lit((lp_fault_t)fault, t), "fault %d is lit in its pause at %u", fault, (unsigned)t);
+        }
+    }
+    CHECK(!lp_status_lit(LP_FAULT_NONE, 0), "no fault blinks");
+}
+
+static void test_fault_is_drawn_on_the_first_led_only(void)
+{
+    lp_scene_t s = two_color();
+    s.effect = LP_EFFECT_SOLID;
+    lp_effects_render(&s, 0, pixels, STRIP);
+    const lp_rgb_t second = pixels[1];
+    const lp_rgb_t first = pixels[0];
+
+    lp_status_overlay(LP_FAULT_NONE, 0, pixels, STRIP);
+    CHECK(pixels[0].r == first.r && pixels[0].g == first.g && pixels[0].b == first.b, "no fault changed the frame");
+
+    lp_status_overlay(LP_FAULT_NO_WIFI, 0, pixels, STRIP);
+    CHECK(pixels[0].r == 255 && pixels[0].g == 0 && pixels[0].b == 0, "the blink is not red");
+    // Off is black, over a lit scene too, or there is nothing to count.
+    lp_status_overlay(LP_FAULT_NO_WIFI, LP_FAULT_BLINK_ON_MS, pixels, STRIP);
+    CHECK(pixels[0].r == 0 && pixels[0].g == 0 && pixels[0].b == 0, "between blinks the LED is lit");
+    for (int i = 1; i < STRIP; i++) {
+        CHECK(pixels[i].r == second.r && pixels[i].g == second.g && pixels[i].b == second.b,
+              "the fault touched pixel %d", i);
+    }
+
+    lp_status_overlay(LP_FAULT_NO_WIFI, 0, NULL, STRIP);
+    lp_status_overlay(LP_FAULT_NO_WIFI, 0, pixels, 0);
+}
+
+// --- scanner ---------------------------------------------------------------
+
+static lp_scene_t scanner(void)
+{
+    lp_scene_t s;
+    memset(&s, 0, sizeof(s));
+    s.effect = LP_EFFECT_SCANNER;
+    s.speed = 0.9f; // a cycle of 1500 ms
+    s.brightness = 1.0f;
+    s.palette[0] = (lp_swatch_t){.rgb = {255, 0, 0}, .weight = 1.0f};
+    s.palette_len = 1;
+    return s;
+}
+
+// Where the eye is: the brightest pixel of a strip of eighteen.
+static int eye_at(const lp_scene_t *s, uint32_t t)
+{
+    lp_effects_render(s, t, pixels, 18);
+    int best = 0;
+    for (int i = 1; i < 18; i++) {
+        if (pixels[i].r > pixels[best].r) {
+            best = i;
+        }
+    }
+    return best;
+}
+
+static void test_scanner_goes_from_end_to_end_and_back(void)
+{
+    lp_scene_t s = scanner();
+    CHECK(strcmp(lp_effect_name(LP_EFFECT_SCANNER), "scanner") == 0, "name = %s", lp_effect_name(LP_EFFECT_SCANNER));
+    CHECK(lp_effect_from_name("scanner") == LP_EFFECT_SCANNER, "scanner is not known by name");
+
+    CHECK(eye_at(&s, 0) == 0, "starts at pixel %d", eye_at(&s, 0));
+    CHECK(eye_at(&s, 750) == 17, "at half a cycle it is at pixel %d", eye_at(&s, 750));
+    CHECK(eye_at(&s, 1499) == 0, "at the end of a cycle it is at pixel %d", eye_at(&s, 1499));
+
+    // Out, and it never goes backward; back, and it never goes forward.
+    int before = 0;
+    for (uint32_t t = 0; t <= 750; t += 10) {
+        int now = eye_at(&s, t);
+        CHECK(now >= before && now - before <= 1, "going out it went from %d to %d at %u ms", before, now, (unsigned)t);
+        before = now;
+    }
+    for (uint32_t t = 750; t < 1500; t += 10) {
+        int now = eye_at(&s, t);
+        CHECK(now <= before && before - now <= 1, "coming back it went from %d to %d at %u ms", before, now, (unsigned)t);
+        before = now;
+    }
+}
+
+static void test_scanner_is_one_eye_with_a_trail_on_a_dark_strip(void)
+{
+    lp_scene_t s = scanner();
+    // A quarter of the way out, moving toward the far end.
+    lp_effects_render(&s, 375, pixels, 18);
+    int eye = eye_at(&s, 375);
+    CHECK(pixels[eye].r > 200, "the eye is only %d", pixels[eye].r);
+    CHECK(pixels[eye].g == 0 && pixels[eye].b == 0, "the eye is not the scene's color");
+
+    int lit = 0, behind = 0, ahead = 0;
+    for (int i = 0; i < 18; i++) {
+        lit += pixels[i].r > 0;
+        behind += i < eye && pixels[i].r > 0;
+        ahead += i > eye && pixels[i].r > 0;
+    }
+    CHECK(lit >= 4 && lit <= 10, "%d of 18 pixels are lit", lit);
+    CHECK(behind > ahead, "%d lit behind the eye and %d ahead: no trail", behind, ahead);
+    // The trail fades away from the eye.
+    for (int i = 1; i <= eye; i++) {
+        CHECK(pixels[i].r >= pixels[i - 1].r, "the trail brightens away from the eye at pixel %d", i);
+    }
+    CHECK(pixels[17].r == 0, "the far end is lit before the eye gets there");
+}
+
+static void test_scanner_honors_brightness_and_speed(void)
+{
+    lp_scene_t s = scanner();
+    s.brightness = 0.0f;
+    lp_effects_render(&s, 375, pixels, 18);
+    for (int i = 0; i < 18; i++) {
+        CHECK(pixels[i].r == 0, "pixel %d is lit at zero brightness", i);
+    }
+    s.brightness = 0.5f;
+    CHECK(pixels[eye_at(&s, 375)].r > 100 && pixels[eye_at(&s, 375)].r < 140, "half brightness is %d",
+          pixels[eye_at(&s, 375)].r);
+
+    // Slower, the eye has not got as far in the same time.
+    lp_scene_t slow = scanner();
+    slow.speed = 0.0f;
+    s.brightness = 1.0f;
+    CHECK(eye_at(&slow, 375) < eye_at(&s, 375), "speed changed nothing");
+}
+
+// --- transition ------------------------------------------------------------
+
+static lp_scene_t steady(float brightness)
+{
+    lp_scene_t s = two_color();
+    s.effect = LP_EFFECT_SOLID;
+    s.brightness = brightness;
+    return s;
+}
+
+static int lit_pixels(void)
+{
+    int n = 0;
+    for (int i = 0; i < STRIP; i++) {
+        n += pixels[i].r || pixels[i].g || pixels[i].b;
+    }
+    return n;
+}
+
+static void test_coming_on_opens_from_the_middle(void)
+{
+    lp_transition_t tr = {0};
+    lp_scene_t dark = steady(0.0f), lit = steady(1.0f);
+
+    lp_transition_render(&tr, &dark, 0, pixels, STRIP);
+    CHECK(lit_pixels() == 0, "a dark scene lit %d pixels", lit_pixels());
+
+    // The first frame of the lit scene is still dark: it has only begun.
+    lp_transition_render(&tr, &lit, 1000, pixels, STRIP);
+    CHECK(lit_pixels() == 0, "came on at once: %d pixels", lit_pixels());
+
+    int before = 0;
+    for (uint32_t t = 100; t < LP_TRANSITION_ON_MS; t += 100) {
+        lp_transition_render(&tr, &lit, 1000 + t, pixels, STRIP);
+        int now = lit_pixels();
+        CHECK(now >= before, "the light shrank while coming on, at %u ms", (unsigned)t);
+        before = now;
+        // The middle is never darker than the ends, and the two halves match.
+        CHECK(pixels[STRIP / 2].r >= pixels[0].r, "an end led the middle at %u ms", (unsigned)t);
+        CHECK(pixels[0].r == pixels[STRIP - 1].r, "the halves differ at %u ms", (unsigned)t);
+    }
+    CHECK(before > 0, "nothing lit by the end");
+
+    // Done: exactly the scene, as if nothing had been drawn over it.
+    lp_transition_render(&tr, &lit, 1000 + LP_TRANSITION_ON_MS, pixels, STRIP);
+    lp_rgb_t plain[STRIP];
+    lp_effects_render(&lit, 0, plain, STRIP);
+    CHECK(memcmp(pixels, plain, sizeof(plain)) == 0, "the scene is not whole after coming on");
+}
+
+static void test_going_off_closes_the_scene_that_was_there(void)
+{
+    lp_transition_t tr = {0};
+    lp_scene_t dark = steady(0.0f), lit = steady(1.0f);
+
+    lp_transition_render(&tr, &lit, 0, pixels, STRIP);
+    CHECK(lit_pixels() == STRIP, "the first scene ever given was not shown as it is");
+
+    lp_transition_render(&tr, &dark, 5000, pixels, STRIP);
+    CHECK(lit_pixels() == STRIP, "went dark at once: %d pixels", lit_pixels());
+
+    int before = STRIP;
+    for (uint32_t t = 100; t < LP_TRANSITION_OFF_MS; t += 100) {
+        lp_transition_render(&tr, &dark, 5000 + t, pixels, STRIP);
+        int now = lit_pixels();
+        CHECK(now <= before, "the light grew while going off, at %u ms", (unsigned)t);
+        before = now;
+        CHECK(pixels[STRIP / 2].r >= pixels[0].r, "the middle went before an end at %u ms", (unsigned)t);
+    }
+    lp_transition_render(&tr, &dark, 5000 + LP_TRANSITION_OFF_MS, pixels, STRIP);
+    CHECK(lit_pixels() == 0, "%d pixels still lit after going off", lit_pixels());
+}
+
+// A dim scene opens behind an edge brighter than itself, and settles to
+// what was sent.
+static void test_a_dim_scene_comes_on_behind_a_bright_edge(void)
+{
+    lp_transition_t tr = {0};
+    lp_scene_t dark = steady(0.0f), dim = steady(0.15f);
+    lp_rgb_t plain[STRIP];
+    lp_effects_render(&dim, 0, plain, STRIP);
+
+    lp_transition_render(&tr, &dark, 0, pixels, STRIP);
+    int brightest = 0;
+    for (uint32_t t = 0; t < LP_TRANSITION_ON_MS; t += 20) {
+        lp_transition_render(&tr, &dim, 100 + t, pixels, STRIP);
+        for (int i = 0; i < STRIP; i++) {
+            brightest = pixels[i].r > brightest ? pixels[i].r : brightest;
+        }
+    }
+    CHECK(brightest > 3 * plain[0].r, "the edge peaked at %d over a scene of %d", brightest, plain[0].r);
+    CHECK(brightest < 255, "the edge is at full: %d", brightest);
+
+    lp_transition_render(&tr, &dim, 100 + LP_TRANSITION_ON_MS, pixels, STRIP);
+    CHECK(memcmp(pixels, plain, sizeof(plain)) == 0, "the dim scene is not as sent after coming on");
+}
+
+static void test_one_lit_scene_to_another_is_not_a_transition(void)
+{
+    lp_transition_t tr = {0};
+    lp_scene_t dim = steady(0.15f), full = steady(1.0f);
+    lp_transition_render(&tr, &dim, 0, pixels, STRIP);
+    lp_transition_render(&tr, &full, 20, pixels, STRIP);
+    lp_rgb_t plain[STRIP];
+    lp_effects_render(&full, 20, plain, STRIP);
+    CHECK(memcmp(pixels, plain, sizeof(plain)) == 0, "a change between lit scenes was drawn over");
+    CHECK(tr.kind == LP_TRANSITION_NONE, "a transition began: %d", (int)tr.kind);
+}
+
+static void test_a_transition_overtaken_starts_the_other(void)
+{
+    lp_transition_t tr = {0};
+    lp_scene_t dark = steady(0.0f), lit = steady(1.0f);
+    lp_transition_render(&tr, &lit, 0, pixels, STRIP);
+    lp_transition_render(&tr, &dark, 100, pixels, STRIP);
+    // Switched on again halfway through going off.
+    lp_transition_render(&tr, &lit, 100 + LP_TRANSITION_OFF_MS / 2, pixels, STRIP);
+    CHECK(tr.kind == LP_TRANSITION_ON, "kind = %d", (int)tr.kind);
+    lp_transition_render(&tr, &lit, 100 + LP_TRANSITION_OFF_MS / 2 + LP_TRANSITION_ON_MS, pixels, STRIP);
+    CHECK(lit_pixels() == STRIP && tr.kind == LP_TRANSITION_NONE, "did not finish coming on");
+
+    // Across the timestamp wrapping.
+    lp_transition_t wrap = {0};
+    lp_transition_render(&wrap, &dark, UINT32_MAX - 2000, pixels, STRIP);
+    lp_transition_render(&wrap, &lit, UINT32_MAX - 500, pixels, STRIP);
+    lp_transition_render(&wrap, &lit, LP_TRANSITION_ON_MS, pixels, STRIP);
+    CHECK(lit_pixels() == STRIP && wrap.kind == LP_TRANSITION_NONE, "lost across the wrap");
+}
+
+static void test_transition_is_defensive(void)
+{
+    lp_scene_t lit = steady(1.0f);
+    lp_transition_t tr = {0};
+    lp_transition_render(NULL, &lit, 0, pixels, STRIP);
+    CHECK(lit_pixels() == STRIP, "no state: the scene was not drawn");
+    lp_transition_render(&tr, NULL, 0, pixels, STRIP);
+    lp_transition_render(&tr, &lit, 0, NULL, STRIP);
+    lp_transition_render(&tr, &lit, 0, pixels, 0);
+    CHECK(lp_transition_level(LP_TRANSITION_NONE, 0, 0.5f) == 1.0f, "no transition dims");
+    CHECK(lp_transition_level(LP_TRANSITION_ON, 0, 0.5f) == 0.0f, "on begins lit");
+    CHECK(lp_transition_level(LP_TRANSITION_OFF, 0, 0.0f) == 1.0f, "off begins dimmed");
+    CHECK(!lp_scene_lit(NULL), "NULL is lit");
 }
 
 // --- effects ---------------------------------------------------------------
@@ -864,7 +1208,20 @@ int main(void)
         {"validate rejects unrenderable scenes", test_validate_rejects_unrenderable_scenes},
         {"validate rejects NaN", test_validate_rejects_nan},
         {"validate caps palette length", test_validate_caps_palette_length},
-        {"default scene is lit", test_default_scene_is_lit},
+        {"default scene is dark", test_default_scene_is_dark},
+        {"fault is the first step not reached", test_fault_is_the_first_step_not_reached},
+        {"fault is not said before its grace", test_fault_is_not_said_before_its_grace},
+        {"fault blinks its own number", test_fault_blinks_its_own_number},
+        {"fault is drawn on the first LED only", test_fault_is_drawn_on_the_first_led_only},
+        {"scanner goes from end to end and back", test_scanner_goes_from_end_to_end_and_back},
+        {"scanner is one eye with a trail on a dark strip", test_scanner_is_one_eye_with_a_trail_on_a_dark_strip},
+        {"scanner honors brightness and speed", test_scanner_honors_brightness_and_speed},
+        {"coming on opens from the middle", test_coming_on_opens_from_the_middle},
+        {"going off closes the scene that was there", test_going_off_closes_the_scene_that_was_there},
+        {"a dim scene comes on behind a bright edge", test_a_dim_scene_comes_on_behind_a_bright_edge},
+        {"one lit scene to another is not a transition", test_one_lit_scene_to_another_is_not_a_transition},
+        {"a transition overtaken starts the other", test_a_transition_overtaken_starts_the_other},
+        {"transition is defensive", test_transition_is_defensive},
         {"solid is uniform and scaled", test_solid_is_uniform_and_scaled},
         {"zero brightness is black", test_zero_brightness_is_black},
         {"breathe never goes fully dark", test_breathe_never_goes_fully_dark},

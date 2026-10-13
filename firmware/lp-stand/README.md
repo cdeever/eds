@@ -14,7 +14,7 @@ wrapper over `idf.py`.
 
 | | |
 |---|---|
-| `scene.c`, `effects.c`, `gamma.c`, `event_format.c` | 31 tests, 837 checks, `-Wall -Wextra -Werror` |
+| `scene.c`, `effects.c`, `status.c`, `transition.c`, `gamma.c`, `event_format.c` | 59 tests, 6052 checks, `-Wall -Wextra -Werror` |
 | `scene_json.c`, `led_strip_out.c`, `wifi.c`, `mqtt.c`, `event_log.c`, `lp_credentials.c`, `main.c` | built with ESP-IDF 6.1 and running on an ESP32-D0WD-V3: joins the IoT network, verifies the broker over TLS, takes its retained scene and reports its events. No host tests |
 
 The split is deliberate rather than incidental. Scene validation, effect
@@ -71,7 +71,7 @@ retained scene moments after subscribing is the normal case, not an edge one.
 
 ### Effects
 
-`solid`, `breathe`, `sweep`, `morph`, `chase` — deliberately few, because
+`solid`, `breathe`, `sweep`, `morph`, `chase`, `scanner` — deliberately few, because
 adding one means reflashing every stand.
 
 `sweep` lays the palette out in proportion to the weights lightd sent, so a
@@ -83,6 +83,12 @@ dominant one. `morph` turns the whole strip from the dominant color to each
 accent and back, giving each a turn that is half by its weight and half equal.
 `chase` keeps the dominant color as the ground and sends each accent around
 over it as a soft-edged patch, alternate ones in opposite directions.
+
+`scanner` is one point of the dominant color going from end to end and back
+in one cycle, with a fading tail, on a dark strip (ADR-0030). The eye is a
+fifth of the strip wide, three or four LEDs of eighteen, for the same reason
+`chase` has a least width; `SCANNER_EYE`, `SCANNER_TRAIL` and
+`SCANNER_TRAIL_STEP` in `effects.c` are its shape.
 
 The strip is 18 LEDs (`LP_LED_COUNT`), the number that fit across the front
 of the stand. `chase` is sized for it: the smallest patch is about two LEDs
@@ -116,12 +122,46 @@ Everything below is a deliberate choice, not an accident:
 - **A scene with a different contract version is refused**, not guessed at.
 - **WiFi never gives up.** An unattended stand that stops retrying is one that
   needs a person to walk over and power-cycle it.
-- **The strip lights before the network exists** — a dim warm white — so an
-  unconfigured or unreachable stand looks deliberate rather than broken.
+- **The strip is dark until a scene arrives**, and a stand that cannot get
+  that far says so: see [Blink codes](#blink-codes).
 - **A frame is skipped rather than stalled** if the render task cannot take the
   scene lock. A skipped frame is invisible; a stalled strip is not.
 - **Last will on `status`**, so the room learns a stand died rather than merely
   went quiet.
+
+## Coming on and going off
+
+Sent a lit scene while dark, the strip opens from its middle to its ends in
+1.4 seconds, behind an edge at least 0.6 bright; sent a dark one while lit,
+it closes to the middle in 1.1 and goes out (ADR-0029). Nothing asks for
+this: it is what the stand does between a scene with no brightness and one
+with some. `LP_TRANSITION_ON_MS`, `LP_TRANSITION_OFF_MS` and
+`LP_TRANSITION_FLARE` in `main/app/transition/transition.h` are the three
+numbers to change if it should feel different. Host tested.
+
+## Blink codes
+
+A stand that has been unable to reach the broker for twenty seconds blinks
+its **first LED red**
+([ADR-0029](../../docs/content/docs/architecture/decisions/0029-the-stand-starts-dark-and-blinks-what-is-wrong.md)).
+Count the blinks between the two-second pauses: the number is the step the
+stand did not get past, so more blinks is nearer to working.
+
+| Blinks | What is wrong | What to do |
+|---|---|---|
+| 1 | Nothing provisioned: the `creds` partition is empty | `make provision` |
+| 2 | No WiFi: not on the network, or no address | is the access point up and in range? If it is, the key is wrong: `make provision` |
+| 3 | No broker: on the network, and the broker is not answering | is the broker up, and reachable from the IoT segment? A CA that does not match the broker's certificate looks like this too |
+| 4 | Refused: the broker answered and would not take the login | the account's password was replaced: `make provision` |
+| none, and dark | Connected and sent nothing to show, or no power | the console says which: the stand's presence, and the scene it was sent |
+
+The rest of the strip is left as it was: a stand that loses its network
+during a record goes on showing the record, with the first LED blinking. The
+blinking stops when the broker is back. `make monitor` says the same thing
+in words, and why.
+
+The logic is `main/app/status`, and is host tested. The counts are not to be
+renumbered: people learn them.
 
 ## Topics
 

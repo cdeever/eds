@@ -42,3 +42,43 @@ func TestNearlyEverythingHasNoLook(t *testing.T) {
 		}
 	}
 }
+
+// ADR-0030: a piece of music can have a look, whoever plays it.
+func TestTheKnightRiderThemeHasTheScanner(t *testing.T) {
+	for _, track := range []contract.Track{
+		{Artist: "Stu Phillips", Title: "Knight Rider"},
+		{Artist: "Stu Phillips", Title: "Knight Rider Theme"},
+		{Artist: "Stu Phillips & Glen A. Larson", Album: "Knight Rider (Original Television Soundtrack)", Title: "Knight Rider (Main Title)"},
+		{Artist: "TV Themes", Album: "Television's Greatest Hits", Title: "Theme from Knight Rider"},
+		{Artist: "Stu Phillips", Title: "Knight Rider - Main Theme"},
+		{Artist: "Hollywood Studio Orchestra", Title: "KNIGHT RIDER: TV THEME"},
+		{Artist: "Stu Phillips", Title: "Knight Rider Theme (From \"Knight Rider\") [Remastered]"},
+		// On a record that has a look of its own, the piece's comes first.
+		{Artist: "Pink Floyd", Album: "The Dark Side of the Moon", Title: "Knight Rider Theme"},
+	} {
+		if got := For(track); got != Scanner {
+			t.Errorf("%q by %q: look %q", track.Title, track.Artist, got)
+		}
+	}
+	if !AnySource(Scanner) {
+		t.Error("the scanner is not shown from any source")
+	}
+	if AnySource(Spectrum) || AnySource("") {
+		t.Error("a look that is an album's is shown from any source")
+	}
+}
+
+func TestWhatOnlyMentionsKnightRiderHasNoLook(t *testing.T) {
+	for _, track := range []contract.Track{
+		{Artist: "Stu Phillips", Album: "Knight Rider", Title: "KITT Jumps"}, // the rest of the soundtrack
+		{Artist: "Someone", Title: "Knight Rider's Lament"},
+		{Artist: "Someone", Title: "My Knight Rider"},
+		{Artist: "Someone", Title: "Knight"},
+		{Artist: "Someone", Title: "Theme"},
+		{Artist: "Someone", Title: "(Knight Rider)"},
+	} {
+		if got := For(track); got != "" {
+			t.Errorf("%q: look %q, want none", track.Title, got)
+		}
+	}
+}

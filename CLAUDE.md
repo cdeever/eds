@@ -287,7 +287,11 @@ A few albums have a look of their own (ADR-0019). `nowplayd` holds the list
 it belongs to; `lightd` holds what the name looks like
 (`internal/scene/looks.go`) and sends it as an ordinary scene. Add an album on
 the music side and a preset on the light side; never an album name in lightd,
-never a color in nowplayd.
+never a color in nowplayd. One look is a single track's and is shown from
+any source, a dark one included (ADR-0030): the theme from *Knight Rider*,
+`scanner`, matched on its title alone, drawn by the firmware's `scanner`
+effect in red. It is the one exception to the stand being for records;
+another is a decision, not a line added to `looks.AnySource`.
 
 **Playback can be controlled, by one route** (ADR-0020). A controller
 publishes `{"v":1,"command":"next"}` to `nowplaying/command`; `nowplayd`
@@ -314,7 +318,7 @@ way `lightd` is told there is no cover. **It answers dark, and dim only
 while something is switched on** (ADR-0028): before emptying the topics
 `nowplayd` publishes a look that names no cover, `standby` when any
 `NP_SOURCE_POWER` beacon is on and none otherwise, and `lightd` draws
-`standby` as `scene.Idle` (the firmware's own starting scene) and anything
+`standby` as `scene.Idle` and anything
 else as `scene.Dark`. `lightd` still knows no beacon; do not teach it one.
 A cover merely not sent
 still leaves the room as it was (ADR-0016); do not confuse the two. A source
@@ -395,11 +399,20 @@ broker into the tenant is an ADR, not a config change.
   than lighting the room wrong quietly. Full table in `services/lightd/README.md`.
 - **Firmware fails soft, deliberately.** A malformed scene is ignored and the
   previous one keeps rendering; an unknown effect name falls back to `solid`;
-  WiFi never gives up retrying; the strip lights dim warm white before the
-  network exists; a frame is skipped rather than stalled on lock contention.
-  Preserve these when editing — each is a choice against a dark stand.
+  WiFi never gives up retrying; a frame is skipped rather than stalled on
+  lock contention. Preserve these when editing — each is a choice against a
+  stand that needs a person.
+- **The stand is dark until it is sent a scene, and blinks when it cannot
+  be** (ADR-0029): after twenty seconds without the broker its first LED
+  blinks red, 1 for unprovisioned, 2 for no WiFi, 3 for no broker, 4 for a
+  refused login. The logic is `app/status/status.c`, host tested. The counts
+  are in the README for people to learn; do not renumber them, and do not
+  light more than the one LED. Between dark and lit the strip opens from the
+  middle and closes to it (`app/transition`); that is the stand's own and is
+  never sent, and the console does not draw it.
 - **Host tests build with `-Wall -Wextra -Werror`.** Only `scene.c`,
-  `effects.c`, `gamma.c` and `event_format.c` are covered; the ESP-IDF glue
+  `effects.c`, `status.c`, `transition.c`, `gamma.c` and `event_format.c`
+  are covered; the ESP-IDF glue
   (`scene_json.c`, `led_strip_out.c`, `wifi.c`, `mqtt.c`, `event_log.c`,
   `lp_credentials.c`, `main.c`) builds with IDF 6.1 and runs on one board but
   has no host tests. Keep hardware-independent logic out of the

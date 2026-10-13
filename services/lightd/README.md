@@ -27,8 +27,10 @@ cover, retained, and lightd follows it.
   name of a look, and the hash of the cover it belongs to
   ([ADR-0019](../../docs/content/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own.md)).
   A cover with a look lightd knows is sent as that look's preset scene and
-  the extractor is not asked. The one look is `spectrum`: six colors, red to
-  violet, in equal shares, moved by `LIGHTD_SPECTRUM_EFFECT`. The presets are
+  the extractor is not asked. The looks are `spectrum`: six colors, red to
+  violet, in equal shares, moved by `LIGHTD_SPECTRUM_EFFECT`; and `scanner`:
+  one red point going from end to end and back, at a speed and brightness of
+  its own (ADR-0030). The presets are
   in `internal/scene/looks.go`. lightd does not learn which album it is for.
 - lightd still receives **image bytes and nothing else**. It does not learn
   what the image is a cover of; the topic is a setting, not knowledge.
@@ -44,7 +46,7 @@ cover, retained, and lightd follows it.
   ([ADR-0028](../../docs/content/docs/architecture/decisions/0028-the-stand-is-for-records.md)).
   A look that names no cover (`"art": ""`) on the look topic is the look of
   there being none. `standby` is the idle scene: solid, warm white, at 0.15,
-  the scene the firmware starts with. Any other name, or none, is dark. The
+  dim. Any other name, or none, is dark. The
   look changing while the topic is empty changes the stand. lightd is not
   told what is waiting, or for what.
 - An emptied retained topic is not delivered to a late subscriber, so lightd
@@ -116,7 +118,7 @@ workload or a Pi. A `LIGHTD_*` variable, when set, wins.
 | `LIGHTD_MQTT_USERNAME` / `_PASSWORD` | `$MQTT_USERNAME` / `$MQTT_PASSWORD` | broker credentials |
 | `LIGHTD_MQTT_CA_FILE` | `$MQTT_CA_FILE` | CA for the broker's certificate |
 | `LIGHTD_MQTT_INSECURE` | `false` | bring-up only; never with a real cert |
-| `LIGHTD_EFFECT` | `breathe` | default effect: `solid`, `breathe`, `sweep`, `morph` or `chase`. Not checked here: the stand shows a name it does not know as `solid` |
+| `LIGHTD_EFFECT` | `breathe` | default effect: `solid`, `breathe`, `sweep`, `morph`, `chase` or `scanner`. Not checked here: the stand shows a name it does not know as `solid` |
 | `LIGHTD_SPEED` / `LIGHTD_BRIGHTNESS` | `0.4` / `0.8` | |
 | `LIGHTD_SWATCHES` | `6` | swatches requested from palette |
 | `LIGHTD_MIN_CHROMA` | `0.05` | below this a swatch is a gray |
