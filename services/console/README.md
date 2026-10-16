@@ -42,6 +42,13 @@ page, and that is a decision to record first.
   of the firmware's effects. It is a picture of the scene, not a measurement
   of the LEDs. Whether the stand took the scene is its own `state` and
   presence, which the page also shows.
+- **The header** has a line for each kind of part: services, sources (each
+  source's driver; the turntable's is "Song detector", because it says the
+  sound card is heard, not that the turntable is on), devices, and power
+  switches. Green is a part heard from live in the last ninety seconds;
+  gray is one only claimed by a stored `online`, or not heard lately; red
+  is one that said `offline`
+  ([ADR-0034](../../docs/content/docs/architecture/decisions/0034-presence-is-heard-not-remembered.md)).
 - **A beacon** is a device on a switch, lit on the page while the switch is
   on ([ADR-0023](../../docs/content/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand.md)).
   Unlit is not a fault: it is the turntable being off.

@@ -128,8 +128,9 @@ a program, `eds-recognize` in `images/agent/files`, which is Shazam's through
 an unpublished endpoint and may stop working any day. Keep every trace of
 Shazam in that file and its pinned requirements; the driver knows only "a WAV
 in, a name out". `make -C deploy/relay turntable DEVICE=…` names the input.
-**On, on the agent Pi, beside iTunes and Spotify** (CHG-0013, CHG-0022): the
-Pi runs `itunes,spotify,turntable`.
+**On, on the agent Pi, beside iTunes** (CHG-0013): the Pi runs
+`itunes,turntable`. Spotify is off again, for the calls it makes (CHG-0024);
+`make -C deploy/relay drivers DRIVERS=itunes,spotify,turntable` undoes it.
 
 **The record on the turntable is named by its owner's collection** (ADR-0022).
 For sources in `NP_COLLECTION_SOURCES`, nowplayd asks the owner's Discogs
@@ -367,6 +368,15 @@ dashboard that reads them is `infra/deevnet-tenant-eds/dashboards/`. The agent
 Pi is a registered device too (`np-relay`, ADR-0017) and reports the same way:
 in `npagent`, a log line with an `event` attribute is also published there.
 Workloads (`lightd`, `nowplayd`) are not devices and cannot use this route.
+
+**Presence is heard, not remembered** (ADR-0034). Everything that publishes
+a `…/status` topic says `online` again, retained, every thirty seconds; a
+reader believes an online for ninety seconds after hearing it **live**. A
+stored one (`Retained()` on delivery) is only a claim: the broker keeps it
+across restarts after its sender is gone, which is how a stand unplugged
+during a broker outage showed green for days. The console draws a claim
+gray; `nowplayd` keeps one provisionally and lets it lapse. A new publisher
+of presence repeats it, or readers will gray it out.
 
 **Retention on `scene` is load-bearing, not an optimization.** A stand that
 reboots pulls the current scene down instead of sitting dark mid-album. There is

@@ -410,6 +410,9 @@ func run(ctx context.Context) error {
 		// it automatically; the will covers the case where it cannot speak.
 		cfg.WillTopic = contract.SourceStatusTopic(common.Prefix, j.source)
 		cfg.OnConnect = sink.announce
+		// Said again every thirty seconds, whichever word it last was
+		// (ADR-0034): a stored online is believed only for ninety.
+		cfg.OnRepeat = sink.announce
 
 		// A driver that takes commands listens for its own, and for nothing
 		// else. Optional, because reporting what is playing must not wait on

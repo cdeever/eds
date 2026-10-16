@@ -48,6 +48,9 @@ type MQTT struct {
 	prefix  string
 	timeout time.Duration
 
+	stop     chan struct{}
+	stopOnce sync.Once
+
 	mu         sync.Mutex
 	coverTopic string
 	covers     chan []byte
@@ -67,6 +70,11 @@ func StatusTopic(prefix string) string {
 	return prefix + "/lightd/status"
 }
 
+// PresenceEvery is how often lightd says again that it is online (ADR-0034).
+// A retained online can outlive a dead daemon when the broker is down as it
+// goes; a reader believes one only for ninety seconds after hearing it.
+const PresenceEvery = 30 * time.Second
+
 // CoverTopic is where covers arrive, when lightd is told to listen for them.
 // The name is relative to the prefix, like every topic the tenant declares,
 // because the broker confines an account to its tenant's own tree.
@@ -84,7 +92,7 @@ func Connect(cfg Config) (*MQTT, error) {
 	}
 
 	status := StatusTopic(cfg.TopicPrefix)
-	m := &MQTT{prefix: cfg.TopicPrefix, timeout: cfg.Timeout}
+	m := &MQTT{prefix: cfg.TopicPrefix, timeout: cfg.Timeout, stop: make(chan struct{})}
 
 	opts := mqtt.NewClientOptions().
 		AddBroker(cfg.URL).
@@ -131,7 +139,25 @@ func Connect(cfg Config) (*MQTT, error) {
 	}
 
 	m.client = client
+	go m.repeatPresence(status, PresenceEvery)
 	return m, nil
+}
+
+// repeatPresence says online again every interval while connected, until
+// Close. QoS 0: a lost repeat is followed by another.
+func (m *MQTT) repeatPresence(status string, every time.Duration) {
+	tick := time.NewTicker(every)
+	defer tick.Stop()
+	for {
+		select {
+		case <-m.stop:
+			return
+		case <-tick.C:
+			if m.client.IsConnected() {
+				m.client.Publish(status, 0, true, "online")
+			}
+		}
+	}
 }
 
 // SubscribeCovers starts delivering images published to the named topic,
@@ -312,6 +338,9 @@ func (m *MQTT) PublishScene(standID string, payload []byte) error {
 
 // Close says goodbye properly, so the will is not fired for an orderly exit.
 func (m *MQTT) Close() {
+	if m.stop != nil {
+		m.stopOnce.Do(func() { close(m.stop) })
+	}
 	if m.client != nil && m.client.IsConnected() {
 		token := m.client.Publish(StatusTopic(m.prefix), 1, true, "offline")
 		token.WaitTimeout(m.timeout)

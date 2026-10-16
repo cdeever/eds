@@ -38,8 +38,17 @@ type Config struct {
 	// program whose last will has just fired uses it to say what is true now.
 	OnConnect func()
 
+	// PresenceEvery is how often the status topics are said again; zero
+	// means DefaultPresenceEvery.
+	PresenceEvery time.Duration
+
 	Timeout time.Duration
 }
+
+// DefaultPresenceEvery is how often presence is said again (ADR-0034). A
+// retained online can outlive its program when the broker is down as it
+// goes, so a reader believes one only for ninety seconds after hearing it.
+const DefaultPresenceEvery = 30 * time.Second
 
 // Message is one delivery from a subscription.
 type Message struct {
@@ -184,7 +193,33 @@ func Connect(cfg Config, topics []string, handle func(Message)) (*Bus, error) {
 		b.Close()
 		return nil, fmt.Errorf("bus: timed out subscribing on %s", cfg.URL)
 	}
+	go b.repeatPresence()
 	return b, nil
+}
+
+// repeatPresence says every status topic's "online" again every
+// PresenceEvery while connected, until Close. QoS 0: a lost repeat is
+// followed by another.
+func (b *Bus) repeatPresence() {
+	every := b.cfg.PresenceEvery
+	if every <= 0 {
+		every = DefaultPresenceEvery
+	}
+	tick := time.NewTicker(every)
+	defer tick.Stop()
+	for {
+		select {
+		case <-b.done:
+			return
+		case <-tick.C:
+			if !b.client.IsConnected() {
+				continue
+			}
+			for _, topic := range b.cfg.StatusTopics {
+				b.client.Publish(topic, 0, true, "online")
+			}
+		}
+	}
 }
 
 func buildTLS(cfg Config) (*tls.Config, error) {

@@ -455,3 +455,76 @@ func TestSettlingDecidesNothingWhenASourceAlreadyHas(t *testing.T) {
 		t.Fatalf("decisions = %+v", got)
 	}
 }
+
+// ADR-0034: an online that is not said again lapses. A broker can keep a
+// driver's stored online long after the driver has gone.
+func TestASourcesPresenceLapsesUnrepeated(t *testing.T) {
+	b := newBench()
+	b.hub.PresenceLapse = 90 * time.Second
+	b.status("itunes", "online")
+	b.state("itunes", "One", nil, contract.Playing)
+	if got := b.take(); len(got) == 0 || title(got[len(got)-1]) != "One" {
+		t.Fatalf("playing: decisions = %+v", got)
+	}
+
+	b.elapse()
+	got := b.take()
+	if len(got) != 1 || got[0].Winner != nil {
+		t.Fatalf("lapsed: decisions = %+v", got)
+	}
+}
+
+func TestARepeatedPresenceDoesNotLapse(t *testing.T) {
+	b := newBench()
+	b.hub.PresenceLapse = 90 * time.Second
+	b.status("itunes", "online")
+	b.state("itunes", "One", nil, contract.Playing)
+	b.status("itunes", "online") // thirty seconds later
+	b.take()
+	if len(b.timers) != 2 {
+		t.Fatalf("timers = %d, want one for each online", len(b.timers))
+	}
+
+	b.timers[0]() // ninety seconds after the first, sixty after the repeat
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("lapsed though repeated: decisions = %+v", got)
+	}
+	b.timers[1]() // ninety seconds after the repeat
+	if got := b.take(); len(got) != 1 || got[0].Winner != nil {
+		t.Fatalf("lapsed: decisions = %+v", got)
+	}
+}
+
+func TestOfflineCancelsALapse(t *testing.T) {
+	b := newBench()
+	b.hub.PresenceLapse = 90 * time.Second
+	b.status("itunes", "online")
+	b.status("itunes", "offline")
+	b.status("itunes", "online")
+	b.state("itunes", "One", nil, contract.Playing)
+	b.take()
+
+	b.timers[0]() // the first online's, overtaken
+	if got := b.take(); len(got) != 0 {
+		t.Fatalf("an overtaken lapse acted: decisions = %+v", got)
+	}
+}
+
+// A beacon's on that lapses is unknown, not off: the source is arbitrated
+// as one without a beacon (ADR-0023), and the room is told nothing is on.
+func TestABeaconsOnLapsesToUnknown(t *testing.T) {
+	b, _ := idleBench()
+	b.hub.PresenceLapse = 90 * time.Second
+	b.state("itunes", "One", nil, contract.Paused)
+	b.elapse()
+	b.take()
+
+	b.hub.Power("turntable", true)
+	if got := b.take(); len(got) != 1 || !got[0].On {
+		t.Fatalf("switched on: decisions = %+v", got)
+	}
+	b.elapse()
+	if got := b.take(); len(got) != 1 || got[0].On {
+		t.Fatalf("lapsed: decisions = %+v", got)
+	}
+}

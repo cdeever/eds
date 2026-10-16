@@ -162,6 +162,7 @@ static void log_task(void *arg)
 
     static char line[LP_EVENT_LINE_LEN];
     TickType_t last_health = xTaskGetTickCount();
+    TickType_t last_presence = xTaskGetTickCount();
 
     for (;;) {
         if (!connected) {
@@ -172,6 +173,13 @@ static void log_task(void *arg)
         if (xTaskGetTickCount() - last_health >= pdMS_TO_TICKS(LP_HEALTH_INTERVAL_MS)) {
             last_health = xTaskGetTickCount();
             log_health();
+        }
+
+        // QoS 0: a repeat that is lost is followed by another in thirty
+        // seconds, and nothing should queue up behind one.
+        if (xTaskGetTickCount() - last_presence >= pdMS_TO_TICKS(LP_PRESENCE_INTERVAL_MS)) {
+            last_presence = xTaskGetTickCount();
+            esp_mqtt_client_publish(client, LP_TOPIC_STATUS, LP_STATUS_ONLINE, 0, 0, 1);
         }
 
         if (!lp_event_log_receive(line, sizeof(line), pdMS_TO_TICKS(250))) {

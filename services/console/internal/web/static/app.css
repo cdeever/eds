@@ -50,6 +50,17 @@ body {
 .mark { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.02em; }
 .tag { color: var(--faint); font-size: 0.9rem; }
 
+.parts { flex-basis: 100%; display: grid; gap: 6px; }
+.kind { display: flex; align-items: baseline; gap: 10px; }
+.kind .pills { flex: 1; min-width: 0; } /* or the line will not wrap on a phone */
+.kind-name {
+  flex: none;
+  width: 4.6rem;
+  color: var(--faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 
 .pill {

@@ -58,3 +58,8 @@
 
 // How often the screen reports its signal and free heap.
 #define CS_HEALTH_INTERVAL_MS (5 * 60 * 1000)
+
+// How often the screen says again that it is online (ADR-0034). A retained
+// online can outlive the screen when the broker is down as it goes; a reader
+// believes one only for ninety seconds after hearing it, three of these.
+#define CS_PRESENCE_INTERVAL_MS (30 * 1000)

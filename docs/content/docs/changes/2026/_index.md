@@ -31,3 +31,4 @@ bookCollapseSection: true
 | CHG-0021 | 2026-10-13 | [A New Sound Card for the Turntable](0021-a-new-sound-card-for-the-turntable/) | Configuration | {{< status-badge "complete" "Complete" >}} |
 | CHG-0022 | 2026-10-13 | [Spotify Shown, and On Again](0022-spotify-shown-and-on-again/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0023 | 2026-10-13 | [Spotify Takes Commands](0023-spotify-takes-commands/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0024 | 2026-10-16 | [Spotify Turned Off Again](0024-spotify-turned-off-again/) | Configuration | {{< status-badge "complete" "Complete" >}} |
