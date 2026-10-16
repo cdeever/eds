@@ -300,3 +300,89 @@ func TestTopicsCoverWhatApplyReads(t *testing.T) {
 		}
 	}
 }
+
+// ADR-0034: a broker keeps a stored online after the part that said it is
+// gone, so a stored online is a claim, and only a live one is online.
+func TestAStoredOnlineIsOnlyAClaim(t *testing.T) {
+	v := New("eds")
+	if !v.ApplyStored("eds/lightstand/lp-stand-01/status", []byte("online")) {
+		t.Fatal("a claim is a change")
+	}
+	st := v.Snapshot().Stands[0]
+	if st.State != PresenceClaimed || st.Online != nil {
+		t.Fatalf("stand = %+v, want claimed and not online", st)
+	}
+
+	if !v.Apply("eds/lightstand/lp-stand-01/status", []byte("online")) {
+		t.Fatal("heard live is a change")
+	}
+	st = v.Snapshot().Stands[0]
+	if st.State != PresenceOnline || st.Online == nil || !*st.Online {
+		t.Fatalf("stand = %+v, want online", st)
+	}
+
+	// A reconnect brings the stored copy back: it takes nothing away.
+	if v.ApplyStored("eds/lightstand/lp-stand-01/status", []byte("online")) {
+		t.Error("a stored copy of what was heard live changed the picture")
+	}
+}
+
+func TestPresenceLapsesUnlessSaidAgain(t *testing.T) {
+	now := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
+	v := New("eds")
+	v.now = func() time.Time { return now }
+
+	v.ApplyStored("eds/beacon/turntable-power-01/status", []byte("online"))
+	v.Apply("eds/screen/cover-screen-01/status", []byte("online"))
+	v.Apply("eds/lightd/status", []byte("online"))
+
+	now = now.Add(60 * time.Second)
+	v.Apply("eds/screen/cover-screen-01/status", []byte("online")) // the repeat
+	if v.Expire() {
+		t.Fatal("lapsed after sixty seconds")
+	}
+
+	now = now.Add(30 * time.Second)
+	if !v.Expire() {
+		t.Fatal("nothing lapsed after ninety seconds")
+	}
+	snap := v.Snapshot()
+	if b := snap.Beacons[0]; b.State != PresenceUnheard || b.Online != nil {
+		t.Errorf("beacon = %+v, want unheard", b)
+	}
+	if s := snap.Screens[0]; s.State != PresenceOnline {
+		t.Errorf("screen = %+v, want online: it was said again", s)
+	}
+	if snap.Services["lightd"] != PresenceUnheard {
+		t.Errorf("lightd = %q, want unheard", snap.Services["lightd"])
+	}
+	if v.Expire() {
+		t.Error("lapsed twice")
+	}
+}
+
+func TestOfflineCountsStoredOrLive(t *testing.T) {
+	v := New("eds")
+	v.ApplyStored("eds/screen/cover-screen-01/status", []byte("offline"))
+	s := v.Snapshot().Screens[0]
+	if s.State != PresenceOffline || s.Online == nil || *s.Online {
+		t.Fatalf("screen = %+v, want offline", s)
+	}
+	v.Apply("eds/screen/cover-screen-01/status", []byte("online"))
+	v.Apply("eds/screen/cover-screen-01/status", []byte("offline"))
+	if s := v.Snapshot().Screens[0]; s.State != PresenceOffline {
+		t.Fatalf("screen = %+v, want offline", s)
+	}
+}
+
+func TestPresenceIsOnThePage(t *testing.T) {
+	v := New("eds")
+	v.ApplyStored("eds/lightstand/lp-stand-01/status", []byte("online"))
+	out, err := json.Marshal(v.Snapshot().Stands[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != `{"id":"lp-stand-01","presence":"claimed"}` {
+		t.Errorf("json = %s", out)
+	}
+}

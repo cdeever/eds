@@ -101,3 +101,4 @@ and incidents under the same names. To keep the two apart:
 | [0030](0030-a-piece-of-music-can-have-a-look-from-any-source/) | 2026-10-13 | One piece of music can have a look of its own, shown whatever plays it, and the stand learns to scan | {{< adr-status "Proposed" >}} |
 | [0031](0031-spotify-is-shown-like-itunes/) | 2026-10-13 | Spotify is reported with its cover, and treated as iTunes is | {{< adr-status "Proposed" >}} |
 | [0032](0032-spotify-takes-commands/) | 2026-10-13 | The Spotify driver carries out commands, with a wider authorization, for what is playing here | {{< adr-status "Proposed" >}} |
+| [0034](0034-presence-is-heard-not-remembered/) | 2026-10-16 | Presence is heard, not remembered: everything says it is there every thirty seconds | {{< adr-status "Proposed" >}} |

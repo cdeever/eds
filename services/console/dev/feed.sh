@@ -7,6 +7,10 @@
 # "itunes" is a track with its cover. "spotify" is a track reported without
 # one, over a stand still lit from the last cover (ADR-0016). With no cover
 # file the cover topic is left as it is.
+#
+# Then it keeps saying every part is there, every thirty seconds, until it
+# is stopped: a stored online is only a claim to the console, and one not
+# said again lapses (ADR-0034). Stop it and the pills go gray.
 set -euo pipefail
 
 PORT="${BROKER_PORT:-21883}"
@@ -23,10 +27,11 @@ if [[ -n "$cover" ]]; then
     art=",\"art\":{\"sha256\":\"$sha\",\"from\":\"player\"}"
 fi
 
-for part in nowplaying/status lightd/status nowplaying/source/itunes/status nowplaying/source/spotify/status \
-            lightstand/lp-stand-01/status; do
-    pub "$part" -m online
-done
+parts=(nowplaying/status lightd/status nowplaying/source/itunes/status nowplaying/source/spotify/status
+       nowplaying/source/turntable/status lightstand/lp-stand-01/status screen/cover-screen-01/status
+       beacon/turntable-power-01/status)
+present() { for part in "${parts[@]}"; do pub "$part" -m online; done; }
+present
 
 # A track that began a little over a minute ago, so the page has something to
 # count on from.
@@ -56,4 +61,5 @@ esac
 effect="${EFFECT:-breathe}"
 pub lightstand/lp-stand-01/state -m "{\"v\":1,\"effect\":\"$effect\",\"colors\":4,\"brightness\":0.80}"
 pub lightstand/lp-stand-01/scene -m "{\"v\":1,\"effect\":\"$effect\",\"speed\":0.4,\"brightness\":0.8,\"palette\":[{\"rgb\":[201,0,39],\"weight\":0.65},{\"rgb\":[172,0,48],\"weight\":0.13},{\"rgb\":[36,0,12],\"weight\":0.13},{\"rgb\":[76,0,23],\"weight\":0.09}]}"
-echo "fed $PREFIX/ on port $PORT: $what, $effect"
+echo "fed $PREFIX/ on port $PORT: $what, $effect; saying every part is there until stopped"
+while sleep 30; do present; done

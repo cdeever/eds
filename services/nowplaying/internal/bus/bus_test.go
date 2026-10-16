@@ -122,6 +122,44 @@ func TestPresenceIsAnnouncedAndWithdrawnOnACleanClose(t *testing.T) {
 	}
 }
 
+// A retained online can outlive its program, so it is said again while the
+// program is there, and a reader hears the repeat live (ADR-0034).
+func TestPresenceIsRepeatedLive(t *testing.T) {
+	url := testBroker(t)
+	status := "nptest-repeat/a/status"
+	t.Cleanup(func() { clear(t, url, status) })
+
+	repeated := make(chan struct{}, 8)
+	b, err := Connect(Config{
+		URL: url, ClientID: id("repeater"), StatusTopics: []string{status},
+		PresenceEvery: 50 * time.Millisecond,
+		OnRepeat:      func() { repeated <- struct{}{} },
+	}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+
+	got := make(chan Message, 8)
+	watch, err := Connect(Config{URL: url, ClientID: id("watch-repeat")}, []string{status}, func(m Message) { got <- m })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer watch.Close()
+
+	if m := await(t, got, "stored online"); !m.Retained || string(m.Payload) != "online" {
+		t.Fatalf("first = %q retained=%v, want a stored online", m.Payload, m.Retained)
+	}
+	if m := await(t, got, "repeated online"); m.Retained || string(m.Payload) != "online" {
+		t.Errorf("repeat = %q retained=%v, want a live online", m.Payload, m.Retained)
+	}
+	select {
+	case <-repeated:
+	case <-time.After(5 * time.Second):
+		t.Error("OnRepeat was never called")
+	}
+}
+
 // A handler that publishes and waits must not deadlock: it runs off the
 // client's goroutine precisely so that it can.
 func TestAHandlerMayPublish(t *testing.T) {

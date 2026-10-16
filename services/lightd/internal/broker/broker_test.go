@@ -156,6 +156,32 @@ func TestPresenceIsAnnouncedAndWithdrawn(t *testing.T) {
 	}
 }
 
+// A retained online can outlive lightd when the broker is down as it goes,
+// so it is said again while lightd is there (ADR-0034).
+func TestPresenceIsRepeated(t *testing.T) {
+	url := testBroker(t)
+	prefix := "edstest-repeat"
+	status := StatusTopic(prefix)
+
+	pub, err := Connect(Config{URL: url, ClientID: "lightd-test-repeat", TopicPrefix: prefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		pub.Close()
+		clearRetained(t, url, status)
+	})
+
+	heard := subscribe(t, url, status)
+	if got := await(t, heard, "retained online"); string(got) != "online" {
+		t.Fatalf("status = %s, want online", got)
+	}
+	go pub.repeatPresence(status, 50*time.Millisecond)
+	if got := await(t, heard, "repeated online"); string(got) != "online" {
+		t.Errorf("repeat = %s, want online", got)
+	}
+}
+
 func TestCoverTopicIsUnderThePrefix(t *testing.T) {
 	if got := CoverTopic("eds", "nowplaying/current/art"); got != "eds/nowplaying/current/art" {
 		t.Errorf("cover topic = %q", got)

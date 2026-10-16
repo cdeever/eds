@@ -50,3 +50,8 @@
 // numbers that drift on an unattended device, and the store has no metrics
 // service - a number in a log line is how it gets graphed.
 #define LP_HEALTH_INTERVAL_MS (5 * 60 * 1000)
+
+// How often the stand says again that it is online (ADR-0034). A retained
+// online can outlive the stand when the broker is down as it goes; a reader
+// believes one only for ninety seconds after hearing it, three of these.
+#define LP_PRESENCE_INTERVAL_MS (30 * 1000)

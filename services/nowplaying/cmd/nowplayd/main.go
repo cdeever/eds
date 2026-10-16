@@ -119,6 +119,7 @@ func run(logger *slog.Logger) error {
 	sources := hub.New(cfg.Prefix, func(d hub.Decision) { submit(decision{winner: d.Winner, cover: d.Cover, idle: d.Idle, on: d.On}) }, logger)
 	sources.IdleAfter = cfg.IdleAfter
 	sources.StoppedIdleAfter = cfg.StoppedIdleAfter
+	sources.PresenceLapse = 3 * bus.DefaultPresenceEvery
 
 	// Commands for whatever is current (ADR-0020). The router is given its
 	// bus once there is one, and drops what it is handed before that.

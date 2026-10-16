@@ -369,6 +369,15 @@ Pi is a registered device too (`np-relay`, ADR-0017) and reports the same way:
 in `npagent`, a log line with an `event` attribute is also published there.
 Workloads (`lightd`, `nowplayd`) are not devices and cannot use this route.
 
+**Presence is heard, not remembered** (ADR-0034). Everything that publishes
+a `…/status` topic says `online` again, retained, every thirty seconds; a
+reader believes an online for ninety seconds after hearing it **live**. A
+stored one (`Retained()` on delivery) is only a claim: the broker keeps it
+across restarts after its sender is gone, which is how a stand unplugged
+during a broker outage showed green for days. The console draws a claim
+gray; `nowplayd` keeps one provisionally and lets it lapse. A new publisher
+of presence repeats it, or readers will gray it out.
+
 **Retention on `scene` is load-bearing, not an optimization.** A stand that
 reboots pulls the current scene down instead of sitting dark mid-album. There is
 an integration test that publishes *then* connects a subscriber specifically to

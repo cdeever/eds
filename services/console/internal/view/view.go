@@ -54,11 +54,78 @@ type Playing struct {
 	CoverFrom string `json:"cover_from,omitempty"`
 }
 
+// Lapse is how long an online is believed without being said again
+// (ADR-0034). Everything says it every thirty seconds.
+const Lapse = 90 * time.Second
+
+// The words Presence.State takes.
+const (
+	PresenceOnline  = "online"  // heard live, lately
+	PresenceClaimed = "claimed" // a stored online, not yet heard live
+	PresenceOffline = "offline" // said offline, stored or live
+	PresenceUnheard = "unheard" // an online not said again for Lapse
+)
+
+// Presence is whether a part is there, as far as the console has heard. A
+// broker keeps a retained online across its own restarts, after the part
+// that said it is gone, so a stored one is only a claim (ADR-0034).
+type Presence struct {
+	// Online is true only for a part heard live lately, false for one that
+	// said offline, and nil otherwise.
+	Online *bool  `json:"online,omitempty"`
+	State  string `json:"presence,omitempty"` // empty until something is heard
+	heard  time.Time
+}
+
+// hear takes a presence message and reports whether anything changed.
+func (p *Presence) hear(payload []byte, retained bool, now time.Time) bool {
+	word := presence(payload)
+	if word == "" {
+		return false
+	}
+	if word == PresenceOnline && retained {
+		// A stored copy of what was just heard live, as a reconnect brings
+		// back, confirms nothing and takes nothing away.
+		if p.State == PresenceOnline {
+			return false
+		}
+		word = PresenceClaimed
+	}
+	if word != PresenceOffline && !(word == PresenceClaimed && p.State == PresenceClaimed) {
+		p.heard = now
+	}
+	return p.set(word)
+}
+
+// lapse turns an online or a claim not said again for Lapse into unheard.
+func (p *Presence) lapse(now time.Time) bool {
+	if (p.State == PresenceOnline || p.State == PresenceClaimed) && now.Sub(p.heard) >= Lapse {
+		return p.set(PresenceUnheard)
+	}
+	return false
+}
+
+func (p *Presence) set(state string) bool {
+	if p.State == state {
+		return false
+	}
+	p.State, p.Online = state, nil
+	switch state {
+	case PresenceOnline:
+		on := true
+		p.Online = &on
+	case PresenceOffline:
+		off := false
+		p.Online = &off
+	}
+	return true
+}
+
 // Source is one driver: whether it can reach its player, and what it sees.
 type Source struct {
-	ID     string   `json:"id"`
-	Online *bool    `json:"online,omitempty"` // nil until its presence has been heard
-	Now    *Playing `json:"now,omitempty"`
+	ID string `json:"id"`
+	Presence
+	Now *Playing `json:"now,omitempty"`
 }
 
 // Swatch is one color of a scene and its share of the strip.
@@ -84,8 +151,8 @@ type Applied struct {
 
 // Stand is one light stand.
 type Stand struct {
-	ID     string `json:"id"`
-	Online *bool  `json:"online,omitempty"`
+	ID string `json:"id"`
+	Presence
 	// Scene is what the stand was sent. Applied is what it reported taking.
 	// A stand that is offline was sent a scene it has not seen.
 	Scene   *Scene   `json:"scene,omitempty"`
@@ -96,15 +163,15 @@ type Stand struct {
 // (ADR-0023). Offline is its ordinary state, not a fault: it is what the
 // thing it shares a switch with being turned off looks like.
 type Beacon struct {
-	ID     string `json:"id"`
-	Online *bool  `json:"online,omitempty"`
+	ID string `json:"id"`
+	Presence
 }
 
 // Screen is a cover screen (ADR-0020): a device that shows the cover and can
 // ask for the next track. The page shows only whether it is there.
 type Screen struct {
-	ID     string `json:"id"`
-	Online *bool  `json:"online,omitempty"`
+	ID string `json:"id"`
+	Presence
 }
 
 // Play is one entry in what was recently played.
@@ -149,7 +216,7 @@ type View struct {
 	stands   map[string]*Stand
 	beacons  map[string]*Beacon
 	screens  map[string]*Screen
-	services map[string]string
+	services map[string]*Presence
 	recent   []Play
 	lastKey  string
 }
@@ -163,7 +230,7 @@ func New(prefix string) *View {
 		stands:   map[string]*Stand{},
 		beacons:  map[string]*Beacon{},
 		screens:  map[string]*Screen{},
-		services: map[string]string{},
+		services: map[string]*Presence{},
 	}
 }
 
@@ -187,10 +254,20 @@ func Topics(prefix string) []string {
 	}
 }
 
-// Apply takes one message and reports whether the picture changed. A message
-// it cannot read is ignored and changes nothing: the page keeps showing what
-// it last knew, as the stand does.
+// Apply takes one message, as heard live, and reports whether the picture
+// changed. A message it cannot read is ignored and changes nothing: the page
+// keeps showing what it last knew, as the stand does.
 func (v *View) Apply(topic string, payload []byte) bool {
+	return v.apply(topic, payload, false)
+}
+
+// ApplyStored takes a message the broker kept and sent on subscribing. It
+// is Apply, except that a stored online is only a claim (ADR-0034).
+func (v *View) ApplyStored(topic string, payload []byte) bool {
+	return v.apply(topic, payload, true)
+}
+
+func (v *View) apply(topic string, payload []byte, retained bool) bool {
 	rest, ok := strings.CutPrefix(topic, v.prefix+"/")
 	if !ok {
 		return false
@@ -214,10 +291,10 @@ func (v *View) Apply(topic string, payload []byte) bool {
 		return v.setCover(payload)
 
 	case rest == "nowplaying/status":
-		return v.setService("nowplayd", payload)
+		return v.service("nowplayd").hear(payload, retained, v.now())
 
 	case rest == "lightd/status":
-		return v.setService("lightd", payload)
+		return v.service("lightd").hear(payload, retained, v.now())
 
 	case len(parts) == 4 && parts[0] == "nowplaying" && parts[1] == "source":
 		s := v.source(parts[2])
@@ -230,7 +307,7 @@ func (v *View) Apply(topic string, payload []byte) bool {
 			s.Now = p
 			return true
 		case "status":
-			return setOnline(&s.Online, payload)
+			return s.hear(payload, retained, v.now())
 		}
 
 	case len(parts) == 3 && parts[0] == "lightstand":
@@ -254,7 +331,7 @@ func (v *View) Apply(topic string, payload []byte) bool {
 			s.Applied = &a.Applied
 			return true
 		case "status":
-			return setOnline(&s.Online, payload)
+			return s.hear(payload, retained, v.now())
 		}
 
 	case len(parts) == 3 && parts[0] == "beacon" && parts[2] == "status":
@@ -263,13 +340,13 @@ func (v *View) Apply(topic string, payload []byte) bool {
 		if presence(payload) == "" {
 			return false
 		}
-		return setOnline(&v.beacon(parts[1]).Online, payload)
+		return v.beacon(parts[1]).hear(payload, retained, v.now())
 
 	case len(parts) == 3 && parts[0] == "screen" && parts[2] == "status":
 		if presence(payload) == "" {
 			return false
 		}
-		return setOnline(&v.screen(parts[1]).Online, payload)
+		return v.screen(parts[1]).hear(payload, retained, v.now())
 	}
 	return false
 }
@@ -310,26 +387,38 @@ func (v *View) screen(id string) *Screen {
 	return s
 }
 
-func (v *View) setService(name string, payload []byte) bool {
-	word := presence(payload)
-	if word == "" || v.services[name] == word {
-		return false
+func (v *View) service(name string) *Presence {
+	p, ok := v.services[name]
+	if !ok {
+		p = &Presence{}
+		v.services[name] = p
 	}
-	v.services[name] = word
-	return true
+	return p
 }
 
-func setOnline(into **bool, payload []byte) bool {
-	word := presence(payload)
-	if word == "" {
-		return false
+// Expire lapses every online, and every claim, not said again for Lapse,
+// and reports whether the picture changed. It is called on a ticker: a part
+// that has gone without a will says nothing, and silence has to be noticed.
+func (v *View) Expire() bool {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	now, changed := v.now(), false
+	for _, p := range v.services {
+		changed = p.lapse(now) || changed
 	}
-	online := word == "online"
-	if *into != nil && **into == online {
-		return false
+	for _, s := range v.sources {
+		changed = s.lapse(now) || changed
 	}
-	*into = &online
-	return true
+	for _, s := range v.stands {
+		changed = s.lapse(now) || changed
+	}
+	for _, b := range v.beacons {
+		changed = b.lapse(now) || changed
+	}
+	for _, s := range v.screens {
+		changed = s.lapse(now) || changed
+	}
+	return changed
 }
 
 // presence is "online" or "offline", or nothing for anything else.
@@ -420,8 +509,10 @@ func (v *View) Snapshot() Snapshot {
 	for _, s := range v.screens {
 		out.Screens = append(out.Screens, *s)
 	}
-	for name, word := range v.services {
-		out.Services[name] = word
+	for name, p := range v.services {
+		if p.State != "" {
+			out.Services[name] = p.State
+		}
 	}
 	// Maps have no order, and a page that reshuffles on every update is
 	// harder to read than one that is merely alphabetical.

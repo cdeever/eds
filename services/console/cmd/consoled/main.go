@@ -118,7 +118,11 @@ func run(logger *slog.Logger) error {
 		Timeout:            10 * time.Second,
 	}
 	client, err := bus.Connect(cfg, view.Topics(prefix), func(m bus.Message) {
-		if picture.Apply(m.Topic, m.Payload) {
+		apply := picture.Apply
+		if m.Retained {
+			apply = picture.ApplyStored
+		}
+		if apply(m.Topic, m.Payload) {
 			server.Changed()
 		}
 	})
@@ -126,6 +130,16 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer client.Close()
+
+	// A part that goes without a will says nothing; its silence is noticed
+	// here (ADR-0034).
+	go func() {
+		for range time.Tick(5 * time.Second) {
+			if picture.Expire() {
+				server.Changed()
+			}
+		}
+	}()
 	logger.Info("connected to broker", "url", cfg.URL, "topics", len(view.Topics(prefix)), "status", status)
 
 	addr := env("CONSOLE_ADDR", ":8080")

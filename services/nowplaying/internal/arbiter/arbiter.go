@@ -144,6 +144,14 @@ func (a *Arbiter) Power(id string, on bool) (*contract.State, bool) {
 	return a.decide()
 }
 
+// PowerUnknown forgets what a source's beacon said: it has not been heard
+// from for long enough that its "on" is no longer believed (ADR-0034). The
+// source is arbitrated as one without a beacon, as before it was heard.
+func (a *Arbiter) PowerUnknown(id string) (*contract.State, bool) {
+	a.get(id).power = powerUnknown
+	return a.decide()
+}
+
 // AnyOn reports whether any source's equipment says it is switched on. It
 // asks nothing of the source: one whose driver is offline has its equipment
 // on all the same, and somebody switched it on (ADR-0028).

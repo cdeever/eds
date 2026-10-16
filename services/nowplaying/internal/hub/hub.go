@@ -59,6 +59,12 @@ type Hub struct {
 	// the sleeve while a record was turned over; it is now short (ADR-0026).
 	StoppedIdleAfter time.Duration
 
+	// PresenceLapse is how long an "online" is believed without being
+	// said again, by a driver or a beacon (ADR-0034). Everything repeats its
+	// presence every thirty seconds, so a stored online whose sender is
+	// gone, kept by the broker across a restart, lapses here. Zero is never.
+	PresenceLapse time.Duration
+
 	// After schedules f, and Now is the time. They exist so tests can hold
 	// the clock.
 	After func(d time.Duration, f func())
@@ -68,6 +74,7 @@ type Hub struct {
 	arb     *arbiter.Arbiter
 	covers  map[string]*current.Image // by source
 	waiting uint64                    // changes whenever a wait is started or overtaken
+	heard   map[string]uint64         // by presence: changes whenever it is said
 
 	// What has been quiet - paused, or nobody at all - and since when.
 	quiet      bool
@@ -94,6 +101,7 @@ func New(prefix string, submit func(Decision), logger *slog.Logger) *Hub {
 		Now:    time.Now,
 		arb:    arbiter.New(nil),
 		covers: make(map[string]*current.Image),
+		heard:  make(map[string]uint64),
 	}
 }
 
@@ -129,7 +137,14 @@ func (h *Hub) Handle(msg bus.Message) {
 		winner, changed = h.arb.Update(st)
 
 	case "status":
-		winner, changed = h.arb.Presence(id, string(msg.Payload) == contract.Online)
+		online := string(msg.Payload) == contract.Online
+		h.hold("source:"+id, online, func() {
+			h.Logger.Warn("a source's presence lapsed, unrepeated", "source", id, "after", h.PresenceLapse)
+			if winner, changed := h.arb.Presence(id, false); changed {
+				h.decide(winner)
+			}
+		})
+		winner, changed = h.arb.Presence(id, online)
 
 	case "art":
 		if image := current.NewImage(msg.Payload); image != nil {
@@ -171,7 +186,36 @@ func (h *Hub) Power(source string, on bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if winner, changed := h.arb.Power(source, on); changed {
+	// A beacon's on that is not said again is not believed: the source goes
+	// back to having no beacon, which changes nothing (ADR-0023).
+	h.hold("power:"+source, on, func() {
+		h.Logger.Warn("a source's equipment has not said it is on lately; it is no longer believed", "source", source, "after", h.PresenceLapse)
+		h.powered(h.arb.PowerUnknown(source))
+	})
+	h.powered(h.arb.Power(source, on))
+}
+
+// hold notes that a presence was just said. An online lapses, calling
+// lapse with the lock held, unless it is said again within PresenceLapse;
+// anything else simply cancels the lapse. Called with the lock.
+func (h *Hub) hold(key string, online bool, lapse func()) {
+	h.heard[key]++
+	if !online || h.PresenceLapse <= 0 {
+		return
+	}
+	said := h.heard[key]
+	h.After(h.PresenceLapse, func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		if h.heard[key] == said {
+			lapse()
+		}
+	})
+}
+
+// powered acts on what a switch did to the arbiter. Called with the lock.
+func (h *Hub) powered(winner *contract.State, changed bool) {
+	if changed {
 		h.decide(winner)
 		return
 	}

@@ -14,6 +14,10 @@ const $ = (id) => document.getElementById(id);
 
 const PLAYERS = { itunes: "iTunes", music: "Music", spotify: "Spotify", musicbee: "MusicBee", tidal: "TIDAL", turntable: "Turntable" };
 const playerName = (p) => (p && (PLAYERS[p.player] || p.player || p.source)) || "";
+// A source's pill in the header is its driver's presence, not the player's:
+// the turntable's says the sound card is being heard, not that the turntable
+// is on (ADR-0034). The source is still "turntable" everywhere else.
+const DRIVERS = { ...PLAYERS, turntable: "Song detector" };
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -28,6 +32,22 @@ function pill(label, up) {
   node.title = up === true ? "online" : up === false ? "offline" : "not heard from yet";
   return node;
 }
+
+// What each presence is called, and said on hovering (ADR-0034). A stored
+// online is only a claim: the broker keeps one after its part is gone.
+const PRESENCE = {
+  online: ["online", "heard from in the last ninety seconds"],
+  claimed: ["claimed", "the broker holds an online from it, and it has not been heard since the console started"],
+  offline: ["offline", "said it is offline"],
+  unheard: ["not heard", "not heard from for ninety seconds"],
+};
+
+function presencePill(label, state) {
+  const node = pill(label, state === "online" ? true : state === "offline" ? false : undefined);
+  node.title = (PRESENCE[state] || [, "not heard from yet"])[1];
+  return node;
+}
+const presenceWord = (state) => (PRESENCE[state] || ["unknown"])[0];
 
 const hex = (rgb) => "#" + rgb.map((c) => c.toString(16).padStart(2, "0")).join("");
 const coverURL = (sha) => "api/cover/" + encodeURIComponent(sha);
@@ -152,8 +172,8 @@ function drawStands(page) {
     card.scene = scene;
 
     const online = stand.online;
-    card.node.classList.toggle("away", online === false);
-    card.node.querySelector(".pill").replaceWith(pill(online === false ? "offline" : online ? "online" : "unknown", online));
+    card.node.classList.toggle("away", stand.presence !== "online");
+    card.node.querySelector(".pill").replaceWith(presencePill(presenceWord(stand.presence), stand.presence));
 
     const what = card.node.querySelector(".what");
     const swatches = card.node.querySelector(".swatches");
@@ -198,6 +218,7 @@ function drawStands(page) {
       notes.push(`In ${scene.effect}, the strip is the first color alone; the others are what the cover also held.`);
     }
     if (online === false) notes.push("The stand is offline. This is the scene waiting for it, not one it is showing.");
+    else if (stand.presence !== "online") notes.push("The stand has not been heard from lately. This is the scene waiting for it, and it may not be showing it.");
     else if (stand.applied && stand.applied.effect !== scene.effect) {
       notes.push(`The stand last reported showing ${stand.applied.effect}; it may not have taken this scene yet.`);
     }
@@ -282,7 +303,7 @@ function drawSources(page) {
     const row = el("li");
     const now = source.now;
     row.append(el("span", "main", playerName(now) || PLAYERS[source.id] || source.id));
-    row.append(pill(source.online === false ? "offline" : source.online ? "online" : "unknown", source.online));
+    row.append(presencePill(presenceWord(source.presence), source.presence));
     let line = "nothing reported yet";
     if (now) {
       const track = now.track;
@@ -307,21 +328,34 @@ function drawRecent(page) {
   $("recent").replaceChildren(...(rows.length ? rows : [el("li", "empty", "Nothing has started playing since the console did.")]));
 }
 
+// What a beacon switches, from its name: turntable-power-01 is the
+// turntable's. The console is not told which source a beacon speaks for.
+function switched(id) {
+  const m = /^(.+)-power(-\d+)?$/.exec(id);
+  return m ? m[1].charAt(0).toUpperCase() + m[1].slice(1).replace(/-/g, " ") : id;
+}
+
 function drawFrame(page) {
-  const pills = [];
-  const word = (w) => (w === "online" ? true : w === "offline" ? false : undefined);
-  pills.push(pill("nowplayd", word(page.services.nowplayd)), pill("lightd", word(page.services.lightd)));
-  for (const s of page.sources) pills.push(pill(PLAYERS[s.id] || s.id, s.online === null ? undefined : s.online));
-  for (const s of page.stands) pills.push(pill(s.id, s.online === null ? undefined : s.online));
-  for (const s of page.screens) pills.push(pill(s.id, s.online === null ? undefined : s.online));
+  const services = ["nowplayd", "lightd"].map((name) => presencePill(name, page.services[name]));
+  const sources = page.sources.map((s) => presencePill(DRIVERS[s.id] || s.id, s.presence));
+  const devices = [...page.stands, ...page.screens].map((d) => presencePill(d.id, d.presence));
   // A beacon that is off is not a part that is down: it is a switch that is
   // off, and lit only when it is on.
-  for (const b of page.beacons) {
-    const node = pill(b.id, b.online === true ? true : undefined);
-    node.title = b.online === true ? "switched on" : b.online === false ? "switched off" : "not heard from yet";
-    pills.push(node);
-  }
-  $("pills").replaceChildren(...pills.map((p) => { const li = el("li"); li.append(p); return li; }));
+  const power = page.beacons.map((b) => {
+    const on = b.presence === "online";
+    const node = pill(`${switched(b.id)}: ${on ? "on" : b.presence === "offline" ? "off" : "?"}`, on ? true : undefined);
+    node.title = `${b.id}: ` + (on ? "switched on" : b.presence === "offline" ? "switched off" : (PRESENCE[b.presence] || [, "not heard from yet"])[1]);
+    return node;
+  });
+  const kinds = [["Services", services], ["Sources", sources], ["Devices", devices], ["Power", power]];
+  $("parts").replaceChildren(...kinds.filter(([, pills]) => pills.length).map(([name, pills]) => {
+    const row = el("div", "kind");
+    const list = el("ul", "pills");
+    list.setAttribute("aria-label", name);
+    list.append(...pills.map((p) => { const li = el("li"); li.append(p); return li; }));
+    row.append(el("span", "kind-name", name), list);
+    return row;
+  }));
 
   const links = [];
   for (const [label, url] of [["Events in Grafana", page.links.dashboard], ["Decisions and records", page.links.docs]]) {
