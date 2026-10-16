@@ -128,8 +128,9 @@ a program, `eds-recognize` in `images/agent/files`, which is Shazam's through
 an unpublished endpoint and may stop working any day. Keep every trace of
 Shazam in that file and its pinned requirements; the driver knows only "a WAV
 in, a name out". `make -C deploy/relay turntable DEVICE=…` names the input.
-**On, on the agent Pi, beside iTunes and Spotify** (CHG-0013, CHG-0022): the
-Pi runs `itunes,spotify,turntable`.
+**On, on the agent Pi, beside iTunes** (CHG-0013): the Pi runs
+`itunes,turntable`. Spotify is off again, for the calls it makes (CHG-0024);
+`make -C deploy/relay drivers DRIVERS=itunes,spotify,turntable` undoes it.
 
 **The record on the turntable is named by its owner's collection** (ADR-0022).
 For sources in `NP_COLLECTION_SOURCES`, nowplayd asks the owner's Discogs
