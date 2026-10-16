@@ -19,6 +19,7 @@
 #include "event_log.h"
 #include "mqtt.h"
 #include "nvs_flash.h"
+#include "ota.h"
 #include "screen.h"
 #include "touch.h"
 #include "wifi.h"
@@ -89,6 +90,9 @@ void app_main(void)
     // and the screen says so in its corner.
     cs_wifi_start();
 
+    // A new build has two minutes from here to reach the broker, or the one
+    // before it comes back (ADR-0035).
+    cs_ota_probation();
     ESP_ERROR_CHECK(cs_mqtt_start());
 
     // Both topics are retained, so the track and its cover arrive moments

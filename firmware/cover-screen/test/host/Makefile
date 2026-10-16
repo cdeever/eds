@@ -10,12 +10,13 @@
 CC      ?= gcc
 CFLAGS  ?= -std=c11 -Wall -Wextra -Werror -O2 -g
 SRCDIR  := ../../main
-INCLUDE := -I$(SRCDIR)/app/ui -I$(SRCDIR)/app/events
+INCLUDE := -I$(SRCDIR)/app/ui -I$(SRCDIR)/app/events -I$(SRCDIR)/app/ota
 SOURCES := test_cover_screen.c \
            $(SRCDIR)/app/ui/ui.c \
            $(SRCDIR)/app/ui/draw.c \
            $(SRCDIR)/app/ui/touch_map.c \
-           $(SRCDIR)/app/events/event_format.c
+           $(SRCDIR)/app/events/event_format.c \
+           $(SRCDIR)/app/ota/ota_proto.c
 PICTURES ?= pictures
 
 .PHONY: test pictures clean

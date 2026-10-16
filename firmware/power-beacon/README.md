@@ -34,9 +34,10 @@ Its connection is its message. On every connection it publishes `online`,
 retained, at QoS 1. Its last will is `offline`, retained, on the same topic.
 Nothing in the firmware runs when the power goes; the broker says it.
 
-It subscribes to nothing and decides nothing. It does not know what shares
-its outlet: the firmware is the same for anything on a switch, and its
-name, with `nowplayd`'s `NP_SOURCE_POWER`, is all that says "turntable".
+It subscribes to nothing but a new build of itself (see Updates) and
+decides nothing. It does not know what shares its outlet: the firmware is
+the same for anything on a switch, and its name, with `nowplayd`'s
+`NP_SOURCE_POWER`, is all that says "turntable".
 
 ### How soon
 
@@ -113,9 +114,42 @@ More `mqtt.connected` than `system.boot` is a connection that came and
 went, and each of those was up to fifteen seconds of the turntable being
 taken for off.
 
+## Updates through the broker
+
+A build reaches the beacon without a cable ([ADR-0035](../../docs/content/docs/architecture/decisions/0035-firmware-is-updated-through-the-broker.md)):
+
+```bash
+make build ota
+```
+
+`ota` sends `build/power-beacon.bin` to the beacon this build is for (its id,
+read from `sdkconfig`), through `eds-ota` on the services workload
+(`tools/ota`). The beacon writes it to its spare slot as it arrives,
+answering each piece with the next byte it wants, and restarts into it.
+The new build is **on probation** until it reaches the broker; one that
+has not within two minutes is given up, and the build before it boots
+again, by itself. One that crashes first is put back by the bootloader.
+
+**It disconnects cleanly before the restart**, so the broker sends no will:
+the turntable is not taken for off for the seconds the restart takes. The
+beacon's connection is its message, and a planned restart is not the
+switch going off. An update is still best sent with the turntable off.
+
+**The first build with this goes on by cable**, because the bootloader's
+rollback is not updated over the air. An `sdkconfig` from before it has
+rollback off and stops the build with an `#error`: delete it and build
+again.
+
+| Event | When | Fields |
+|---|---|---|
+| `ota.offered` | a build is offered, and taken | `bytes`, `elf` |
+| `ota.refused` | it is not this firmware's, does not fit, stops arriving or is not whole | `why` |
+| `ota.applied` | it is whole and checked; restarting into it | `version`, `elf` |
+| `ota.kept` | a new build reached the broker, and stays | `version`, `elf` |
+
 ## Shared with the stand
 
-`config/pb_credentials.*`, `network/wifi/*`, `app/events/*`,
-`partitions.csv` and `tools/provision_tenant.py` are copies of
+`config/pb_credentials.*`, `network/wifi/*`, `app/events/*`, `app/ota/*`,
+`network/ota/*`, `partitions.csv` and `tools/provision_tenant.py` are copies of
 `firmware/lp-stand`'s (the WiFi is the cover screen's copy, which has power
 saving off), renamed. A fix to one is owed to the others.

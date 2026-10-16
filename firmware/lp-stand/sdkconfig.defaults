@@ -25,3 +25,8 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # hold the table. Declared here rather than left to menuconfig: a flash size
 # smaller than the partition table is a build failure, not a preference.
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# A new build that cannot reach the broker is given up, and the one before it
+# booted again (ADR-0035). This is the bootloader's, so it takes a flash by
+# cable to turn on; network/ota refuses to build without it.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y

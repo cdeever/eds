@@ -10,6 +10,7 @@
 #include "lp_config.h"
 #include "lp_credentials.h"
 #include "mqtt_client.h"
+#include "ota.h"
 #include "scene_json.h"
 #include "wifi.h"
 
@@ -39,6 +40,9 @@ static void on_connected(void)
     // that is hard to notice and annoying to debug.
     esp_mqtt_client_subscribe(client, LP_TOPIC_SCENE, 1);
 
+    // Its ota topics, and a new build kept now that it got this far.
+    lp_ota_on_connect(client);
+
     // Presence, retained, replacing the will the broker would have published.
     esp_mqtt_client_publish(client, LP_TOPIC_STATUS, LP_STATUS_ONLINE, 0, 1, 1);
 
@@ -62,6 +66,11 @@ static void scene_rejected(const char *why, int bytes)
 
 static void on_data(const esp_mqtt_event_handle_t event)
 {
+    // A build arrives in messages far larger than a scene, in pieces.
+    if (lp_ota_on_data(client, event)) {
+        return;
+    }
+
     // Payloads arrive whole for a scene-sized message, but the API permits
     // fragmentation, and a truncated JSON document parses as garbage rather
     // than failing loudly.
@@ -165,6 +174,8 @@ static void log_task(void *arg)
     TickType_t last_presence = xTaskGetTickCount();
 
     for (;;) {
+        lp_ota_tick(client);
+
         if (!connected) {
             vTaskDelay(pdMS_TO_TICKS(250));
             continue;

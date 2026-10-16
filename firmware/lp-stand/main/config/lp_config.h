@@ -26,6 +26,12 @@
 #define LP_TOPIC_STATUS LP_TOPIC_PREFIX "/lightstand/" LP_STAND_ID "/status"
 #define LP_TOPIC_STATE  LP_TOPIC_PREFIX "/lightstand/" LP_STAND_ID "/state"
 
+// Updates through the broker (ADR-0035): a build is offered on ota, arrives
+// on ota/chunk, and the stand answers on ota/state. None is retained.
+#define LP_TOPIC_OTA       LP_TOPIC_PREFIX "/lightstand/" LP_STAND_ID "/ota"
+#define LP_TOPIC_OTA_CHUNK LP_TOPIC_PREFIX "/lightstand/" LP_STAND_ID "/ota/chunk"
+#define LP_TOPIC_OTA_STATE LP_TOPIC_PREFIX "/lightstand/" LP_STAND_ID "/ota/state"
+
 // Where the stand's key events go. The shape is Deevnet IoTaaS's, not EdS's:
 // `<tenant>/log/<device name>`, the one topic under log/ this stand's broker
 // account may publish to, which Deevnet IoTaaS's bridge carries into the
@@ -55,3 +61,14 @@
 // online can outlive the stand when the broker is down as it goes; a reader
 // believes one only for ninety seconds after hearing it, three of these.
 #define LP_PRESENCE_INTERVAL_MS (30 * 1000)
+
+// --- updates ---------------------------------------------------------------
+
+// How long a new build has to reach the broker before it is given up and the
+// one before it booted again (ADR-0035). Long enough for WiFi and TLS on a
+// bad day; short enough that a build that cannot is gone before anyone has
+// gone looking for a cable.
+#define LP_OTA_CONFIRM_WITHIN_MS (2 * 60 * 1000)
+
+// A build that stops arriving for this long is abandoned.
+#define LP_OTA_STALL_MS (60 * 1000)

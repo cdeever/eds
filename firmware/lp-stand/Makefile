@@ -20,7 +20,7 @@ LP_CRED_NAMESPACE ?= lp-stand
 # classic export.sh layout.
 IDF_PY := $(if $(wildcard $(IDF_PATH)/tools/idf.py),$(IDF_PATH)/tools/idf.py,idf.py)
 
-.PHONY: help test clean build flash monitor menuconfig wifi-config provision logs
+.PHONY: help test clean build flash monitor menuconfig wifi-config provision logs ota
 
 help:
 	@echo "lp-stand - available targets"
@@ -30,6 +30,7 @@ help:
 	@echo "  build       idf.py build"
 	@echo "  flash       idf.py flash        (PORT=$(PORT))"
 	@echo "  monitor     idf.py monitor      (PORT=$(PORT))"
+	@echo "  ota         send build/lp-stand.bin to the stand it was built for, through the broker"
 	@echo "  provision   write what the EdS tenant issued this stand into flash (PORT=$(PORT))"
 	@echo "  wifi-config the same partition, typed by hand - for a stand off Deevnet IoTaaS"
 	@echo "  logs        the stands' events from the tenant's log store (ARGS='-f', ARGS='--since 1d')"
@@ -51,6 +52,15 @@ flash:
 
 monitor:
 	"$(IDF_PY)" -p "$(PORT)" monitor
+
+# The build to the stand in place, through the broker (ADR-0035): no cable.
+# It goes to the stand this build is for, read from sdkconfig, because the id
+# is compiled in: a build for another would log in here and listen on the
+# other's topics, where no update could reach it.
+ota:
+	@id=$$(sed -n 's/^CONFIG_LP_STAND_ID="\(.*\)"$$/\1/p' sdkconfig); \
+	if [ -z "$$id" ] || [ ! -s build/lp-stand.bin ]; then echo "no build here: make build first" >&2; exit 2; fi; \
+	$(MAKE) -C ../../tools/ota send DEVICE=lightstand/$$id IMAGE="$(CURDIR)/build/lp-stand.bin"
 
 # --- provisioning ----------------------------------------------------------
 

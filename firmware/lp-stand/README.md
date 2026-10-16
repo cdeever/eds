@@ -171,6 +171,9 @@ renumbered: people learn them.
 | `eds/lightstand/<id>/status` | stand → broker | yes (LWT) | `online` / `offline` |
 | `eds/lightstand/<id>/state` | stand → broker | yes | what it is rendering now |
 | `eds/log/<id>` | stand → broker | no | its key events, for the tenant's log store |
+| `eds/lightstand/<id>/ota` | `eds-ota` → stand | **never** | a build offered (ADR-0035) |
+| `eds/lightstand/<id>/ota/chunk` | `eds-ota` → stand | **never** | the build, in pieces |
+| `eds/lightstand/<id>/ota/state` | stand → `eds-ota` | **never** | its answers, and on every connection what it runs |
 
 ## Events
 
@@ -212,6 +215,37 @@ Two ways to read them:
 | `make logs` | prints them in a terminal: `ARGS='--since 1d'`, `ARGS=-f` to follow, or a LogsQL filter such as `ARGS="'event:scene.*'"` |
 | Grafana | the dashboard **LP Stand** in EdS's organization, declared in the tenant's `dashboards.tf` |
 
+## Updates through the broker
+
+A build reaches the stand without a cable ([ADR-0035](../../docs/content/docs/architecture/decisions/0035-firmware-is-updated-through-the-broker.md)):
+
+```bash
+make build ota
+```
+
+`ota` sends `build/lp-stand.bin` to the stand this build is for (its id,
+read from `sdkconfig`), through `eds-ota` on the services workload
+(`tools/ota`). The stand writes it to its spare slot as it arrives,
+answering each piece with the next byte it wants, and restarts into it.
+The new build is **on probation** until it reaches the broker; one that
+has not within two minutes is given up, and the build before it boots
+again, by itself. One that crashes first is put back by the bootloader.
+
+The strip stutters while a build is written: writing flash pauses the
+frames for a few milliseconds a piece.
+
+**The first build with this goes on by cable**, because the bootloader's
+rollback is not updated over the air. An `sdkconfig` from before it has
+rollback off and stops the build with an `#error`: delete it and build
+again.
+
+| Event | When | Fields |
+|---|---|---|
+| `ota.offered` | a build is offered, and taken | `bytes`, `elf` |
+| `ota.refused` | it is not this firmware's, does not fit, stops arriving or is not whole | `why` |
+| `ota.applied` | it is whole and checked; restarting into it | `version`, `elf` |
+| `ota.kept` | a new build reached the broker, and stays | `version`, `elf` |
+
 ## Where it sits on the network
 
 The stand belongs on Deevnet IoTaaS's **IoT segment (VLAN 30)** — the model's
@@ -233,8 +267,10 @@ defined to accept exactly this.
   managed through the Deevnet pipeline" model. Deferred because it means a
   certificate lifecycle for one device — but wanted, and `main/certs/` is where
   that material lands.
-- **OTA.** The partition table already carries two app slots, because
-  retrofitting them means repartitioning a device glued to a shelf.
+- **Signed builds.** Updates come through the broker (ADR-0035), and only
+  the `ota` account can send one, but the images are not signed: a stolen
+  broker password is enough. `CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT`
+  would close that, for a key to keep.
 - **More effects**, once there is something driving them beyond cover art.
 - **A `deevnet-docs` roadmap page**, matching how ma-bell is tracked, since this
   firmware lives in the EdS monorepo rather than its own repository.

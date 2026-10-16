@@ -7,7 +7,7 @@ CC      ?= gcc
 CFLAGS  ?= -std=c11 -Wall -Wextra -Werror -O2 -g
 SRCDIR  := ../../main
 INCLUDE := -I$(SRCDIR)/app/scene -I$(SRCDIR)/app/effects -I$(SRCDIR)/app/events \
-           -I$(SRCDIR)/app/status -I$(SRCDIR)/app/transition \
+           -I$(SRCDIR)/app/status -I$(SRCDIR)/app/transition -I$(SRCDIR)/app/ota \
            -I$(SRCDIR)/hardware
 SOURCES := test_lp_stand.c \
            $(SRCDIR)/app/scene/scene.c \
@@ -15,6 +15,7 @@ SOURCES := test_lp_stand.c \
            $(SRCDIR)/app/status/status.c \
            $(SRCDIR)/app/transition/transition.c \
            $(SRCDIR)/app/events/event_format.c \
+           $(SRCDIR)/app/ota/ota_proto.c \
            $(SRCDIR)/hardware/gamma.c
 
 .PHONY: test clean

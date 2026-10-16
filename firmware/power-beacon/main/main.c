@@ -18,6 +18,7 @@
 #include "event_log.h"
 #include "mqtt.h"
 #include "nvs_flash.h"
+#include "ota.h"
 #include "wifi.h"
 
 static const char *TAG = "power-beacon";
@@ -81,5 +82,8 @@ void app_main(void)
     // not fatal; WiFi keeps retrying underneath.
     pb_wifi_start();
 
+    // A new build has two minutes from here to reach the broker, or the one
+    // before it comes back (ADR-0035).
+    pb_ota_probation();
     ESP_ERROR_CHECK(pb_mqtt_start());
 }

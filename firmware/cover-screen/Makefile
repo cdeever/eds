@@ -13,7 +13,7 @@ PORT ?= /dev/cu.usbserial-2120
 # script out of IDF_PATH when it is there.
 IDF_PY := $(if $(wildcard $(IDF_PATH)/tools/idf.py),python3 $(IDF_PATH)/tools/idf.py,idf.py)
 
-.PHONY: help test pictures clean build flash monitor menuconfig provision backup
+.PHONY: help test pictures clean build flash monitor menuconfig provision backup ota
 
 help:
 	@echo "cover-screen - available targets"
@@ -25,6 +25,7 @@ help:
 	@echo "  backup      save what is on the board now to backup/ (PORT=$(PORT))"
 	@echo "  flash       idf.py flash        (PORT=$(PORT))"
 	@echo "  monitor     idf.py monitor      (PORT=$(PORT))"
+	@echo "  ota         send build/cover-screen.bin to the screen it was built for, through the broker"
 	@echo "  provision   write what the EdS tenant issued this screen into flash (PORT=$(PORT))"
 	@echo "  clean       remove host test artifacts"
 	@echo
@@ -47,6 +48,15 @@ flash:
 
 monitor:
 	$(IDF_PY) -p "$(PORT)" monitor
+
+# The build to the screen in place, through the broker (ADR-0035): no cable.
+# It goes to the screen this build is for, read from sdkconfig, because the id
+# is compiled in: a build for another would log in here and listen on the
+# other's topics, where no update could reach it.
+ota:
+	@id=$$(sed -n 's/^CONFIG_CS_SCREEN_ID="\(.*\)"$$/\1/p' sdkconfig); \
+	if [ -z "$$id" ] || [ ! -s build/cover-screen.bin ]; then echo "no build here: make build first" >&2; exit 2; fi; \
+	$(MAKE) -C ../../tools/ota send DEVICE=screen/$$id IMAGE="$(CURDIR)/build/cover-screen.bin"
 
 # The whole flash, before the first flash replaces what the board came with.
 # Writing it back at 0x0 restores the board exactly.

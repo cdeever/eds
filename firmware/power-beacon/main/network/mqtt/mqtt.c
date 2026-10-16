@@ -8,6 +8,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "mqtt_client.h"
+#include "ota.h"
 #include "pb_config.h"
 #include "pb_credentials.h"
 #include "wifi.h"
@@ -24,6 +25,10 @@ static void on_connected(void)
     // restart, or a will sent for a connection that was only slow, this is
     // what puts the topic right again.
     esp_mqtt_client_publish(client, PB_TOPIC_STATUS, PB_STATUS_ONLINE, 0, 1, 1);
+
+    // The one thing it is sent: a build (ADR-0035). And a new build kept,
+    // now that it got this far.
+    pb_ota_on_connect(client);
     ESP_LOGI(TAG, "connected; %s is %s", PB_TOPIC_STATUS, PB_STATUS_ONLINE);
 
     // More of these than of system.boot is how a flapping connection shows
@@ -46,6 +51,9 @@ static void on_mqtt_event(void *handler_args, esp_event_base_t base, int32_t id,
     switch ((esp_mqtt_event_id_t)id) {
     case MQTT_EVENT_CONNECTED:
         on_connected();
+        break;
+    case MQTT_EVENT_DATA:
+        pb_ota_on_data(client, event);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGW(TAG, "disconnected; the client will keep retrying");
@@ -99,6 +107,8 @@ static void log_task(void *arg)
     TickType_t last_presence = xTaskGetTickCount();
 
     for (;;) {
+        pb_ota_tick(client);
+
         if (!connected) {
             vTaskDelay(pdMS_TO_TICKS(250));
             continue;

@@ -21,6 +21,12 @@
 // Deevnet IoTaaS's shape, as the stand's are.
 #define PB_TOPIC_LOG    PB_TOPIC_PREFIX "/log/" PB_BEACON_ID
 
+// Updates through the broker (ADR-0035): a build is offered on ota, arrives
+// on ota/chunk, and the beacon answers on ota/state. None is retained.
+#define PB_TOPIC_OTA       PB_TOPIC_PREFIX "/beacon/" PB_BEACON_ID "/ota"
+#define PB_TOPIC_OTA_CHUNK PB_TOPIC_PREFIX "/beacon/" PB_BEACON_ID "/ota/chunk"
+#define PB_TOPIC_OTA_STATE PB_TOPIC_PREFIX "/beacon/" PB_BEACON_ID "/ota/state"
+
 #define PB_STATUS_ONLINE  "online"
 #define PB_STATUS_OFFLINE "offline"
 
@@ -47,3 +53,12 @@
 // online can outlive the beacon when the broker is down as it goes; a reader
 // believes one only for ninety seconds after hearing it, three of these.
 #define PB_PRESENCE_INTERVAL_MS (30 * 1000)
+
+// --- updates ---------------------------------------------------------------
+
+// How long a new build has to reach the broker before it is given up and the
+// one before it booted again (ADR-0035). The same as the stand's.
+#define PB_OTA_CONFIRM_WITHIN_MS (2 * 60 * 1000)
+
+// A build that stops arriving for this long is abandoned.
+#define PB_OTA_STALL_MS (60 * 1000)

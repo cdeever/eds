@@ -7,12 +7,14 @@
 // The ESP-IDF glue - the panel, the touch controller, the JPEG decoder, WiFi,
 // MQTT - is not covered here and needs a device.
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "draw.h"
 #include "event_format.h"
+#include "ota_proto.h"
 #include "touch_map.h"
 #include "ui.h"
 
@@ -766,6 +768,222 @@ static int pictures(const char *dir)
     return failed;
 }
 
+// --- receiving a build (ADR-0035) ------------------------------------------
+
+#define OTA_IMAGE 10000
+static uint8_t ota_image[OTA_IMAGE];
+static uint8_t ota_flash[OTA_IMAGE];
+
+static void ota_fill(void)
+{
+    for (size_t i = 0; i < OTA_IMAGE; i++) {
+        ota_image[i] = (uint8_t)((i * 31u + 7u) ^ (i >> 8));
+    }
+    memset(ota_flash, 0xFF, sizeof(ota_flash));
+}
+
+// ota_send hands o one chunk message carrying n bytes of the image from at,
+// as the MQTT client would: in pieces of at most piece bytes. What is to be
+// written is written where the receiver says, as the ESP-IDF half does. It
+// returns the last piece's answer.
+static cs_ota_piece_t ota_send(cs_ota_t *o, uint32_t at, size_t n, size_t piece)
+{
+    static uint8_t message[CS_OTA_CHUNK_HEADER + OTA_IMAGE];
+    message[0] = (uint8_t)(at >> 24);
+    message[1] = (uint8_t)(at >> 16);
+    message[2] = (uint8_t)(at >> 8);
+    message[3] = (uint8_t)at;
+    memcpy(message + CS_OTA_CHUNK_HEADER, ota_image + at, n);
+    const size_t total = CS_OTA_CHUNK_HEADER + n;
+
+    cs_ota_piece_t last = {0};
+    for (size_t off = 0; off < total; off += piece) {
+        size_t len = total - off < piece ? total - off : piece;
+        last = cs_ota_piece(o, message + off, len, off, total);
+        if (last.len > 0) {
+            if (o->next + last.len <= OTA_IMAGE) {
+                memcpy(ota_flash + o->next, last.data, last.len);
+            }
+            cs_ota_wrote(o, last.len);
+        }
+        if (last.bad) {
+            break;
+        }
+    }
+    return last;
+}
+
+// The sender's side: send what is asked for, as it is asked for.
+static bool ota_send_all(cs_ota_t *o, size_t chunk, size_t piece)
+{
+    for (int guard = 0; guard < 10000 && !cs_ota_complete(o); guard++) {
+        uint32_t at = o->next;
+        size_t n = OTA_IMAGE - at < chunk ? OTA_IMAGE - at : chunk;
+        cs_ota_piece_t answer = ota_send(o, at, n, piece);
+        if (answer.bad || !answer.message_done) {
+            return false;
+        }
+    }
+    return cs_ota_complete(o);
+}
+
+static void test_ota_takes_a_whole_image_in_order(void)
+{
+    ota_fill();
+    cs_ota_t o;
+    CHECK(cs_ota_begin(&o, OTA_IMAGE, 1572864), "a build that fits was refused");
+    CHECK(ota_send_all(&o, 4096, 100000), "the image was not taken");
+    CHECK(memcmp(ota_flash, ota_image, OTA_IMAGE) == 0, "what was written is not the image");
+}
+
+static void test_ota_takes_messages_handed_over_in_pieces(void)
+{
+    // The beacon's client buffer is 1 KB; a chunk is 8 KB. And a piece
+    // smaller than the offset, which no client makes, must still work.
+    const size_t pieces[] = {1024, 977, 5, 4, 1};
+    for (size_t i = 0; i < sizeof(pieces) / sizeof(pieces[0]); i++) {
+        ota_fill();
+        cs_ota_t o;
+        cs_ota_begin(&o, OTA_IMAGE, OTA_IMAGE);
+        bool done = ota_send_all(&o, 8192, pieces[i]);
+        if (pieces[i] < CS_OTA_CHUNK_HEADER) {
+            CHECK(!done || o.next == 0, "a first piece too short to hold its offset was written");
+            continue;
+        }
+        CHECK(done, "pieces of %u: the image was not taken", (unsigned)pieces[i]);
+        CHECK(memcmp(ota_flash, ota_image, OTA_IMAGE) == 0,
+              "pieces of %u: what was written is not the image", (unsigned)pieces[i]);
+    }
+}
+
+static void test_ota_ignores_a_chunk_sent_twice(void)
+{
+    ota_fill();
+    cs_ota_t o;
+    cs_ota_begin(&o, OTA_IMAGE, OTA_IMAGE);
+    ota_send(&o, 0, 4096, 1024);
+    CHECK(o.next == 4096, "next = %u after the first chunk", (unsigned)o.next);
+
+    // QoS 1 may deliver a message again; the sender may resend after a
+    // timeout. Either way the stand answers with where it is.
+    cs_ota_piece_t again = ota_send(&o, 0, 4096, 1024);
+    CHECK(again.message_done && !again.bad, "a repeat was not answered");
+    CHECK(o.next == 4096, "a repeat moved next to %u", (unsigned)o.next);
+
+    CHECK(ota_send_all(&o, 4096, 1024), "the image was not taken after a repeat");
+    CHECK(memcmp(ota_flash, ota_image, OTA_IMAGE) == 0, "a repeat corrupted the image");
+}
+
+static void test_ota_ignores_a_chunk_out_of_turn(void)
+{
+    ota_fill();
+    cs_ota_t o;
+    cs_ota_begin(&o, OTA_IMAGE, OTA_IMAGE);
+    cs_ota_piece_t ahead = ota_send(&o, 4096, 4096, 1024);
+    CHECK(ahead.message_done && ahead.len == 0, "a chunk ahead of its turn was written");
+    CHECK(o.next == 0, "a chunk ahead moved next to %u", (unsigned)o.next);
+    CHECK(ota_send_all(&o, 4096, 1024), "the image was not taken after a chunk out of turn");
+    CHECK(memcmp(ota_flash, ota_image, OTA_IMAGE) == 0, "a chunk out of turn corrupted the image");
+}
+
+static void test_ota_refuses_more_than_was_offered(void)
+{
+    ota_fill();
+    cs_ota_t o;
+    cs_ota_begin(&o, 6000, OTA_IMAGE);
+    ota_send(&o, 0, 4096, 1024);
+    cs_ota_piece_t over = ota_send(&o, 4096, 4096, 1024);
+    CHECK(over.bad, "bytes past the offered size were accepted");
+    CHECK(o.next == 4096, "bytes past the offered size were written");
+}
+
+static void test_ota_refuses_what_does_not_fit(void)
+{
+    cs_ota_t o;
+    CHECK(!cs_ota_begin(&o, 0, OTA_IMAGE), "an empty build was accepted");
+    CHECK(!o.receiving, "an empty build left it receiving");
+    CHECK(!cs_ota_begin(&o, 1572865, 1572864), "a build larger than the slot was accepted");
+    CHECK(cs_ota_begin(&o, 1572864, 1572864), "a build that exactly fits was refused");
+}
+
+static void test_ota_a_new_offer_starts_again(void)
+{
+    ota_fill();
+    cs_ota_t o;
+    cs_ota_begin(&o, OTA_IMAGE, OTA_IMAGE);
+    ota_send(&o, 0, 4096, 1024);
+    cs_ota_begin(&o, OTA_IMAGE, OTA_IMAGE);
+    CHECK(o.next == 0, "a new offer kept next at %u", (unsigned)o.next);
+    CHECK(ota_send_all(&o, 4096, 1024), "the image was not taken after a new offer");
+}
+
+static void test_ota_the_rest_of_an_unseen_message_is_not_written(void)
+{
+    ota_fill();
+    cs_ota_t o;
+    cs_ota_begin(&o, OTA_IMAGE, OTA_IMAGE);
+    // The tail of a message whose head arrived before the offer, or before a
+    // reconnection.
+    cs_ota_piece_t tail = cs_ota_piece(&o, ota_image, 512, 1024, 2048);
+    CHECK(tail.len == 0, "the tail of an unseen message was written");
+    CHECK(o.next == 0, "the tail of an unseen message moved next");
+
+    // And a message cut off by a lost connection: its head is taken, its
+    // tail never comes, and the next message starts afresh.
+    ota_send(&o, 0, 1000, 100000);
+    cs_ota_piece_t head = cs_ota_piece(&o, (const uint8_t[]){0, 0, 3, 232, 1, 2, 3}, 7, 0, 1004);
+    CHECK(head.len == 3 && !head.message_done, "the head of a cut message: %u bytes", (unsigned)head.len);
+    cs_ota_wrote(&o, head.len);
+    CHECK(o.next == 1003, "next = %u after the head of a cut message", (unsigned)o.next);
+    CHECK(ota_send(&o, o.next, 500, 100000).message_done, "the message after a cut one was not answered");
+    CHECK(o.next == 1503, "next = %u after a cut message", (unsigned)o.next);
+}
+
+static void test_ota_a_short_message_is_answered_not_written(void)
+{
+    cs_ota_t o;
+    cs_ota_begin(&o, OTA_IMAGE, OTA_IMAGE);
+    const uint8_t two[] = {0, 0};
+    cs_ota_piece_t p = cs_ota_piece(&o, two, sizeof(two), 0, sizeof(two));
+    CHECK(p.message_done && p.len == 0 && !p.bad, "a message too short for its offset");
+    const uint8_t header_only[] = {0, 0, 0, 0};
+    p = cs_ota_piece(&o, header_only, 4, 0, 4);
+    CHECK(p.message_done && p.len == 0 && !p.bad, "a message with no bytes of image");
+    CHECK(o.next == 0, "a short message moved next");
+}
+
+static void test_ota_nothing_is_taken_unless_offered(void)
+{
+    ota_fill();
+    cs_ota_t o = {0};
+    cs_ota_piece_t p = ota_send(&o, 0, 4096, 1024);
+    CHECK(p.len == 0 && !p.message_done && !p.bad, "a chunk was taken with nothing offered");
+    cs_ota_begin(&o, OTA_IMAGE, OTA_IMAGE);
+    cs_ota_abandon(&o);
+    p = ota_send(&o, 0, 4096, 1024);
+    CHECK(p.len == 0 && !cs_ota_complete(&o), "a chunk was taken after the offer was abandoned");
+}
+
+static void test_ota_state_is_the_json_the_sender_reads(void)
+{
+    char out[256];
+    uint32_t next = 8192;
+    size_t n = cs_ota_state_format(out, sizeof(out), "receiving", &next, NULL, NULL, NULL);
+    CHECK(n > 0 && strcmp(out, "{\"v\":1,\"state\":\"receiving\",\"next\":8192}") == 0, "receiving: %s", out);
+
+    n = cs_ota_state_format(out, sizeof(out), "running", NULL, "f5fd6f9-dirty", "0123456789abcdef", NULL);
+    CHECK(n > 0 && strcmp(out, "{\"v\":1,\"state\":\"running\",\"version\":\"f5fd6f9-dirty\",\"elf\":\"0123456789abcdef\"}") == 0,
+          "running: %s", out);
+
+    n = cs_ota_state_format(out, sizeof(out), "refused", NULL, NULL, NULL, "it is \"cover-screen\"'s");
+    CHECK(n > 0 && strstr(out, "\"why\":\"it is \\\"cover-screen\\\"'s\"}") != NULL, "refused: %s", out);
+    CHECK(n == strlen(out), "the length returned is not the line's");
+
+    CHECK(cs_ota_state_format(out, 20, "receiving", &next, NULL, NULL, NULL) == 0, "a line that did not fit");
+    CHECK(cs_ota_state_format(NULL, 20, "ready", NULL, NULL, NULL, NULL) == 0, "NULL out");
+    CHECK(cs_ota_state_format(out, sizeof(out), NULL, NULL, NULL, NULL, NULL) == 0, "NULL state");
+}
+
 int main(int argc, char **argv)
 {
     if (argc == 3 && strcmp(argv[1], "--pictures") == 0) {
@@ -801,6 +1019,18 @@ int main(int argc, char **argv)
         {"no cover shows a record", test_no_cover_shows_a_record},
         {"a missing broker is marked", test_a_missing_broker_is_marked},
         {"an event is the line the store expects", test_an_event_is_the_line_the_store_expects},
+        {"ota takes a whole image in order", test_ota_takes_a_whole_image_in_order},
+        {"ota takes messages handed over in pieces", test_ota_takes_messages_handed_over_in_pieces},
+        {"ota ignores a chunk sent twice", test_ota_ignores_a_chunk_sent_twice},
+        {"ota ignores a chunk out of turn", test_ota_ignores_a_chunk_out_of_turn},
+        {"ota refuses more than was offered", test_ota_refuses_more_than_was_offered},
+        {"ota refuses what does not fit", test_ota_refuses_what_does_not_fit},
+        {"ota a new offer starts again", test_ota_a_new_offer_starts_again},
+        {"ota the rest of an unseen message is not written",
+         test_ota_the_rest_of_an_unseen_message_is_not_written},
+        {"ota a short message is answered, not written", test_ota_a_short_message_is_answered_not_written},
+        {"ota nothing is taken unless offered", test_ota_nothing_is_taken_unless_offered},
+        {"ota state is the json the sender reads", test_ota_state_is_the_json_the_sender_reads},
     };
 
     for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
