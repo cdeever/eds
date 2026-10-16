@@ -17,7 +17,7 @@ CHIP ?= esp32s2
 # script out of IDF_PATH when it is there.
 IDF_PY := $(if $(wildcard $(IDF_PATH)/tools/idf.py),python3 $(IDF_PATH)/tools/idf.py,idf.py)
 
-.PHONY: help test clean build chip flash monitor menuconfig provision
+.PHONY: help test clean build chip flash monitor menuconfig provision ota
 
 help:
 	@echo "power-beacon - available targets"
@@ -28,6 +28,7 @@ help:
 	@echo "  chip        say what is on PORT, and stop if it is not a $(CHIP)"
 	@echo "  flash       idf.py flash        (PORT=$(PORT))"
 	@echo "  monitor     idf.py monitor      (PORT=$(PORT))"
+	@echo "  ota         send build/power-beacon.bin to the beacon it was built for, through the broker"
 	@echo "  provision   write what the EdS tenant issued this beacon into flash (PORT=$(PORT))"
 	@echo "  clean       remove host test artifacts"
 	@echo
@@ -51,6 +52,15 @@ flash: chip
 
 monitor:
 	$(IDF_PY) -p "$(PORT)" monitor
+
+# The build to the beacon in place, through the broker (ADR-0035): no cable.
+# It goes to the beacon this build is for, read from sdkconfig, because the id
+# is compiled in: a build for another would log in here and listen on the
+# other's topics, where no update could reach it.
+ota:
+	@id=$$(sed -n 's/^CONFIG_PB_BEACON_ID="\(.*\)"$$/\1/p' sdkconfig); \
+	if [ -z "$$id" ] || [ ! -s build/power-beacon.bin ]; then echo "no build here: make build first" >&2; exit 2; fi; \
+	$(MAKE) -C ../../tools/ota send DEVICE=beacon/$$id IMAGE="$(CURDIR)/build/power-beacon.bin"
 
 # Everything the beacon is flashed with was issued by the EdS tenant and is in
 # its Terraform outputs. The WiFi key, the broker account and the CA go into

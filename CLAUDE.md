@@ -14,7 +14,7 @@ cover image ──▶ lightd ──▶ palette ──▶ lightd ──▶ mqtt01
    (HTTP)        (Go)      (Python)              (VLAN 35)   (VLAN 30)
 ```
 
-Four independent projects, each with its own `Makefile` and README. Nothing
+Independent projects, each with its own `Makefile` and README. Nothing
 builds the monorepo as a whole; work inside one project directory at a time.
 
 | Path | Language | Build entry |
@@ -26,6 +26,7 @@ builds the monorepo as a whole; work inside one project directory at a time.
 | `firmware/lp-stand` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
 | `firmware/cover-screen` | C / ESP-IDF | `make test pictures` (host), `make build flash` (device) |
 | `firmware/power-beacon` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
+| `tools/ota` | Go 1.25 | `make check test-integration`; run by `make ota` in a firmware |
 | `infra/deevnet-tenant-eds` | Terraform | `make paths init plan apply` |
 | `images` | Ansible / shell | `make -C deploy/relay image fetch` (builds on builder) |
 
@@ -201,6 +202,30 @@ keepalive is ten seconds, on purpose: that is how soon the will is sent.
 the same serial port. Its credentials, WiFi, event log and partition table
 are copies of the stand's too.
 
+### Updates over the air (`tools/ota`, all three firmwares)
+
+```bash
+make build ota                 # in a firmware directory: this build, to its device
+```
+
+**A build reaches a device through the broker, and a build that cannot
+reach the broker is undone** (ADR-0035). The devices can reach nothing of
+EdS's but the broker, so `eds-ota` runs on the services workload with a
+broker account of its own, `ota`, offers the build on the device's `…/ota`
+topic and sends what the device asks for on `…/ota/chunk`, 8 KB at a time.
+The device writes it to its spare slot (`app/ota` decides which bytes, host
+tested; `network/ota` writes them) and restarts into it with a clean
+disconnect, so the beacon's restart is not a will. **ESP-IDF's rollback is
+on in every bootloader**: a new build is kept once it has connected to the
+broker, and one that has not within two minutes boots the old one again.
+Do not weaken that test: reaching the broker is exactly what the next
+update needs. The bootloader is not updated over the air, so turning
+rollback on took one flash by cable; `network/ota` refuses to build with an
+`sdkconfig` that has it off. The `ota` account names each device, and a new
+device is added to it when it can take an update. The images are not
+signed; anyone with the `ota` password can run code on the devices. It is
+EdS's alone: Deevnet IoTaaS only enforces the grants in `main.tf`.
+
 ### deevnet-tenant-eds (`infra/deevnet-tenant-eds`)
 
 ```bash
@@ -359,6 +384,9 @@ on the console, which is told and cannot find out.
 | `eds/beacon/<id>/status` | device → nowplayd, console | yes (LWT) |
 | `eds/console/status` | console → broker | yes (LWT) |
 | `eds/log/<id>` | device or agent Pi → broker → log bridge | no |
+| `eds/{lightstand,screen,beacon}/<id>/ota` | eds-ota → device | **never** |
+| `eds/{lightstand,screen,beacon}/<id>/ota/chunk` | eds-ota → device | **never** |
+| `eds/{lightstand,screen,beacon}/<id>/ota/state` | device → eds-ota | **never** |
 
 `eds/log/<id>` is Deevnet IoTaaS's shape, not EdS's: `<tenant>/log/<device>` is
 the one topic under `log/` a device account may publish, and Deevnet IoTaaS's
@@ -424,10 +452,10 @@ broker into the tenant is an ADR, not a config change.
   middle and closes to it (`app/transition`); that is the stand's own and is
   never sent, and the console does not draw it.
 - **Host tests build with `-Wall -Wextra -Werror`.** Only `scene.c`,
-  `effects.c`, `status.c`, `transition.c`, `gamma.c` and `event_format.c`
-  are covered; the ESP-IDF glue
-  (`scene_json.c`, `led_strip_out.c`, `wifi.c`, `mqtt.c`, `event_log.c`,
-  `lp_credentials.c`, `main.c`) builds with IDF 6.1 and runs on one board but
+  `effects.c`, `status.c`, `transition.c`, `gamma.c`, `event_format.c` and
+  `ota_proto.c` are covered; the ESP-IDF glue
+  (`scene_json.c`, `led_strip_out.c`, `wifi.c`, `mqtt.c`, `ota.c`,
+  `event_log.c`, `lp_credentials.c`, `main.c`) builds with IDF 6.1 and runs on one board but
   has no host tests. Keep hardware-independent logic out of the
   ESP-IDF-dependent files so it stays testable.
 - **Palette tests use synthetic sleeves** (`tests/conftest.py`) built to exhibit

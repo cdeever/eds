@@ -7,11 +7,13 @@ set(srcs
     "app/screen/screen.c"
     "app/events/event_format.c"
     "app/events/event_log.c"
+    "app/ota/ota_proto.c"
     "hardware/display.c"
     "hardware/touch.c"
     "hardware/jpeg.c"
     "network/wifi/wifi.c"
     "network/mqtt/mqtt.c"
+    "network/ota/ota.c"
     "network/mqtt/now_json.c"
 )
 
@@ -20,9 +22,11 @@ set(includes
     "app/ui"
     "app/screen"
     "app/events"
+    "app/ota"
     "hardware"
     "network/wifi"
     "network/mqtt"
+    "network/ota"
 )
 
 # The broker's CA is normally provisioned with the credentials (`make
@@ -37,6 +41,6 @@ idf_component_register(
     SRCS ${srcs}
     INCLUDE_DIRS ${includes}
     EMBED_TXTFILES ${embeds}
-    REQUIRES nvs_flash esp_wifi esp_event esp_timer esp_app_format esp_rom
+    REQUIRES nvs_flash esp_wifi esp_event esp_timer esp_app_format app_update esp_rom
              esp_lcd esp_driver_spi esp_driver_gpio mqtt cjson
 )

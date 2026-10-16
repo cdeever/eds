@@ -24,6 +24,7 @@
 #include "lp_credentials.h"
 #include "mqtt.h"
 #include "nvs_flash.h"
+#include "ota.h"
 #include "scene.h"
 #include "status.h"
 #include "transition.h"
@@ -176,6 +177,9 @@ void app_main(void)
     // and WiFi keeps retrying underneath.
     lp_wifi_start();
 
+    // A new build has two minutes from here to reach the broker, or the one
+    // before it comes back (ADR-0035).
+    lp_ota_probation();
     ESP_ERROR_CHECK(lp_mqtt_start(on_scene));
 
     // The retained scene arrives moments after subscribing, which is the whole

@@ -99,6 +99,17 @@ output "console_broker" {
   }
 }
 
+output "ota_broker" {
+  description = "eds-ota's MQTT credential (ADR-0035). deploy/ writes it to the workload beside kit.env."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.ota.username
+    password  = deevnet_iot_broker_account.ota.password
+    publish   = deevnet_iot_broker_account.ota.granted_publish
+    subscribe = deevnet_iot_broker_account.ota.granted_subscribe
+  }
+}
+
 output "console_url" {
   description = "Where the console is, from the site's trusted networks."
   value       = "https://${deevnet_certificate.console.fqdn}/"

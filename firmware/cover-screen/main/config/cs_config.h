@@ -30,6 +30,12 @@
 // Deevnet IoTaaS's shape, as the stand's are.
 #define CS_TOPIC_LOG     CS_TOPIC_PREFIX "/log/" CS_SCREEN_ID
 
+// Updates through the broker (ADR-0035): a build is offered on ota, arrives
+// on ota/chunk, and the screen answers on ota/state. None is retained.
+#define CS_TOPIC_OTA       CS_TOPIC_PREFIX "/screen/" CS_SCREEN_ID "/ota"
+#define CS_TOPIC_OTA_CHUNK CS_TOPIC_PREFIX "/screen/" CS_SCREEN_ID "/ota/chunk"
+#define CS_TOPIC_OTA_STATE CS_TOPIC_PREFIX "/screen/" CS_SCREEN_ID "/ota/state"
+
 #define CS_STATUS_ONLINE  "online"
 #define CS_STATUS_OFFLINE "offline"
 
@@ -63,3 +69,12 @@
 // online can outlive the screen when the broker is down as it goes; a reader
 // believes one only for ninety seconds after hearing it, three of these.
 #define CS_PRESENCE_INTERVAL_MS (30 * 1000)
+
+// --- updates ---------------------------------------------------------------
+
+// How long a new build has to reach the broker before it is given up and the
+// one before it booted again (ADR-0035). The same as the stand's.
+#define CS_OTA_CONFIRM_WITHIN_MS (2 * 60 * 1000)
+
+// A build that stops arriving for this long is abandoned.
+#define CS_OTA_STALL_MS (60 * 1000)

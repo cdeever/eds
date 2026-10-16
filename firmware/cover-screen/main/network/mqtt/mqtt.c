@@ -13,6 +13,7 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "mqtt_client.h"
+#include "ota.h"
 #include "now_json.h"
 #include "screen.h"
 #include "wifi.h"
@@ -53,6 +54,9 @@ static void on_connected(void)
     esp_mqtt_client_subscribe(client, CS_TOPIC_CURRENT, 1);
     esp_mqtt_client_subscribe(client, CS_TOPIC_COVER, 1);
 
+    // Its ota topics, and a new build kept now that it got this far.
+    cs_ota_on_connect(client);
+
     // Presence, retained, replacing the will the broker would have published.
     esp_mqtt_client_publish(client, CS_TOPIC_STATUS, CS_STATUS_ONLINE, 0, 1, 1);
 
@@ -89,6 +93,11 @@ static bool topic_is(const esp_mqtt_event_handle_t event, const char *topic)
 
 static void on_data(const esp_mqtt_event_handle_t event)
 {
+    // A build arrives in messages of its own, in pieces like a cover's.
+    if (cs_ota_on_data(client, event)) {
+        return;
+    }
+
     size_t offset = (size_t)event->current_data_offset;
     size_t len = (size_t)event->data_len;
     size_t total = (size_t)event->total_data_len;
@@ -217,6 +226,8 @@ static void log_task(void *arg)
     TickType_t last_presence = xTaskGetTickCount();
 
     for (;;) {
+        cs_ota_tick(client);
+
         if (!connected) {
             cs_screen_link(cs_wifi_connected() ? CS_LINK_NO_BROKER : CS_LINK_NO_WIFI);
             vTaskDelay(pdMS_TO_TICKS(250));

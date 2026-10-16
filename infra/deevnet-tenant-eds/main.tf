@@ -203,10 +203,13 @@ resource "deevnet_iot_broker_account" "lp_stand_01" {
   publish = [
     "lightstand/lp-stand-01/status",
     "lightstand/lp-stand-01/state",
-    "log/lp-stand-01", # its own log lines, into the tenant's log store (Deevnet CHG-0021)
+    "log/lp-stand-01",                  # its own log lines, into the tenant's log store (Deevnet CHG-0021)
+    "lightstand/lp-stand-01/ota/state", # its answers to a build being sent (ADR-0035)
   ]
   subscribe = [
     "lightstand/lp-stand-01/scene",
+    "lightstand/lp-stand-01/ota",       # a build offered to it (ADR-0035)
+    "lightstand/lp-stand-01/ota/chunk", # and the build, in pieces
   ]
 }
 
@@ -379,13 +382,16 @@ resource "deevnet_iot_broker_account" "cover_screen_01" {
   device = deevnet_iot_device.cover_screen_01.name
 
   publish = [
-    "screen/cover-screen-01/status", # its own presence, and its last will
-    "nowplaying/command",            # what a hand on the screen asked for
-    "log/cover-screen-01",           # its own events, into the tenant's log store
+    "screen/cover-screen-01/status",    # its own presence, and its last will
+    "nowplaying/command",               # what a hand on the screen asked for
+    "log/cover-screen-01",              # its own events, into the tenant's log store
+    "screen/cover-screen-01/ota/state", # its answers to a build being sent (ADR-0035)
   ]
   subscribe = [
-    "nowplaying/current",           # what is playing, and whether it is
-    "nowplaying/current/art/small", # its sleeve, at a size the screen can hold
+    "nowplaying/current",               # what is playing, and whether it is
+    "nowplaying/current/art/small",     # its sleeve, at a size the screen can hold
+    "screen/cover-screen-01/ota",       # a build offered to it (ADR-0035)
+    "screen/cover-screen-01/ota/chunk", # and the build, in pieces
   ]
 }
 
@@ -404,7 +410,7 @@ resource "deevnet_iot_device" "turntable_power_01" {
   trust_class = "iot"
 }
 
-# The beacon's own account. It reads nothing.
+# The beacon's own account. It reads nothing but a build sent to it.
 #
 # What this credential can do is say the turntable is on when it is not, or
 # off when it is: nowplayd would hold the stand for a silent turntable, or
@@ -419,8 +425,40 @@ resource "deevnet_iot_broker_account" "turntable_power_01" {
   device = deevnet_iot_device.turntable_power_01.name
 
   publish = [
-    "beacon/turntable-power-01/status", # its own presence, and its last will
-    "log/turntable-power-01",           # its own events, into the tenant's log store
+    "beacon/turntable-power-01/status",    # its own presence, and its last will
+    "log/turntable-power-01",              # its own events, into the tenant's log store
+    "beacon/turntable-power-01/ota/state", # its answers to a build being sent (ADR-0035)
   ]
-  subscribe = []
+  subscribe = [
+    "beacon/turntable-power-01/ota",       # a build offered to it (ADR-0035)
+    "beacon/turntable-power-01/ota/chunk", # and the build, in pieces
+  ]
+}
+
+# --- Updates through the broker (ADR-0035) -----------------------------------
+#
+# eds-ota, run on the services workload by `make ota` in a firmware directory.
+# It offers a build to one device and reads that device's answers, and does
+# nothing else. Each device is named, not matched by a pattern: a device added
+# later is added here when it can take an update, and not before.
+#
+# What this credential can do is run code on every device it names. Its
+# password lives where lightd's does, on the workload, readable by root.
+resource "deevnet_iot_broker_account" "ota" {
+  tenant = deevnet_tenant.eds.name
+  name   = "ota"
+
+  publish = [
+    "lightstand/lp-stand-01/ota",
+    "lightstand/lp-stand-01/ota/chunk",
+    "screen/cover-screen-01/ota",
+    "screen/cover-screen-01/ota/chunk",
+    "beacon/turntable-power-01/ota",
+    "beacon/turntable-power-01/ota/chunk",
+  ]
+  subscribe = [
+    "lightstand/lp-stand-01/ota/state",
+    "screen/cover-screen-01/ota/state",
+    "beacon/turntable-power-01/ota/state",
+  ]
 }

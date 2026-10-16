@@ -76,6 +76,8 @@ endif
 
 # Secret: kit.env holds lightd's broker password and the tenant's log tokens,
 # and nowplayd-broker.env and console-broker.env hold those services' own.
+# ota-broker.env is eds-ota's, which no service runs: `make ota` in a firmware
+# directory does, on the workload (ADR-0035).
 # All are read from the tenant's state, which lives in the state store, and
 # none is committed.
 kit-env: broker-env
@@ -92,6 +94,9 @@ broker-env:
 	@umask 077; set -a; . $(INFRA)/.backend.env; set +a; \
 		terraform -chdir=$(INFRA) output -json console_broker | python3 -c 'import json,sys; a=json.load(sys.stdin); print("CONSOLE_MQTT_USERNAME=%s\nCONSOLE_MQTT_PASSWORD=%s" % (a["username"], a["password"]))' > console-broker.env
 	@echo "wrote console-broker.env (secret, gitignored)"
+	@umask 077; set -a; . $(INFRA)/.backend.env; set +a; \
+		terraform -chdir=$(INFRA) output -json ota_broker | python3 -c 'import json,sys; a=json.load(sys.stdin); print("OTA_MQTT_USERNAME=%s\nOTA_MQTT_PASSWORD=%s" % (a["username"], a["password"]))' > ota-broker.env
+	@echo "wrote ota-broker.env (secret, gitignored)"
 
 # Secret: the console's key. It was made in the tenant's state and has been
 # nowhere else; the certificate beside it is public. tls/ is gitignored.
@@ -120,9 +125,9 @@ discogs-env:
 
 units: kit-env tls-files discogs-env
 	ssh $(HOST) 'sudo install -d -m 0755 /opt/eds && mkdir -p ~/eds-deploy'
-	scp kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env $(INFRA)/deevnet-root-ca.pem tls/console.key tls/console.crt $(UNITS) $(HOST):eds-deploy/
+	scp kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env ota-broker.env $(INFRA)/deevnet-root-ca.pem tls/console.key tls/console.crt $(UNITS) $(HOST):eds-deploy/
 	ssh $(HOST) 'cd ~/eds-deploy && \
-		sudo install -m 0600 kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env /opt/eds/ && \
+		sudo install -m 0600 kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env ota-broker.env /opt/eds/ && \
 		sudo install -m 0644 deevnet-root-ca.pem /opt/eds/ && \
 		sudo install -d -m 0700 -o 65532 -g 65532 /opt/eds/tls && \
 		sudo install -m 0400 -o 65532 -g 65532 console.key console.crt /opt/eds/tls/ && \
@@ -146,5 +151,5 @@ logs:
 	ssh $(HOST) sudo journalctl -f $(addprefix -u ,$(SERVICES))
 
 clean:
-	rm -f kit.env nowplayd-broker.env console-broker.env
+	rm -f kit.env nowplayd-broker.env console-broker.env ota-broker.env
 	rm -rf tls

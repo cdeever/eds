@@ -166,8 +166,37 @@ and its own:
 | `current.rejected` | a track message could not be read | `bytes` |
 | `mqtt.stalled` | the broker did not answer when a press asked | |
 
+## Updates through the broker
+
+A build reaches the screen without a cable ([ADR-0035](../../docs/content/docs/architecture/decisions/0035-firmware-is-updated-through-the-broker.md)):
+
+```bash
+make build ota
+```
+
+`ota` sends `build/cover-screen.bin` to the screen this build is for (its id,
+read from `sdkconfig`), through `eds-ota` on the services workload
+(`tools/ota`). The screen writes it to its spare slot as it arrives,
+answering each piece with the next byte it wants, and restarts into it.
+The new build is **on probation** until it reaches the broker; one that
+has not within two minutes is given up, and the build before it boots
+again, by itself. One that crashes first is put back by the bootloader.
+
+**The first build with this goes on by cable**, because the bootloader's
+rollback is not updated over the air. An `sdkconfig` from before it has
+rollback off and stops the build with an `#error`: delete it and build
+again.
+
+| Event | When | Fields |
+|---|---|---|
+| `ota.offered` | a build is offered, and taken | `bytes`, `elf` |
+| `ota.refused` | it is not this firmware's, does not fit, stops arriving or is not whole | `why` |
+| `ota.applied` | it is whole and checked; restarting into it | `version`, `elf` |
+| `ota.kept` | a new build reached the broker, and stays | `version`, `elf` |
+
 ## Shared with the stand
 
-`config/cs_credentials.*`, `network/wifi`, `app/events` and the partition
-table are copies of `firmware/lp-stand`'s, renamed. A fix to one is owed to
+`config/cs_credentials.*`, `network/wifi`, `app/events`, `app/ota`,
+`network/ota` and the partition table are copies of `firmware/lp-stand`'s,
+renamed. A fix to one is owed to
 the other.
