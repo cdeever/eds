@@ -13,7 +13,18 @@ void cs_ui_init(cs_ui_t *ui)
     memset(ui, 0, sizeof(*ui));
     ui->link = CS_LINK_NO_WIFI;
     ui->play = CS_PLAY_STOPPED;
+    ui->present = true;
     ui->dirty = true;
+}
+
+// wake lights the screen if it is dark, and starts the wait for sleep over.
+static void wake(cs_ui_t *ui)
+{
+    ui->counting = false;
+    if (ui->asleep) {
+        ui->asleep = false;
+        ui->dirty = true;
+    }
 }
 
 cs_button_t cs_ui_zone(int x, int y)
@@ -67,6 +78,13 @@ cs_button_t cs_ui_touch(cs_ui_t *ui, bool touching, int x, int y, uint32_t now_m
     if (pressed) {
         ui->down = true;
         ui->last_touch_ms = now_ms;
+
+        // A touch on a dark screen only wakes it. It is still followed, so
+        // that it has to lift before the next one means anything.
+        if (ui->asleep) {
+            wake(ui);
+            return CS_BTN_NONE;
+        }
 
         // Nothing to offer, so nothing is raised and nothing is sent. The
         // touch is still followed, so that one held across a change of track
@@ -123,6 +141,22 @@ void cs_ui_tick(cs_ui_t *ui, uint32_t now_ms)
         ui->lit = CS_BTN_NONE;
         ui->dirty = true;
     }
+
+    // The wait for sleep starts when nobody is there and nothing else is
+    // keeping the screen awake, and starts again after each touch.
+    if (ui->present || ui->link != CS_LINK_UP || ui->down) {
+        ui->counting = false;
+        return;
+    }
+    if (!ui->counting) {
+        ui->counting = true;
+        ui->quiet_since_ms = now_ms;
+    } else if (!ui->asleep && now_ms - ui->quiet_since_ms >= CS_SLEEP_MS) {
+        ui->asleep = true;
+        ui->overlay = false;
+        ui->armed = false;
+        ui->lit = CS_BTN_NONE;
+    }
 }
 
 void cs_ui_set_link(cs_ui_t *ui, cs_link_t link)
@@ -130,6 +164,24 @@ void cs_ui_set_link(cs_ui_t *ui, cs_link_t link)
     if (ui->link != link) {
         ui->link = link;
         ui->dirty = true;
+    }
+    // A screen that cannot hear the current track cannot know nobody is
+    // there, and its corner has something to say.
+    if (link != CS_LINK_UP) {
+        wake(ui);
+    }
+}
+
+void cs_ui_set_source(cs_ui_t *ui, bool named)
+{
+    // Only a change counts: the same "nobody" said again is not the quiet
+    // starting over.
+    if (named) {
+        ui->present = true;
+        wake(ui);
+    } else if (ui->present) {
+        ui->present = false;
+        ui->counting = false;
     }
 }
 
@@ -184,6 +236,11 @@ void cs_ui_view(const cs_ui_t *ui, cs_view_t *view)
     view->pressed = ui->lit;
     view->playing = ui->play == CS_PLAY_PLAYING;
     view->link = ui->link;
+}
+
+bool cs_ui_asleep(const cs_ui_t *ui)
+{
+    return ui->asleep;
 }
 
 const char *cs_button_command(cs_button_t button)

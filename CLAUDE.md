@@ -185,6 +185,11 @@ drawable that way. `make pictures` is how its look is checked without a
 board. Its credentials, WiFi, event log and partition table are copies of
 the stand's; change one, change the other.
 
+**It sleeps when nobody is there** (ADR-0036): five minutes after `current`
+names no `source`, the panel goes dark; a source, a touch or a lost broker
+lights it. That missing `source` is nowplayd's arbiter saying every source
+is offline or switched off; do not give the screen the presence topics.
+
 ### power-beacon (`firmware/power-beacon`)
 
 ```bash

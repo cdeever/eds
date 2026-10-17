@@ -22,6 +22,12 @@
 //   - With no broker a press sends nothing, and says so by doing nothing: a
 //     command queued for later would skip a track the listener has moved on
 //     from.
+//   - The screen sleeps when nobody is there: five minutes after the current
+//     track last named a source, counted again from each touch (ADR-0036).
+//     A source named wakes it. So does a touch, which only wakes it: it
+//     raises nothing and sends nothing. So does losing the broker, because a
+//     dark screen has to mean asleep, not broken. Until the current track
+//     has been heard it is awake.
 #pragma once
 
 #include <stdbool.h>
@@ -58,6 +64,7 @@ typedef enum {
 #define CS_FLASH_MS        200  // a pressed button stays lit at least this long
 #define CS_REPEAT_AFTER_MS 500  // a held volume button starts repeating after this
 #define CS_REPEAT_EVERY_MS 250  // and then repeats this often
+#define CS_SLEEP_MS (5u * 60u * 1000u) // nobody there this long, and the screen sleeps
 
 // Consecutive samples that must agree before a touch or a lift is believed. A
 // resistive panel chatters at both ends of a press.
@@ -78,6 +85,11 @@ typedef struct {
     bool has_art;     // the current track names a cover
     bool no_controls; // what is playing takes no commands, so no buttons
     bool cover_ready; // and the screen holds one it can draw
+    bool present;     // the current track names a source, or has not been heard
+
+    bool asleep;
+    bool counting; // toward sleep, since quiet_since_ms
+    uint32_t quiet_since_ms;
 
     bool overlay;
     bool armed; // the touch that raised the buttons has lifted
@@ -110,7 +122,8 @@ cs_button_t cs_ui_zone(int x, int y);
 // returns the button whose command should be sent now, or CS_BTN_NONE.
 cs_button_t cs_ui_touch(cs_ui_t *ui, bool touching, int x, int y, uint32_t now_ms);
 
-// cs_ui_tick lets time pass: the buttons going away, a lit button going out.
+// cs_ui_tick lets time pass: the buttons going away, a lit button going out,
+// the screen going to sleep.
 void cs_ui_tick(cs_ui_t *ui, uint32_t now_ms);
 
 void cs_ui_set_link(cs_ui_t *ui, cs_link_t link);
@@ -122,6 +135,9 @@ void cs_ui_set_playing(cs_ui_t *ui, cs_play_t play, bool has_art);
 // buttons are offered: a message with no word on it is from before there was
 // one. Taking them away takes down any that are up.
 void cs_ui_set_controls(cs_ui_t *ui, bool offered);
+// cs_ui_set_source says whether the current track names a source. None named
+// is how nowplayd says nobody is there: every source offline or switched off.
+void cs_ui_set_source(cs_ui_t *ui, bool named);
 // cs_ui_set_cover says whether the screen holds a cover it can draw. Call it
 // with true for each new one, even after another: the picture has changed.
 void cs_ui_set_cover(cs_ui_t *ui, bool ready);
@@ -131,6 +147,10 @@ void cs_ui_set_cover(cs_ui_t *ui, bool ready);
 bool cs_ui_take_dirty(cs_ui_t *ui);
 
 void cs_ui_view(const cs_ui_t *ui, cs_view_t *view);
+
+// cs_ui_asleep says whether the panel should be dark. What changes while it
+// is stays dirty, to be drawn on waking.
+bool cs_ui_asleep(const cs_ui_t *ui);
 
 // cs_button_command is the word for a button in the now-playing command
 // contract, or NULL for CS_BTN_NONE.
