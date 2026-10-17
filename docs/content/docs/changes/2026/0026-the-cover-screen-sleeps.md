@@ -98,7 +98,8 @@ Nothing outside the screen changed.
 
 | When | Step | What happened |
 |---|---|---|
-| | | |
+| 2026-10-17 13:38 UTC | 1 | `make build ota` from `7dd2035`: `kept` in 17 s. In the screen's events: `ota.offered`, `ota.applied`, `system.boot` (`software`, firmware `7dd2035`), `ota.kept`, `mqtt.connected`. |
+| 2026-10-17 13:44 UTC | 2 | `screen.asleep` at 303.6 s of uptime: five minutes after `current`, heard moments after connecting at 3.2 s, named no source. A `screen.health` 2 s before it, and no `mqtt.disconnected` after: asleep, still on the broker. Not yet seen by eye; the touch and the turntable not yet tried. |
 
 ### Departures from the plan
 
