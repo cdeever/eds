@@ -177,6 +177,8 @@ make -C firmware/cover-screen ota
 - [x] ADR-0035's evidence, into the record; accepted.
 - [ ] ADR-0034's: the stand unplugged across a broker restart, seen gray;
   a record playing through a nowplayd restart without the room dimming.
-- [ ] Builder's `/home` is 86% full after the prune. Each deploy leaves
-  about 2 GB of untagged build stages; `make -C deploy images` could prune
-  after itself.
+- [x] Builder's `/home` filled because each deploy left its build stages,
+  about a gigabyte an image changed. `make -C deploy images` now builds
+  without layers, labels its images `eds.deploy`, and prunes only untagged
+  images with that label: two runs on the Builder, the second left nothing
+  behind, in 63 s each. Nothing of Deevnet IoTaaS's matches.
