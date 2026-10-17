@@ -90,7 +90,7 @@ func run(device, path string) error {
 	defer stop()
 
 	fmt.Printf("offering %s %s (%s, %d bytes) to %s\n", desc.Project, desc.Version, desc.ELF, len(img), device)
-	shown := -1
+	shown := -10 // so that 0% is shown: -1/10 is 0 in Go
 	res, err := send.Send(ctx, conn, topics, img, desc, send.DefaultWaits, func(next, size int) {
 		if pct := next * 100 / size; pct/10 != shown/10 {
 			shown = pct

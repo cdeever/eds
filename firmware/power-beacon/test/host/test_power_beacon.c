@@ -11,7 +11,7 @@
 #include <string.h>
 
 #include "event_format.h"
-#include "ota_proto.h"
+#include "ota_receive.h"
 
 static int failures = 0;
 static int checks = 0;

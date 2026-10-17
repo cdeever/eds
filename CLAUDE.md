@@ -453,7 +453,7 @@ broker into the tenant is an ADR, not a config change.
   never sent, and the console does not draw it.
 - **Host tests build with `-Wall -Wextra -Werror`.** Only `scene.c`,
   `effects.c`, `status.c`, `transition.c`, `gamma.c`, `event_format.c` and
-  `ota_proto.c` are covered; the ESP-IDF glue
+  `ota_receive.c` are covered; the ESP-IDF glue
   (`scene_json.c`, `led_strip_out.c`, `wifi.c`, `mqtt.c`, `ota.c`,
   `event_log.c`, `lp_credentials.c`, `main.c`) builds with IDF 6.1 and runs on one board but
   has no host tests. Keep hardware-independent logic out of the

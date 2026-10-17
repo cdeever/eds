@@ -3,7 +3,7 @@ set(srcs
     "config/pb_credentials.c"
     "app/events/event_format.c"
     "app/events/event_log.c"
-    "app/ota/ota_proto.c"
+    "app/ota/ota_receive.c"
     "network/wifi/wifi.c"
     "network/mqtt/mqtt.c"
     "network/ota/ota.c"

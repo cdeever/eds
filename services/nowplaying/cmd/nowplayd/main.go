@@ -139,6 +139,7 @@ func run(logger *slog.Logger) error {
 		switches[topic] = append(switches[topic], source)
 	}
 
+	switched := make(map[string]bool, len(switches)) // what each beacon last said; only handle touches it
 	handle := func(msg bus.Message) {
 		if msg.Topic == commandTopic {
 			commands.Handle(msg)
@@ -146,8 +147,15 @@ func run(logger *slog.Logger) error {
 		}
 		if held, ok := switches[msg.Topic]; ok {
 			on := string(msg.Payload) == contract.Online
+			// A beacon says it again every thirty seconds (ADR-0034). The
+			// hub hears each repeat, which keeps it from lapsing; the log
+			// says only a change.
+			was, heard := switched[msg.Topic]
+			switched[msg.Topic] = on
 			for _, source := range held {
-				logger.Info("a source's equipment was switched", "source", source, "on", on, "topic", msg.Topic)
+				if !heard || was != on {
+					logger.Info("a source's equipment was switched", "source", source, "on", on, "topic", msg.Topic)
+				}
 				sources.Power(source, on)
 			}
 			return

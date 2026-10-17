@@ -7,7 +7,7 @@ set(srcs
     "app/screen/screen.c"
     "app/events/event_format.c"
     "app/events/event_log.c"
-    "app/ota/ota_proto.c"
+    "app/ota/ota_receive.c"
     "hardware/display.c"
     "hardware/touch.c"
     "hardware/jpeg.c"

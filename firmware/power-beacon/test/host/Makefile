@@ -9,14 +9,14 @@ SRCDIR  := ../../main
 INCLUDE := -I$(SRCDIR)/app/events -I$(SRCDIR)/app/ota
 SOURCES := test_power_beacon.c \
            $(SRCDIR)/app/events/event_format.c \
-           $(SRCDIR)/app/ota/ota_proto.c
+           $(SRCDIR)/app/ota/ota_receive.c
 
 .PHONY: test clean
 
 test: run-tests
 	./run-tests
 
-run-tests: $(SOURCES) $(SRCDIR)/app/events/event_format.h $(SRCDIR)/app/ota/ota_proto.h
+run-tests: $(SOURCES) $(SRCDIR)/app/events/event_format.h $(SRCDIR)/app/ota/ota_receive.h
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ $(SOURCES)
 
 clean:
