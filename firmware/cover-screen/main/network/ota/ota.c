@@ -80,9 +80,13 @@ static void reboot_task(void *arg)
     // Long enough for the answer and the event to go out.
     vTaskDelay(pdMS_TO_TICKS(1500));
     // Cleanly, so the broker sends no will: the screen is gone for seconds,
-    // not offline, and its new build says online again (ADR-0035).
-    esp_mqtt_client_disconnect(client);
-    vTaskDelay(pdMS_TO_TICKS(300));
+    // not offline, and its new build says online again (ADR-0035). Stopped,
+    // not merely disconnected: esp_mqtt_client_disconnect only asks the
+    // client's task to, later, and the restart came first, so the broker
+    // sent the will when the new build took the client id over (CHG-0025).
+    // Stopping from this task sends the DISCONNECT before it returns.
+    esp_mqtt_client_stop(client);
+    vTaskDelay(pdMS_TO_TICKS(100));
     esp_restart();
 }
 
