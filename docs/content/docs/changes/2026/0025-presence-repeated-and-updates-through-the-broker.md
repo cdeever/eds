@@ -9,7 +9,7 @@ weight: 25
 |---|---|
 | **Date** | 2026-10-16 (planned) |
 | **Change type** | Upgrade |
-| **Status** | {{< status-badge "planned" "Planned" >}} |
+| **Status** | {{< status-badge "in-progress" "In progress" >}} |
 | **Systems** | The tenant's broker accounts; `cover-screen-01`, `turntable-power-01` and `lp-stand-01`, by cable; lightd, nowplayd and the console on the services workload; `npagent` on the agent Pi |
 | **How** | `make plan apply` in `infra/deevnet-tenant-eds`; `make build flash` in each firmware; `make -C deploy deploy WHERE=builder`; `make -C deploy/relay push`; `make ota` |
 | **Risk** | Medium. Most likely to go wrong: the plan replacing a device's broker account instead of changing it, which issues a new password and strands that device until it is reprovisioned |
@@ -143,8 +143,18 @@ make -C firmware/cover-screen ota
 
 | When (UTC) | Step | What happened |
 |---|---|---|
+| 2026-10-16 | 1 | `make plan`: 1 to add, 3 to change in place, 0 to destroy; no password among the changes. Applied by the owner. `ota_broker` grants as declared. |
+| 2026-10-17 | 2 | `cover-screen-01` flashed by cable with `cb65a7a` (rollback bootloader). It was on `/dev/cu.usbserial-2110`, not the Makefile's default `2120`. Booted from `ota_0`, reached the broker, subscribed. |
+| 2026-10-17 | 4 | Ahead of Step 3: `ota-broker.env` alone installed on the workload, so the screen could be updated before the services are. A test build (the screen app drawing color bars, version `ota-demo-bars`) sent with `make -C tools/ota send`: `kept` in 16 s, color bars seen on the screen. Then `cb65a7a` sent back: `kept` in 17 s. Two updates over the air, one into each slot, no cable. |
 
 ### Departures from the plan
+
+- The screen's update was tried before Step 3, as a demonstration, with only
+  `ota-broker.env` installed on the workload. The services are not yet
+  deployed; the beacon is not yet flashed.
+- The test build was the screen's own firmware with its idle screen drawn as
+  color bars, built from a scratch copy and not committed. It had to be the
+  screen's firmware: anything else would not take the next update back.
 
 ## Follow-ups
 
