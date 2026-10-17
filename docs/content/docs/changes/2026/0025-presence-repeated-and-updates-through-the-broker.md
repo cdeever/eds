@@ -152,6 +152,7 @@ make -C firmware/cover-screen ota
 | 2026-10-17 11:41 | 5 | `lp-stand-01` flashed by cable with `43c5c23` (the clean restart included), on `/dev/cu.usbserial-0001`; MAC checked against the screen's first, both being ESP32s. First try on WiFi, −39 dBm; the retained scene within a second. |
 | 2026-10-17 11:42 | 5 | `make ota`: **no answer to the offer.** The stand had a power-on reset at the instant it was published (offer 11:42:31.87, boot ~11:42:31.7), and an offer is not retained. Not the firmware: the owner was handling the stand at that moment, and the next two offers were answered at once. A device that restarts while an offer is in flight never sees it, and `eds-ota` says so. |
 | 2026-10-17 11:43 | 5 | `make ota` again: `kept` in 15 s, written in 10 s, into `ota_1`. Then once more, without touching the serial port: `kept` in 16 s, back into `ota_0`. |
+| 2026-10-17 11:48 | 4 | `cover-screen-01`, a third update, to `563d113` with the clean restart: `kept` in 17 s. All three devices now restart cleanly after an update. |
 
 ### Departures from the plan
 
@@ -169,5 +170,5 @@ make -C firmware/cover-screen ota
 ## Follow-ups
 
 - [x] The stand, when it is plugged in again (Step 5).
-- [ ] The cover screen, one more update, to a build with the clean restart.
+- [x] The cover screen, one more update, to a build with the clean restart.
 - [ ] ADR-0034 and ADR-0035's evidence, into the records.
