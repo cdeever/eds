@@ -9,7 +9,7 @@ weight: 26
 |---|---|
 | **Date** | 2026-10-17 |
 | **Change type** | Upgrade |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-17 |
 | **Systems** | `cover-screen-01` |
 | **How** | `make build ota` in `firmware/cover-screen` |
 | **Risk** | Low. Most likely to go wrong: the screen sleeping when someone is there, because a source that should count does not name itself in `current` |
@@ -104,6 +104,7 @@ Nothing outside the screen changed.
 | 2026-10-17 14:02 UTC | 2 | `screen.asleep` ("nothing is playing") at 303.6 s of uptime, with iTunes paused and still named: five minutes after the first `current`. No `mqtt.disconnected`. |
 | 2026-10-17 15:22 UTC | 2 | A touch on the dark screen: `screen.awake`, no buttons, the owner confirmed. The second touch raised them, and `play_pause` was pressed twice (15:22:59 and 15:23:02), each carried out by the iTunes driver within 30 ms. |
 | 2026-10-17 15:28 UTC | 2 | `screen.asleep` at 15:28:02.5, five minutes and 0.3 s after the last press, iTunes paused: asleep again after a touch woke it. |
+| 2026-10-17 15:31 UTC | Verification | iTunes unpaused away from the screen while it was dark: `screen.awake` at 15:31:44, with no `command.sent` before it, and the cover shown. Every check met; ADR-0036 accepted. |
 
 ### Departures from the plan
 
@@ -113,4 +114,4 @@ Nothing outside the screen changed.
 
 ## Follow-ups
 
-- [ ] ADR-0036's evidence, into the record.
+- [x] ADR-0036's evidence, into the record; accepted.

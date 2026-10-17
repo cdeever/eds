@@ -7,7 +7,7 @@ weight: 36
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}} — until the screen has slept and woken on the board; see [What would settle it](#what-would-settle-it) |
+| **Status** | {{< adr-status "Accepted" >}} 2026-10-17 — slept and woken on the board ([CHG-0026](/docs/changes/2026/0026-the-cover-screen-sleeps/)); see [What would settle it](#what-would-settle-it) |
 | **Date** | 2026-10-17 |
 | **Scope** | The cover screen's firmware: when it turns its panel off, and what wakes it. Nothing on the bus changes. |
 | **Extends** | [ADR-0020](/docs/architecture/decisions/0020-a-touch-screen-that-can-change-what-plays/), the screen itself |
@@ -133,8 +133,5 @@ On the build with the wider rule:
 - [x] A touch on the dark screen lit it without buttons; the next touch
       raised them and play and pause worked; dark again five minutes after
       the last touch.
-
-Not yet shown:
-
-- [ ] Play pressed somewhere other than the screen (the Mac, the phone):
-      lit, with the cover.
+- [x] Play pressed away from the screen, with it dark: `screen.awake` and
+      the cover, with no `command.sent` from the screen before it.
