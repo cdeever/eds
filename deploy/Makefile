@@ -58,11 +58,20 @@ load:
 
 else
 
+# Nothing is left behind. With layers kept, every build left its build stage,
+# about a gigabyte, untagged, and the Builder's /home filled (CHG-0025): so
+# no layers, at about fifteen seconds an image for the cache it would have
+# been. What a build replaces - the image that was :latest - is untagged too,
+# and carries the label, so it alone is pruned: the Builder builds Deevnet
+# IoTaaS's images as well, and nothing of theirs matches.
+BUILD := $(CONTAINER) build --platform linux/amd64 --layers=false --label eds.deploy=1
+
 images:
-	$(CONTAINER) build --platform linux/amd64 -t localhost/eds-palette:latest $(SVC)/palette
-	$(CONTAINER) build --platform linux/amd64 -t localhost/eds-lightd:latest $(SVC)/lightd
-	$(CONTAINER) build --platform linux/amd64 --build-arg VERSION=$(VERSION) -t localhost/eds-nowplayd:latest -f $(SVC)/nowplaying/Containerfile $(SVC)/nowplaying
-	$(CONTAINER) build --platform linux/amd64 --build-arg VERSION=$(VERSION) -t localhost/eds-console:latest -f $(SVC)/console/Containerfile $(SVC)/console
+	$(BUILD) -t localhost/eds-palette:latest $(SVC)/palette
+	$(BUILD) -t localhost/eds-lightd:latest $(SVC)/lightd
+	$(BUILD) --build-arg VERSION=$(VERSION) -t localhost/eds-nowplayd:latest -f $(SVC)/nowplaying/Containerfile $(SVC)/nowplaying
+	$(BUILD) --build-arg VERSION=$(VERSION) -t localhost/eds-console:latest -f $(SVC)/console/Containerfile $(SVC)/console
+	$(CONTAINER) image prune -f --filter label=eds.deploy=1 >/dev/null
 
 # One image per archive: a multi-image `podman save` without
 # --multi-image-archive loads back as ONE image under every tag.

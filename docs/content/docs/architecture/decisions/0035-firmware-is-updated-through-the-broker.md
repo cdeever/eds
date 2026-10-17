@@ -7,7 +7,7 @@ weight: 35
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}} — until each device has taken an update over the air and one has rolled back; see [What would settle it](#what-would-settle-it) |
+| **Status** | {{< adr-status "Accepted" >}} 2026-10-17, after each device was updated over the air, one rolled back by itself, and one refused a build not its own; see [Evidence](#evidence). Opened 2026-10-16 as `Proposed` |
 | **Date** | 2026-10-16 |
 | **Scope** | How a new build reaches the stand, the cover screen and the beacon once each is in place; what a device does with one; and how a bad one is undone. |
 | **Extends** | [ADR-0029](/docs/architecture/decisions/0029-the-stand-starts-dark-and-blinks-what-is-wrong/): the stand that cannot reach the broker still blinks, and now also gives up a new build that caused it. |
@@ -146,3 +146,37 @@ within two minutes is undone, by the device, without a person.**
   on its old one, by itself, within three minutes.
 - A cover screen's image sent to the stand, and refused before anything is
   written.
+
+## Evidence
+
+**2026-10-17, on the mobile kit** ([CHG-0025](/docs/changes/2026/0025-presence-repeated-and-updates-through-the-broker/)).
+Each device was flashed once by cable for the rollback bootloader, and then
+updated only over the air.
+
+- **Every device took updates.** The cover screen three times, the beacon
+  three, the stand twice: each `kept` in 15 to 22 seconds for builds of
+  0.9 to 1 MB, written in about ten. The screen went to a build that drew
+  color bars and back, which was plain to see. Each `running` answer
+  carried the ELF hash that was sent.
+- **The beacon's restart did not dim the turntable, once fixed.** The first
+  restart was not clean: `esp_mqtt_client_disconnect` (ESP-MQTT 1.1.0) only
+  asks the client's task to disconnect, and the restart came first, so the
+  broker sent the will when the new build took the client id over. nowplayd
+  took the turntable for off for 153 ms, and once took the cover away. With
+  `esp_mqtt_client_stop` before the restart, the next restart, made by the
+  fixed build, showed nowplayd `on=true` only.
+- **A build that cannot reach the broker was undone, by the device.** A
+  screen build with the call that dials the broker taken out was sent with
+  `eds-ota`: applied at 11:57:48, silent for two minutes, and at 11:59:57
+  the screen booted its old build again and connected. `eds-ota` said
+  `undone` 2 minutes 22 seconds after the offer. Nobody touched the screen.
+- **A build not its own was refused before anything was written.** A stand
+  build offered to the screen was refused by `eds-ota` (`not sent`), and,
+  offered to the screen directly, past that check, by the screen:
+  `{"state":"refused","why":"it is lp-stand's, and this is cover-screen"}`.
+  The check was this way around, not the screen's image to the stand, for
+  the stand was off; the code is the same in both.
+- **A device that restarts while an offer is in flight never sees it**, and
+  `eds-ota` says the device did not answer. Seen on the stand, which a person
+  was handling at that moment. Offered again, it answered at once.
+

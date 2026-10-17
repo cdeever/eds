@@ -9,7 +9,7 @@ weight: 25
 |---|---|
 | **Date** | 2026-10-16 (planned) |
 | **Change type** | Upgrade |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-17 |
 | **Systems** | The tenant's broker accounts; `cover-screen-01`, `turntable-power-01` and `lp-stand-01`, by cable; lightd, nowplayd and the console on the services workload; `npagent` on the agent Pi |
 | **How** | `make plan apply` in `infra/deevnet-tenant-eds`; `make build flash` in each firmware; `make -C deploy deploy WHERE=builder`; `make -C deploy/relay push`; `make ota` |
 | **Risk** | Medium. Most likely to go wrong: the plan replacing a device's broker account instead of changing it, which issues a new password and strands that device until it is reprovisioned |
@@ -153,6 +153,9 @@ make -C firmware/cover-screen ota
 | 2026-10-17 11:42 | 5 | `make ota`: **no answer to the offer.** The stand had a power-on reset at the instant it was published (offer 11:42:31.87, boot ~11:42:31.7), and an offer is not retained. Not the firmware: the owner was handling the stand at that moment, and the next two offers were answered at once. A device that restarts while an offer is in flight never sees it, and `eds-ota` says so. |
 | 2026-10-17 11:43 | 5 | `make ota` again: `kept` in 15 s, written in 10 s, into `ota_1`. Then once more, without touching the serial port: `kept` in 16 s, back into `ota_0`. |
 | 2026-10-17 11:48 | 4 | `cover-screen-01`, a third update, to `563d113` with the clean restart: `kept` in 17 s. All three devices now restart cleanly after an update. |
+| 2026-10-17 11:50 | 3 | `make -C deploy deploy WHERE=builder` from `300b794` (#52 merged). It failed first: builder's `/home` was full (183 MB left), with 186 untagged build stages from earlier deploys, 7.9 GB. `podman image prune` left the tagged images, Deevnet IoTaaS's among them; 3.4 GB free, and the deploy ran. `ota-broker.env` installed by `units`. `make -C deploy/relay push`: `300b794`, npagent active. |
+| 2026-10-17 11:56 | 3 | The console: lightd, nowplayd, the turntable's driver and the cover screen `online`; iTunes and Spotify `offline` (CHG-0024); the stand and the beacon `offline`, red, having been unplugged from the Mac: their wills, which the console now shows rather than a stale green. |
+| 2026-10-17 11:57 | Verification | Rollback: a screen build that never dials the broker, sent with `eds-ota`, undone by the screen in 2 min 22 s, back on `563d113`. Refusal: a stand build refused by `eds-ota`, and by the screen when offered past it. ADR-0035 accepted. |
 
 ### Departures from the plan
 
@@ -171,4 +174,11 @@ make -C firmware/cover-screen ota
 
 - [x] The stand, when it is plugged in again (Step 5).
 - [x] The cover screen, one more update, to a build with the clean restart.
-- [ ] ADR-0034 and ADR-0035's evidence, into the records.
+- [x] ADR-0035's evidence, into the record; accepted.
+- [ ] ADR-0034's: the stand unplugged across a broker restart, seen gray;
+  a record playing through a nowplayd restart without the room dimming.
+- [x] Builder's `/home` filled because each deploy left its build stages,
+  about a gigabyte an image changed. `make -C deploy images` now builds
+  without layers, labels its images `eds.deploy`, and prunes only untagged
+  images with that label: two runs on the Builder, the second left nothing
+  behind, in 63 s each. Nothing of Deevnet IoTaaS's matches.
