@@ -37,6 +37,9 @@ bool cs_now_parse(const char *json, size_t len, cs_now_t *now)
         // Only the word itself, and only "true": anything else, or nothing,
         // leaves the buttons where they were.
         now->no_controls = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(root, "no_controls"));
+
+        const cJSON *source = cJSON_GetObjectItemCaseSensitive(root, "source");
+        now->has_source = cJSON_IsString(source) && source->valuestring[0] != '\0';
     }
 
     cJSON_Delete(root);

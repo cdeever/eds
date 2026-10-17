@@ -267,8 +267,8 @@ static void test_the_buttons_go_away_by_themselves(void)
     CHECK(!view.overlay, "the buttons stayed up");
     CHECK(cs_ui_take_dirty(&ui), "the buttons going did not ask for a redraw");
 
-    // And the next touch only wakes it again.
-    CHECK(tap(&ui, NEXT_X, MID_Y, CS_BTN_NEXT) == 0, "a touch on a sleeping screen sent a command");
+    // And the next touch only brings them back.
+    CHECK(tap(&ui, NEXT_X, MID_Y, CS_BTN_NEXT) == 0, "a touch with the buttons down sent a command");
 }
 
 static void test_a_resting_finger_keeps_the_buttons_up(void)
@@ -337,6 +337,204 @@ static void test_nothing_is_sent_without_a_broker(void)
     hold(&ui, MID_X, UP_Y, 1000, CS_BTN_VOLUME_UP);
     cs_ui_set_link(&ui, CS_LINK_NO_BROKER);
     CHECK(hold(&ui, MID_X, UP_Y, 2000, CS_BTN_VOLUME_UP) == 0, "volume kept repeating after the broker went");
+}
+
+// --- sleep (ADR-0036) ----------------------------------------------------------
+
+// nobody is a connected screen whose current track has just named no source.
+static cs_ui_t nobody(void)
+{
+    cs_ui_t ui = connected();
+    cs_ui_set_source(&ui, true);
+    cs_ui_set_source(&ui, false);
+    cs_ui_take_dirty(&ui);
+    return ui;
+}
+
+static void test_it_sleeps_five_minutes_after_nobody_is_there(void)
+{
+    cs_ui_t ui = nobody();
+
+    rest(&ui, CS_SLEEP_MS - 1000);
+    CHECK(!cs_ui_asleep(&ui), "it slept before its time");
+
+    rest(&ui, 2000);
+    CHECK(cs_ui_asleep(&ui), "it stayed awake with nobody there");
+}
+
+static void test_it_stays_awake_while_something_plays(void)
+{
+    cs_ui_t ui = connected();
+    cs_ui_set_source(&ui, true);
+
+    rest(&ui, 2 * CS_SLEEP_MS);
+    CHECK(!cs_ui_asleep(&ui), "it slept while something played");
+}
+
+static void test_it_sleeps_five_minutes_after_the_music_stops(void)
+{
+    // Paused, and then what nowplayd says of a pause left long enough: the
+    // source still named, stopped. Neither starts the wait over.
+    cs_play_t quiet[] = {CS_PLAY_PAUSED, CS_PLAY_STOPPED};
+    for (size_t i = 0; i < sizeof(quiet) / sizeof(quiet[0]); i++) {
+        cs_ui_t ui = connected();
+        cs_ui_set_source(&ui, true);
+        rest(&ui, 1000);
+
+        cs_ui_set_playing(&ui, quiet[i], true);
+        rest(&ui, 15000);
+        cs_ui_set_playing(&ui, CS_PLAY_STOPPED, false);
+        rest(&ui, CS_SLEEP_MS - 16000);
+        CHECK(!cs_ui_asleep(&ui), "it slept before its time (%d)", (int)quiet[i]);
+
+        rest(&ui, 2000);
+        CHECK(cs_ui_asleep(&ui), "it stayed awake with nothing playing (%d)", (int)quiet[i]);
+    }
+}
+
+static void test_playing_wakes_it(void)
+{
+    cs_ui_t ui = connected();
+    cs_ui_set_source(&ui, true);
+    cs_ui_set_playing(&ui, CS_PLAY_STOPPED, false);
+    rest(&ui, CS_SLEEP_MS + 1000);
+    CHECK(cs_ui_asleep(&ui), "it did not sleep");
+
+    // Stopped said again, or paused, is still nothing playing.
+    cs_ui_set_playing(&ui, CS_PLAY_PAUSED, true);
+    rest(&ui, 100);
+    CHECK(cs_ui_asleep(&ui), "a pause woke it");
+
+    cs_ui_take_dirty(&ui);
+    cs_ui_set_playing(&ui, CS_PLAY_PLAYING, true);
+    rest(&ui, 100);
+    CHECK(!cs_ui_asleep(&ui), "playing did not wake it");
+    CHECK(cs_ui_take_dirty(&ui), "waking did not ask for a redraw");
+}
+
+static void test_nobody_after_nothing_playing_is_the_same_quiet(void)
+{
+    cs_ui_t ui = connected();
+    cs_ui_set_source(&ui, true);
+    cs_ui_set_playing(&ui, CS_PLAY_STOPPED, false);
+
+    rest(&ui, CS_SLEEP_MS - 1000);
+    cs_ui_set_source(&ui, false);
+    rest(&ui, 2000);
+    CHECK(cs_ui_asleep(&ui), "the source going put sleep off");
+}
+
+static void test_it_is_awake_until_the_track_is_heard(void)
+{
+    cs_ui_t ui = connected();
+
+    rest(&ui, 2 * CS_SLEEP_MS);
+    CHECK(!cs_ui_asleep(&ui), "it slept before it was told anything");
+}
+
+static void test_nobody_said_again_is_not_the_quiet_starting_over(void)
+{
+    cs_ui_t ui = nobody();
+
+    rest(&ui, CS_SLEEP_MS - 1000);
+    cs_ui_set_source(&ui, false);
+    rest(&ui, 2000);
+    CHECK(cs_ui_asleep(&ui), "a second \"nobody\" put sleep off");
+}
+
+static void test_a_source_wakes_it_and_it_draws_what_came(void)
+{
+    cs_ui_t ui = nobody();
+    rest(&ui, CS_SLEEP_MS + 1000);
+    CHECK(cs_ui_asleep(&ui), "it did not sleep");
+
+    // Something arrives while it is dark: kept, and drawn on waking.
+    cs_ui_take_dirty(&ui);
+    cs_ui_set_playing(&ui, CS_PLAY_PLAYING, true);
+    cs_ui_set_cover(&ui, true);
+    CHECK(cs_ui_asleep(&ui), "a cover alone woke it");
+
+    cs_ui_set_source(&ui, true);
+    rest(&ui, 100);
+    CHECK(!cs_ui_asleep(&ui), "a source named did not wake it");
+    CHECK(cs_ui_take_dirty(&ui), "waking did not ask for a redraw");
+
+    cs_view_t view;
+    cs_ui_view(&ui, &view);
+    CHECK(view.cover && !view.overlay, "it woke to something other than the cover");
+}
+
+static void test_a_touch_only_wakes_it(void)
+{
+    cs_ui_t ui = nobody();
+    rest(&ui, CS_SLEEP_MS + 1000);
+    cs_ui_take_dirty(&ui);
+
+    CHECK(tap(&ui, NEXT_X, MID_Y, CS_BTN_NEXT) == 0, "a touch on a dark screen sent a command");
+    CHECK(!cs_ui_asleep(&ui), "a touch did not wake it");
+    CHECK(cs_ui_take_dirty(&ui), "waking did not ask for a redraw");
+
+    cs_view_t view;
+    cs_ui_view(&ui, &view);
+    CHECK(!view.overlay, "the touch that woke it raised the buttons");
+
+    // The next touch is the first touch on a lit screen.
+    tap(&ui, MID_X, MID_Y, CS_BTN_NONE);
+    cs_ui_view(&ui, &view);
+    CHECK(view.overlay, "the touch after waking did not raise the buttons");
+
+    // Nobody is still there, so it sleeps again: five minutes from the touch.
+    rest(&ui, CS_SLEEP_MS - 1000);
+    CHECK(!cs_ui_asleep(&ui), "it slept again before its time");
+    rest(&ui, 2000);
+    CHECK(cs_ui_asleep(&ui), "it did not sleep again");
+}
+
+static void test_a_touch_puts_sleep_off(void)
+{
+    cs_ui_t ui = nobody();
+
+    rest(&ui, CS_SLEEP_MS - 1000);
+    tap(&ui, MID_X, MID_Y, CS_BTN_NONE);
+    rest(&ui, 2000);
+    CHECK(!cs_ui_asleep(&ui), "it slept just after a touch");
+
+    // A finger resting on it keeps it awake however long.
+    CHECK(hold(&ui, MID_X, MID_Y, CS_SLEEP_MS + 1000, CS_BTN_PLAY_PAUSE) >= 0, "a held finger sent the wrong thing");
+    CHECK(!cs_ui_asleep(&ui), "it slept under a finger");
+}
+
+static void test_losing_the_broker_wakes_it(void)
+{
+    cs_ui_t ui = nobody();
+    rest(&ui, CS_SLEEP_MS + 1000);
+    cs_ui_take_dirty(&ui);
+
+    cs_ui_set_link(&ui, CS_LINK_NO_BROKER);
+    CHECK(!cs_ui_asleep(&ui), "losing the broker did not wake it");
+    CHECK(cs_ui_take_dirty(&ui), "waking did not ask for a redraw");
+
+    rest(&ui, 2 * CS_SLEEP_MS);
+    CHECK(!cs_ui_asleep(&ui), "it slept with no broker, where its corner cannot be seen");
+
+    // Back, with nobody still there: five minutes from then.
+    cs_ui_set_link(&ui, CS_LINK_UP);
+    rest(&ui, CS_SLEEP_MS - 1000);
+    CHECK(!cs_ui_asleep(&ui), "it slept before its time after the broker came back");
+    rest(&ui, 2000);
+    CHECK(cs_ui_asleep(&ui), "it did not sleep after the broker came back");
+}
+
+static void test_sleep_survives_the_clock_wrapping(void)
+{
+    cs_ui_t ui = connected();
+    now = UINT32_MAX - CS_SLEEP_MS / 2;
+    cs_ui_set_source(&ui, false);
+
+    rest(&ui, CS_SLEEP_MS - 1000);
+    CHECK(!cs_ui_asleep(&ui), "the clock wrapping put it to sleep early");
+    rest(&ui, 2000);
+    CHECK(cs_ui_asleep(&ui), "the clock wrapping kept it awake");
 }
 
 static void test_touches_survive_the_clock_wrapping(void)
@@ -1005,6 +1203,18 @@ int main(int argc, char **argv)
         {"a resting finger keeps the buttons up", test_a_resting_finger_keeps_the_buttons_up},
         {"a pressed button is lit briefly", test_a_pressed_button_is_lit_briefly},
         {"nothing is sent without a broker", test_nothing_is_sent_without_a_broker},
+        {"it sleeps five minutes after nobody is there", test_it_sleeps_five_minutes_after_nobody_is_there},
+        {"it stays awake while something plays", test_it_stays_awake_while_something_plays},
+        {"it sleeps five minutes after the music stops", test_it_sleeps_five_minutes_after_the_music_stops},
+        {"playing wakes it", test_playing_wakes_it},
+        {"nobody after nothing playing is the same quiet", test_nobody_after_nothing_playing_is_the_same_quiet},
+        {"it is awake until the track is heard", test_it_is_awake_until_the_track_is_heard},
+        {"nobody said again is not the quiet starting over", test_nobody_said_again_is_not_the_quiet_starting_over},
+        {"a source wakes it, and it draws what came", test_a_source_wakes_it_and_it_draws_what_came},
+        {"a touch only wakes it", test_a_touch_only_wakes_it},
+        {"a touch puts sleep off", test_a_touch_puts_sleep_off},
+        {"losing the broker wakes it", test_losing_the_broker_wakes_it},
+        {"sleep survives the clock wrapping", test_sleep_survives_the_clock_wrapping},
         {"touches survive the clock wrapping", test_touches_survive_the_clock_wrapping},
         {"the view follows what is playing", test_the_view_follows_what_is_playing},
         {"a command is what the contract says", test_a_command_is_what_the_contract_says},

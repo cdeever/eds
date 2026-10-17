@@ -24,3 +24,9 @@ uint16_t *cs_display_band(void);
 esp_err_t cs_display_push(int y, int rows);
 
 void cs_display_light(void);
+
+// cs_display_sleep turns the backlight off and puts the panel to sleep.
+// cs_display_wake wakes the panel, still dark, to be drawn and then lit with
+// cs_display_light. Each takes the panel's 120 ms to settle.
+void cs_display_sleep(void);
+void cs_display_wake(void);

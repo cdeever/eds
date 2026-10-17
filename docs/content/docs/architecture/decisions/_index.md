@@ -103,3 +103,4 @@ and incidents under the same names. To keep the two apart:
 | [0032](0032-spotify-takes-commands/) | 2026-10-13 | The Spotify driver carries out commands, with a wider authorization, for what is playing here | {{< adr-status "Proposed" >}} |
 | [0034](0034-presence-is-heard-not-remembered/) | 2026-10-16 | Presence is heard, not remembered: everything says it is there every thirty seconds | {{< adr-status "Proposed" >}} |
 | [0035](0035-firmware-is-updated-through-the-broker/) | 2026-10-16 | Firmware is updated through the broker, and a build that cannot reach it is undone | {{< adr-status "Accepted" >}} |
+| [0036](0036-the-screen-sleeps-when-nothing-plays/) | 2026-10-17 | The cover screen sleeps when nothing has played for five minutes, and wakes for music | {{< adr-status "Accepted" >}} |
