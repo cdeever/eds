@@ -146,12 +146,19 @@ make -C firmware/cover-screen ota
 | 2026-10-16 | 1 | `make plan`: 1 to add, 3 to change in place, 0 to destroy; no password among the changes. Applied by the owner. `ota_broker` grants as declared. |
 | 2026-10-17 | 2 | `cover-screen-01` flashed by cable with `cb65a7a` (rollback bootloader). It was on `/dev/cu.usbserial-2110`, not the Makefile's default `2120`. Booted from `ota_0`, reached the broker, subscribed. |
 | 2026-10-17 | 4 | Ahead of Step 3: `ota-broker.env` alone installed on the workload, so the screen could be updated before the services are. A test build (the screen app drawing color bars, version `ota-demo-bars`) sent with `make -C tools/ota send`: `kept` in 16 s, color bars seen on the screen. Then `cb65a7a` sent back: `kept` in 17 s. Two updates over the air, one into each slot, no cable. |
+| 2026-10-17 | 2 | `turntable-power-01` flashed by cable with `cb65a7a`, on `/dev/cu.usbserial-110`. Far from the kit and with no antenna it could not join: `auth -> init (0x200)`, eleven tries and more. With an external antenna: joined on the first try, −57 dBm. |
+| 2026-10-17 11:25 | 4 | `make ota` to the beacon: `kept` in 21 s, `ota.offered`, `ota.applied`, `system.boot` (`software`), `ota.kept` in its events. **But nowplayd logged `on=false` at the reconnection, and `on=true` 153 ms later**: the broker sent the old connection's will when the new build took its client id over. `esp_mqtt_client_disconnect` only asks the client's task to disconnect, and the restart came first. |
+| 2026-10-17 11:28 | 4 | Fixed (`esp_mqtt_client_stop` before the restart) and sent twice. The first restart, by the old build, sent the will again, and nowplayd went idle with the cover taken away; the second, by the fixed build `e5b302a`, did not: `on=true` only. |
 
 ### Departures from the plan
 
 - The screen's update was tried before Step 3, as a demonstration, with only
   `ota-broker.env` installed on the workload. The services are not yet
   deployed; the beacon is not yet flashed.
+- The beacon's restart was not clean in the build that went on by cable.
+  Every device needs one update past `cb65a7a` (`e5b302a` or later) for its
+  restarts to send no will; the beacon has had it, the screen and the stand
+  have not.
 - The test build was the screen's own firmware with its idle screen drawn as
   color bars, built from a scratch copy and not committed. It had to be the
   screen's firmware: anything else would not take the next update back.
