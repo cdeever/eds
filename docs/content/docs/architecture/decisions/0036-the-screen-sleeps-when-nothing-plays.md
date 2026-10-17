@@ -126,9 +126,15 @@ On the board, the first build
       minutes after it connected, still on the broker; dark to the eye.
 - [x] A song started in iTunes: `screen.awake`, the cover shown.
 
-Not yet shown, on the build with the wider rule:
+On the build with the wider rule:
 
-- [ ] iTunes paused: dark about five minutes and fifteen seconds later.
-- [ ] Play: lit, with the cover.
-- [ ] A touch on the dark screen lights it without buttons, and it is dark
-      again five minutes later.
+- [x] iTunes paused: `screen.asleep` five minutes after the screen heard
+      `current`, iTunes still named.
+- [x] A touch on the dark screen lit it without buttons; the next touch
+      raised them and play and pause worked; dark again five minutes after
+      the last touch.
+
+Not yet shown:
+
+- [ ] Play pressed somewhere other than the screen (the Mac, the phone):
+      lit, with the cover.

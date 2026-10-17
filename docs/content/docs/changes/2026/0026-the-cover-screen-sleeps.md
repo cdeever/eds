@@ -103,6 +103,7 @@ Nothing outside the screen changed.
 | 2026-10-17 13:57 UTC | 1 | `make build ota` from `e7672d1`, the wider rule: `kept` in 29 s; `system.boot` naming it, `ota.kept`, `mqtt.connected`. |
 | 2026-10-17 14:02 UTC | 2 | `screen.asleep` ("nothing is playing") at 303.6 s of uptime, with iTunes paused and still named: five minutes after the first `current`. No `mqtt.disconnected`. |
 | 2026-10-17 15:22 UTC | 2 | A touch on the dark screen: `screen.awake`, no buttons, the owner confirmed. The second touch raised them, and `play_pause` was pressed twice (15:22:59 and 15:23:02), each carried out by the iTunes driver within 30 ms. |
+| 2026-10-17 15:28 UTC | 2 | `screen.asleep` at 15:28:02.5, five minutes and 0.3 s after the last press, iTunes paused: asleep again after a touch woke it. |
 
 ### Departures from the plan
 
