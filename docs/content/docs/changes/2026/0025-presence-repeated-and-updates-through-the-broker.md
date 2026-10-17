@@ -149,6 +149,9 @@ make -C firmware/cover-screen ota
 | 2026-10-17 | 2 | `turntable-power-01` flashed by cable with `cb65a7a`, on `/dev/cu.usbserial-110`. Far from the kit and with no antenna it could not join: `auth -> init (0x200)`, eleven tries and more. With an external antenna: joined on the first try, −57 dBm. |
 | 2026-10-17 11:25 | 4 | `make ota` to the beacon: `kept` in 21 s, `ota.offered`, `ota.applied`, `system.boot` (`software`), `ota.kept` in its events. **But nowplayd logged `on=false` at the reconnection, and `on=true` 153 ms later**: the broker sent the old connection's will when the new build took its client id over. `esp_mqtt_client_disconnect` only asks the client's task to disconnect, and the restart came first. |
 | 2026-10-17 11:28 | 4 | Fixed (`esp_mqtt_client_stop` before the restart) and sent twice. The first restart, by the old build, sent the will again, and nowplayd went idle with the cover taken away; the second, by the fixed build `e5b302a`, did not: `on=true` only. |
+| 2026-10-17 11:41 | 5 | `lp-stand-01` flashed by cable with `43c5c23` (the clean restart included), on `/dev/cu.usbserial-0001`; MAC checked against the screen's first, both being ESP32s. First try on WiFi, −39 dBm; the retained scene within a second. |
+| 2026-10-17 11:42 | 5 | `make ota`: **no answer to the offer.** The stand had a power-on reset at the instant it was published (offer 11:42:31.87, boot ~11:42:31.7), and an offer is not retained. Not the firmware: not a `panic`, and the next two offers were answered at once. The cause of the reset is not known; the USB cable is the likeliest. |
+| 2026-10-17 11:43 | 5 | `make ota` again: `kept` in 15 s, written in 10 s, into `ota_1`. Then once more, without touching the serial port: `kept` in 16 s, back into `ota_0`. |
 
 ### Departures from the plan
 
@@ -165,5 +168,6 @@ make -C firmware/cover-screen ota
 
 ## Follow-ups
 
-- [ ] The stand, when it is plugged in again (Step 5).
+- [x] The stand, when it is plugged in again (Step 5).
+- [ ] The cover screen, one more update, to a build with the clean restart.
 - [ ] ADR-0034 and ADR-0035's evidence, into the records.
