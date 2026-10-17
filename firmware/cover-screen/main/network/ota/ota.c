@@ -14,7 +14,7 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "cs_config.h"
-#include "ota_proto.h"
+#include "ota_receive.h"
 #include "sdkconfig.h"
 
 // Without rollback a build that cannot reach the broker stays, and the screen

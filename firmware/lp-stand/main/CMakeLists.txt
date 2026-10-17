@@ -8,7 +8,7 @@ set(srcs
     "app/transition/transition.c"
     "app/events/event_format.c"
     "app/events/event_log.c"
-    "app/ota/ota_proto.c"
+    "app/ota/ota_receive.c"
     "hardware/gamma.c"
     "hardware/led_strip_out.c"
     "network/wifi/wifi.c"

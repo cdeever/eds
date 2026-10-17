@@ -16,7 +16,7 @@ SOURCES := test_cover_screen.c \
            $(SRCDIR)/app/ui/draw.c \
            $(SRCDIR)/app/ui/touch_map.c \
            $(SRCDIR)/app/events/event_format.c \
-           $(SRCDIR)/app/ota/ota_proto.c
+           $(SRCDIR)/app/ota/ota_receive.c
 PICTURES ?= pictures
 
 .PHONY: test pictures clean

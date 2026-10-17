@@ -1,11 +1,11 @@
-#include "ota_proto.h"
+#include "ota_receive.h"
 
 #include <stdio.h>
 #include <string.h>
 
 #include "event_format.h"
 
-bool cs_ota_begin(cs_ota_t *o, uint32_t size, uint32_t capacity)
+bool pb_ota_begin(pb_ota_t *o, uint32_t size, uint32_t capacity)
 {
     memset(o, 0, sizeof(*o));
     if (size == 0 || size > capacity) {
@@ -16,10 +16,10 @@ bool cs_ota_begin(cs_ota_t *o, uint32_t size, uint32_t capacity)
     return true;
 }
 
-cs_ota_piece_t cs_ota_piece(cs_ota_t *o, const uint8_t *data, size_t len, size_t offset,
+pb_ota_piece_t pb_ota_piece(pb_ota_t *o, const uint8_t *data, size_t len, size_t offset,
                             size_t total)
 {
-    cs_ota_piece_t piece = {0};
+    pb_ota_piece_t piece = {0};
     if (!o->receiving) {
         return piece;
     }
@@ -28,7 +28,7 @@ cs_ota_piece_t cs_ota_piece(cs_ota_t *o, const uint8_t *data, size_t len, size_t
     if (offset == 0) {
         o->in_message = true;
         o->taking = false;
-        if (len < CS_OTA_CHUNK_HEADER || total <= CS_OTA_CHUNK_HEADER) {
+        if (len < PB_OTA_CHUNK_HEADER || total <= PB_OTA_CHUNK_HEADER) {
             // Too short to say where it goes. Answered, so the sender asks
             // again, but nothing is written.
             if (piece.message_done) {
@@ -38,7 +38,7 @@ cs_ota_piece_t cs_ota_piece(cs_ota_t *o, const uint8_t *data, size_t len, size_t
         }
         const uint32_t at = ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
                             ((uint32_t)data[2] << 8) | (uint32_t)data[3];
-        const size_t body = total - CS_OTA_CHUNK_HEADER;
+        const size_t body = total - PB_OTA_CHUNK_HEADER;
         if (at == o->next) {
             if ((uint64_t)o->next + body > o->size) {
                 // More than the image that was offered: whatever this is, it
@@ -51,8 +51,8 @@ cs_ota_piece_t cs_ota_piece(cs_ota_t *o, const uint8_t *data, size_t len, size_t
         }
         // Anything else is a piece sent twice, or out of turn: ignored, and
         // answered with the byte that is wanted.
-        data += CS_OTA_CHUNK_HEADER;
-        len -= CS_OTA_CHUNK_HEADER;
+        data += PB_OTA_CHUNK_HEADER;
+        len -= PB_OTA_CHUNK_HEADER;
     } else if (!o->in_message) {
         // The rest of a message whose start was not seen: before this image
         // was offered, or across a reconnection.
@@ -70,22 +70,22 @@ cs_ota_piece_t cs_ota_piece(cs_ota_t *o, const uint8_t *data, size_t len, size_t
     return piece;
 }
 
-void cs_ota_wrote(cs_ota_t *o, size_t n)
+void pb_ota_wrote(pb_ota_t *o, size_t n)
 {
     o->next += (uint32_t)n;
 }
 
-bool cs_ota_complete(const cs_ota_t *o)
+bool pb_ota_complete(const pb_ota_t *o)
 {
     return o->receiving && o->next == o->size;
 }
 
-void cs_ota_abandon(cs_ota_t *o)
+void pb_ota_abandon(pb_ota_t *o)
 {
     memset(o, 0, sizeof(*o));
 }
 
-size_t cs_ota_state_format(char *out, size_t cap, const char *state, const uint32_t *next,
+size_t pb_ota_state_format(char *out, size_t cap, const char *state, const uint32_t *next,
                            const char *version, const char *elf, const char *why)
 {
     char safe[96];
@@ -104,21 +104,21 @@ size_t cs_ota_state_format(char *out, size_t cap, const char *state, const uint3
     if (out == NULL || cap == 0 || state == NULL) {
         return 0;
     }
-    cs_event_escape(state, safe, sizeof(safe));
-    APPEND("{\"v\":%d,\"state\":\"%s\"", CS_OTA_CONTRACT_VERSION, safe);
+    pb_event_escape(state, safe, sizeof(safe));
+    APPEND("{\"v\":%d,\"state\":\"%s\"", PB_OTA_CONTRACT_VERSION, safe);
     if (next != NULL) {
         APPEND(",\"next\":%lu", (unsigned long)*next);
     }
     if (version != NULL) {
-        cs_event_escape(version, safe, sizeof(safe));
+        pb_event_escape(version, safe, sizeof(safe));
         APPEND(",\"version\":\"%s\"", safe);
     }
     if (elf != NULL) {
-        cs_event_escape(elf, safe, sizeof(safe));
+        pb_event_escape(elf, safe, sizeof(safe));
         APPEND(",\"elf\":\"%s\"", safe);
     }
     if (why != NULL) {
-        cs_event_escape(why, safe, sizeof(safe));
+        pb_event_escape(why, safe, sizeof(safe));
         APPEND(",\"why\":\"%s\"", safe);
     }
     APPEND("}");

@@ -1,4 +1,4 @@
-#include "ota_proto.h"
+#include "ota_receive.h"
 
 #include <stdio.h>
 #include <string.h>

@@ -15,7 +15,7 @@
 #include "effects.h"
 #include "event_format.h"
 #include "gamma.h"
-#include "ota_proto.h"
+#include "ota_receive.h"
 #include "scene.h"
 #include "status.h"
 #include "transition.h"
