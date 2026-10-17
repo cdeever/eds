@@ -24,7 +24,7 @@ esp_err_t cs_screen_start(cs_command_sender send);
 // What the broker client reports. All are safe from its task.
 
 void cs_screen_link(cs_link_t link);
-// source is whether the track names one: none is nobody there, and the
+// source is whether the track names one. Nothing playing, or none, and the
 // screen sleeps in time (ADR-0036).
 void cs_screen_playing(cs_play_t play, bool has_art, bool controls, bool source);
 

@@ -362,14 +362,66 @@ static void test_it_sleeps_five_minutes_after_nobody_is_there(void)
     CHECK(cs_ui_asleep(&ui), "it stayed awake with nobody there");
 }
 
-static void test_it_stays_awake_while_a_source_is_there(void)
+static void test_it_stays_awake_while_something_plays(void)
+{
+    cs_ui_t ui = connected();
+    cs_ui_set_source(&ui, true);
+
+    rest(&ui, 2 * CS_SLEEP_MS);
+    CHECK(!cs_ui_asleep(&ui), "it slept while something played");
+}
+
+static void test_it_sleeps_five_minutes_after_the_music_stops(void)
+{
+    // Paused, and then what nowplayd says of a pause left long enough: the
+    // source still named, stopped. Neither starts the wait over.
+    cs_play_t quiet[] = {CS_PLAY_PAUSED, CS_PLAY_STOPPED};
+    for (size_t i = 0; i < sizeof(quiet) / sizeof(quiet[0]); i++) {
+        cs_ui_t ui = connected();
+        cs_ui_set_source(&ui, true);
+        rest(&ui, 1000);
+
+        cs_ui_set_playing(&ui, quiet[i], true);
+        rest(&ui, 15000);
+        cs_ui_set_playing(&ui, CS_PLAY_STOPPED, false);
+        rest(&ui, CS_SLEEP_MS - 16000);
+        CHECK(!cs_ui_asleep(&ui), "it slept before its time (%d)", (int)quiet[i]);
+
+        rest(&ui, 2000);
+        CHECK(cs_ui_asleep(&ui), "it stayed awake with nothing playing (%d)", (int)quiet[i]);
+    }
+}
+
+static void test_playing_wakes_it(void)
+{
+    cs_ui_t ui = connected();
+    cs_ui_set_source(&ui, true);
+    cs_ui_set_playing(&ui, CS_PLAY_STOPPED, false);
+    rest(&ui, CS_SLEEP_MS + 1000);
+    CHECK(cs_ui_asleep(&ui), "it did not sleep");
+
+    // Stopped said again, or paused, is still nothing playing.
+    cs_ui_set_playing(&ui, CS_PLAY_PAUSED, true);
+    rest(&ui, 100);
+    CHECK(cs_ui_asleep(&ui), "a pause woke it");
+
+    cs_ui_take_dirty(&ui);
+    cs_ui_set_playing(&ui, CS_PLAY_PLAYING, true);
+    rest(&ui, 100);
+    CHECK(!cs_ui_asleep(&ui), "playing did not wake it");
+    CHECK(cs_ui_take_dirty(&ui), "waking did not ask for a redraw");
+}
+
+static void test_nobody_after_nothing_playing_is_the_same_quiet(void)
 {
     cs_ui_t ui = connected();
     cs_ui_set_source(&ui, true);
     cs_ui_set_playing(&ui, CS_PLAY_STOPPED, false);
 
-    rest(&ui, 2 * CS_SLEEP_MS);
-    CHECK(!cs_ui_asleep(&ui), "it slept with a source there, stopped");
+    rest(&ui, CS_SLEEP_MS - 1000);
+    cs_ui_set_source(&ui, false);
+    rest(&ui, 2000);
+    CHECK(cs_ui_asleep(&ui), "the source going put sleep off");
 }
 
 static void test_it_is_awake_until_the_track_is_heard(void)
@@ -1152,7 +1204,10 @@ int main(int argc, char **argv)
         {"a pressed button is lit briefly", test_a_pressed_button_is_lit_briefly},
         {"nothing is sent without a broker", test_nothing_is_sent_without_a_broker},
         {"it sleeps five minutes after nobody is there", test_it_sleeps_five_minutes_after_nobody_is_there},
-        {"it stays awake while a source is there", test_it_stays_awake_while_a_source_is_there},
+        {"it stays awake while something plays", test_it_stays_awake_while_something_plays},
+        {"it sleeps five minutes after the music stops", test_it_sleeps_five_minutes_after_the_music_stops},
+        {"playing wakes it", test_playing_wakes_it},
+        {"nobody after nothing playing is the same quiet", test_nobody_after_nothing_playing_is_the_same_quiet},
         {"it is awake until the track is heard", test_it_is_awake_until_the_track_is_heard},
         {"nobody said again is not the quiet starting over", test_nobody_said_again_is_not_the_quiet_starting_over},
         {"a source wakes it, and it draws what came", test_a_source_wakes_it_and_it_draws_what_came},

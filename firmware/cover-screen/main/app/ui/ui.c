@@ -13,7 +13,6 @@ void cs_ui_init(cs_ui_t *ui)
     memset(ui, 0, sizeof(*ui));
     ui->link = CS_LINK_NO_WIFI;
     ui->play = CS_PLAY_STOPPED;
-    ui->present = true;
     ui->dirty = true;
 }
 
@@ -142,9 +141,11 @@ void cs_ui_tick(cs_ui_t *ui, uint32_t now_ms)
         ui->dirty = true;
     }
 
-    // The wait for sleep starts when nobody is there and nothing else is
-    // keeping the screen awake, and starts again after each touch.
-    if (ui->present || ui->link != CS_LINK_UP || ui->down) {
+    // The wait for sleep starts when nothing is playing and nothing else is
+    // keeping the screen awake, and starts again after each touch. Nobody
+    // there is nothing playing, whatever the last word on playing was.
+    bool playing = ui->present && ui->play == CS_PLAY_PLAYING;
+    if (!ui->heard || playing || ui->link != CS_LINK_UP || ui->down) {
         ui->counting = false;
         return;
     }
@@ -165,8 +166,8 @@ void cs_ui_set_link(cs_ui_t *ui, cs_link_t link)
         ui->link = link;
         ui->dirty = true;
     }
-    // A screen that cannot hear the current track cannot know nobody is
-    // there, and its corner has something to say.
+    // A screen that cannot hear the current track cannot know nothing is
+    // playing, and its corner has something to say.
     if (link != CS_LINK_UP) {
         wake(ui);
     }
@@ -174,19 +175,20 @@ void cs_ui_set_link(cs_ui_t *ui, cs_link_t link)
 
 void cs_ui_set_source(cs_ui_t *ui, bool named)
 {
-    // Only a change counts: the same "nobody" said again is not the quiet
-    // starting over.
-    if (named) {
-        ui->present = true;
+    // Only a change wakes it. Nobody there after nothing playing is the
+    // same quiet, and not the wait starting over.
+    if (named && !ui->present) {
         wake(ui);
-    } else if (ui->present) {
-        ui->present = false;
-        ui->counting = false;
     }
+    ui->present = named;
+    ui->heard = true;
 }
 
 void cs_ui_set_playing(cs_ui_t *ui, cs_play_t play, bool has_art)
 {
+    if (play == CS_PLAY_PLAYING && ui->play != play) {
+        wake(ui);
+    }
     if (ui->play != play || ui->has_art != has_art) {
         ui->play = play;
         ui->has_art = has_art;

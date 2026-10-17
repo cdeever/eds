@@ -336,7 +336,7 @@ static void screen_task(void *arg)
                 if (!dark) {
                     cs_display_sleep();
                     dark = true;
-                    cs_event_log(CS_EVENT_INFO, "screen.asleep", "Asleep: nobody is there");
+                    cs_event_log(CS_EVENT_INFO, "screen.asleep", "Asleep: nothing is playing");
                 }
             } else if (!waiting && (cs_ui_take_dirty(&ui) || dark)) {
                 // Waking, the picture goes on before the light, as at

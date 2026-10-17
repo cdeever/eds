@@ -22,12 +22,13 @@
 //   - With no broker a press sends nothing, and says so by doing nothing: a
 //     command queued for later would skip a track the listener has moved on
 //     from.
-//   - The screen sleeps when nobody is there: five minutes after the current
-//     track last named a source, counted again from each touch (ADR-0036).
-//     A source named wakes it. So does a touch, which only wakes it: it
-//     raises nothing and sends nothing. So does losing the broker, because a
-//     dark screen has to mean asleep, not broken. Until the current track
-//     has been heard it is awake.
+//   - The screen sleeps when nothing is playing: five minutes after the
+//     current track last said playing, or named no source at all, counted
+//     again from each touch (ADR-0036). Playing wakes it, and so does a
+//     source named where there was none. So does a touch, which only wakes
+//     it: it raises nothing and sends nothing. So does losing the broker,
+//     because a dark screen has to mean asleep, not broken. Until the
+//     current track has been heard it is awake.
 #pragma once
 
 #include <stdbool.h>
@@ -64,7 +65,7 @@ typedef enum {
 #define CS_FLASH_MS        200  // a pressed button stays lit at least this long
 #define CS_REPEAT_AFTER_MS 500  // a held volume button starts repeating after this
 #define CS_REPEAT_EVERY_MS 250  // and then repeats this often
-#define CS_SLEEP_MS (5u * 60u * 1000u) // nobody there this long, and the screen sleeps
+#define CS_SLEEP_MS (5u * 60u * 1000u) // nothing playing this long, and the screen sleeps
 
 // Consecutive samples that must agree before a touch or a lift is believed. A
 // resistive panel chatters at both ends of a press.
@@ -85,7 +86,8 @@ typedef struct {
     bool has_art;     // the current track names a cover
     bool no_controls; // what is playing takes no commands, so no buttons
     bool cover_ready; // and the screen holds one it can draw
-    bool present;     // the current track names a source, or has not been heard
+    bool heard;       // a current track has been
+    bool present;     // and it names a source
 
     bool asleep;
     bool counting; // toward sleep, since quiet_since_ms
