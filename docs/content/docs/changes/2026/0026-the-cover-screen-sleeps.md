@@ -99,6 +99,9 @@ Nothing outside the screen changed.
 | 2026-10-17 13:38 UTC | 1 | `make build ota` from `7dd2035`: `kept` in 17 s. In the screen's events: `ota.offered`, `ota.applied`, `system.boot` (`software`, firmware `7dd2035`), `ota.kept`, `mqtt.connected`. |
 | 2026-10-17 13:44 UTC | 2 | `screen.asleep` at 303.6 s of uptime: five minutes after `current`, heard moments after connecting at 3.2 s, named no source. A `screen.health` 2 s before it, and no `mqtt.disconnected` after: asleep, still on the broker. Dark, the owner confirmed. |
 | 2026-10-17 13:51 UTC | 2 | A song started in iTunes: `screen.awake`, the cover shown. Then paused: the record shown, and the screen stayed lit, as built: after fifteen seconds `current` says stopped with iTunes still named (ADR-0024), and the first build slept only when no source was named. The owner expected it to sleep; the rule was widened to nothing playing (ADR-0036 revised before merging). |
+| 2026-10-17 13:54 UTC | 2 | Play and pause pressed on the screen itself (`command.sent`, and the iTunes driver's `driver.command` 0.1 s later), leaving iTunes paused. |
+| 2026-10-17 13:57 UTC | 1 | `make build ota` from `e7672d1`, the wider rule: `kept` in 29 s; `system.boot` naming it, `ota.kept`, `mqtt.connected`. |
+| 2026-10-17 14:02 UTC | 2 | `screen.asleep` ("nothing is playing") at 303.6 s of uptime, with iTunes paused and still named: five minutes after the first `current`. No `mqtt.disconnected`. |
 
 ### Departures from the plan
 
