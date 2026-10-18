@@ -20,6 +20,7 @@ PI_HOSTNAME="${PI_HOSTNAME:?set PI_HOSTNAME to what the card should call itself}
 PI_USER="${PI_USER:?set PI_USER to your login on the card}"
 TENANT="${TENANT:?}"; INDEX="${INDEX:?}"
 DISCOGS="${DISCOGS:-}"
+NAMES="${NAMES:-}"
 
 if [[ ! -f "$BOOT/eds-backend.txt" || ! -f "$BOOT/deevnet-kit.txt" ]]; then
     echo "No backend card at $BOOT (no eds-backend.txt and deevnet-kit.txt there)." >&2
@@ -85,6 +86,10 @@ unset password again
     printf '# README.txt, beside this file, says what each line is. Read once, on first boot.\n'
     printf 'tenant=%s\nindex=%s\nhostname=%s\n' "$TENANT" "$INDEX" "$PI_HOSTNAME"
     printf 'wifi_ssid=%s\nwifi_psk=%s\nwifi_country=%s\n' "$ssid" "$psk" "$country"
+    # Only when given: a kit older than 0.12.0 stops on a key it does not know.
+    if [[ -n "$NAMES" ]]; then
+        printf 'names=%s\n' "$NAMES"
+    fi
 } > "$BOOT/deevnet-kit.txt"
 unset psk
 

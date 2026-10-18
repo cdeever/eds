@@ -38,6 +38,13 @@ SSH     := $(PI_USER)@$(PI)
 BOOT ?= /Volumes/bootfs
 # The owner's Discogs settings, kept by hand and never committed.
 DISCOGS ?= $(REPO)/deploy/discogs.env
+# Extra names and addresses for the card's server certificate (deevnet-kit
+# 0.12.0's names=), comma-separated: a site's DNS names for the Pi, and the
+# address it will have where it is going. Left empty until the image is built
+# on kit 0.12.0, whose first boot is the first that takes the key. For the
+# home Pi:
+#   NAMES=192.168.2.40,dv01rpi001p01.home.deevnet.net,mqtt.home.deevnet.net,console.eds.home.deevnet.net,grafana.home.deevnet.net,logs.home.deevnet.net
+NAMES ?=
 
 ARM64 := CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath
 
@@ -98,7 +105,7 @@ fetch:
 # Interactive: it asks for the Wi-Fi key and a password for your login.
 # Nothing it writes is kept here.
 card:
-	@BOOT="$(BOOT)" PI_HOSTNAME="$(PI_HOSTNAME)" PI_USER="$(PI_USER)" TENANT="$(TENANT)" INDEX="$(INDEX)" DISCOGS="$(DISCOGS)" ./card.sh
+	@BOOT="$(BOOT)" PI_HOSTNAME="$(PI_HOSTNAME)" PI_USER="$(PI_USER)" TENANT="$(TENANT)" INDEX="$(INDEX)" DISCOGS="$(DISCOGS)" NAMES="$(NAMES)" ./card.sh
 
 status:
 	ssh -t $(SSH) eds-backend-status

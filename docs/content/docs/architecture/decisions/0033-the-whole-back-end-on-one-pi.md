@@ -156,6 +156,10 @@ and has no command to issue another.
 - **Three places hold the account list** when the console's subscriptions
   are counted: `view.Topics`, the tenant's Terraform, and `accounts.conf`.
   The check covers the last two.
+- **The certificate carries both sites' names.** `deevnet-kit` 0.12.0
+  takes extra names and addresses (`names=` on a new card, `deevnet-kit
+  names` after), so a Pi on DVNTM can already be verified as
+  `mqtt.home.deevnet.net` and at its home address, `192.168.2.40`.
 - **The devices do not find the Pi by name.** The firmware has no mDNS, so a
   device is given the Pi's address, and the address has to stay put: a
   reservation on the router. The kit's certificate names the addresses the Pi

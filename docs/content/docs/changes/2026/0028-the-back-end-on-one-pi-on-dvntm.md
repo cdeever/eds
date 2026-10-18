@@ -117,6 +117,8 @@ Power the Pi off and take the card out. Nothing else was changed.
 | 2026-10-18 16:00 UTC | 3 | `deevnet-kit selftest`: 15 of 15, once Grafana had started. `eds-backend-status`: every service running and answering; all of `accounts.conf` on the broker. `free -m`: 513 MB used of 7808. Default route by the cable (metric 100), Wi-Fi 600; the internet reached. |
 | 2026-10-18 16:00 UTC | 3 | Discogs: the two lines of `deploy/discogs.env` put in the boot partition's `eds/` over SSH and `eds-backend-setup` run: imported, `nowplayd.env` rewritten, nowplayd restarted; the collection listed, 226 records. |
 | 2026-10-18 16:02 UTC | 4 | A scene posted to `lightd` on the Pi: on `eds/lightstand/lp-stand-01/scene`, and read by a new subscriber as the console, `retained=1`. From the Mac on DVNTM, with the card's CA: the console at `https://10.20.30.13/` and Grafana's health, both 200, verified. |
+| 2026-10-18 | after | The owner reserved DVNT-CORE addresses in the home OPNsense: the Pi's **eth0** (`dc:a6:32:c5:a1:4d`) at `192.168.2.40` as `dv01rpi001p01.home.deevnet.net`, with `mqtt`, `grafana`, `logs`, `console.eds` and `services.eds` on it; `lp-stand-01` `.41`, `cover-screen-01` `.42`, `turntable-power-01` `.43`; `.44` a second Pi, `.45`–`.47` spare. |
+| 2026-10-18 17:56 UTC | 3 | Deevnet CHG-0050: `deevnet-kit` 0.12.0, which takes extra names, copied onto the Pi (0.11.0 kept beside it); no reflash. `names set` with `192.168.2.40` and both sites' names, `regen-certs`, the console restarted. From the Mac on DVNTM, dialing `10.20.30.13`: `mqtt.home…`, `dv02rpi003p01.mobile…` and `192.168.2.40` verify on 8883, `console.eds.home…`, `grafana.home…` and `logs.home…` on their ports; `mqtt.mobile.deevnet.net` is refused. Selftest 15 of 15. |
 
 ### Departures from the plan
 
@@ -131,7 +133,11 @@ Power the Pi off and take the card out. Nothing else was changed.
 
 - [ ] The agent's drivers on the Pi (ADR-0033 item 4): pair with iTunes over DVNT-CORE.
 - [ ] A device on the Pi's broker (items 7 and 8), when the owner chooses.
-- [ ] Home to DVNT-CORE.
+- [ ] Home to DVNT-CORE: the cable moves, the Wi-Fi connection is deleted,
+      `.228` comes off the certificate; the devices are built and provisioned
+      for DVNT-CORE and `192.168.2.40` or `mqtt.home.deevnet.net`.
+- [ ] Rebuild `pi-backend` and this image on kit 0.12.0, raise the image's
+      kit check, and give the prod Pi's card `NAMES=` (`deploy/backend/Makefile`).
 - [ ] For Deevnet: `deevnet-kit init` issues the CA and certificate before the
       clock is set, and `regen-certs` does not restart Grafana.
 - [ ] `make card` can write to a staging folder (`BOOT=`), but checks for
