@@ -217,8 +217,9 @@ self-test passed; iTunes was paired and played. The cable moved to DVNT-CORE
 re-provisioning alone, no build**: the firmware reads its network and broker
 from `creds`. **A device verifies the card's certificate by name**
 (`mqtt.home.deevnet.net`), which settles item 7; the beacon's events reached
-the card's log store (item 8). Still open: a record end to end, and
-`deevnet-kit` issuing certificates before the clock is set (the first card's
+the card's log store (item 8). A record on the turntable then ran
+end to end on the Pi alone: named, its cover from Discogs, the stand lit from
+it. Still open: `deevnet-kit` issuing certificates before the clock is set (the first card's
 Discogs lookup failed for it until restarted). Details in CHG-0028.
 
 **2026-10-18.** Picked up again, to be tried on DVNTM on `dv02rpi003p01`.
