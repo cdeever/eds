@@ -210,6 +210,17 @@ owner chooses.
 
 **2026-10-13.** Written, and the image defined. Nothing has been built.
 
+**2026-10-18, evening.** On DVNTM, then home. A card from the image on kit
+0.12.0, with `names=`, booted with a certificate for both sites; the
+self-test passed; iTunes was paired and played. The cable moved to DVNT-CORE
+(`192.168.2.40`) and the Pi worked unchanged. **Each device moved by
+re-provisioning alone, no build**: the firmware reads its network and broker
+from `creds`. **A device verifies the card's certificate by name**
+(`mqtt.home.deevnet.net`), which settles item 7; the beacon's events reached
+the card's log store (item 8). Still open: a record end to end, and
+`deevnet-kit` issuing certificates before the clock is set (the first card's
+Discogs lookup failed for it until restarted). Details in CHG-0028.
+
 **2026-10-18.** Picked up again, to be tried on DVNTM on `dv02rpi003p01`.
 The definition was carried onto current `main`; `accounts.conf` gained the
 update topics and the `ota` account (ADR-0035), which the check caught. Deevnet's

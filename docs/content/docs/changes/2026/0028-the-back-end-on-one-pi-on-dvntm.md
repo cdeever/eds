@@ -129,6 +129,7 @@ Power the Pi off and take the card out. Nothing else was changed.
 | 2026-10-18 | move | Unbound restarted by the owner: `dv01rpi001p01`, `mqtt`, `grafana`, `logs`, `console.eds` and `services.eds` `.home.deevnet.net` all answer `192.168.2.40`. From the Pi, by name and verified: the console (200), Grafana (200), and the broker, a subscriber hearing the drivers' presence. The devices' and the spare Pi's names not yet entered; DVNT-CORE runs no Kea yet. |
 | 2026-10-18 22:29 UTC | device | **`turntable-power-01` moved to the Pi, by re-provisioning only**: the firmware reads its Wi-Fi, broker address, account and CA from the `creds` partition, so no build. `make -C deploy/backend devices PI=192.168.2.40 BROKER_HOST=mqtt.home.deevnet.net` (the owner typed DVNT-CORE's key); `make chip` (its MAC); `provision_tenant.py --outputs-json devices.json --ca deevnet-kit-ca.pem`, dry run then written. Joined DVNT-CORE at once, −52 dBm, as `192.168.2.43`; **dialed `mqtts://mqtt.home.deevnet.net:8883` and accepted the card's certificate by name** (ADR-0033 item 7); `online` in under 5 s. The Pi's nowplayd: the turntable switched on. Its `system.boot`, `wifi.connected`, `mqtt.connected` in the Pi's log store, partition `2-2` (item 8). |
 | 2026-10-18 | device | **`cover-screen-01` moved to the Pi** the same way (its firmware also reads the network and broker from `creds`): MAC `a0:a3:b3:ab:61:8c` on `/dev/cu.usbserial-2110`, dry run, then written. DVNT-CORE at −49 dBm as `192.168.2.42`; `mqtt.home.deevnet.net` by name; at once the Pi's current track, playing with a cover, and the cover, 10 174 bytes. |
+| 2026-10-18 | device | **`lp-stand-01` moved to the Pi** the same way: MAC `70:4b:ca:26:b1:a0` on `/dev/cu.usbserial-0001`. DVNT-CORE at −51 dBm as `192.168.2.41`; `mqtt.home.deevnet.net` by name; its retained scene at once, dark, as it should be with iTunes playing (ADR-0028). `deploy/backend/devices.json` deleted. **Every device now reports to the Pi; nothing of EdS's at home uses the tenant.** |
 
 ### Departures from the plan
 
@@ -149,8 +150,11 @@ Power the Pi off and take the card out. Nothing else was changed.
       (`.41`–`.43`) and `dv01rpi002p01` (`.44`), and their reservations in
       whatever DHCP serves DVNT-CORE.
 - [x] The beacon on the Pi: re-provisioned, no build; TLS by name works.
-- [ ] The cover screen and the stand, the same way; then delete
-      `deploy/backend/devices.json`, which holds every password and the Wi-Fi key.
+- [x] The cover screen and the stand, the same way; `devices.json` deleted.
+- [ ] A record on the turntable, end to end: named, the stand lit, the cover
+      on the screen.
+- [ ] The tenant, its workload and the relay Pi: retire them, or keep them for
+      DVNTM; a decision and records of their own.
 - [ ] Updates over the air at home: `tools/ota` sends from the tenant's
       workload; on the Pi it needs the `ota` account's login and a host.
 - [ ] `.228` off the certificate at the next reissue.
