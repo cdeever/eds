@@ -1,7 +1,7 @@
 // The current track, as much of it as the screen uses.
 //
 // ESP-IDF glue around cJSON, and so not host-tested; it is kept to reading
-// four things out of the message and deciding nothing.
+// five things out of the message and deciding nothing.
 #pragma once
 
 #include <stdbool.h>
@@ -15,6 +15,9 @@ typedef struct {
     // What is playing takes no commands (ADR-0025). False when the message
     // does not say, which is every message from before it could.
     bool no_controls;
+    // The message names a source. None is how nowplayd says nobody is there
+    // (ADR-0036); which source it is, the screen does not ask.
+    bool has_source;
 } cs_now_t;
 
 // cs_now_parse reads a message from the current topic. It returns false for
