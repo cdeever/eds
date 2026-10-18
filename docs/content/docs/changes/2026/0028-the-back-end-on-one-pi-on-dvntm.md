@@ -124,6 +124,8 @@ Power the Pi off and take the card out. Nothing else was changed.
 | 2026-10-18 22:12 UTC | 3 | Second card: SSH in 10 s. Wi-Fi on DVNT-CORE (`192.168.2.228`) at first boot. **The certificate carried every name and `192.168.2.40` from first boot**, with `10.20.30.13` and `.228`; no reissue. Its dates again from the image's saved clock (to 2028). |
 | 2026-10-18 22:14 UTC | 3 | The UA-4FX seen as card `UA4FX`. `make turntable DEVICE=plughw:UA4FX` and `make drivers DRIVERS=itunes,turntable`: the turntable driver listening and online; iTunes not yet paired. Selftest 15 of 15; `eds-backend-status` clean; 560 MB used. From the Mac: the console, Grafana and the broker verify under their home names. |
 | 2026-10-18 22:14 UTC | 3 | **Discogs refused at first boot**: nowplayd asked before the clock was set, and Discogs' certificate was "not yet valid" in 2025. Restarted: the collection listed, 226 records. Nothing on the card waits for the clock (`systemd-time-wait-sync` disabled, no unit after `time-sync.target`). |
+| 2026-10-18 22:16 UTC | — | iTunes paired by the owner: the driver online and reporting a track, with its cover. The record test skipped for now. |
+| 2026-10-18 22:17 UTC | move | **The cable moved to DVNT-CORE**, and the Pi restarted: `eth0` took its reservation, `192.168.2.40`. The Wi-Fi connection (`deevnet-kit-wifi`) deleted, its key with it: one address at home. Selftest 15 of 15; iTunes and the turntable drivers online; the collection listed at once (the clock was right on this boot). From the Mac: the console, Grafana, the log store and the broker verify at `.40` and under their home names. **The home names do not resolve**: OPNsense's Unbound forwards them to the public `deevnet.net` zone, which answers NXDOMAIN; its overrides are not in effect. |
 
 ### Departures from the plan
 
@@ -138,9 +140,12 @@ Power the Pi off and take the card out. Nothing else was changed.
 
 - [ ] The agent's drivers on the Pi (ADR-0033 item 4): pair with iTunes over DVNT-CORE.
 - [ ] A device on the Pi's broker (items 7 and 8), when the owner chooses.
-- [ ] Home to DVNT-CORE: the cable moves, the Wi-Fi connection is deleted,
-      `.228` comes off the certificate; the devices are built and provisioned
-      for DVNT-CORE and `192.168.2.40` or `mqtt.home.deevnet.net`.
+- [x] Home to DVNT-CORE: the cable moved, the Wi-Fi connection deleted.
+- [ ] `home.deevnet.net` in OPNsense's Unbound (host overrides, applied).
+- [ ] The devices built and provisioned for DVNT-CORE and `192.168.2.40` or
+      `mqtt.home.deevnet.net`; the beacon first, to learn whether their TLS
+      takes a certificate matched by name or address.
+- [ ] `.228` off the certificate at the next reissue.
 - [ ] Rebuild `pi-backend` and this image on kit 0.12.0, raise the image's
       kit check, and give the prod Pi's card `NAMES=` (`deploy/backend/Makefile`).
 - [ ] Wait for the clock: order EdS's units after `time-sync.target` (and
