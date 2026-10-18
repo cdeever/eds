@@ -120,6 +120,10 @@ Power the Pi off and take the card out. Nothing else was changed.
 | 2026-10-18 | after | The owner reserved DVNT-CORE addresses in the home OPNsense: the Pi's **eth0** (`dc:a6:32:c5:a1:4d`) at `192.168.2.40` as `dv01rpi001p01.home.deevnet.net`, with `mqtt`, `grafana`, `logs`, `console.eds` and `services.eds` on it; `lp-stand-01` `.41`, `cover-screen-01` `.42`, `turntable-power-01` `.43`; `.44` a second Pi, `.45`–`.47` spare. |
 | 2026-10-18 17:56 UTC | 3 | Deevnet CHG-0050: `deevnet-kit` 0.12.0, which takes extra names, copied onto the Pi (0.11.0 kept beside it); no reflash. `names set` with `192.168.2.40` and both sites' names, `regen-certs`, the console restarted. From the Mac on DVNTM, dialing `10.20.30.13`: `mqtt.home…`, `dv02rpi003p01.mobile…` and `192.168.2.40` verify on 8883, `console.eds.home…`, `grafana.home…` and `logs.home…` on their ports; `mqtt.mobile.deevnet.net` is refused. Selftest 15 of 15. |
 | 2026-10-18 15:23 UTC | 1 | Rebuilt on kit 0.12.0: Deevnet CHG-0051 republished `pi-backend`, and the image's kit check now also requires `deevnet-kit names`. `make image fetch` from `9215f79`: `ok=54 changed=27 failed=0`, all seven assertion tasks passing; `eds-pi-backend.img.xz`, 1.04 GB, SHA-256 `6321e451…`, verified. pi003 to be reflashed with it, its card given `names=` for both sites. |
+| 2026-10-18 | 2 | The first card from it booted with none of its settings: they had been written to the staging folder and not yet copied to the card, and the folder was deleted before that was checked. The kit's first boot took its defaults (tenant `pi`), and the card had no `ssh` and no login. Reflashed; the settings written and copied again, and checked on the card before ejecting. |
+| 2026-10-18 22:12 UTC | 3 | Second card: SSH in 10 s. Wi-Fi on DVNT-CORE (`192.168.2.228`) at first boot. **The certificate carried every name and `192.168.2.40` from first boot**, with `10.20.30.13` and `.228`; no reissue. Its dates again from the image's saved clock (to 2028). |
+| 2026-10-18 22:14 UTC | 3 | The UA-4FX seen as card `UA4FX`. `make turntable DEVICE=plughw:UA4FX` and `make drivers DRIVERS=itunes,turntable`: the turntable driver listening and online; iTunes not yet paired. Selftest 15 of 15; `eds-backend-status` clean; 560 MB used. From the Mac: the console, Grafana and the broker verify under their home names. |
+| 2026-10-18 22:14 UTC | 3 | **Discogs refused at first boot**: nowplayd asked before the clock was set, and Discogs' certificate was "not yet valid" in 2025. Restarted: the collection listed, 226 records. Nothing on the card waits for the clock (`systemd-time-wait-sync` disabled, no unit after `time-sync.target`). |
 
 ### Departures from the plan
 
@@ -139,7 +143,7 @@ Power the Pi off and take the card out. Nothing else was changed.
       for DVNT-CORE and `192.168.2.40` or `mqtt.home.deevnet.net`.
 - [ ] Rebuild `pi-backend` and this image on kit 0.12.0, raise the image's
       kit check, and give the prod Pi's card `NAMES=` (`deploy/backend/Makefile`).
-- [ ] For Deevnet: `deevnet-kit init` issues the CA and certificate before the
-      clock is set, and `regen-certs` does not restart Grafana.
+- [ ] Wait for the clock: order EdS's units after `time-sync.target` (and
+      `systemd-time-wait-sync`), and the kit's first boot likewise (Deevnet).
 - [ ] `make card` can write to a staging folder (`BOOT=`), but checks for
       the two marker files the image puts on the card; say so in the README.
