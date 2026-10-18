@@ -28,5 +28,5 @@ direct_dependencies:
 - espressif/mqtt
 - idf
 manifest_hash: 35b8d6558f9523ba689c0d2c7f786563ec64b9346028325d6566f9b324bf8f5d
-target: esp32s2
+target: esp32
 version: 3.0.0

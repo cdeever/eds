@@ -16,17 +16,25 @@ The decision, and what else was considered, is
 
 ## Status
 
-Builds with ESP-IDF 6.1 for an ESP32-S2 and starts on one. Still to be
+Builds with ESP-IDF 6.1 for a plain ESP32, and runs on one since
+[CHG-0027](../../docs/content/docs/changes/2026/0027-the-beacon-on-an-esp32.md);
+the first board was an ESP32-S2. Still to be
 shown, and listed in the ADR: how long it takes to say `online`, how long
 the broker takes to say `offline`, and a day on the outlet without its
 connection coming and going.
 
 ## The board
 
-Any ESP32 with WiFi and 4 MB of flash. The one in use is an ESP32-S2
-(revision v0.0, single core) behind a CP2102N bridge. No pin is used. A
-different chip is one line, `CONFIG_IDF_TARGET` in `sdkconfig.defaults`, and
-`CHIP=` to make.
+Any ESP32 with WiFi and 4 MB of flash. The one in use is a plain ESP32
+(ESP32-D0WD-V3, revision v3.1) behind a CP2102, MAC `70:4b:ca:27:06:14`, in
+a case, with its antenna on the board: at the turntable it hears DVNTM-IOT
+at −59 dBm. No pin is used. A different chip is one line,
+`CONFIG_IDF_TARGET` in `sdkconfig.defaults`, and `CHIP=` and `MAC=` to make.
+
+The first board was an ESP32-S2 (MAC `7c:df:a1:3c:d6:62`) that needed an
+external antenna to join from the turntable. It has been erased, credentials
+and all. Two boards provisioned as one beacon take the one account from each
+other, and each time the broker says `offline` for the turntable.
 
 ## How it works
 
@@ -82,14 +90,14 @@ MQTT and the credentials need the board.
 ```bash
 . ~/.espressif/tools/activate_idf_v6.1.sh
 make build
-make flash                    # PORT defaults to /dev/cu.usbserial-2120
+make flash                    # PORT defaults to /dev/cu.usbserial-0001
 make provision                # from the tenant's Terraform outputs
 make monitor
 ```
 
 `flash` and `provision` run `make chip` first, which stops unless the board
-on the port is an ESP32-S2. The port is the one the cover screen takes when
-it is the board plugged in.
+on the port is an ESP32 with this beacon's MAC. The stand and the cover
+screen are ESP32s too, and any of them can be on the port.
 
 `make provision` writes the `creds` partition: the WiFi key, the broker's
 address, this beacon's account and the broker's CA, all read from the

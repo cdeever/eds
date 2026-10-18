@@ -1,8 +1,9 @@
 # Defaults that make a fresh checkout build into something that runs.
 
-# The board: an ESP32-S2 with 4MB of flash. Another chip is this line and
-# nothing else; the program uses WiFi and no pin.
-CONFIG_IDF_TARGET="esp32s2"
+# The board: a plain ESP32 with 4MB of flash, behind a CP2102 (CHG-0027; an
+# ESP32-S2 before it). Another chip is this line and nothing else; the
+# program uses WiFi and no pin.
+CONFIG_IDF_TARGET="esp32"
 
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=4096
 

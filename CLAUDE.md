@@ -199,13 +199,14 @@ make test                      # host tests for the event lines, gcc only
 make build flash provision monitor   # PORT defaults to /dev/cu.usbserial-2120
 ```
 
-An ESP32-S2 with nothing attached, on the outlet that is switched with the
-turntable (ADR-0023). **Its connection is its message**: `online`, retained,
+A plain ESP32 with nothing attached (an ESP32-S2 until CHG-0027), on the
+outlet that is switched with the turntable (ADR-0023). **Its connection is its message**: `online`, retained,
 when it connects, and a last will of `offline`. It knows nothing of
 turntables; its name and `NP_SOURCE_POWER` say what it speaks for. Its
 keepalive is ten seconds, on purpose: that is how soon the will is sent.
-`flash` and `provision` check the chip first, because the cover screen takes
-the same serial port. Its credentials, WiFi, event log and partition table
+`flash` and `provision` check the board's MAC first (`MAC=` in its
+Makefile): the stand and the screen are ESP32s too, on the same ports. The
+old S2 was erased; never provision two boards as one beacon. Its credentials, WiFi, event log and partition table
 are copies of the stand's too.
 
 ### Updates over the air (`tools/ota`, all three firmwares)

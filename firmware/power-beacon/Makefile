@@ -6,11 +6,13 @@
 # Every recipe is one line: this is run on macOS, whose make is 3.81 and has
 # no .ONESHELL.
 #
-# The port is the one the cover screen takes when it is the board plugged in,
-# so `flash` and `provision` ask the chip what it is first: the beacon is an
-# ESP32-S2 and the screen is not.
-PORT ?= /dev/cu.usbserial-2120
-CHIP ?= esp32s2
+# The beacon is a plain ESP32, as the stand and the cover screen are, and any
+# of them can be the board on the port. So `flash` and `provision` ask the
+# chip for its MAC first, and stop unless it is this beacon's. A MAC is not a
+# secret; it is the one thing that tells three ESP32s apart.
+PORT ?= /dev/cu.usbserial-0001
+CHIP ?= esp32
+MAC  ?= 70:4b:ca:27:06:14
 
 # The ESP-IDF Installation Manager exposes idf.py as a shell function rather
 # than adding it to PATH, so a recipe's subshell cannot see it. Resolve the
@@ -25,7 +27,7 @@ help:
 	@echo "  test        host tests for the event lines (no ESP-IDF needed)"
 	@echo "  menuconfig  configure the beacon's name and network"
 	@echo "  build       idf.py build"
-	@echo "  chip        say what is on PORT, and stop if it is not a $(CHIP)"
+	@echo "  chip        say what is on PORT, and stop unless it is a $(CHIP) with MAC $(MAC)"
 	@echo "  flash       idf.py flash        (PORT=$(PORT))"
 	@echo "  monitor     idf.py monitor      (PORT=$(PORT))"
 	@echo "  ota         send build/power-beacon.bin to the beacon it was built for, through the broker"
@@ -43,9 +45,9 @@ menuconfig:
 build:
 	$(IDF_PY) build
 
-# esptool, told the chip, refuses any other.
+# esptool, told the chip, refuses any other; the MAC is then checked by hand.
 chip:
-	python3 -m esptool --chip "$(CHIP)" -p "$(PORT)" chip-id
+	@out=$$(python3 -m esptool --chip "$(CHIP)" -p "$(PORT)" read-mac 2>&1) || { echo "$$out" >&2; exit 2; }; mac=$$(echo "$$out" | sed -n 's/^MAC: *\([0-9a-f:]*\).*/\1/p' | head -1); if [ "$$mac" != "$(MAC)" ]; then echo "the $(CHIP) on $(PORT) is $${mac:-unknown}, not this beacon ($(MAC)); give MAC= to flash another" >&2; exit 2; fi; echo "$(PORT): $(CHIP), $$mac, this beacon"
 
 flash: chip
 	$(IDF_PY) -p "$(PORT)" flash
