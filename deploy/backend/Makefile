@@ -40,8 +40,8 @@ BOOT ?= /Volumes/bootfs
 DISCOGS ?= $(REPO)/deploy/discogs.env
 # Extra names and addresses for the card's server certificate (deevnet-kit
 # 0.12.0's names=), comma-separated: a site's DNS names for the Pi, and the
-# address it will have where it is going. Left empty until the image is built
-# on kit 0.12.0, whose first boot is the first that takes the key. For the
+# address it will have where it is going. The image's kit takes it from
+# 0.12.0 on; a card for an older image must be written without it. For the
 # home Pi:
 #   NAMES=192.168.2.40,dv01rpi001p01.home.deevnet.net,mqtt.home.deevnet.net,console.eds.home.deevnet.net,grafana.home.deevnet.net,logs.home.deevnet.net
 NAMES ?=

@@ -134,11 +134,15 @@
         that:
           - "'--password-file' in pi_eds_backend_kit_help.stdout"
           - "'hostname=' in pi_eds_backend_kit_txt.stdout"
+          # 0.12.0: extra names on the certificate, so a card can carry the
+          # names and address of the site it is going to (Deevnet CHG-0050).
+          - "'deevnet-kit names' in pi_eds_backend_kit_help.stdout"
         fail_msg: >-
-          The published pi-backend image carries a deevnet-kit that cannot keep
-          a password from a file or take a hostname from the card. Deevnet
-          IoTaaS has to restage the kit and rebuild the image first
-          (make stage-pi; make pi-backend pi-backend-publish). See ADR-0033.
+          The published pi-backend image carries a deevnet-kit older than
+          0.12.0: it cannot keep a password from a file, take a hostname from
+          the card, or put extra names on the certificate. Deevnet IoTaaS has
+          to restage the kit and rebuild the image first (make stage-pi; make
+          pi-backend pi-backend-publish). See ADR-0033.
 
   tasks:
     # ------------------------------------------------------------
