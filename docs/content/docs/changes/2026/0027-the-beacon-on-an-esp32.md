@@ -58,7 +58,7 @@ MAC instead.
 
 | Risk | Where | Guard |
 |---|---|---|
-| The old S2 powered with the new board | the broker, nowplayd, the stand | The S2 off its outlet before the new board is provisioned. It keeps its credentials, as a spare |
+| The old S2 powered with the new board | the broker, nowplayd, the stand | The S2 off its outlet before the new board is provisioned; erased afterwards |
 | The wrong board written | the Mac's serial port | `make chip` checks the MAC |
 | It does not join from the outlet in its case | the beacon | Read at the turntable already; its `wifi.connected` carries the RSSI. The S2 back on its outlet undoes it |
 
@@ -113,9 +113,10 @@ going.
 
 ## Undo
 
-The S2 back on the outlet, and the new board off it. The S2 has its
-credentials and firmware still. To build for it again, `CONFIG_IDF_TARGET`
-back to `esp32s2` and `CHIP=esp32s2 MAC=<its MAC>` to make.
+The S2 was erased after the change, so undo is a build for it and a flash
+and provision by cable: `CONFIG_IDF_TARGET` back to `esp32s2`, and
+`CHIP=esp32s2 MAC=7c:df:a1:3c:d6:62 PORT=/dev/cu.usbserial-110` to make. Then
+it goes on the outlet, with its external antenna, and the new board off it.
 
 ## Outcome
 
@@ -131,6 +132,7 @@ back to `esp32s2` and `CHIP=esp32s2 MAC=<its MAC>` to make.
 | 2026-10-18 13:29 UTC | 3 | In its case, on the turntable's outlet, switched on: up 2.7 s after power (`mqtt.connected` at that uptime), first attempt, −66 dBm joining and −64 at the broker. nowplayd: `a source's equipment was switched source=turntable on=true` at 13:29:14.460, `current` stopped with the turntable named, the room waiting for a record. The console: online. |
 | 2026-10-18 13:30 UTC | 3 | Switched off at the outlet: the broker sent the will, and nowplayd logged `source=turntable on=false` at 13:30:51.7; `current` stopped with no source; the console `offline`. Fifteen seconds later (`NP_IDLE_AFTER`) nowplayd went idle with nothing switched on, and lightd sent the stand `look=""`, brightness 0, at 13:31:06.7: dark, from standby at 0.15. |
 | 2026-10-18 | Verification | Every Goal check met but the day on the outlet, left as a follow-up. |
+| 2026-10-18 | after | The old S2 on the Mac, `/dev/cu.usbserial-110`: ESP32-S2 revision v0.0, MAC `7c:df:a1:3c:d6:62`. Its whole flash erased with `esptool erase-flash`; the `creds` partition's range read back all `0xFF`. It had not reached the broker before the erase: no event from it, nothing switched in nowplayd's log. No backup of its factory image was ever taken, so erased is as near factory as it gets. |
 
 ### Departures from the plan
 
@@ -139,4 +141,4 @@ back to `esp32s2` and `CHIP=esp32s2 MAC=<its MAC>` to make.
 ## Follow-ups
 
 - [ ] A day on the outlet without the connection coming and going.
-- [ ] Record the old S2's MAC in the README, before it is used again.
+- [x] The old S2's MAC recorded, and the board erased, credentials and all.

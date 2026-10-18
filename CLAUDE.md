@@ -200,7 +200,7 @@ turntables; its name and `NP_SOURCE_POWER` say what it speaks for. Its
 keepalive is ten seconds, on purpose: that is how soon the will is sent.
 `flash` and `provision` check the board's MAC first (`MAC=` in its
 Makefile): the stand and the screen are ESP32s too, on the same ports. The
-old S2 still holds the beacon's credentials and must stay unpowered. Its credentials, WiFi, event log and partition table
+old S2 was erased; never provision two boards as one beacon. Its credentials, WiFi, event log and partition table
 are copies of the stand's too.
 
 ### Updates over the air (`tools/ota`, all three firmwares)

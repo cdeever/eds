@@ -31,10 +31,10 @@ a case, with its antenna on the board: at the turntable it hears DVNTM-IOT
 at −59 dBm. No pin is used. A different chip is one line,
 `CONFIG_IDF_TARGET` in `sdkconfig.defaults`, and `CHIP=` and `MAC=` to make.
 
-The first board was an ESP32-S2 that needed an external antenna to join
-from the turntable. It still holds the beacon's credentials: it must stay
-unpowered, or the two take the one account from each other, and each time
-the broker says `offline` for the turntable.
+The first board was an ESP32-S2 (MAC `7c:df:a1:3c:d6:62`) that needed an
+external antenna to join from the turntable. It has been erased, credentials
+and all. Two boards provisioned as one beacon take the one account from each
+other, and each time the broker says `offline` for the turntable.
 
 ## How it works
 
