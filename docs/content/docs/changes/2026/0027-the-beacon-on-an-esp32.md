@@ -127,6 +127,8 @@ back to `esp32s2` and `CHIP=esp32s2 MAC=<its MAC>` to make.
 | 2026-10-18 | 1 | `make build flash` from `522e5fc`, on `/dev/cu.usbserial-0001` at the turntable: `make chip` named it this beacon; bootloader, partition table, `otadata` and app written and verified. `make chip MAC=00:11:22:33:44:55` refused it. It boots `522e5fc` from `ota_0`, says `not provisioned`, and keeps trying DVNTM-IOT with no key. |
 | 2026-10-18 | 2 | First try not run: the Mac was on the home network, where the tenant's state cannot be read (`tfstate.mobile.deevnet.net` does not resolve). Waits for the Mac on DVNTM-TD. |
 | 2026-10-18 13:25 UTC | 2 | The S2 unplugged; the Mac on DVNTM. `make chip`, a dry run, then `provision_tenant.py` with the main checkout's tenant directory: the `creds` partition written. At the turntable, on the Mac's cable: joined DVNTM-IOT on the first attempt, −65 dBm, as 10.20.30.201; `online` published. In the log store: `system.boot` (firmware `522e5fc`), `wifi.connected`, `mqtt.connected`. The console: `turntable-power-01` online. |
+| 2026-10-18 13:27 UTC | 3 | Taken off the Mac's cable: nowplayd went idle with nothing switched on (`switched_on=false`, 13:27:32). |
+| 2026-10-18 13:29 UTC | 3 | In its case, on the turntable's outlet, switched on: up 2.7 s after power (`mqtt.connected` at that uptime), first attempt, −66 dBm joining and −64 at the broker. nowplayd: `a source's equipment was switched source=turntable on=true` at 13:29:14.460, `current` stopped with the turntable named, the room waiting for a record. The console: online. |
 
 ### Departures from the plan
 
