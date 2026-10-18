@@ -124,10 +124,15 @@ and has no command to issue another.
   that computer.
 - **One leg, on the home network, and tried first on the kit's.** The Pi
   is no relay and routes nothing. Before it goes home it is proven on
-  DVNTM, on a cable on the IoT segment beside the devices, with the site's
-  reservation for it (`dv02rpi003p01`, `10.20.30.13`). The tenant keeps
-  running beside it throughout; going home is a new card, or
-  `deevnet-kit regen-certs` for the new address.
+  DVNTM with two legs, as the relay Pi has
+  ([ADR-0010](/docs/architecture/decisions/0010-home-lan-relay/)): a cable
+  on the IoT segment beside the devices, with the site's reservation for it
+  (`dv02rpi003p01`, `10.20.30.13`), and Wi-Fi on DVNT-CORE, where iTunes is.
+  It still forwards nothing between them. The tenant keeps running beside it
+  throughout. Going home is pulling the cable, a reservation on the home
+  router, and `deevnet-kit regen-certs` if the certificate lacks the home
+  address; then each device is built and provisioned again for DVNT-CORE and
+  the Pi.
   Its firewall is its own: SSH, the broker, the console, Grafana, the log
   store, and what iTunes needs to pair.
 - **The Pi is its owner's, not the site's.** `pi-backend` has no automation

@@ -10,7 +10,7 @@ weight: 28
 | **Date** | 2026-10-18 |
 | **Change type** | Deployment |
 | **Status** | {{< status-badge "in-progress" "In progress" >}} |
-| **Systems** | `dv02rpi003p01` (a Pi 4 on DVNTM, wired to `Gi1/0/11`, IoT, `10.20.30.13`), with a new card. Nothing of the tenant's, the workload's, the relay Pi's or the devices' |
+| **Systems** | `dv02rpi003p01` (a Pi 4, wired to DVNTM's IoT segment on `Gi1/0/11`, `10.20.30.13`, and on DVNT-CORE by Wi-Fi), with a new card. Nothing of the tenant's, the workload's, the relay Pi's or the devices' |
 | **How** | `make -C deploy/backend image fetch`; the card flashed by its owner; `make card`; first boot; `make status` |
 | **Risk** | Low. Most likely to go wrong: the card's first boot not finishing (`deevnet-kit` or `eds-backend-setup`), which leaves a Pi to reflash and nothing else touched |
 | **Decisions** | [ADR-0033](/docs/architecture/decisions/0033-the-whole-back-end-on-one-pi/), whose evidence this is |
@@ -41,9 +41,9 @@ until the owner chooses to move one, which is a later step of its own.
 ## Scope
 
 **In scope:** the image, the card, the Pi's first boot and the checks above.
-**Out of scope:** moving any device to the Pi's broker; the agent's drivers
-(iTunes is on the home network, which this Pi has no leg on); dashboards;
-going home to DVNT-CORE.
+**Out of scope:** moving any device to the Pi's broker; dashboards; going
+home to DVNT-CORE alone. The agent's drivers are in scope: the Pi's Wi-Fi is
+on DVNT-CORE, where iTunes is.
 
 ## Risk and impact
 
@@ -76,7 +76,8 @@ Imager, as a custom image, and leaves the card in.
 make -C deploy/backend card PI_HOSTNAME=dv02rpi003p01 PI_USER=<login>
 ```
 
-`-` for the Wi-Fi: the Pi is on a cable.
+DVNT-CORE and its key for the Wi-Fi, which is where iTunes is; the cable is
+DVNTM's IoT segment.
 
 ### Step 3: First boot
 
@@ -85,8 +86,10 @@ and grows the filesystem, then `deevnet-kit` and `eds-backend-setup` run once.
 
 **Verify:**
 
-1. `make -C deploy/backend status PI=10.20.30.13 PI_USER=<login>`.
+1. `make -C deploy/backend status PI=10.20.30.13`.
 2. `sudo deevnet-kit selftest`; `free -m`.
+3. The server certificate names both addresses; if not,
+   `sudo deevnet-kit regen-certs` and restart the console and the broker.
 
 ### Step 4: The console and the retained scene
 
@@ -115,6 +118,6 @@ Power the Pi off and take the card out. Nothing else was changed.
 
 ## Follow-ups
 
-- [ ] The agent's drivers on the Pi (ADR-0033 item 4).
+- [ ] The agent's drivers on the Pi (ADR-0033 item 4): pair with iTunes over DVNT-CORE.
 - [ ] A device on the Pi's broker (items 7 and 8), when the owner chooses.
 - [ ] Home to DVNT-CORE.
