@@ -124,6 +124,8 @@ back to `esp32s2` and `CHIP=esp32s2 MAC=<its MAC>` to make.
 | When | Step | What happened |
 |---|---|---|
 | 2026-10-18 | before | ESP-IDF's scan example, repeating every three seconds, flashed from a scratch copy; nothing of it committed. The board had come with a factory image, no EdS partition table. At the Mac: DVNT-CORE −36 to −40 dBm, DVNTM-IOT −70. At the turntable, on a cable: DVNT-CORE −45 to −48, DVNTM-IOT −58 to −59. |
+| 2026-10-18 | 1 | `make build flash` from `522e5fc`, on `/dev/cu.usbserial-0001` at the turntable: `make chip` named it this beacon; bootloader, partition table, `otadata` and app written and verified. `make chip MAC=00:11:22:33:44:55` refused it. It boots `522e5fc` from `ota_0`, says `not provisioned`, and keeps trying DVNTM-IOT with no key. |
+| 2026-10-18 | 2 | Not run: the Mac was on the home network, where the tenant's state cannot be read (`tfstate.mobile.deevnet.net` does not resolve). Waits for the Mac on DVNTM-TD. |
 
 ### Departures from the plan
 
