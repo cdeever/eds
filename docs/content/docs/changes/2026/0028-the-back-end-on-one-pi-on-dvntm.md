@@ -111,13 +111,28 @@ Power the Pi off and take the card out. Nothing else was changed.
 |---|---|---|
 | 2026-10-18 10:47 | before | Deevnet CHG-0049: `pi-backend` rebuilt with `deevnet-kit` v0.11.0 and republished. |
 | 2026-10-18 11:04 | 1 | `make -C deploy/backend image fetch` from `b4d7594`: the published image taken and checked against its checksum; `backend/config.yml` `ok=54 changed=27 failed=0`, all seven assertion tasks passing (kit new enough, no secret, firewall parses and admits the broker and console, palette and the recognizer import, the agent may open a sound card). `eds-pi-backend.img.xz`, 1.02 GB, SHA-256 `f518c076…`, fetched and verified. |
+| 2026-10-18 | 2 | The card's settings written through a folder on the Mac and copied on in Finder: the Mac's terminal is not allowed to write to removable volumes. Wi-Fi DVNT-CORE, the `eds` login with the owner's key. |
+| 2026-10-18 15:50 UTC | 3 | First boot finished: `deevnet-kit` and `eds-backend-setup` ran; the broker and the four services active; `npagent` stopped with 78, as it should with nothing paired. **Wi-Fi did not join**: the 4-way handshake failed, the key mistyped at the card step. Set again on the Pi with `nmcli`: DVNT-CORE as `192.168.2.228/23`. |
+| 2026-10-18 15:59 UTC | 3 | **The kit issued its CA and certificate before the clock was set** (`notBefore` 2025-11-24, the image's saved clock), and without the Wi-Fi address. `deevnet-kit regen-certs`, then Grafana and the console restarted (regen restarts only the broker and vmauth): the certificate now names `10.20.30.13`, `192.168.2.228` and the home IPv6 address, to 2029. The CA keeps its 2025 start; it is valid to 2035. |
+| 2026-10-18 16:00 UTC | 3 | `deevnet-kit selftest`: 15 of 15, once Grafana had started. `eds-backend-status`: every service running and answering; all of `accounts.conf` on the broker. `free -m`: 513 MB used of 7808. Default route by the cable (metric 100), Wi-Fi 600; the internet reached. |
+| 2026-10-18 16:00 UTC | 3 | Discogs: the two lines of `deploy/discogs.env` put in the boot partition's `eds/` over SSH and `eds-backend-setup` run: imported, `nowplayd.env` rewritten, nowplayd restarted; the collection listed, 226 records. |
+| 2026-10-18 16:02 UTC | 4 | A scene posted to `lightd` on the Pi: on `eds/lightstand/lp-stand-01/scene`, and read by a new subscriber as the console, `retained=1`. From the Mac on DVNTM, with the card's CA: the console at `https://10.20.30.13/` and Grafana's health, both 200, verified. |
 
 ### Departures from the plan
 
--
+- The card's settings went on through Finder, not `make card` directly.
+- The Wi-Fi key was set on the Pi, after the first boot.
+- The certificate was reissued, which the plan expected only if the Wi-Fi
+  address was missing; it also corrected the dates.
+- Discogs was added on the Pi: `make card` from a worktree did not find
+  `deploy/discogs.env` (ADR-0037).
 
 ## Follow-ups
 
 - [ ] The agent's drivers on the Pi (ADR-0033 item 4): pair with iTunes over DVNT-CORE.
 - [ ] A device on the Pi's broker (items 7 and 8), when the owner chooses.
 - [ ] Home to DVNT-CORE.
+- [ ] For Deevnet: `deevnet-kit init` issues the CA and certificate before the
+      clock is set, and `regen-certs` does not restart Grafana.
+- [ ] `make card` can write to a staging folder (`BOOT=`), but checks for
+      the two marker files the image puts on the card; say so in the README.
