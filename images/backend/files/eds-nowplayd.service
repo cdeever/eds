@@ -1,0 +1,35 @@
+# EdS nowplayd on a backend Pi: every source in, the current track out.
+#
+# It does not start until its broker account exists (eds-backend-setup). The
+# owner's Discogs token arrives on the card and is optional: without it the
+# turntable's records are named by what was heard, not by the collection.
+[Unit]
+Description=EdS nowplayd
+Documentation=https://github.com/cdeever/eds/tree/main/services/nowplaying
+After=network-online.target mosquitto.service vmauth.service eds-backend-setup.service
+Wants=network-online.target
+ConditionPathExists=/etc/eds/nowplayd.env
+
+[Service]
+User=eds-nowplayd
+Group=eds-nowplayd
+# In this order: a later file's settings win.
+EnvironmentFile=/etc/eds/settings/nowplayd.env
+EnvironmentFile=/etc/eds/nowplayd.env
+EnvironmentFile=-/etc/eds/discogs.env
+ExecStart=/usr/local/bin/nowplayd
+Restart=on-failure
+RestartSec=10
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

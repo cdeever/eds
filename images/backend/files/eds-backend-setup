@@ -1,0 +1,212 @@
+#!/bin/bash
+# eds-backend-setup - make this card's broker accounts and its services'
+# settings, and take what the owner left on the boot partition.
+#
+#   eds-backend-setup            what the unit runs, on every boot
+#   eds-backend-setup devices    print what the stand, the screen and the
+#                                beacon are provisioned with, as JSON
+#
+# The image carries no secret, and nothing here comes from Deevnet IoTaaS or
+# from the EdS tenant there (ADR-0033). deevnet-kit has already made this
+# card's CA and its log tokens. This adds the tenant's eight broker accounts
+# (/etc/eds/accounts.conf), each with a password made here, and writes each
+# service the settings it reads.
+#
+# It does only what is missing. An account that exists with its password on
+# file is left alone, and a settings file is rewritten only when what it
+# should say has changed. So it is safe to run by hand, and a card that lost
+# power partway through its first boot finishes on its second.
+#
+# Two things may be left for it in /boot/firmware/eds/, and are removed from
+# there once taken, because anyone holding the card can read that partition:
+#
+#   discogs.env             NP_DISCOGS_USER= and NP_DISCOGS_TOKEN=
+#   login, authorized_keys  a user's name, and public keys to admit as them
+#
+# Nothing in those files is executed.
+set -euo pipefail
+
+ETC=/etc/eds
+PASSWORDS="$ETC/accounts"
+LIST="$ETC/accounts.conf"
+KIT=/etc/deevnet-kit
+CA="$KIT/tls/ca.pem"
+DROP=/boot/firmware/eds
+log() { echo "eds-backend-setup: $*"; }
+
+if [[ $EUID -ne 0 ]]; then
+    exec sudo "$0" "$@"
+fi
+[[ -f "$KIT/kit.json" ]] || { echo "deevnet-kit has not run on this card yet: there is no $KIT/kit.json" >&2; exit 1; }
+
+# One named value from the kit's view of this card. Read, never sourced.
+kit_value() { deevnet-kit env | grep -m1 -E "^$1=" | cut -d= -f2-; }
+tenant="$(kit_value DEEVNET_TENANT)"
+[[ -n "$tenant" ]] || { echo "deevnet-kit names no tenant" >&2; exit 1; }
+
+# The accounts, one a line, comments and blank lines dropped.
+accounts() { sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$LIST"; }
+
+# ---------------------------------------------------------------- devices --
+# What tools/provision_tenant.py reads in place of the tenant's Terraform
+# outputs (--outputs-json), for every account that belongs to a device. The
+# Wi-Fi network is not this Pi's to say and is added where this is read
+# (deploy/backend, `make devices`).
+if [[ "${1:-}" == "devices" ]]; then
+    address="$(hostname -I | awk '{print $1}')"
+    accounts | TENANT="$tenant" ADDRESS="$address" PASSWORDS="$PASSWORDS" python3 -c '
+import json, os, sys
+tenant, out = os.environ["TENANT"], {}
+out["broker"] = {"value": {"host": os.environ["ADDRESS"], "port": 8883, "ca": "deevnet-kit-ca.pem"}}
+for line in sys.stdin:
+    name, device, publish, subscribe = line.split()
+    if device == "-":
+        continue
+    with open(os.path.join(os.environ["PASSWORDS"], name + ".pw")) as f:
+        password = f.readline().strip()
+    absolute = lambda field: [] if field == "-" else [tenant + "/" + p for p in field.split(",")]
+    out[name.replace("-", "_") + "_broker"] = {"value": {
+        "username": tenant + "-" + name, "password": password,
+        "publish": absolute(publish), "subscribe": absolute(subscribe)}}
+json.dump(out, sys.stdout, indent=2)
+print()
+'
+    exit 0
+fi
+[[ $# -eq 0 ]] || { echo "usage: eds-backend-setup [devices]" >&2; exit 2; }
+
+# --------------------------------------------------------------- accounts --
+install -d -o root -g root -m 0700 "$PASSWORDS"
+umask 077
+
+while read -r name device publish subscribe <&3; do
+    if [[ -s "$PASSWORDS/$name.pw" && -f "$KIT/accounts/$name.json" ]]; then
+        continue
+    fi
+    # Half made, or its password lost: the kit keeps only a hash, so the
+    # account is made again and whatever held the old password is told below.
+    if [[ -f "$KIT/accounts/$name.json" ]]; then
+        deevnet-kit account rm "$name" >/dev/null
+    fi
+    head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$PASSWORDS/$name.pw.new"
+    echo >> "$PASSWORDS/$name.pw.new"
+
+    args=(account add "$name")
+    [[ "$device" == "-" ]] || args+=(--device "$device")
+    if [[ "$publish" != "-" ]]; then
+        IFS=, read -ra patterns <<<"$publish"
+        for pattern in "${patterns[@]}"; do args+=(--publish "$pattern"); done
+    fi
+    if [[ "$subscribe" != "-" ]]; then
+        IFS=, read -ra patterns <<<"$subscribe"
+        for pattern in "${patterns[@]}"; do args+=(--subscribe "$pattern"); done
+    fi
+    deevnet-kit "${args[@]}" --password-file "$PASSWORDS/$name.pw.new" >/dev/null
+    mv "$PASSWORDS/$name.pw.new" "$PASSWORDS/$name.pw"
+    log "account $tenant-$name made"
+done 3< <(accounts)
+
+password() { head -n1 "$PASSWORDS/$1.pw"; }
+
+# ------------------------------------------------- the boot partition's --
+if [[ -f "$DROP/discogs.env" ]]; then
+    if grep -q -E '^NP_DISCOGS_USER=.' "$DROP/discogs.env"; then
+        grep -E '^NP_DISCOGS_(USER|TOKEN)=' "$DROP/discogs.env" | tr -d '\r' > "$ETC/discogs.env.new"
+        mv "$ETC/discogs.env.new" "$ETC/discogs.env"
+        chmod 0600 "$ETC/discogs.env"
+        rm -f "$DROP/discogs.env"
+        log "Discogs settings installed"
+    else
+        log "discogs.env names no NP_DISCOGS_USER; left in place"
+    fi
+fi
+
+if [[ -f "$DROP/login" && -f "$DROP/authorized_keys" ]]; then
+    user="$(head -n1 "$DROP/login" | tr -d '\r[:space:]')"
+    if [[ "$user" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && home="$(getent passwd "$user" | cut -d: -f6)" && [[ -d "$home" ]]; then
+        install -d -o "$user" -g "$user" -m 0700 "$home/.ssh"
+        # Public keys and nothing else: a line that is not one is dropped.
+        grep -E '^(ssh-(ed25519|rsa)|ecdsa-sha2-[a-z0-9-]+|sk-[a-z0-9@.-]+) [A-Za-z0-9+/=]+' "$DROP/authorized_keys" |
+            tr -d '\r' >> "$home/.ssh/authorized_keys" || true
+        sort -u -o "$home/.ssh/authorized_keys" "$home/.ssh/authorized_keys"
+        chown "$user:$user" "$home/.ssh/authorized_keys"
+        chmod 0600 "$home/.ssh/authorized_keys"
+        rm -f "$DROP/login" "$DROP/authorized_keys"
+        log "keys installed for $user"
+    else
+        # The owner's user is made on the very first boot, from userconf.txt.
+        log "no user '$user' on this card yet; the keys stay on the boot partition"
+    fi
+fi
+rmdir "$DROP" 2>/dev/null || true
+
+# --------------------------------------------------------------- settings --
+# Every service dials the broker on this Pi, as localhost, which the card's
+# certificate names.
+restart=()
+
+# settings FILE GROUP MODE UNIT - install standard input as FILE if it differs.
+# Fed by redirection, never a pipe: a pipe would run it in a shell of its own,
+# and the list of what to restart would be lost with it.
+settings() {
+    local file="$1" group="$2" mode="$3" unit="$4"
+    cat > "$file.new"
+    if [[ -f "$file" ]] && cmp -s "$file.new" "$file"; then
+        rm -f "$file.new"
+        return
+    fi
+    chown "root:$group" "$file.new"
+    chmod "$mode" "$file.new"
+    mv "$file.new" "$file"
+    restart+=("$unit")
+    log "$(basename "$file") written"
+}
+
+broker() {
+    cat <<SETTINGS
+DEEVNET_TENANT=$tenant
+MQTT_HOST=localhost
+MQTT_PORT=8883
+MQTT_CA_FILE=$CA
+MQTT_USERNAME=$tenant-$1
+MQTT_PASSWORD=$(password "$1")
+SETTINGS
+}
+
+settings "$ETC/lightd.env" root 0600 eds-lightd.service < <(broker lightd)
+
+nowplayd_settings() {
+    broker nowplayd
+    # Its counts of what it asks of outside services (ADR-0027).
+    echo "LOG_ENDPOINT=https://localhost:8427"
+    echo "LOG_INGEST_TOKEN=$(kit_value LOG_INGEST_TOKEN)"
+    # With no collection to ask, no source is said to play the owner's
+    # records: nowplayd refuses to start on one without the other.
+    [[ -s "$ETC/discogs.env" ]] || echo "NP_COLLECTION_SOURCES="
+}
+settings "$ETC/nowplayd.env" root 0600 eds-nowplayd.service < <(nowplayd_settings)
+
+settings "$ETC/console.env" root 0600 eds-console.service < <(broker console)
+
+# The agent's file is also edited from the desk (which drivers, which sound
+# card), so those two lines are kept as they are.
+agent_settings() {
+    cat <<SETTINGS
+NP_MQTT_URL=tls://localhost:8883
+NP_MQTT_USERNAME=$tenant-np-relay
+NP_MQTT_PASSWORD=$(password np-relay)
+NP_MQTT_CA_FILE=$CA
+NP_MQTT_CLIENT_ID=$tenant-np-relay
+NP_TOPIC_PREFIX=$tenant
+NP_LOG_DEVICE=np-relay
+SETTINGS
+    grep -E '^NP_(DRIVERS|TURNTABLE_DEVICE)=' "$ETC/npagent.env" 2>/dev/null || true
+}
+settings "$ETC/npagent.env" npagent 0640 npagent.service < <(agent_settings)
+
+sync
+
+# Nothing is waited for: at boot those units are queued behind this one.
+for unit in ${restart[@]+"${restart[@]}"}; do
+    systemctl --no-block try-restart "$unit" 2>/dev/null || true
+done

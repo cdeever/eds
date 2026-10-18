@@ -28,7 +28,7 @@ builds the monorepo as a whole; work inside one project directory at a time.
 | `firmware/power-beacon` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
 | `tools/ota` | Go 1.25 | `make check test-integration`; run by `make ota` in a firmware |
 | `infra/deevnet-tenant-eds` | Terraform | `make paths init plan apply` |
-| `images` | Ansible / shell | `make -C deploy/relay image fetch` (builds on builder) |
+| `images` | Ansible / shell | `make -C deploy/relay image fetch`, `make -C deploy/backend image fetch` (build on builder) |
 
 Each project's README carries the design rationale in depth. Read the relevant
 one before changing behavior — the choices there are argued, not incidental.
@@ -117,6 +117,22 @@ agent Pi given a second network leg, not a separate image. The Pi is reached
 through builder as `a_autoprov` (`make -C deploy/relay status|pair|logs`);
 `make push` updates a Pi in service, `make spotify` authorizes it for Spotify,
 `make drivers DRIVERS=…` chooses which drivers it runs.
+
+**The whole back end can also be one Pi, and that is not proven yet**
+(ADR-0033, `Proposed`). `images/backend` is Deevnet IoTaaS's published
+take-home image, `pi-backend`, with EdS's four services run natively and the
+agent added; `deploy/backend` builds it, writes a card and looks after the Pi,
+which is reached directly as its owner's user and not through builder. It is
+beside the tenant: nothing there, on the workload or on the relay Pi changes
+for it, and the devices stay with the tenant until they are provisioned
+again. A backend card makes its own secrets on first boot (`deevnet-kit`,
+then `eds-backend-setup`); none comes from the tenant. **Its broker accounts
+are `images/backend/files/accounts.conf`, a copy of the tenant's in
+`main.tf`**: change the Terraform first, then the list, and
+`make -C deploy/backend check` holds them together. `images/agent` is not
+edited for the backend's sake until it is proven: the backend's playbook has
+its own copy of the agent's tasks and reads the agent's files from where they
+are.
 
 **The turntable driver listens, and asks a recognizer nobody promised**
 (ADR-0021). It hears the amplifier's tape output through a sound card on the

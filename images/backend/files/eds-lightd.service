@@ -1,0 +1,33 @@
+# EdS lightd on a backend Pi: covers in, scenes out to the stand.
+#
+# It does not start until its broker account exists, and that is made on the
+# card's first boot (eds-backend-setup). Its settings that are not secret are
+# the workload's own, deploy/lightd.env, as the image was built with them.
+[Unit]
+Description=EdS lightd
+Documentation=https://github.com/cdeever/eds/tree/main/services/lightd
+After=network-online.target mosquitto.service eds-backend-setup.service eds-palette.service
+Wants=network-online.target eds-palette.service
+ConditionPathExists=/etc/eds/lightd.env
+
+[Service]
+User=eds-lightd
+Group=eds-lightd
+EnvironmentFile=/etc/eds/settings/lightd.env
+EnvironmentFile=/etc/eds/lightd.env
+ExecStart=/usr/local/bin/lightd
+Restart=on-failure
+RestartSec=10
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

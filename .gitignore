@@ -79,3 +79,14 @@ deploy/relay/spotify.conf
 # `make -C deploy tls-files`. The key is a secret.
 deploy/tls/
 *.key
+
+# The backend Pi (deploy/backend, ADR-0033). Its image, fetched from the
+# Builder; what is staged for a build; and what `make devices` fetches from a
+# card to provision the devices with: broker passwords made on that card, a
+# Wi-Fi key, and the card's own CA.
+deploy/backend/*.img
+deploy/backend/*.img.xz
+deploy/backend/*.img.xz.sha256
+deploy/backend/stage/
+deploy/backend/devices.json
+deploy/backend/deevnet-kit-ca.pem

@@ -101,6 +101,7 @@ and incidents under the same names. To keep the two apart:
 | [0030](0030-a-piece-of-music-can-have-a-look-from-any-source/) | 2026-10-13 | One piece of music can have a look of its own, shown whatever plays it, and the stand learns to scan | {{< adr-status "Proposed" >}} |
 | [0031](0031-spotify-is-shown-like-itunes/) | 2026-10-13 | Spotify is reported with its cover, and treated as iTunes is | {{< adr-status "Proposed" >}} |
 | [0032](0032-spotify-takes-commands/) | 2026-10-13 | The Spotify driver carries out commands, with a wider authorization, for what is playing here | {{< adr-status "Proposed" >}} |
+| [0033](0033-the-whole-back-end-on-one-pi/) | 2026-10-13 | The whole back end can run on one Pi, as an image built on Deevnet's take-home one | {{< adr-status "Proposed" >}} |
 | [0034](0034-presence-is-heard-not-remembered/) | 2026-10-16 | Presence is heard, not remembered: everything says it is there every thirty seconds | {{< adr-status "Proposed" >}} |
 | [0035](0035-firmware-is-updated-through-the-broker/) | 2026-10-16 | Firmware is updated through the broker, and a build that cannot reach it is undone | {{< adr-status "Accepted" >}} |
 | [0036](0036-the-screen-sleeps-when-nothing-plays/) | 2026-10-17 | The cover screen sleeps when nothing has played for five minutes, and wakes for music | {{< adr-status "Accepted" >}} |

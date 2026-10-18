@@ -1,0 +1,30 @@
+# EdS palette on a backend Pi: cover art in, swatches out.
+#
+# It reads no settings and holds no secret. It listens on the Pi itself and
+# nowhere else: lightd is its one caller, and is beside it.
+[Unit]
+Description=EdS palette
+Documentation=https://github.com/cdeever/eds/tree/main/services/palette
+After=network.target
+
+[Service]
+User=eds-palette
+Group=eds-palette
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/eds-palette/bin/uvicorn eds_palette.api:app --host 127.0.0.1 --port 8731
+Restart=on-failure
+RestartSec=10
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
