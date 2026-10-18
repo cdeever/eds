@@ -9,7 +9,7 @@ weight: 27
 |---|---|
 | **Date** | 2026-10-18 |
 | **Change type** | Upgrade |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-18 |
 | **Systems** | `turntable-power-01`: a new board, a plain ESP32, in place of the ESP32-S2 |
 | **How** | `make build flash provision` in `firmware/power-beacon`, by cable |
 | **Risk** | Low. Most likely to go wrong: the old S2 powered at the same time as the new board. Both log in as `turntable-power-01`, the broker takes the account from one for the other, and each time says `offline` for the turntable |
@@ -129,6 +129,8 @@ back to `esp32s2` and `CHIP=esp32s2 MAC=<its MAC>` to make.
 | 2026-10-18 13:25 UTC | 2 | The S2 unplugged; the Mac on DVNTM. `make chip`, a dry run, then `provision_tenant.py` with the main checkout's tenant directory: the `creds` partition written. At the turntable, on the Mac's cable: joined DVNTM-IOT on the first attempt, −65 dBm, as 10.20.30.201; `online` published. In the log store: `system.boot` (firmware `522e5fc`), `wifi.connected`, `mqtt.connected`. The console: `turntable-power-01` online. |
 | 2026-10-18 13:27 UTC | 3 | Taken off the Mac's cable: nowplayd went idle with nothing switched on (`switched_on=false`, 13:27:32). |
 | 2026-10-18 13:29 UTC | 3 | In its case, on the turntable's outlet, switched on: up 2.7 s after power (`mqtt.connected` at that uptime), first attempt, −66 dBm joining and −64 at the broker. nowplayd: `a source's equipment was switched source=turntable on=true` at 13:29:14.460, `current` stopped with the turntable named, the room waiting for a record. The console: online. |
+| 2026-10-18 13:30 UTC | 3 | Switched off at the outlet: the broker sent the will, and nowplayd logged `source=turntable on=false` at 13:30:51.7; `current` stopped with no source; the console `offline`. Fifteen seconds later (`NP_IDLE_AFTER`) nowplayd went idle with nothing switched on, and lightd sent the stand `look=""`, brightness 0, at 13:31:06.7: dark, from standby at 0.15. |
+| 2026-10-18 | Verification | Every Goal check met but the day on the outlet, left as a follow-up. |
 
 ### Departures from the plan
 
@@ -136,4 +138,5 @@ back to `esp32s2` and `CHIP=esp32s2 MAC=<its MAC>` to make.
 
 ## Follow-ups
 
+- [ ] A day on the outlet without the connection coming and going.
 - [ ] Record the old S2's MAC in the README, before it is used again.
