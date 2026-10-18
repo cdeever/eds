@@ -16,7 +16,7 @@ Why it is built this way is
 
 **Running on one board since 2026-10-11** ([CHG-0012](../../docs/content/docs/changes/2026/0012-the-cover-screen.md)).
 It shows the cover, and its buttons pause, resume and skip the real iTunes.
-The pure half has 144 host checks. Still open: a day connected, and why its
+The pure half has 239 host checks. Still open: a day connected, and why its
 connection once stalled for ten seconds.
 
 ## The board
@@ -69,6 +69,27 @@ that takes has not been timed on the board.
   ([ADR-0025](../../docs/content/docs/architecture/decisions/0025-current-says-when-there-are-no-controls.md)),
   as it does for a record on the turntable. The screen still knows no
   player: it is told there is nothing to offer, not why.
+
+### Asleep
+
+**The screen sleeps when nothing plays**
+([ADR-0036](../../docs/content/docs/architecture/decisions/0036-the-screen-sleeps-when-nothing-plays.md)).
+Five minutes after `current` last said `playing` with a source named, the
+backlight goes off and the panel sleeps. Paused, stopped, and no `source` at
+all (nowplayd's word for every source offline or switched off) are all
+nothing playing, and one following another does not start the five minutes
+over. WiFi and the broker stay up.
+
+- **Playing wakes it**, and so does a source named where there was none; the
+  picture is drawn before the light comes on.
+- **A touch wakes it, and only wakes it**: no buttons, nothing sent. The
+  next touch is the first touch on a lit screen. Five minutes after it, with
+  still nothing playing, it sleeps again.
+- **No WiFi or no broker wakes it**, so the corner can be seen. Dark means
+  asleep, never broken.
+- **Until it has heard `current`, it is awake.**
+
+It still knows no source.
 
 ### No cover
 
@@ -165,6 +186,8 @@ and its own:
 | `cover.rejected` | a cover was too large or could not be drawn | `bytes`, `limit` |
 | `current.rejected` | a track message could not be read | `bytes` |
 | `mqtt.stalled` | the broker did not answer when a press asked | |
+| `screen.asleep` | five minutes with nothing playing; the panel went dark | |
+| `screen.awake` | music, a source, a touch or a lost broker lit it again | |
 
 ## Updates through the broker
 

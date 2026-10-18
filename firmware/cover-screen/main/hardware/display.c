@@ -151,3 +151,19 @@ void cs_display_light(void)
 {
     gpio_set_level(CONFIG_CS_PANEL_GPIO_BACKLIGHT, 1);
 }
+
+void cs_display_sleep(void)
+{
+    gpio_set_level(CONFIG_CS_PANEL_GPIO_BACKLIGHT, 0);
+    if (esp_lcd_panel_disp_sleep(panel, true) != ESP_OK) {
+        // Dark all the same: the light is what is seen.
+        ESP_LOGW(TAG, "the panel would not sleep");
+    }
+}
+
+void cs_display_wake(void)
+{
+    if (esp_lcd_panel_disp_sleep(panel, false) != ESP_OK) {
+        ESP_LOGW(TAG, "the panel would not wake");
+    }
+}

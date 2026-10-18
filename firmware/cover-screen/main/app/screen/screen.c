@@ -87,7 +87,7 @@ void cs_screen_link(cs_link_t link)
     xSemaphoreGive(lock);
 }
 
-void cs_screen_playing(cs_play_t play, bool has_art, bool controls)
+void cs_screen_playing(cs_play_t play, bool has_art, bool controls, bool source)
 {
     if (xSemaphoreTake(lock, pdMS_TO_TICKS(2000)) != pdTRUE) {
         ESP_LOGW(TAG, "dropped a track change: the screen was busy");
@@ -95,6 +95,7 @@ void cs_screen_playing(cs_play_t play, bool has_art, bool controls)
     }
     cs_ui_set_playing(&ui, play, has_art);
     cs_ui_set_controls(&ui, controls);
+    cs_ui_set_source(&ui, source);
     xSemaphoreGive(lock);
 }
 
@@ -306,6 +307,7 @@ static void screen_task(void *arg)
 
     TickType_t last_wake = xTaskGetTickCount();
     bool was_touching = false;
+    bool dark = false; // the panel is asleep (ADR-0036)
 
     for (;;) {
         int raw_x = 0, raw_y = 0, x = 0, y = 0;
@@ -328,8 +330,26 @@ static void screen_task(void *arg)
             // A cover that is arriving is worth a moment's wait: drawing now
             // would draw the record, and the cover a blink later.
             bool waiting = arriving && now - arriving_since_ms < CS_COVER_ARRIVAL_MS;
-            if (!waiting && cs_ui_take_dirty(&ui)) {
+            if (cs_ui_asleep(&ui)) {
+                // Nothing is drawn while dark. What changes stays dirty, and
+                // waking redraws anyway.
+                if (!dark) {
+                    cs_display_sleep();
+                    dark = true;
+                    cs_event_log(CS_EVENT_INFO, "screen.asleep", "Asleep: nothing is playing");
+                }
+            } else if (!waiting && (cs_ui_take_dirty(&ui) || dark)) {
+                // Waking, the picture goes on before the light, as at
+                // power-on: what shows first is what is playing.
+                if (dark) {
+                    cs_display_wake();
+                }
                 redraw();
+                if (dark) {
+                    cs_display_light();
+                    dark = false;
+                    cs_event_log(CS_EVENT_INFO, "screen.awake", "Awake");
+                }
             }
             xSemaphoreGive(lock);
         }

@@ -24,7 +24,9 @@ esp_err_t cs_screen_start(cs_command_sender send);
 // What the broker client reports. All are safe from its task.
 
 void cs_screen_link(cs_link_t link);
-void cs_screen_playing(cs_play_t play, bool has_art, bool controls);
+// source is whether the track names one. Nothing playing, or none, and the
+// screen sleeps in time (ADR-0036).
+void cs_screen_playing(cs_play_t play, bool has_art, bool controls, bool source);
 
 // A cover arrives in pieces: begin, some data, end. While one is arriving the
 // screen keeps what it is showing rather than drawing half a change.
