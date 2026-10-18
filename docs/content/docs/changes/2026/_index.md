@@ -33,3 +33,4 @@ bookCollapseSection: true
 | CHG-0023 | 2026-10-13 | [Spotify Takes Commands](0023-spotify-takes-commands/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0024 | 2026-10-16 | [Spotify Turned Off Again](0024-spotify-turned-off-again/) | Configuration | {{< status-badge "complete" "Complete" >}} |
 | CHG-0025 | 2026-10-16 | [Presence Repeated, and Updates Through the Broker](0025-presence-repeated-and-updates-through-the-broker/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
+| CHG-0027 | 2026-10-18 | [The Beacon on an ESP32](0027-the-beacon-on-an-esp32/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
