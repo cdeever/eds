@@ -126,6 +126,7 @@ Power the Pi off and take the card out. Nothing else was changed.
 | 2026-10-18 22:14 UTC | 3 | **Discogs refused at first boot**: nowplayd asked before the clock was set, and Discogs' certificate was "not yet valid" in 2025. Restarted: the collection listed, 226 records. Nothing on the card waits for the clock (`systemd-time-wait-sync` disabled, no unit after `time-sync.target`). |
 | 2026-10-18 22:16 UTC | — | iTunes paired by the owner: the driver online and reporting a track, with its cover. The record test skipped for now. |
 | 2026-10-18 22:17 UTC | move | **The cable moved to DVNT-CORE**, and the Pi restarted: `eth0` took its reservation, `192.168.2.40`. The Wi-Fi connection (`deevnet-kit-wifi`) deleted, its key with it: one address at home. Selftest 15 of 15; iTunes and the turntable drivers online; the collection listed at once (the clock was right on this boot). From the Mac: the console, Grafana, the log store and the broker verify at `.40` and under their home names. **The home names do not resolve**: OPNsense's Unbound forwards them to the public `deevnet.net` zone, which answers NXDOMAIN; its overrides are not in effect. |
+| 2026-10-18 | move | Unbound restarted by the owner: `dv01rpi001p01`, `mqtt`, `grafana`, `logs`, `console.eds` and `services.eds` `.home.deevnet.net` all answer `192.168.2.40`. From the Pi, by name and verified: the console (200), Grafana (200), and the broker, a subscriber hearing the drivers' presence. The devices' and the spare Pi's names not yet entered; DVNT-CORE runs no Kea yet. |
 
 ### Departures from the plan
 
@@ -141,7 +142,10 @@ Power the Pi off and take the card out. Nothing else was changed.
 - [ ] The agent's drivers on the Pi (ADR-0033 item 4): pair with iTunes over DVNT-CORE.
 - [ ] A device on the Pi's broker (items 7 and 8), when the owner chooses.
 - [x] Home to DVNT-CORE: the cable moved, the Wi-Fi connection deleted.
-- [ ] `home.deevnet.net` in OPNsense's Unbound (host overrides, applied).
+- [x] `home.deevnet.net` in OPNsense's Unbound for the Pi and its services.
+- [ ] Host overrides for `lp-stand-01`, `cover-screen-01`, `turntable-power-01`
+      (`.41`–`.43`) and `dv01rpi002p01` (`.44`), and their reservations in
+      whatever DHCP serves DVNT-CORE.
 - [ ] The devices built and provisioned for DVNT-CORE and `192.168.2.40` or
       `mqtt.home.deevnet.net`; the beacon first, to learn whether their TLS
       takes a certificate matched by name or address.
