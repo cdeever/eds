@@ -106,7 +106,8 @@ Power the Pi off and take the card out. Nothing else was changed.
 
 | When | Step | What happened |
 |---|---|---|
-| | | |
+| 2026-10-18 10:47 | before | Deevnet CHG-0049: `pi-backend` rebuilt with `deevnet-kit` v0.11.0 and republished. |
+| 2026-10-18 11:04 | 1 | `make -C deploy/backend image fetch` from `b4d7594`: the published image taken and checked against its checksum; `backend/config.yml` `ok=54 changed=27 failed=0`, all seven assertion tasks passing (kit new enough, no secret, firewall parses and admits the broker and console, palette and the recognizer import, the agent may open a sound card). `eds-pi-backend.img.xz`, 1.02 GB, SHA-256 `f518c076…`, fetched and verified. |
 
 ### Departures from the plan
 
