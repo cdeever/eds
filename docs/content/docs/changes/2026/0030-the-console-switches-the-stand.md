@@ -60,10 +60,12 @@ leaves nothing retained that a nowplayd from before reads.
 
 | When | Step | What happened |
 |---|---|---|
+| 2026-10-19 19:55 UTC | 1 | `make -C deploy/backend push PI=192.168.2.40` from `9fdd99a`, run by the owner. The Pi installed it (`pushed: 9fdd99a on 2026-10-19T19:55:19Z`); every service and npagent active from 19:55:24. The accounts were made again: `console` publishes and reads `nowplaying/stand`, `nowplayd` reads it. nowplayd connected with no warning about the topic. The Mac moved from DVNTM to DVNT-CORE during the push, so the ssh session never returned and the script's own output after the copy was lost; it was ended by hand at 20:06, and the make reported exit 2 for that. |
 
 ### Departures from the plan
 
--
+- The push's output after the copy was lost to a network move, so the
+  results were read from the Pi instead.
 
 ## Follow-ups
 
