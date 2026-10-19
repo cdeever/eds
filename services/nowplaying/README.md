@@ -175,11 +175,16 @@ mono at 16 kHz.
   answer is.** Those clips are all one track; one sent by the clock may
   straddle two, and a new track is then taken when two clips running agree
   on it. Four running that nothing is known about let the track go.
-- **It keeps the album a side began with.** The recognizer names an album
-  with every track and does not agree with itself: two tracks of one LP came
-  back as the album and as a box set the album is in. One record has one
-  cover, so the first album named stays until the artist changes or the deck
-  has been silent for ten minutes. Turning the record over is not that long.
+- **It reports the album as the recognizer named it**, an empty one
+  included. Which record a track is on is nowplayd's to say, by what is on it
+  ([ADR-0038](../../docs/content/docs/architecture/decisions/0038-the-turntable-names-the-original-album-by-what-is-on-it.md)):
+  the owner's collection first; then the record already playing, if its
+  track list has the track, which keeps a side's sleeve across a flip and a
+  track the recognizer files under a box set; and otherwise the original
+  studio album the track is on. Deezer finds the albums a track is on and
+  lists their tracks; MusicBrainz says which is the studio original. No rule
+  depends on how long the deck was quiet: another record by the same band
+  is another record, however soon it is put on.
 - **It names no cover and takes no commands.**
 
 ### The recognizer

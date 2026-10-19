@@ -22,10 +22,6 @@ const DefaultSilenceDB = -55.0
 // the recognizer does not know, or the needle in the run-out groove.
 const missesBeforeUnknown = 4
 
-// forgetAfter is how much silence ends an album. Turning a record over is
-// silence too, and must not: so it is long.
-const forgetAfter = 10 * time.Minute
-
 // gapAfter is how much quiet, with music on both sides of it, is taken for
 // the gap between two tracks (ADR-0026). A quiet passage is as long, and is
 // answered the same way: by asking. Asking costs one clip and changes
@@ -39,7 +35,6 @@ type follower struct {
 	clip      int // blocks in a clip
 	interval  int // blocks between clips
 	stopAfter int // blocks of silence that mean stopped
-	forget    int // blocks of silence that end an album
 	gap       int // blocks of quiet that are a gap between two tracks
 	silence   float64
 
@@ -62,13 +57,12 @@ type follower struct {
 	track    *Match
 	pending  *Match // a different track, heard once
 	misses   int
-
-	// album is kept from the first track named on a side and given to the
-	// tracks after it. The recognizer names an album per track, and for two
-	// tracks of one record it has named two: the album, and a box set the
-	// album is in. Left alone, that is a new cover between tracks.
-	album, albumArtist string
 }
+
+// The album is reported as the recognizer named it, an empty one included.
+// Which record a track is on is nowplayd's to decide, by what is on it
+// (ADR-0038): a time since the last track cannot tell a record turned over
+// from another by the same artist put on.
 
 func newFollower(interval, stopAfter time.Duration, silenceDB float64) *follower {
 	blocks := func(d time.Duration) int { return int(d / (time.Second / 10)) }
@@ -76,7 +70,6 @@ func newFollower(interval, stopAfter time.Duration, silenceDB float64) *follower
 		clip:      ClipSeconds * 10,
 		interval:  blocks(interval),
 		stopAfter: blocks(stopAfter),
-		forget:    blocks(forgetAfter),
 		gap:       blocks(gapAfter),
 		silence:   silenceDB,
 		quiet:     blocks(stopAfter), // nothing has been heard yet
@@ -108,16 +101,13 @@ func (f *follower) hear(block []int16) []int16 {
 			f.fresh, f.sinceGap = true, 0
 		}
 		f.quiet = 0
-	} else if f.quiet < f.forget {
+	} else if f.quiet < f.stopAfter {
 		f.quiet++
 	}
 
 	if f.quiet >= f.stopAfter {
 		f.hearing, f.answered = false, false
 		f.track, f.pending, f.misses = nil, nil, 0
-		if f.quiet >= f.forget {
-			f.album, f.albumArtist = "", ""
-		}
 		return nil
 	}
 	if !f.hearing {
@@ -197,11 +187,6 @@ func (f *follower) answer(m Match, err error) {
 }
 
 func (f *follower) adopt(m Match) {
-	if f.album != "" && plain(m.Artist) == plain(f.albumArtist) {
-		m.Album = f.album
-	} else {
-		f.album, f.albumArtist = m.Album, m.Artist
-	}
 	f.track, f.pending = &m, nil
 }
 

@@ -84,8 +84,12 @@ and no rule anywhere depends on how long it has been quiet:**
 3. **The original album the track is on**: of the albums the catalogs say
    have it, the first studio album, in the order of first release. Not a
    compilation, a box set, a live album, a remix, a demo, a single or an
-   anniversary edition, when an original exists. The recognizer's own album
-   counts only if it is one.
+   anniversary edition, when an original exists. An edition points at its
+   original: *The Dark Side Of The Moon (50th Anniversary) [2023 Remaster]*
+   is a reason to ask about *The Dark Side Of The Moon*. The recognizer's own
+   album is asked about only when the catalogs have no album for the track,
+   and not when its own track list rules the track out: that is the album of
+   the record before, carried over.
 4. If none can be found: the recognizer's album, and then the catalogs'
    cover search as today.
 
@@ -99,6 +103,9 @@ and no rule anywhere depends on how long it has been quiet:**
   replaced; the rule is the order above, not the services.
 - **A track list is fetched once an album and kept**, as covers are, so a side
   costs one lookup and the tracks after it cost none.
+- **The artist must be the artist**, not a name that contains it: "The
+  Machine Performs Pink Floyd" lists "Speak to Me / Breathe" too, on a
+  tribute album.
 - **Matching titles is forgiving**: "Pigs on the Wing 1", "Pigs On the Wing,
   Pt. 1" and "Pigs on the Wing (Part One)" are one track; "(2018 Remix)",
   "(Live)" and "- 2011 Remaster" are not part of a title.
@@ -124,6 +131,16 @@ and no rule anywhere depends on how long it has been quiet:**
 - **ADR-0026's ten-minute memory goes**, from the driver and from its README.
 
 ## What would settle it
+
+Asked of the live catalogs on 2026-10-19, before it was deployed: "Pigs On
+the Wing, Pt. 1" and "Dogs" heard as *Dark Side* named *Animals*; "Speak to
+Me/Breathe" with no album named *The Dark Side of the Moon*; "Time", *Dark
+Side*; *Meddle (2016 Remaster)*, *Meddle*; Chicago's track filed under
+*Original Album Series*, *Chicago Transit Authority*; *Hysteria* and
+*Waiting for the Sun* as themselves. The first tries found three faults the
+tests then took in: Deezer finds nothing for "Pt. 1" (it is asked again in
+plain words), a name containing the band's is a tribute, and MusicBrainz
+answers 503 when asked quickly (it is asked once more, and spaced further).
 
 Tested on the host, with recorded catalog answers: *Dark Side* then *Animals*
 within a minute names *Animals*; a flip of *Dark Side* keeps it; "Time" named

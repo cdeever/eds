@@ -389,6 +389,26 @@ func TestDeezer(t *testing.T) {
 	}
 }
 
+// An edition listed first is passed over for the album as asked, and taken
+// only when it is all there is (ADR-0038).
+func TestDeezerPrefersTheAlbumAsAsked(t *testing.T) {
+	srv := standIn(t, route{"/search/album", nil, `{"data":[
+		  {"title":"The Dark Side Of The Moon (50th Anniversary) [2023 Remaster]","cover_xl":"http://img/50th.jpg","artist":{"name":"Pink Floyd"}},
+		  {"title":"The Dark Side of the Moon","cover_xl":"http://img/1973.jpg","artist":{"name":"Pink Floyd"}}]}`})
+	d := Deezer{Base: srv.URL, HTTP: srv.Client(), UserAgent: "eds-test/0 ( test )"}
+	hit, err := d.Lookup(context.Background(), Query{Artist: "Pink Floyd", Album: "The Dark Side of the Moon"})
+	if err != nil || hit.ImageURL != "http://img/1973.jpg" {
+		t.Errorf("got %+v, %v; want the 1973 sleeve", hit, err)
+	}
+
+	only := standIn(t, route{"/search/album", nil, `{"data":[
+		  {"title":"Meddle (2016 Remaster)","cover_xl":"http://img/meddle.jpg","artist":{"name":"Pink Floyd"}}]}`})
+	d = Deezer{Base: only.URL, HTTP: only.Client(), UserAgent: "eds-test/0 ( test )"}
+	if hit, err := d.Lookup(context.Background(), Query{Artist: "Pink Floyd", Album: "Meddle"}); err != nil || hit.ImageURL != "http://img/meddle.jpg" {
+		t.Errorf("only an edition: got %+v, %v", hit, err)
+	}
+}
+
 func TestDeezerWithNothing(t *testing.T) {
 	srv := standIn(t, route{"/search/album", nil, `{"data":[]}`})
 	d := Deezer{Base: srv.URL, HTTP: srv.Client(), UserAgent: "eds-test/0 ( test )"}

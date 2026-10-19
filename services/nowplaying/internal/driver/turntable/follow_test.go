@@ -138,9 +138,9 @@ func TestTheNextTrack(t *testing.T) {
 	if len(d.sent) != 1 {
 		t.Fatalf("clips sent at blocks %v, want one", d.sent)
 	}
-	// It keeps the album the side began with: the recognizer names the
-	// record two ways, and one record has one cover.
-	d.want(true, "Does Anybody Really Know What Time It Is?", "Original Album Series")
+	// The album as the recognizer named it, though the side began under
+	// another name: which record it is, is nowplayd's to say (ADR-0038).
+	d.want(true, "Does Anybody Really Know What Time It Is?", "The Chicago Transit Authority")
 
 	// The clock starts again from that clip.
 	d.music(20 * second)
@@ -164,7 +164,7 @@ func TestTracksThatRunTogether(t *testing.T) {
 	if len(d.sent) < 1 || d.sent[0] != ClipSeconds*second {
 		t.Fatalf("the second opinion was asked for at blocks %v", d.sent)
 	}
-	d.want(true, "Does Anybody Really Know What Time It Is?", "Original Album Series")
+	d.want(true, "Does Anybody Really Know What Time It Is?", "The Chicago Transit Authority")
 }
 
 func TestAQuietPassage(t *testing.T) {
@@ -223,7 +223,7 @@ func TestAnAnswerFromBeforeTheGap(t *testing.T) {
 	// The clip from after the gap is the one believed alone.
 	d.hears(time_)
 	d.music(ClipSeconds * second)
-	d.want(true, "Does Anybody Really Know What Time It Is?", "Original Album Series")
+	d.want(true, "Does Anybody Really Know What Time It Is?", "The Chicago Transit Authority")
 }
 
 func TestTheLeadIn(t *testing.T) {
@@ -275,34 +275,31 @@ func TestTheNeedleLifted(t *testing.T) {
 	d.want(false, "", "")
 }
 
-func TestTurningTheRecordOverKeepsTheAlbum(t *testing.T) {
+// The driver holds no album across a silence, short or long: a record
+// turned over and another by the same artist put on are the same minute of
+// quiet, and only what is on the record can tell them apart (ADR-0038).
+func TestTheAlbumIsWhatWasHeard(t *testing.T) {
 	d := newDeck(t)
 	d.hears(intro)
 	d.music(ClipSeconds * second)
 	d.quiet(90 * second)
 	d.want(false, "", "")
 
+	// The other side, or another record: reported as heard either way.
 	d.hears(time_)
 	d.music(ClipSeconds * second)
-	d.want(true, "Does Anybody Really Know What Time It Is?", "Original Album Series")
-}
+	d.want(true, "Does Anybody Really Know What Time It Is?", "The Chicago Transit Authority")
 
-func TestAnotherRecord(t *testing.T) {
-	d := newDeck(t)
-	d.hears(intro)
-	d.music(ClipSeconds * second)
-
-	// Another artist is another record, however soon.
 	d.quiet(30 * second)
 	d.hears(home)
 	d.music(ClipSeconds * second)
 	d.want(true, "Take Me Home", "The Singles")
 
-	// And so is the same artist after a long silence.
-	d.quiet(int(forgetAfter/time.Second) * second)
-	d.hears(Match{Artist: "Phil Collins", Title: "Sussudio", Album: "No Jacket Required"})
+	// An album the recognizer did not name stays unnamed.
+	d.quiet(30 * second)
+	d.hears(Match{Artist: "Pink Floyd", Title: "Speak to Me/Breathe"})
 	d.music(ClipSeconds * second)
-	d.want(true, "Sussudio", "No Jacket Required")
+	d.want(true, "Speak to Me/Breathe", "")
 }
 
 func TestAClickIsNotMusic(t *testing.T) {
