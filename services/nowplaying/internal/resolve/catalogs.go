@@ -46,10 +46,15 @@ func (d Deezer) Lookup(ctx context.Context, q Query) (*Hit, error) {
 		if err := getJSON(ctx, d.HTTP, d.UserAgent, d.Base+"/search/album?limit=5&q="+url.QueryEscape(term), &found); err != nil {
 			return nil, err
 		}
-		for _, a := range found.Data {
-			hit := &Hit{Artist: a.Artist.Name, Album: a.Title, ImageURL: firstNonEmpty(a.CoverXL, a.Cover)}
-			if hit.ImageURL != "" && matches(q, hit) {
-				return hit, nil
+		// The album exactly as asked before one that only resembles it: asked
+		// for "The Dark Side of the Moon", Deezer lists its 50th anniversary
+		// edition first, and that is another sleeve (ADR-0038).
+		for _, exact := range []bool{true, false} {
+			for _, a := range found.Data {
+				hit := &Hit{Artist: a.Artist.Name, Album: a.Title, ImageURL: firstNonEmpty(a.CoverXL, a.Cover)}
+				if hit.ImageURL != "" && matches(q, hit) && (!exact || exactly(a.Title, q.Album)) {
+					return hit, nil
+				}
 			}
 		}
 		return nil, ErrNotFound

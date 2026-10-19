@@ -264,6 +264,16 @@ func run(logger *slog.Logger) error {
 			Logger:    logger,
 		}
 		publisher.Collection = collection
+		// For a track the collection does not have: the record already
+		// playing if it has the track, or the original album the track is on
+		// (ADR-0038). Deezer finds, MusicBrainz says what each album is.
+		publisher.Albums = &resolve.Originals{
+			Deezer:      "https://api.deezer.com",
+			MusicBrainz: "https://musicbrainz.org",
+			HTTP:        asked.Client(cfg.LookupTimeout),
+			UserAgent:   cfg.UserAgent,
+			Logger:      logger,
+		}
 		logger.Info("looking these sources up in the owner's collection first",
 			"sources", cfg.Owned, "discogs_user", cfg.DiscogsUser, "token", cfg.DiscogsToken != "")
 		// Listed now, and not when the first record is played. Not waited

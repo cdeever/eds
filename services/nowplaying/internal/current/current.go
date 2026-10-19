@@ -14,6 +14,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
@@ -35,6 +36,16 @@ type Resolver interface {
 // of them.
 type Collection interface {
 	Find(ctx context.Context, artist, title, album string) (resolve.Result, error)
+}
+
+// Albums names the record a track is on by what is on it (ADR-0038), for the
+// tracks the collection does not have. Has says whether an album's track list
+// has a track; Original names the original studio album a track is on, hint
+// being the album the source named. Both return resolve.ErrNotFound when
+// there is no answer to be had.
+type Albums interface {
+	Has(ctx context.Context, artist, album, title string) (bool, error)
+	Original(ctx context.Context, artist, title, hint string) (string, error)
 }
 
 // Image is a cover as it arrived from a source: bytes, with the hash they are
@@ -84,6 +95,11 @@ type Publisher struct {
 	// ordinary way.
 	Owned      map[string]bool
 	Collection Collection
+	// Albums names the record for an owned source's track when the
+	// collection does not have it (ADR-0038): the record already playing if
+	// it has the track, and otherwise the original album the track is on.
+	// Nil leaves the album the source named.
+	Albums Albums
 	// Looks names the look of the album a track is on, or "" (ADR-0019). Nil
 	// means no album has one. It is published beside the cover, for the
 	// cover: a look is something a cover has.
@@ -117,6 +133,9 @@ type Publisher struct {
 	// that is already the right color.
 	lastState *contract.State
 	lastArt   string
+	// The record each owned source is playing: its artist and album, as last
+	// named. A track on it keeps it; one that is not moves on (ADR-0038).
+	playingRecord map[string][2]string
 	// The cover whose small form was last published, or emptied.
 	lastSmall string
 	// The look last published, and the cover it was for.
@@ -321,23 +340,35 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 	lookup, cancel := context.WithTimeout(ctx, p.timeout())
 	defer cancel()
 
-	if p.Collection != nil && p.Owned[winner.Source] && cover == nil {
-		owned, err := p.Collection.Find(lookup, track.Artist, track.Title, track.Album)
-		switch {
-		case err == nil:
-			// The record on the platter. Its title is the album, whatever
-			// the source called it, and what is looked up below - when the
-			// collection had no picture of it - is looked up by that title.
-			out.Track.Album = owned.Album
-			track.Album = owned.Album
-			if owned.Cover != nil {
-				if image := NewImage(owned.Cover.Image); image != nil {
-					out.Art = &contract.Art{SHA256: image.SHA256, MIME: image.MIME, From: owned.Cover.From}
-					return out, image
+	if p.Owned[winner.Source] && cover == nil {
+		named := false
+		if p.Collection != nil {
+			owned, err := p.Collection.Find(lookup, track.Artist, track.Title, track.Album)
+			switch {
+			case err == nil:
+				// The record on the platter. Its title is the album, whatever
+				// the source called it, and what is looked up below - when the
+				// collection had no picture of it - is looked up by that title.
+				out.Track.Album = owned.Album
+				track.Album = owned.Album
+				named = true
+				p.playing(winner.Source, track)
+				if owned.Cover != nil {
+					if image := NewImage(owned.Cover.Image); image != nil {
+						out.Art = &contract.Art{SHA256: image.SHA256, MIME: image.MIME, From: owned.Cover.From}
+						return out, image
+					}
 				}
+			case !errors.Is(err, resolve.ErrNotFound):
+				p.logger().Warn("the collection could not be asked", "artist", track.Artist, "title", track.Title, "error", err)
 			}
-		case !errors.Is(err, resolve.ErrNotFound):
-			p.logger().Warn("the collection could not be asked", "artist", track.Artist, "title", track.Title, "error", err)
+		}
+		if !named && p.Albums != nil {
+			if album := p.recordFor(lookup, winner.Source, track); album != "" {
+				out.Track.Album = album
+				track.Album = album
+			}
+			p.playing(winner.Source, track)
 		}
 	}
 
@@ -365,6 +396,46 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 		}
 	}
 	return out, cover
+}
+
+// recordFor names the album for a track the collection does not have
+// (ADR-0038). The record already playing keeps it when its track list has the
+// track: a side turned over, or a track the source filed under a box set. A
+// track that is not on it is another record, however soon it came, and is
+// named by the original album it is on. "" leaves the source's album.
+func (p *Publisher) recordFor(ctx context.Context, source string, track contract.Track) string {
+	if held, ok := p.playingRecord[source]; ok && held[1] != "" && resolve.Simplify(held[0]) == resolve.Simplify(track.Artist) {
+		has, err := p.Albums.Has(ctx, track.Artist, held[1], track.Title)
+		switch {
+		case err == nil && has:
+			return held[1]
+		case err != nil && !errors.Is(err, resolve.ErrNotFound):
+			p.logger().Warn("an album's tracks could not be asked", "artist", track.Artist, "album", held[1], "error", err)
+		}
+	}
+	album, err := p.Albums.Original(ctx, track.Artist, track.Title, track.Album)
+	switch {
+	case err == nil:
+		if resolve.Simplify(album) != resolve.Simplify(track.Album) {
+			p.logger().Info("named the original album the track is on", "artist", track.Artist, "title", track.Title,
+				"heard_as", track.Album, "album", album)
+		}
+		return album
+	case !errors.Is(err, resolve.ErrNotFound):
+		p.logger().Warn("the original album could not be asked", "artist", track.Artist, "title", track.Title, "error", err)
+	}
+	return ""
+}
+
+// playing remembers the record an owned source is playing.
+func (p *Publisher) playing(source string, track contract.Track) {
+	if strings.TrimSpace(track.Album) == "" {
+		return
+	}
+	if p.playingRecord == nil {
+		p.playingRecord = make(map[string][2]string)
+	}
+	p.playingRecord[source] = [2]string{track.Artist, track.Album}
 }
 
 func (p *Publisher) now() time.Time {

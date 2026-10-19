@@ -1072,3 +1072,128 @@ func TestASourceWithoutControlsSaysSoInCurrent(t *testing.T) {
 		t.Errorf("the field is written where it is not so: %s", sent[len(sent)-1].payload)
 	}
 }
+
+// --- the record by what is on it (ADR-0038) ----------------------------------
+
+// fakeAlbums knows two records and which original album a track is on.
+type fakeAlbums struct {
+	tracks    map[string][]string // album: its tracks
+	originals map[string]string   // title: its original album
+	hasAsked  []string
+}
+
+func (f *fakeAlbums) Has(_ context.Context, _, album, title string) (bool, error) {
+	f.hasAsked = append(f.hasAsked, album+": "+title)
+	tracks, ok := f.tracks[album]
+	if !ok {
+		return false, resolve.ErrNotFound
+	}
+	for _, t := range tracks {
+		if t == title {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (f *fakeAlbums) Original(_ context.Context, _, title, _ string) (string, error) {
+	if a, ok := f.originals[title]; ok {
+		return a, nil
+	}
+	return "", resolve.ErrNotFound
+}
+
+func pinkFloyd() *fakeAlbums {
+	return &fakeAlbums{
+		tracks: map[string][]string{
+			"The Dark Side of the Moon": {"Speak to Me/Breathe", "Breathe (In the Air)", "On the Run", "Time", "Money"},
+			"Animals":                   {"Pigs On the Wing, Pt. 1", "Dogs", "Sheep"},
+		},
+		originals: map[string]string{
+			"Speak to Me/Breathe": "The Dark Side of the Moon", "Time": "The Dark Side of the Moon", "Money": "The Dark Side of the Moon",
+			"Pigs On the Wing, Pt. 1": "Animals", "Dogs": "Animals",
+		},
+	}
+}
+
+func onTurntable(title, album string) *contract.State {
+	st := from("turntable", title, album)
+	st.Track.Artist = "Pink Floyd"
+	return st
+}
+
+func albumOf(t *testing.T, p *Publisher, st *contract.State) string {
+	t.Helper()
+	out, _, err := p.Publish(context.Background(), st, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out.Track.Album
+}
+
+// The evening of 2026-10-18, as it should have gone: Dark Side, its other
+// side, then Animals put on a minute later. No clock is consulted; what is on
+// each record decides.
+func TestTheRecordIsNamedByWhatIsOnIt(t *testing.T) {
+	albums := pinkFloyd()
+	p := owned(&fakeBus{}, &fakeResolver{err: resolve.ErrNotFound}, &fakeCollection{err: resolve.ErrNotFound}, "turntable")
+	p.Albums = albums
+
+	steps := []struct{ title, heard, want string }{
+		// No album heard: the original, not the anniversary edition.
+		{"Speak to Me/Breathe", "", "The Dark Side of the Moon"},
+		{"On the Run", "The Dark Side of the Moon", "The Dark Side of the Moon"},
+		// The other side, filed by the recognizer under a box set: on the
+		// record playing, so the record stays.
+		{"Money", "Discovery (Box Set)", "The Dark Side of the Moon"},
+		// Another record by the same band: not on Dark Side, so its own.
+		{"Pigs On the Wing, Pt. 1", "The Dark Side of the Moon", "Animals"},
+		{"Dogs", "Animals", "Animals"},
+	}
+	for _, s := range steps {
+		if got := albumOf(t, p, onTurntable(s.title, s.heard)); got != s.want {
+			t.Errorf("%q heard as %q: named %q, want %q", s.title, s.heard, got, s.want)
+		}
+	}
+}
+
+// Nothing to be had about a track: the album as the source named it.
+func TestWithNoAnswerTheHeardAlbumStands(t *testing.T) {
+	p := owned(&fakeBus{}, &fakeResolver{err: resolve.ErrNotFound}, &fakeCollection{err: resolve.ErrNotFound}, "turntable")
+	p.Albums = pinkFloyd()
+	if got := albumOf(t, p, onTurntable("See Emily Play", "Relics")); got != "Relics" {
+		t.Errorf("named %q, want the heard album", got)
+	}
+}
+
+// The collection names the record, and the catalogs are not asked; the next
+// track is checked against the collection's record.
+func TestTheCollectionComesFirst(t *testing.T) {
+	albums := pinkFloyd()
+	col := &fakeCollection{result: resolve.Result{Album: "The Dark Side of the Moon"}}
+	p := owned(&fakeBus{}, &fakeResolver{err: resolve.ErrNotFound}, col, "turntable")
+	p.Albums = albums
+	if got := albumOf(t, p, onTurntable("Time", "A Foot in the Door")); got != "The Dark Side of the Moon" {
+		t.Errorf("named %q", got)
+	}
+	if len(albums.hasAsked) != 0 {
+		t.Errorf("the catalogs were asked about a record the collection has: %v", albums.hasAsked)
+	}
+
+	// Then a record the collection does not have.
+	col.result, col.err = resolve.Result{}, resolve.ErrNotFound
+	if got := albumOf(t, p, onTurntable("Dogs", "The Dark Side of the Moon")); got != "Animals" {
+		t.Errorf("named %q, want Animals", got)
+	}
+}
+
+// Another source is left as it named its tracks.
+func TestOnlyOwnedSourcesAreRenamed(t *testing.T) {
+	p := owned(&fakeBus{}, &fakeResolver{err: resolve.ErrNotFound}, &fakeCollection{err: resolve.ErrNotFound}, "turntable")
+	p.Albums = pinkFloyd()
+	st := onTurntable("Dogs", "Animals (2018 Remix)")
+	st.Source = "itunes"
+	if got := albumOf(t, p, st); got != "Animals (2018 Remix)" {
+		t.Errorf("named %q", got)
+	}
+}
