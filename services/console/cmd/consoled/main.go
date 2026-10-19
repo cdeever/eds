@@ -2,8 +2,9 @@
 // playing, what each stand is showing, and whether the parts are up
 // (ADR-0018).
 //
-// It subscribes to the bus and serves what it hears. It publishes one thing,
-// its own presence, and changes nothing.
+// It subscribes to the bus and serves what it hears. It publishes its own
+// presence, and the one setting the page can change: which sources the stand
+// is lit for (ADR-0039).
 //
 // Settings are all environment. On a Deevnet workload the broker's come from
 // kit.env; a CONSOLE_* variable, when set, wins.
@@ -130,6 +131,15 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	defer client.Close()
+	stand := view.StandTopic(prefix)
+	server.Switch = func(sources string) error {
+		payload, err := view.EncodeStand(sources)
+		if err != nil {
+			return err
+		}
+		// Retained: it is a setting, and outlives everyone who reads it.
+		return client.Publish(stand, payload, true)
+	}
 
 	// A part that goes without a will says nothing; its silence is noticed
 	// here (ADR-0034).

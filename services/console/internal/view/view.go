@@ -5,13 +5,15 @@
 // subscriber knows - the now-playing state and the scene descriptor - and
 // reads only the fields it shows, so a field added to either does not break
 // it. It makes no network calls and decides nothing: what is current is
-// nowplayd's decision, and what a cover becomes is lightd's.
+// nowplayd's decision, and what a cover becomes is lightd's. Which sources
+// the stand is lit for is the setting on the bus, as last heard (ADR-0039).
 package view
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 	"strings"
@@ -174,6 +176,28 @@ type Screen struct {
 	Presence
 }
 
+// What the stand may be lit for (ADR-0039). Records is the default, and what
+// nothing on the broker means.
+const (
+	StandRecords = "records"
+	StandAll     = "all"
+)
+
+// StandTopic is the setting's topic.
+func StandTopic(prefix string) string { return prefix + "/nowplaying/stand" }
+
+// EncodeStand is the setting as it goes on the bus, or an error for a word
+// that is not one of the two.
+func EncodeStand(sources string) ([]byte, error) {
+	if sources != StandRecords && sources != StandAll {
+		return nil, fmt.Errorf("view: the stand cannot be lit for %q", sources)
+	}
+	return json.Marshal(struct {
+		V       int    `json:"v"`
+		Sources string `json:"sources"`
+	}{ContractVersion, sources})
+}
+
 // Play is one entry in what was recently played.
 type Play struct {
 	At     time.Time `json:"at"`
@@ -196,6 +220,9 @@ type Snapshot struct {
 	Screens  []Screen          `json:"screens"`
 	Services map[string]string `json:"services"`
 	Recent   []Play            `json:"recent"`
+	// StandSources is which sources the stand is lit for: StandRecords or
+	// StandAll (ADR-0039).
+	StandSources string `json:"stand_sources"`
 }
 
 type cover struct {
@@ -219,6 +246,7 @@ type View struct {
 	services map[string]*Presence
 	recent   []Play
 	lastKey  string
+	standAll bool
 }
 
 // New makes an empty View for topics under prefix.
@@ -251,6 +279,7 @@ func Topics(prefix string) []string {
 		prefix + "/lightd/status",
 		prefix + "/beacon/+/status",
 		prefix + "/screen/+/status",
+		StandTopic(prefix),
 	}
 }
 
@@ -289,6 +318,21 @@ func (v *View) apply(topic string, payload []byte, retained bool) bool {
 
 	case rest == "nowplaying/current/art":
 		return v.setCover(payload)
+
+	case rest == "nowplaying/stand":
+		// Empty is no setting, which is records. A word the console does not
+		// know is what nowplayd does with one: records.
+		all := false
+		if len(payload) > 0 {
+			var m struct {
+				V       int    `json:"v"`
+				Sources string `json:"sources"`
+			}
+			all = json.Unmarshal(payload, &m) == nil && m.V == ContractVersion && m.Sources == StandAll
+		}
+		changed := all != v.standAll
+		v.standAll = all
+		return changed
 
 	case rest == "nowplaying/status":
 		return v.service("nowplayd").hear(payload, retained, v.now())
@@ -483,12 +527,16 @@ func (v *View) Snapshot() Snapshot {
 	defer v.mu.RUnlock()
 
 	out := Snapshot{
-		Sources:  make([]Source, 0, len(v.sources)),
-		Stands:   make([]Stand, 0, len(v.stands)),
-		Beacons:  make([]Beacon, 0, len(v.beacons)),
-		Screens:  make([]Screen, 0, len(v.screens)),
-		Services: make(map[string]string, len(v.services)),
-		Recent:   append([]Play{}, v.recent...),
+		Sources:      make([]Source, 0, len(v.sources)),
+		Stands:       make([]Stand, 0, len(v.stands)),
+		Beacons:      make([]Beacon, 0, len(v.beacons)),
+		Screens:      make([]Screen, 0, len(v.screens)),
+		Services:     make(map[string]string, len(v.services)),
+		Recent:       append([]Play{}, v.recent...),
+		StandSources: StandRecords,
+	}
+	if v.standAll {
+		out.StandSources = StandAll
 	}
 	if v.current != nil {
 		c := *v.current

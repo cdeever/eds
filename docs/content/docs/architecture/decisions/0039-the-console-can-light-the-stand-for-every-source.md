@@ -136,10 +136,24 @@ again.**
 
 ## What would settle it
 
-To be tested in nowplayd (the setting's words, an unknown one, the look
-published again on a change, both orders of setting and track) and in the
-console (the route refuses a wrong type and a foreign origin; the page shows
-the echoed setting).
+Tested in nowplayd's contract and publisher (the setting's words, an unknown
+one, the look said again on a change and only then, a record and an empty
+room left alone) and in the console (the setting read and defaulting to
+`records`; the route refusing another origin, no origin, a form, an unknown
+word and anything but `POST`, and absent with no way to the bus).
+
+On the development broker, 2026-10-19, with nowplayd (`NP_DARK_SOURCES=itunes`)
+and the console running and an iTunes track playing: the look was `dark`;
+`POST /api/stand` `all` made it the cover's own look within a second, and
+the console's picture said `all`; `records` made it `dark` again. Restarted
+five times while `all`, nowplayd published the cover's own look each time
+and never `dark`. The first try did publish `dark` for a moment, because the
+retained track and the retained setting arrive together and were taken in
+either order; nowplayd now takes a waiting setting before a decision.
+
+A Pi already running has its accounts already made, so `eds-backend-setup`
+now compares each account's grants with the list and makes it again, with
+the password it has, when they differ.
 
 Not yet shown:
 

@@ -363,3 +363,76 @@ func TestThePageIsToldHowManyLEDsToDraw(t *testing.T) {
 		t.Errorf("told 60, drew %d", n)
 	}
 }
+
+// ADR-0039: the stand's setting is the one thing the page can change, and only
+// from the console's own page.
+func TestTheStandIsSwitchedOnlyFromThePage(t *testing.T) {
+	s, ts := site(t)
+	var switched []string
+	s.Switch = func(sources string) error { switched = append(switched, sources); return nil }
+
+	post := func(origin, contentType, body string) int {
+		t.Helper()
+		req, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/stand", strings.NewReader(body))
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+
+	if code := post(ts.URL, "application/json", `{"sources":"all"}`); code != http.StatusAccepted {
+		t.Fatalf("from the page: %d", code)
+	}
+	for _, tc := range []struct {
+		name, origin, contentType, body string
+		want                            int
+	}{
+		{"another site", "https://elsewhere.example", "application/json", `{"sources":"all"}`, http.StatusForbidden},
+		{"no origin", "", "application/json", `{"sources":"all"}`, http.StatusForbidden},
+		{"a form", ts.URL, "application/x-www-form-urlencoded", `sources=all`, http.StatusUnsupportedMediaType},
+		{"a word nobody reads", ts.URL, "application/json", `{"sources":"everything"}`, http.StatusBadRequest},
+		{"not JSON", ts.URL, "application/json", `all`, http.StatusBadRequest},
+	} {
+		if code := post(tc.origin, tc.contentType, tc.body); code != tc.want {
+			t.Errorf("%s: %d, want %d", tc.name, code, tc.want)
+		}
+	}
+	if len(switched) != 1 || switched[0] != "all" {
+		t.Errorf("switched %v", switched)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/api/stand", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("GET: %d", resp.StatusCode)
+	}
+}
+
+// Without a way to the bus, the route is not there, and the console only
+// looks as it did.
+func TestWithoutASwitchTheStandCannotBeSwitched(t *testing.T) {
+	_, ts := site(t)
+	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/stand", strings.NewReader(`{"sources":"all"}`))
+	req.Header.Set("Origin", ts.URL)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("%d", resp.StatusCode)
+	}
+}

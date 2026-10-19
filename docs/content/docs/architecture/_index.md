@@ -201,8 +201,11 @@ The same few messages drive the rest:
   `eds/lightstand/<id>/state`.
 - **The console** subscribes to all of it and serves one page: the track,
   the sleeve, the sources, the devices, and the strip drawn as the stand is
-  drawing it. It only looks
-  ([ADR-0018](/docs/architecture/decisions/0018-a-console-of-eds-own/)).
+  drawing it. It looks
+  ([ADR-0018](/docs/architecture/decisions/0018-a-console-of-eds-own/)),
+  and switches one thing: whether the stand is lit for records only or for
+  every source
+  ([ADR-0039](/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source/)).
 - **The devices and the agent Pi** send a few events each (boot, network,
   scenes, health) to `eds/log/<id>`, which Deevnet IoTaaS carries into the
   tenant's log store. Grafana reads them there
