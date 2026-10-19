@@ -1,0 +1,24 @@
+# Makes this card's broker accounts and its services' settings.
+#
+# The image carries no secret. deevnet-kit makes the card's CA and tokens on
+# its first boot; this runs after it and adds what is EdS's: the eight broker
+# accounts, each with a password made here, and each service's settings. It
+# also takes what the owner left for it on the boot partition.
+#
+# It runs on every boot and does only what is missing, so a card that lost
+# power halfway finishes, and something new left on the boot partition is
+# taken.
+[Unit]
+Description=EdS backend: accounts and settings
+After=local-fs.target deevnet-kit-firstboot.service mosquitto.service
+Wants=mosquitto.service
+Before=eds-lightd.service eds-nowplayd.service eds-console.service npagent.service
+ConditionPathExists=/etc/deevnet-kit/kit.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/eds-backend-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

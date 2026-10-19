@@ -8,9 +8,14 @@ Deevnet IoTaaS's image factory builds the base: Raspberry Pi OS with the site's
 automation user. Everything after that is EdS's and lives here, one directory
 per image. Nothing of EdS's is in the factory.
 
+The `backend` image has a different base: the take-home image Deevnet IoTaaS
+publishes, `pi-backend`, taken as the file it offers
+([ADR-0033](../docs/content/docs/architecture/decisions/0033-the-whole-back-end-on-one-pi.md)).
+
 | Image | What it is |
 |---|---|
 | [`agent`](agent) | a Pi that runs the now-playing agent near the players, and reports to the broker |
+| [`backend`](backend) | the whole of EdS on one Pi: broker, log store, Grafana, the four services and the agent |
 
 More may follow the same shape. The Pi that identifies what a turntable is
 playing, once expected to be the second image, is this one: listening is a
@@ -31,6 +36,10 @@ make -C deploy/relay fetch    # brings the image back, and checks its checksum
 the factory's own definition (and keeps it; `BASE=fresh` rebuilds it), copies
 it, grows it to 8 GB, applies `<image>/config.yml` to it offline, and
 compresses it.
+
+For `backend` the commands are `make -C deploy/backend image fetch`, and
+`build.sh` takes the published take-home image in place of building a base:
+it checks the file against the checksum beside it and unpacks it.
 
 ## The agent Pi
 
@@ -83,6 +92,59 @@ eds-agent-turntable-install   (root) install the recogniser again, from its pinn
 journalctl -u npagent -f
 ```
 
+## The backend Pi
+
+Everything EdS needs, on one Pi on the home network, with nothing of Deevnet
+IoTaaS behind it. **Not yet proven**: ADR-0033 is `Proposed`.
+
+| | |
+|---|---|
+| From the base | Mosquitto (8883), the log store (8427), the bridge from `eds/log/<device>` into it, Grafana (3000), and `deevnet-kit`, which manages them |
+| Added | `palette`, `lightd`, `nowplayd` and the console, each a unit under its own user; `npagent`, its tools and the recognizer, as on the agent Pi |
+| Network | one leg, a cable or Wi-Fi. No routing: `ip_forward` is 0 and the firewall's forward chain drops everything |
+| Firewall | nftables, loaded before any interface comes up. In: SSH, 8883, 443 and 80, 3000, 8427, Bonjour and the pairing port. `palette` and `lightd`'s own ports are not opened |
+| Console | 443, with the card's one server certificate, which names `<hostname>.local` |
+| Users | the owner's, made on first boot from the card. No automation user: the base removes it |
+| Clock | UTC |
+| Identity | `/etc/eds-backend-release` |
+
+**The image carries no secret and no name**, as the agent's does not. But
+where an agent card is handed its broker account, a backend card makes its
+own:
+
+1. `deevnet-kit` runs once on first boot. It reads the tenant, the card's
+   name and its Wi-Fi from `deevnet-kit.txt` on the boot partition, and makes
+   the card's CA, its certificate and its log tokens.
+2. `eds-backend-setup` runs after it, and on every boot. It adds the eight
+   broker accounts in `/etc/eds/accounts.conf`, each with a password it makes
+   there, and writes each service the login it reads. It does only what is
+   missing.
+
+`backend/files/accounts.conf` is a copy of the accounts in
+`infra/deevnet-tenant-eds/main.tf`. `make -C deploy/backend check` reads both
+and fails when they differ; the image is not built until it passes.
+
+The services' settings that are not secret are not copied: the build takes
+`deploy/lightd.env`, `deploy/nowplayd.env` and `deploy/console.env` as they
+are.
+
+The build fails if the base's `deevnet-kit` is too old for the card, if it
+finds a secret in the image, or if the site's automation user is on it.
+
+### On the Pi
+
+```
+eds-backend-status   each service, the broker's accounts, each driver; non-zero if anything is wrong
+eds-backend-setup    (root) make any account or settings file that is missing
+eds-backend-setup devices   (root) what the devices are provisioned with, as JSON
+eds-agent-pair       pair with iTunes, once; prints a code to type in
+eds-agent-spotify    install a Spotify authorization or the devices that count
+deevnet-kit status   the broker, the log store and Grafana; `selftest` proves them end to end
+```
+
+[`deploy/backend`](../deploy/backend) is how a card is written and the Pi
+looked after.
+
 ## Why builds run on the Builder, and what would change that
 
 The image is defined entirely here. The Builder is not where it lives; it is
@@ -97,6 +159,9 @@ where three things happen to be:
 Only the first is an accident of where a script runs. The other two are about
 what belongs to Deevnet IoTaaS and how the site is administered, and would
 stay whatever built the image.
+
+The `backend` image already has the cleaner arrangement for its base: it
+takes a published file, not the factory's checkout.
 
 ### Future enhancement: build anywhere
 

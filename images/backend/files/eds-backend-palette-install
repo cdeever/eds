@@ -1,0 +1,32 @@
+#!/bin/bash
+# eds-backend-palette-install - palette, in a virtual environment of its own.
+#
+# One script for both ways a Pi gets it: the image build runs it in the
+# chroot, and deploy/backend's push runs it on a Pi already in service. Run as
+# root; it takes the directory holding palette's wheel, or uses where the
+# image keeps it.
+#
+# It needs the network, for PyPI. Only wheels are taken: nothing is compiled
+# on a Pi, or under emulation in an image build.
+set -euo pipefail
+
+src="${1:-/usr/local/share/eds-palette}"
+venv=/opt/eds-palette
+
+wheel="$(ls "$src"/eds_palette-*.whl 2>/dev/null | head -n1)"
+[[ -n "$wheel" ]] || { echo "no palette wheel in $src" >&2; exit 2; }
+
+python3 -m venv "$venv"
+"$venv/bin/pip" install --quiet --disable-pip-version-check --no-cache-dir \
+    --only-binary=:all: --force-reinstall "$wheel"
+
+if [[ "$src" != /usr/local/share/eds-palette ]]; then
+    install -d -o root -g root -m 0755 /usr/local/share/eds-palette
+    rm -f /usr/local/share/eds-palette/eds_palette-*.whl
+    install -o root -g root -m 0644 "$wheel" /usr/local/share/eds-palette/
+fi
+
+# Importing is most of what can go wrong: a wheel for the wrong machine.
+"$venv/bin/python" -c 'import eds_palette.api' ||
+    { echo "palette was installed and cannot be imported" >&2; exit 1; }
+echo "palette installed: $("$venv/bin/pip" freeze 2>/dev/null | grep -i -E '^(numpy|pillow)==' | tr '\n' ' ')"

@@ -35,3 +35,4 @@ bookCollapseSection: true
 | CHG-0025 | 2026-10-16 | [Presence Repeated, and Updates Through the Broker](0025-presence-repeated-and-updates-through-the-broker/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
 | CHG-0026 | 2026-10-17 | [The Cover Screen Sleeps](0026-the-cover-screen-sleeps/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
 | CHG-0027 | 2026-10-18 | [The Beacon on an ESP32](0027-the-beacon-on-an-esp32/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
+| CHG-0028 | 2026-10-18 | [The Back End on One Pi, Tried on DVNTM](0028-the-back-end-on-one-pi-on-dvntm/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |

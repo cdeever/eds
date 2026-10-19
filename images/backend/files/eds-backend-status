@@ -1,0 +1,125 @@
+#!/bin/bash
+# eds-backend-status - is each part of this backend Pi where it should be?
+#
+# The Pi is the whole back end (ADR-0033): Deevnet IoTaaS's take-home
+# services, EdS's four, and the agent. This looks at EdS's side and at
+# whether the other is up; `sudo deevnet-kit status` and `selftest` are the
+# thorough look at the broker, the log store and Grafana.
+#
+# Prints what it finds and exits non-zero if anything is wrong, so it serves
+# as a check as well as a look.
+bad=0
+ok()   { printf '  ok    %s\n' "$*"; }
+fail() { printf '  FAIL  %s\n' "$*"; bad=1; }
+note() { printf '        %s\n' "$*"; }
+
+env_value() { sudo grep -m1 -E "^$1=" /etc/eds/npagent.env 2>/dev/null | cut -d= -f2-; }
+active() { if systemctl is-active --quiet "$1"; then ok "$1 is running"; else fail "$1 is $(systemctl is-active "$1")"; fi; }
+listening() { if timeout 5 bash -c "</dev/tcp/127.0.0.1/$1" 2>/dev/null; then ok "$2 answers on $1"; else fail "nothing answers on $1 ($2)"; fi; }
+
+echo "$(hostname): $(hostname -I | awk '{print $1}')"
+if ip route show default | grep -q .; then ok "default route: $(ip route show default | head -1 | awk '{print $3, "on", $5}')"; else fail "no default route"; fi
+[[ "$(cat /proc/sys/net/ipv4/ip_forward)" == "0" ]] && ok "forwarding is off" || fail "forwarding is ON"
+if sudo nft list chain inet eds_backend input 2>/dev/null | grep -q 'policy drop'; then ok "firewall is loaded"; else fail "firewall is not loaded"; fi
+
+echo "Deevnet IoTaaS's side"
+if sudo test -f /etc/deevnet-kit/kit.json; then
+    for unit in mosquitto vmauth victorialogs deevnet-log-bridge; do active "$unit"; done
+    # Grafana is the one part the lights do not need, and the heaviest.
+    if systemctl is-active --quiet grafana; then ok "grafana is running"; else note "grafana is $(systemctl is-active grafana): no dashboards, and nothing else is affected"; fi
+    listening 8883 "the broker"
+    listening 8427 "the log store"
+else
+    fail "deevnet-kit has not run: no /etc/deevnet-kit/kit.json (journalctl -u deevnet-kit-firstboot)"
+fi
+
+echo "Accounts"
+missing=""
+while read -r name _; do
+    sudo test -f "/etc/deevnet-kit/accounts/$name.json" && sudo test -s "/etc/eds/accounts/$name.pw" || missing+=" $name"
+done < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' /etc/eds/accounts.conf)
+if [[ -z "$missing" ]]; then ok "all of /etc/eds/accounts.conf are on the broker"; else fail "not made:$missing (sudo eds-backend-setup; journalctl -u eds-backend-setup)"; fi
+
+echo "Services"
+for unit in eds-palette eds-lightd eds-nowplayd eds-console; do active "$unit"; done
+listening 8731 "palette"
+listening 8732 "lightd"
+listening 443 "the console"
+if sudo test -s /etc/eds/discogs.env; then ok "Discogs settings present"; else note "no Discogs settings: the turntable's records are named by what was heard"; fi
+
+# The console presents the card's server certificate, read when it started.
+# One reissued since then is not the one a browser is being shown.
+cert=/etc/deevnet-kit/tls/server.pem
+started="$(systemctl show -p ActiveEnterTimestamp --value eds-console 2>/dev/null)"
+if [[ -n "$started" && -f "$cert" ]] && (( $(stat -c %Y "$cert") > $(date -d "$started" +%s 2>/dev/null || echo 0) )); then
+    fail "the certificate is newer than the console: sudo systemctl restart eds-console"
+fi
+
+# A driver that was never set up is noted, not failed: a card may be here for
+# one player only. One that was set up and is not working is a failure.
+drivers="$(env_value NP_DRIVERS)"; drivers="${drivers:-itunes,spotify}"
+configured=0
+
+if [[ ",$drivers," == *",itunes,"* ]]; then
+    echo "iTunes"
+    pairing=/var/lib/eds-npagent/itunes-pairing.json
+    if sudo test -s "$pairing"; then
+        configured=1
+        phost="$(sudo grep -o '"host": *"[^"]*"' "$pairing" | cut -d'"' -f4)"
+        ok "paired with $phost"
+        if timeout 5 bash -c "</dev/tcp/$phost/3689" 2>/dev/null; then ok "$phost:3689 reachable"; else fail "$phost:3689 not reachable"; fi
+    else
+        note "not paired: eds-agent-pair"
+    fi
+fi
+
+if [[ ",$drivers," == *",spotify,"* ]]; then
+    echo "Spotify"
+    token=/var/lib/eds-npagent/spotify-token.json
+    if sudo test -s "$token"; then
+        configured=1
+        # The date only. Nothing else in that file is for showing.
+        granted="$(sudo grep -o '"authorized_at": *"[^"]*"' "$token" | cut -d'"' -f4 | cut -c1-10)"
+        ends="$(date -u -d "$granted + 180 days" +%Y-%m-%d 2>/dev/null)"
+        left=$(( ( $(date -u -d "$ends" +%s 2>/dev/null || echo 0) - $(date -u +%s) ) / 86400 ))
+        if (( left < 0 )); then fail "authorization ended $ends: authorize again (make spotify, on the desk)"
+        elif (( left < 14 )); then ok "authorized until $ends - $left days left: authorize again soon"
+        else ok "authorized until $ends"; fi
+
+        if sudo test -s /etc/eds/npagent-spotify.env; then
+            ok "devices that count: $(sudo grep -m1 '^NP_SPOTIFY_DEVICES=' /etc/eds/npagent-spotify.env | cut -d= -f2-)"
+        else
+            fail "no devices named, so no playback counts"
+        fi
+        if timeout 5 bash -c "</dev/tcp/api.spotify.com/443" 2>/dev/null; then ok "api.spotify.com:443 reachable"; else fail "api.spotify.com:443 not reachable"; fi
+    else
+        note "not authorized: make spotify, on the desk"
+    fi
+fi
+
+if [[ ",$drivers," == *",turntable,"* ]]; then
+    echo "Turntable"
+    device="$(env_value NP_TURNTABLE_DEVICE)"
+    if [[ -z "$device" ]]; then
+        note "no input named: make turntable DEVICE=..., on the desk (arecord -L lists them)"
+    else
+        configured=1
+        # plughw:UA4FX,0 and hw:UA4FX name the card UA4FX; "default" names none.
+        card="${device#*:}"; card="${card%%,*}"
+        if [[ "$device" != *:* ]]; then ok "listening to $device"
+        elif [[ -e "/proc/asound/$card" ]]; then ok "listening to $device"
+        else fail "$device is not plugged in (cards: $(awk -F'[][]' '/\[/{printf "%s ", $2}' /proc/asound/cards))"; fi
+        if /opt/eds-recognize/bin/python -c 'import shazamio' 2>/dev/null; then ok "recognizer installed"; else fail "recognizer is not installed: eds-agent-turntable-install"; fi
+        if timeout 5 bash -c "</dev/tcp/amp.shazam.com/443" 2>/dev/null; then ok "amp.shazam.com:443 reachable"; else fail "amp.shazam.com:443 not reachable"; fi
+    fi
+fi
+
+echo "Agent"
+if (( configured )); then
+    active npagent
+else
+    note "no driver is set up yet, so the agent is not running"
+fi
+sudo journalctl -u npagent -n 3 --no-pager -o cat 2>/dev/null | cut -c1-150 | while read -r line; do note "$line"; done
+
+exit $bad
