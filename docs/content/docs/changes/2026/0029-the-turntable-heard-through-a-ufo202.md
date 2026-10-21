@@ -58,7 +58,8 @@ Plug the UA-4FX back in, and
 
 | 19:22 | A record, by the owner. The first clip was unknown (`turntable.unrecognized`); twenty seconds later the driver reported *One of These Days*, Pink Floyd, from the recognizer. |
 | 19:24 | The stand did not light, not even dim. Not this change: the console showed `turntable-power-01` offline, so nowplayd took the turntable as switched off and held nothing (ADR-0023). The beacon was on, answering ping at `192.168.2.43`, but had no connection to the broker: `mqtt.home.deevnet.net` no longer resolves, from the Pi or the Mac, and the beacon dials that name. `console.eds.home.deevnet.net` still does. |
+| 19:28 | The owner put the names back in the home network's DNS. The beacon connected and the turntable was current. The cover lookup for the track already playing had timed out while the names were missing, so the stand lit with the next track: *A Pillow of Winds*, album *Meddle*, cover from Deezer; lightd published a chase in four of its colors and the stand applied it at 0.8. |
 
 ## Follow-ups
 
-- [ ] `mqtt.home.deevnet.net` (and `grafana.`, `logs.`) put back in the home network's DNS, so the beacon reaches the broker and the stand follows the turntable again.
+- [x] `mqtt.home.deevnet.net` (and `grafana.`, `logs.`) put back in the home network's DNS, so the beacon reaches the broker and the stand follows the turntable again.
