@@ -9,7 +9,7 @@ weight: 29
 |---|---|
 | **Date** | 2026-10-21 |
 | **Change type** | Configuration |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-21 |
 | **Systems** | `dv02rpi003p01`, the back-end Pi: one line of its agent's settings, and its agent restarted |
 | **How** | `make -C deploy/backend turntable DEVICE=plughw:CODEC PI=192.168.2.40` |
 | **Risk** | Low. Most likely to go wrong: the agent not coming back, which would stop iTunes being followed too |
@@ -56,8 +56,9 @@ Plug the UA-4FX back in, and
 | 16:56 | `turntable DEVICE=plughw:CODEC`. `npagent` restarted, active at 16:56:29, `NP_TURNTABLE_DEVICE=plughw:CODEC`. The driver logged `listening to the turntable device=plughw:CODEC`, was online, and reported the turntable stopped. |
 | 16:57 | `make status`: `listening to plughw:CODEC`, recognizer installed, `amp.shazam.com:443` reachable. |
 
-Still to see: a record played, reported by the turntable driver.
+| 19:22 | A record, by the owner. The first clip was unknown (`turntable.unrecognized`); twenty seconds later the driver reported *One of These Days*, Pink Floyd, from the recognizer. |
+| 19:24 | The stand did not light, not even dim. Not this change: the console showed `turntable-power-01` offline, so nowplayd took the turntable as switched off and held nothing (ADR-0023). The beacon was on, answering ping at `192.168.2.43`, but had no connection to the broker: `mqtt.home.deevnet.net` no longer resolves, from the Pi or the Mac, and the beacon dials that name. `console.eds.home.deevnet.net` still does. |
 
 ## Follow-ups
 
-- None.
+- [ ] `mqtt.home.deevnet.net` (and `grafana.`, `logs.`) put back in the home network's DNS, so the beacon reaches the broker and the stand follows the turntable again.
