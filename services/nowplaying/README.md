@@ -151,7 +151,7 @@ has a recognizer name what it hears
 ([ADR-0021](../../docs/content/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening.md)).
 
 ```bash
-NP_DRIVERS=turntable NP_TURNTABLE_DEVICE=plughw:UA4FX bin/npagent watch
+NP_DRIVERS=turntable NP_TURNTABLE_DEVICE=plughw:CODEC bin/npagent watch
 ```
 
 Linux only, as it stands: it listens with `arecord`. `arecord -L` lists the

@@ -37,7 +37,7 @@ help:
 	@echo "  spotify authorize the agent for Spotify in a browser here, and hand it to the Pi"
 	@echo "  drivers which players the Pi follows: DRIVERS=itunes turns Spotify off,"
 	@echo "          DRIVERS=itunes,spotify turns it back on; turntable is the third"
-	@echo "  turntable  which input the turntable driver listens to: DEVICE=plughw:UA4FX"
+	@echo "  turntable  which input the turntable driver listens to: DEVICE=plughw:CODEC"
 	@echo "  logs    follow the agent on the Pi"
 	@echo
 	@echo "In order, for a new card: image, fetch, flash it, card, boot it, status, pair."
@@ -90,7 +90,7 @@ drivers:
 # `arecord -L` on the Pi lists them. Like `drivers`, one line of the Pi's
 # settings and a restart; the driver itself is turned on with `drivers`.
 turntable:
-	@case "$(DEVICE)" in *[!A-Za-z0-9:,_=-]*|"") echo "DEVICE must be an ALSA name such as plughw:UA4FX" >&2; exit 2;; esac
+	@case "$(DEVICE)" in *[!A-Za-z0-9:,_=-]*|"") echo "DEVICE must be an ALSA name such as plughw:CODEC" >&2; exit 2;; esac
 	ssh $(BUILDER) "ssh a_autoprov@$(PI) 'sudo sed -i -e \"/^NP_TURNTABLE_DEVICE=/d\" /etc/eds/npagent.env && echo NP_TURNTABLE_DEVICE=$(DEVICE) | sudo tee -a /etc/eds/npagent.env >/dev/null && sudo systemctl restart npagent && sleep 3 && systemctl is-active npagent && sudo grep ^NP_TURNTABLE_DEVICE= /etc/eds/npagent.env'"
 
 # The Pi is reached through the Builder, as the site's automation reaches it:
