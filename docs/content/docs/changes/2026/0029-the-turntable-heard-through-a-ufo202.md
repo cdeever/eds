@@ -52,7 +52,7 @@ Plug the UA-4FX back in, and
 
 | When (UTC) | What happened |
 |---|---|
-| 16:55 | `arecord -l` on the Pi: one capture card, `card 3: CODEC [USB Audio CODEC]`. The UA-4FX is gone; the settings still said `plughw:UA4FX`. |
+| Before 16:56 | `arecord -l` on the Pi: one capture card, `card 3: CODEC [USB Audio CODEC]`. The UA-4FX is gone; the settings still said `plughw:UA4FX`. |
 | 16:56 | `turntable DEVICE=plughw:CODEC`. `npagent` restarted, active at 16:56:29, `NP_TURNTABLE_DEVICE=plughw:CODEC`. The driver logged `listening to the turntable device=plughw:CODEC`, was online, and reported the turntable stopped. |
 | 16:57 | `make status`: `listening to plughw:CODEC`, recognizer installed, `amp.shazam.com:443` reachable. |
 
