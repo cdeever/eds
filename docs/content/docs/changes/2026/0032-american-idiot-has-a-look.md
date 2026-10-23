@@ -9,7 +9,7 @@ weight: 32
 |---|---|
 | **Date** | 2026-10-23 |
 | **Change type** | Upgrade |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-23 |
 | **Systems** | `dv02rpi003p01`, the back-end Pi: nowplayd and lightd replaced, and the four services restarted |
 | **How** | `make -C deploy/backend push PI=192.168.2.40`, from #60's branch with this change on it |
 | **Risk** | Low. Most likely to go wrong: a service not coming back after the push, which leaves the stand dark until it is pushed again |
@@ -58,7 +58,14 @@ Push #60's branch again, as it was:
 
 | When (UTC) | What happened |
 |---|---|
-| | |
+| 03:05–03:06 | `push`, from a worktree of #60's branch (`94700c9`, a record ahead of `9fdd99a`) with this change cherry-picked: installed `94700c9-dirty`; palette, lightd, nowplayd, the console and `npagent` active. |
+| 03:06:24 | *Jesus of Suburbia*, *American Idiot*, from the owner's collection (`art_from=discogs`). lightd: `look=grenade effect=chase colors=4 palette="#d90018 45%, #e22f28 31%, #efb6b0 13%, #e35f55 11%"`. |
+| 03:06:25 | The turntable stopped: `npagent` had been restarted by the push, and its driver starts out saying so. The stand went to standby. The side had ended. |
+| 03:12:54 | Another record, by the owner: *Turn to Stone*, *Out Of The Blue*, from the collection, lit from its own cover, `chase` in four colors. Nothing but *American Idiot* has the look. |
+
+### Departures from the plan
+
+- `make status` was not run; `push` reported every service active, and the console's version was `94700c9-dirty`.
 
 ## Follow-ups
 
