@@ -116,11 +116,11 @@ A look belongs to the cover it names and to no other, so the two messages
 can arrive in either order. What a name looks like is `lightd`'s to say; a
 name it does not know is the same as none.
 
-The one album with a look is *The Dark Side of the Moon*, `spectrum`. It is
-matched on the track's own tags: an album that starts with that title, the
-leading "The" or not, by an artist that includes Pink Floyd. A remaster with
-its year in parentheses matches; a copy tagged some other way does not, and is
-lit from its cover.
+Two albums have a look: *The Dark Side of the Moon*, `spectrum`, and
+*American Idiot*, `grenade`. Each is matched on the track's own tags: an
+album that starts with that title, the leading "The" or not, by an artist
+that includes the band. A remaster with its year in parentheses matches; a
+copy tagged some other way does not, and is lit from its cover.
 
 One look is a single track's: `scanner`, for the theme from *Knight Rider*
 ([ADR-0030](/docs/architecture/decisions/0030-a-piece-of-music-can-have-a-look-from-any-source/)).

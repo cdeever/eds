@@ -24,6 +24,27 @@ func TestDarkSideOfTheMoonHasTheSpectrum(t *testing.T) {
 	}
 }
 
+func TestAmericanIdiotHasTheGrenade(t *testing.T) {
+	for _, track := range []contract.Track{
+		{Artist: "Green Day", Album: "American Idiot", Title: "Jesus of Suburbia"},
+		{Artist: "Green Day", Album: "American Idiot (20th Anniversary Deluxe Edition)", Title: "Holiday"},
+		{Artist: "GREEN DAY", Album: "american idiot", Title: "St. Jimmy"},
+	} {
+		if got := For(track); got != Grenade {
+			t.Errorf("%q by %q: look %q", track.Album, track.Artist, got)
+		}
+	}
+	// The song on another record is that record's.
+	for _, track := range []contract.Track{
+		{Artist: "Green Day", Album: "Greatest Hits: God's Favorite Band", Title: "American Idiot"},
+		{Artist: "Green Day", Album: "Dookie", Title: "Basket Case"},
+	} {
+		if got := For(track); got != "" {
+			t.Errorf("%q by %q: look %q, want none", track.Album, track.Artist, got)
+		}
+	}
+}
+
 func TestNearlyEverythingHasNoLook(t *testing.T) {
 	for _, track := range []contract.Track{
 		{},

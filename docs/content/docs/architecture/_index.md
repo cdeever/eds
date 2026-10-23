@@ -182,7 +182,8 @@ be lit is not settled.
 
 A few albums are lit by something other than their cover. `nowplayd` names
 the look and `lightd` holds what it looks like; *The Dark Side of the Moon*
-gets a spectrum
+gets a spectrum, and *American Idiot* the reds and pink of a clean scan of
+its sleeve
 ([ADR-0019](/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own/)).
 
 The **LP stand** receives the scene and animates it on its 18 LEDs itself.
