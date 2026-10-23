@@ -26,6 +26,7 @@ All under the tenant's prefix, `eds/`.
 | `nowplaying/current/art` | nowplayd | yes | its cover, as image bytes |
 | `nowplaying/current/art/small` | nowplayd | yes | the same cover, small: a baseline JPEG, 240 pixels on its longer side |
 | `nowplaying/current/look` | nowplayd | yes | whether that cover's album has a look of its own; with no cover, whether the room is waiting for one |
+| `nowplaying/stand` | the console | yes | which sources the stand is lit for: `records` or `all` |
 | `nowplaying/command` | a controller | **never** | a button press, for whatever is current |
 | `nowplaying/source/<id>/command` | nowplayd | **never** | that press, passed to the current source |
 | `nowplaying/status` | nowplayd | yes (last will) | `online` / `offline` |
@@ -134,7 +135,11 @@ source in `NP_DARK_SOURCES`, before any look the album has - but not before
 `scanner`, which is shown from any source - and means that
 nothing is to be lit from this cover
 ([ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/)).
-The cover itself is published as usual. `itunes` is such a source.
+The cover itself is published as usual. `itunes` is such a source. While
+`nowplaying/stand` says `{"v":1,"sources":"all"}` no source is
+([ADR-0039](/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source/)):
+the console switches it, and nowplayd says the current cover's look again
+when it changes. Anything but `all` is `records`.
 
 Nothing is said about a look when no cover is published, so a source reported
 without its cover never has one.

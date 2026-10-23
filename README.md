@@ -16,7 +16,7 @@ This is a monorepo. Each project below is a distinct piece of that system.
 | [`services/palette`](services/palette) | Python | Album cover art in, ranked color swatches out |
 | [`services/lightd`](services/lightd) | Go | Cover image in, MQTT scene out |
 | [`services/nowplaying`](services/nowplaying) | Go | What is playing, on the bus: drivers per player, and the one current track with its cover |
-| [`services/console`](services/console) | Go, and a static page | One page that shows what EdS is doing; it only looks |
+| [`services/console`](services/console) | Go, and a static page | One page that shows what EdS is doing; it looks, and switches which sources light the stand |
 | [`firmware/lp-stand`](firmware/lp-stand) | C / ESP-IDF | The LP jacket stand: MQTT subscriber driving an addressable RGB strip |
 | [`firmware/cover-screen`](firmware/cover-screen) | C / ESP-IDF | The touch screen: the sleeve, and five buttons |
 | [`firmware/power-beacon`](firmware/power-beacon) | C / ESP-IDF | A board on the turntable's switched outlet that says only that it has power |

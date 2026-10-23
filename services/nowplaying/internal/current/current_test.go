@@ -1046,6 +1046,70 @@ func TestALookForAnySourceIsNotDarkened(t *testing.T) {
 	}
 }
 
+// ADR-0039: switched to every source, a dark source's cover is lit from its
+// colors, and the track already playing changes at once, both ways.
+func TestTheStandSwitchedToEverySourceLightsADarkOne(t *testing.T) {
+	bus := &fakeBus{}
+	cover := NewImage(pngA)
+	p := publisher(bus, nil)
+	p.Looks = func(contract.Track) string { return "" }
+	st := covered("So What", cover)
+	p.Dark = map[string]bool{st.Source: true}
+
+	_, _, _ = p.Publish(context.Background(), st, cover)
+	bus.takeAll()
+
+	sent, err := p.Stand(contract.StandAll)
+	if err != nil || !sent {
+		t.Fatalf("switched to all: sent=%v err=%v", sent, err)
+	}
+	got := bus.takeAll()
+	if want := `{"v":1,"art":"` + cover.SHA256 + `"}`; len(got) != 1 || string(got[0].payload) != want || !got[0].retained {
+		t.Fatalf("switched to all, published %v", got)
+	}
+
+	// Said once: the same setting again, or the same track again, is quiet.
+	if sent, _ := p.Stand(contract.StandAll); sent {
+		t.Error("the same setting was said twice")
+	}
+	if _, _, _ = p.Publish(context.Background(), st, cover); len(bus.takeAll()) != 0 {
+		t.Error("the same track was published again")
+	}
+
+	if sent, _ := p.Stand(contract.StandRecords); !sent {
+		t.Fatal("switched back, nothing was said")
+	}
+	got = bus.takeAll()
+	if want := `{"v":1,"look":"dark","art":"` + cover.SHA256 + `"}`; len(got) != 1 || string(got[0].payload) != want {
+		t.Errorf("switched back, published %v", got)
+	}
+}
+
+// A record is lit either way, and a switch with nothing up says nothing.
+func TestTheStandSettingLeavesRecordsAndAnEmptyRoomAlone(t *testing.T) {
+	bus := &fakeBus{}
+	p := publisher(bus, nil)
+	p.Dark = map[string]bool{"itunes-den": true}
+	if sent, _ := p.Stand(contract.StandAll); sent {
+		t.Error("said a look with no cover up")
+	}
+
+	cover := NewImage(pngA)
+	record := covered("So What", cover)
+	record.Source = "turntable"
+	_, _, _ = p.Publish(context.Background(), record, cover)
+	bus.takeAll()
+	if sent, _ := p.Stand(contract.StandRecords); sent {
+		t.Error("a record's look changed with the setting")
+	}
+
+	_, _, _ = p.PublishIdle(context.Background(), record, false)
+	bus.takeAll()
+	if sent, _ := p.Stand(contract.StandAll); sent {
+		t.Error("said a cover's look after the cover was taken away")
+	}
+}
+
 // ADR-0025: whoever draws buttons is told when there is nothing they would do.
 func TestASourceWithoutControlsSaysSoInCurrent(t *testing.T) {
 	bus := &fakeBus{}

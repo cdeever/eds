@@ -25,6 +25,7 @@ The topic prefix defaults to `eds` and must match on both sides — `lightd`'s
 | `eds/screen/<id>/status` | device → broker | yes (LWT) | the cover screen's presence |
 | `eds/beacon/<id>/status` | device → broker | yes (LWT) | whether the switch a beacon is on has power: `online` while it does, the will's `offline` when it has not. nowplayd reads the one that speaks for the turntable ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)) |
 | `eds/nowplaying/current/look` | nowplayd → lightd | yes | whether that cover's album has a look of its own, by name; see [Now Playing](../now-playing/#looks) |
+| `eds/nowplaying/stand` | console → nowplayd | yes, as a setting | which sources the stand is lit for: `{"v":1,"sources":"records"}`, the default, or `"all"` ([ADR-0039](/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source/)) |
 
 ## The log topic
 

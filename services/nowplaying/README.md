@@ -312,6 +312,15 @@ The stand is for records. A source in `NP_DARK_SOURCES`, `itunes` on the
 workload, has its cover published as usual and given the look `dark`, and
 `lightd` lights nothing from it.
 
+Unless the console has switched the stand to every source
+([ADR-0039](../../docs/content/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source.md)).
+nowplayd reads the retained setting `nowplaying/stand`,
+`{"v":1,"sources":"records"}` or `{"v":1,"sources":"all"}`; while it is
+`all`, `NP_DARK_SOURCES` is treated as empty. A change says the current
+cover's look again at once. No setting, or one it cannot read, is
+`records`, and the last is logged. The subscription is optional: an account
+not granted it is warned about, and the stand stays for records.
+
 An idle room is dark unless something is switched on
 ([ADR-0028](../../docs/content/docs/architecture/decisions/0028-the-stand-is-for-records.md)).
 Before the cover topics are emptied, `current/look` is given the look of no
