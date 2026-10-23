@@ -291,3 +291,35 @@ func TestACommandTopicIsNotSomethingASourceReports(t *testing.T) {
 		t.Errorf("small cover topic = %q", got)
 	}
 }
+
+func TestTheStandSettingDefaultsToRecords(t *testing.T) {
+	for _, tc := range []struct {
+		payload string
+		want    string
+		err     bool
+	}{
+		{``, StandRecords, false},
+		{`{"v":1,"sources":"all"}`, StandAll, false},
+		{`{"v":1,"sources":"records"}`, StandRecords, false},
+		{`{"v":1,"sources":"everything"}`, StandRecords, true},
+		{`{"v":2,"sources":"all"}`, StandRecords, true},
+		{`all`, StandRecords, true},
+	} {
+		got, err := DecodeStand([]byte(tc.payload))
+		if got != tc.want || (err != nil) != tc.err {
+			t.Errorf("DecodeStand(%q) = %q, %v; want %q, error %v", tc.payload, got, err, tc.want, tc.err)
+		}
+	}
+	for _, sources := range []string{StandRecords, StandAll} {
+		payload, err := EncodeStand(sources)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, err := DecodeStand(payload); err != nil || got != sources {
+			t.Errorf("%s did not survive the wire: %q, %v", sources, got, err)
+		}
+	}
+	if _, err := EncodeStand("everything"); err == nil {
+		t.Error("encoded a setting nobody can read")
+	}
+}

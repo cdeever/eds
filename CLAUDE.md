@@ -307,14 +307,20 @@ current track and its cover, and `lightd` lights the stand from the cover.
 **The stand is lit for records only** (ADR-0028): `NP_DARK_SOURCES=itunes`
 makes `nowplayd` publish iTunes' cover with the look `dark`, which `lightd`
 draws as `scene.Dark`. The screen and the console still show that cover. Do
-not "fix" the dark stand; lights for iTunes are to be their own thing. `make -C deploy deploy WHERE=builder`
+not "fix" the dark stand; lights for iTunes are to be their own thing. The
+console can switch it (ADR-0039): the retained setting
+`nowplaying/stand`, `{"v":1,"sources":"records"|"all"}`, which `nowplayd`
+reads; `all` treats `NP_DARK_SOURCES` as empty until switched back, and
+nothing, or anything unreadable, is `records`. `make -C deploy deploy WHERE=builder`
 deploys all four services (the Mac has no container tool; the Builder builds).
 
 The console (`services/console`, ADR-0018) is the page a person looks at:
 `https://console.eds.mobile.deevnet.net/`. It subscribes to the bus and serves
-what it heard. **It only looks**: its broker account reads and publishes only
-its own presence, and it answers only `GET`. Adding a control is a decision to
-record first, not a handler to add. Its subscriptions (`view.Topics`) and the
+what it heard. **It looks, and switches one thing** (ADR-0039): its broker
+account reads, and publishes only its own presence and the stand's setting,
+and its one route that is not `GET` is `POST /api/stand`, JSON from its own
+origin, with no login. Adding another control is a decision to record first,
+not a handler to add. Its subscriptions (`view.Topics`) and the
 account in `main.tf` are one list kept in two places; the broker refuses a
 mismatch silently. `internal/web/static/effects.js` is a port of the
 firmware's `effects.c` - change one, change the other. A console test holds
@@ -352,7 +358,7 @@ Spotify's Web API, only for playback on a device that counts (ADR-0032). The com
 `next`, `previous`, `volume_up`, `volume_down`, and adding one is a decision.
 **A command is never retained and a retained one is ignored**; the screen
 sends at QoS 0 and never queues one. The turntable takes none. A controller never
-names a source, and the console still only looks.
+names a source, and the console sends no command.
 
 **A source whose equipment is switched on holds the stand** (ADR-0023). For
 the sources `NP_SOURCE_POWER` names, `nowplayd` reads a beacon's status:
@@ -400,6 +406,7 @@ on the console, which is told and cannot find out.
 | `eds/lightstand/<id>/state` | device → broker | yes |
 | `eds/lightd/status` | lightd → broker | yes (LWT) |
 | `eds/nowplaying/current/look` | nowplayd → lightd | yes |
+| `eds/nowplaying/stand` | console → nowplayd, console | yes (a setting) |
 | `eds/nowplaying/current/art/small` | nowplayd → cover screen | yes |
 | `eds/nowplaying/command` | cover screen → nowplayd | **never** |
 | `eds/nowplaying/source/<id>/command` | nowplayd → driver | **never** |

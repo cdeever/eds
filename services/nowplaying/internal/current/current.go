@@ -122,10 +122,14 @@ type Publisher struct {
 	// AnySource says a look is shown whatever source its track is from, a
 	// dark one included (ADR-0030). Nil is none.
 	AnySource func(look string) bool
-	Prefix    string
-	Timeout   time.Duration // for one catalog lookup
-	Logger    *slog.Logger
-	Now       func() time.Time
+	// AllSources lights the stand for every source, as if Dark named none
+	// (ADR-0039). It is the setting the console switches; Stand changes it
+	// while running.
+	AllSources bool
+	Prefix     string
+	Timeout    time.Duration // for one catalog lookup
+	Logger     *slog.Logger
+	Now        func() time.Time
 
 	// What was last put on the bus, so nothing is published twice. Retained
 	// messages mean a subscriber that reconnects gets the same cover again
@@ -166,16 +170,7 @@ func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSou
 	// message names its cover, so a subscriber that gets them the other way
 	// around still pairs them.
 	if cover != nil {
-		look := ""
-		if p.Looks != nil && out.Track != nil {
-			look = p.Looks(*out.Track)
-		}
-		// Before any look the album has: a room that is not lit for this
-		// source is not lit for its best-known record either. The few looks
-		// that are for any source are the exception, and the only one.
-		if p.Dark[out.Source] && !(look != "" && p.AnySource != nil && p.AnySource(look)) {
-			look = contract.LookDark
-		}
+		look := p.lookFor(out)
 		if !p.lookSent || look != p.lastLook || cover.SHA256 != p.lastLookArt {
 			payload, err := contract.EncodeLook(look, cover.SHA256)
 			if err != nil {
@@ -223,6 +218,46 @@ func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSou
 	}
 	p.lastState = &out
 	return out, true, nil
+}
+
+// lookFor is the look of the cover a state names.
+func (p *Publisher) lookFor(out contract.State) string {
+	look := ""
+	if p.Looks != nil && out.Track != nil {
+		look = p.Looks(*out.Track)
+	}
+	// Before any look the album has: a room that is not lit for this source
+	// is not lit for its best-known record either. The few looks that are for
+	// any source are the exception, and the only one. Unless the stand has
+	// been switched to every source (ADR-0039).
+	if !p.AllSources && p.Dark[out.Source] && !(look != "" && p.AnySource != nil && p.AnySource(look)) {
+		look = contract.LookDark
+	}
+	return look
+}
+
+// Stand changes which sources the stand is lit for (ADR-0039), and says the
+// look of the cover that is up again if that changes it: the setting applies
+// to the track playing, and not from the next one. It returns whether
+// anything was published.
+func (p *Publisher) Stand(sources string) (bool, error) {
+	p.AllSources = sources == contract.StandAll
+	if !p.lookSent || p.lastLookArt == "" || p.lastState == nil || p.emptied {
+		return false, nil
+	}
+	look := p.lookFor(*p.lastState)
+	if look == p.lastLook {
+		return false, nil
+	}
+	payload, err := contract.EncodeLook(look, p.lastLookArt)
+	if err != nil {
+		return false, err
+	}
+	if err := p.Bus.Publish(contract.CurrentLookTopic(p.Prefix), payload, true); err != nil {
+		return false, err
+	}
+	p.lastLook = look
+	return true, nil
 }
 
 // PublishIdle says that nothing is playing as far as a room is concerned:

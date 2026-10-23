@@ -9,7 +9,8 @@
 #
 # Nothing secret travels. The Pi's accounts, settings, pairing and
 # authorization are not touched; eds-backend-setup is run at the end, and adds
-# only an account that is new to the list.
+# an account that is new to the list, or grants one what the list now says,
+# keeping its password.
 #
 # Not pushed: the firewall, the kernel settings and the broker's drop-in.
 # Those change with an image.

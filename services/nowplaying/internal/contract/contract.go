@@ -344,6 +344,53 @@ func EncodeLook(look, art string) ([]byte, error) {
 	return json.Marshal(Look{V: Version, Look: look, Art: art})
 }
 
+// StandTopic holds which sources the stand is lit for (ADR-0039). It is a
+// setting, retained, and not a command: whoever wrote it last decides, and it
+// outlives a restart of everyone who reads it.
+func StandTopic(prefix string) string { return prefix + "/nowplaying/stand" }
+
+// What the stand may be lit for. Records is ADR-0028, and the default; All
+// lights it for every source, the dark ones included.
+const (
+	StandRecords = "records"
+	StandAll     = "all"
+)
+
+// Stand is the setting on StandTopic.
+type Stand struct {
+	V       int    `json:"v"`
+	Sources string `json:"sources"`
+}
+
+// EncodeStand is a setting as it goes on the bus.
+func EncodeStand(sources string) ([]byte, error) {
+	if sources != StandRecords && sources != StandAll {
+		return nil, fmt.Errorf("contract: the stand cannot be lit for %q", sources)
+	}
+	return json.Marshal(Stand{V: Version, Sources: sources})
+}
+
+// DecodeStand reads the setting. An empty payload is no setting, and is
+// StandRecords with no error: nothing on the broker is the default. Anything
+// it cannot read is StandRecords too, and the error says why, so that a
+// setting gone wrong lights the room as it was meant to be by default.
+func DecodeStand(payload []byte) (string, error) {
+	if len(payload) == 0 {
+		return StandRecords, nil
+	}
+	var st Stand
+	if err := json.Unmarshal(payload, &st); err != nil {
+		return StandRecords, fmt.Errorf("contract: not a stand setting: %w", err)
+	}
+	if st.V != Version {
+		return StandRecords, fmt.Errorf("contract: version %d, this program speaks %d", st.V, Version)
+	}
+	if st.Sources != StandRecords && st.Sources != StandAll {
+		return StandRecords, fmt.Errorf("contract: the stand cannot be lit for %q", st.Sources)
+	}
+	return st.Sources, nil
+}
+
 // ParseSourceTopic splits a source topic into the source's id and which of
 // the three topics a driver reports on this is: "state", "status" or "art".
 // A source's command topic is not one of them and is not ok: it runs the

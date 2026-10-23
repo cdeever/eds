@@ -1,5 +1,6 @@
 // The console's page. It is handed the picture - once, then again whenever
-// it changes - and draws it. It asks for nothing and sends nothing.
+// it changes - and draws it. The one thing it sends is the stand's setting,
+// which sources light it (ADR-0039).
 //
 // Every word that came from a player or a catalog is put on the page as
 // text, never as markup.
@@ -328,6 +329,62 @@ function drawRecent(page) {
   $("recent").replaceChildren(...(rows.length ? rows : [el("li", "empty", "Nothing has started playing since the console did.")]));
 }
 
+// --- which sources light the stand (ADR-0039) ----------------------------------
+
+// The setting asked for and not yet heard back, and when it was asked.
+let wanted = null;
+let wantedAt = 0;
+const ECHO_MS = 5000;
+
+function drawStandSources(page) {
+  const all = page.stand_sources === "all";
+  $("stand-sources").classList.toggle("all", all);
+  $("stand-word").textContent = all ? "lit for every source" : "lit for records";
+  const button = $("stand-switch");
+  button.hidden = false;
+  button.textContent = all ? "Records only" : "Every source";
+  button.title = all
+    ? "Light the stand for records only, as it is by default"
+    : "Light the stand for iTunes and Spotify too, until it is switched back";
+  if (wanted && page.stand_sources === wanted) {
+    wanted = null;
+    $("stand-note").textContent = "";
+  }
+  button.disabled = wanted !== null;
+}
+
+// What is shown is what comes back on the bus, not what was asked: the
+// setting reaches nowplayd the same way, so hearing it is the proof.
+async function switchStand() {
+  const now = $("stand-sources").classList.contains("all") ? "all" : "records";
+  wanted = now === "all" ? "records" : "all";
+  wantedAt = performance.now();
+  $("stand-switch").disabled = true;
+  $("stand-note").textContent = "switching…";
+  try {
+    const resp = await fetch("api/stand", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sources: wanted }),
+    });
+    if (!resp.ok) throw new Error(`${resp.status} ${(await resp.text()).trim()}`);
+  } catch (problem) {
+    wanted = null;
+    $("stand-switch").disabled = false;
+    $("stand-note").textContent = `Not switched: ${problem.message}`;
+  }
+}
+$("stand-switch").addEventListener("click", switchStand);
+
+setInterval(() => {
+  if (wanted && performance.now() - wantedAt > ECHO_MS) {
+    wanted = null;
+    $("stand-switch").disabled = false;
+    $("stand-note").textContent =
+      "Sent, and not heard back from the broker. The console's account may not be allowed to change the setting.";
+  }
+}, 1000);
+
 // What a beacon switches, from its name: turntable-power-01 is the
 // turntable's. The console is not told which source a beacon speaks for.
 function switched(id) {
@@ -373,6 +430,7 @@ function drawFrame(page) {
 function draw(page) {
   if (Number.isInteger(page.strip_leds) && page.strip_leds > 0 && page.strip_leds <= 300) leds = page.strip_leds;
   drawNow(page);
+  drawStandSources(page);
   drawStands(page);
   drawSources(page);
   drawRecent(page);

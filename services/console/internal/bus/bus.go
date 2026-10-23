@@ -3,7 +3,8 @@
 //
 // It follows nowplaying's bus package, which follows lightd's broker package;
 // neither can be imported, because each is internal to its own module. The
-// console reads and does not write, so what is kept here is the subscribing.
+// console mostly reads: what is kept here is the subscribing, and the one
+// setting it may write (ADR-0039).
 package bus
 
 import (
@@ -240,6 +241,20 @@ func buildTLS(cfg Config) (*tls.Config, error) {
 		conf.RootCAs = pool
 	}
 	return conf, nil
+}
+
+// Publish sends one message at QoS 1 and waits for the broker to take it.
+// A broker that has not granted the topic takes it all the same and drops
+// it, so a caller learns what happened by hearing it back, not from this.
+func (b *Bus) Publish(topic string, payload []byte, retained bool) error {
+	token := b.client.Publish(topic, 1, retained, payload)
+	if !token.WaitTimeout(b.cfg.Timeout) {
+		return fmt.Errorf("bus: timed out publishing to %s", topic)
+	}
+	if err := token.Error(); err != nil {
+		return fmt.Errorf("bus: publish to %s: %w", topic, err)
+	}
+	return nil
 }
 
 // Close says goodbye properly, so the will is not fired for an orderly exit.

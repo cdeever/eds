@@ -139,10 +139,32 @@ func run(logger *slog.Logger) error {
 		switches[topic] = append(switches[topic], source)
 	}
 
+	// Which sources the stand is lit for (ADR-0039): a retained setting the
+	// console switches. Like a decision, only the newest matters, and it is
+	// applied where the publishing is done.
+	standTopic := contract.StandTopic(cfg.Prefix)
+	optional = append(optional, standTopic)
+	stands := make(chan string, 1)
+
 	switched := make(map[string]bool, len(switches)) // what each beacon last said; only handle touches it
 	handle := func(msg bus.Message) {
 		if msg.Topic == commandTopic {
 			commands.Handle(msg)
+			return
+		}
+		if msg.Topic == standTopic {
+			sources, err := contract.DecodeStand(msg.Payload)
+			if err != nil {
+				logger.Warn("the stand's setting could not be read; it is lit for records", "error", err)
+			}
+			select {
+			case <-stands:
+			default:
+			}
+			select {
+			case stands <- sources:
+			default:
+			}
 			return
 		}
 		if held, ok := switches[msg.Topic]; ok {
@@ -184,6 +206,10 @@ func run(logger *slog.Logger) error {
 		OnRefused: func(topic string, err error) {
 			if topic == commandTopic {
 				logger.Warn("commands will not be passed on until the broker account is granted the topic", "topic", topic, "error", err)
+				return
+			}
+			if topic == standTopic {
+				logger.Warn("the stand is lit for records only until the broker account is granted its setting", "topic", topic, "error", err)
 				return
 			}
 			logger.Warn("a source's switch will not be heard until the broker account is granted the topic", "sources", switches[topic], "topic", topic, "error", err)
@@ -288,13 +314,33 @@ func run(logger *slog.Logger) error {
 		}()
 	}
 
+	stand := func(sources string) {
+		if (sources == contract.StandAll) != publisher.AllSources {
+			logger.Info("the stand's sources were switched", "sources", sources)
+		}
+		if _, err := publisher.Stand(sources); err != nil {
+			logger.Warn("could not say the cover's look again for the stand's new setting", "error", err)
+		}
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			logger.Info("shutting down")
 			return nil
 
+		case sources := <-stands:
+			stand(sources)
+
 		case d := <-decisions:
+			// A setting that came with the decision is taken first: on a
+			// restart both are retained and arrive together, and the other
+			// order lights the room the wrong way for a moment.
+			select {
+			case sources := <-stands:
+				stand(sources)
+			default:
+			}
 			var (
 				published contract.State
 				sent      bool
