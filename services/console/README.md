@@ -19,15 +19,27 @@ each part is up.
 The decision, and what was tried first, is
 [ADR-0018](../../docs/content/docs/architecture/decisions/0018-a-console-of-eds-own.md).
 
-## It only looks
+## It looks, and switches one thing
 
-The console learns everything from the bus and changes nothing. It calls no
-other service, and none calls it. Its broker account is granted subscriptions
-and one topic to publish, its own presence. It answers `GET` and nothing else.
+The console learns everything from the bus. It calls no other service, and
+none calls it. Its broker account is granted subscriptions and two topics to
+publish: its own presence, and which sources the stand is lit for
+([ADR-0039](../../docs/content/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source.md)).
 
-Controls are expected one day. They are not a feature to add here quietly:
-they change what the account may publish and who should be able to reach the
-page, and that is a decision to record first.
+That setting is the one thing it changes. Beside the stands the page says
+"lit for records" or, marked, "lit for every source", and a button switches
+it: `POST /api/stand` with `{"sources":"all"}` or `{"sources":"records"}`.
+The server publishes `{"v":1,"sources":…}` to `nowplaying/stand`, retained,
+and `nowplayd` lights iTunes and Spotify from their covers while it is `all`.
+The page shows the setting when it hears it back from the broker, not when
+it asked; a setting not heard back within five seconds is said so. It stays
+as set until it is switched again.
+
+The route takes JSON only, from the console's own origin, so another site
+open in the same browser cannot post to it. Every other route answers `GET`
+and nothing else. Another control is not a feature to add here quietly: it
+changes what the account may publish, and that is a decision to record
+first.
 
 ## What the page shows, and what it does not claim
 
@@ -126,6 +138,7 @@ Environment only. Each broker setting falls back to the platform's name from
   once, at start; a renewed one is put in place and the console restarted. A
   certificate that has expired, or names nothing, stops it before it connects
   to anything. It warns at every start once fewer than thirty days remain.
-- **No login.** Acceptable for a page that only looks, on the site's trusted
-  networks. Not acceptable for a page with controls.
+- **No login.** Acceptable for a page that looks and switches which covers
+  light a strip of LEDs, on the site's trusted networks and at home
+  (ADR-0039). A control that does more brings the question back.
 - **Viewers are capped at 64.** Each is a request that never ends.

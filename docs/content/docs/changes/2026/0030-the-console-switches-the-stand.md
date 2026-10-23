@@ -1,0 +1,72 @@
+---
+title: "CHG-0030: The Console Switches the Stand"
+weight: 30
+---
+
+# CHG-0030: The Console Switches the Stand
+
+| | |
+|---|---|
+| **Date** | 2026-10-19 |
+| **Change type** | Upgrade |
+| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Systems** | The home backend Pi, `dv01rpi001p01` (`192.168.2.40`): nowplayd, the console, the `nowplayd` and `console` broker accounts; the other services restarted |
+| **How** | `make -C deploy/backend push PI=192.168.2.40` from branch `adr-0039-stand-for-every-source` (PR #60), before it is merged |
+| **Risk** | Low. Most likely to go wrong: the two accounts made again with grants the broker refuses, and nowplayd or the console unable to log in until they are put back |
+| **Decisions** | [ADR-0039](/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source/), whose evidence this is |
+| **Related** | [CHG-0029](/docs/changes/2026/0029-the-turntables-album-by-what-is-on-it/), the push before this one |
+
+---
+
+## Summary
+
+The console gets a switch that lights the stand for every source, for working
+on the stand's looks with iTunes and Spotify. Pushed from the PR's branch so
+it can be tried before it is merged.
+
+This is the first push that changes an account the Pi already has:
+`eds-backend-setup` now makes an account again, with the password it has, when
+its grants differ from `accounts.conf`. The `nowplayd` and `console` accounts
+each gain `nowplaying/stand`.
+
+## Goal
+
+- The two accounts hold the new grants; every service and npagent active;
+  `eds-backend-status` clean.
+- The console shows "lit for records" and a button.
+- iTunes playing: switched to every source, the stand lights from the cover;
+  switched back, it goes dark.
+
+## Procedure
+
+### Step 1: Push
+
+**Run:** `make -C deploy/backend push PI=192.168.2.40`
+
+**Verify:** "account eds-nowplayd granted …" and the same for `console` in
+the output, each unit `active`, nowplayd's log says no account warning.
+
+### Step 2: On the console
+
+**Verify:** the Goal's last two checks, on the page and the stand.
+
+## Undo
+
+`make -C deploy/backend push PI=192.168.2.40` from `main`; the setup there
+leaves the extra grant in place, which is harmless. Switching to records first
+leaves nothing retained that a nowplayd from before reads.
+
+## Outcome
+
+| When | Step | What happened |
+|---|---|---|
+| 2026-10-19 19:55 UTC | 1 | `make -C deploy/backend push PI=192.168.2.40` from `9fdd99a`, run by the owner. The Pi installed it (`pushed: 9fdd99a on 2026-10-19T19:55:19Z`); every service and npagent active from 19:55:24. The accounts were made again: `console` publishes and reads `nowplaying/stand`, `nowplayd` reads it. nowplayd connected with no warning about the topic. The Mac moved from DVNTM to DVNT-CORE during the push, so the ssh session never returned and the script's own output after the copy was lost; it was ended by hand at 20:06, and the make reported exit 2 for that. |
+
+### Departures from the plan
+
+- The push's output after the copy was lost to a network move, so the
+  results were read from the Pi instead.
+
+## Follow-ups
+
+- [ ] Merge PR #60 once seen working, and record the result in ADR-0039.

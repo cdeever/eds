@@ -11,6 +11,7 @@ weight: 18
 | **Amended** | 2026-10-11, before it was accepted: served over TLS, not in the clear. When this was written nothing on the site would certify a name a tenant serves; Deevnet ADR-0037 has since given tenants a CA to ask. [CHG-0007](/docs/changes/2026/0007-the-console-over-tls/) |
 | **Date** | 2026-10-11 |
 | **Scope** | Where a person looks to see what EdS is doing: what is playing, what the stand is showing, and whether the parts are up. |
+| **Extended by** | [ADR-0039](/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source/): its first control, which switches the stand between records and every source |
 | **Related** | [ADR-0005](/docs/architecture/decisions/0005-device-events-over-mqtt/), [ADR-0006](/docs/architecture/decisions/0006-now-playing-bus-of-drivers/), [ADR-0009](/docs/architecture/decisions/0009-lightd-takes-covers-from-a-topic/), [ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/) |
 
 ---

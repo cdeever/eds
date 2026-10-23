@@ -258,13 +258,18 @@ resource "deevnet_iot_broker_account" "nowplayd" {
     # switch. Named, and not a pattern: nowplayd subscribes to the beacons its
     # settings name (NP_SOURCE_POWER) and to no others.
     "beacon/turntable-power-01/status",
+
+    # ADR-0039. Which sources the stand is lit for: a retained setting the
+    # console switches.
+    "nowplaying/stand",
   ]
 }
 
 # The console, on the services workload (ADR-0018).
 #
-# It only looks: every topic it reads, and one it writes - its own presence.
-# Controls, when they come, are a change to this list and a decision first.
+# It looks: every topic it reads, and two it writes - its own presence, and
+# which sources the stand is lit for (ADR-0039). Another control is a change
+# to this list and a decision first.
 #
 # Each subscription is granted as the filter the console uses, to the
 # character (services/console/internal/view, Topics).
@@ -274,6 +279,7 @@ resource "deevnet_iot_broker_account" "console" {
 
   publish = [
     "console/status",
+    "nowplaying/stand", # the stand's setting, retained (ADR-0039)
   ]
   subscribe = [
     "nowplaying/current",
@@ -285,8 +291,9 @@ resource "deevnet_iot_broker_account" "console" {
     "lightstand/+/state",
     "lightstand/+/status",
     "lightd/status",
-    "beacon/+/status", # whether each switch with a beacon on it is on (ADR-0023)
-    "screen/+/status", # whether each cover screen is there (ADR-0020)
+    "beacon/+/status",  # whether each switch with a beacon on it is on (ADR-0023)
+    "screen/+/status",  # whether each cover screen is there (ADR-0020)
+    "nowplaying/stand", # the setting in force, heard back (ADR-0039)
   ]
 }
 

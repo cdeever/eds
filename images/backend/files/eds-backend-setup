@@ -79,18 +79,20 @@ fi
 install -d -o root -g root -m 0700 "$PASSWORDS"
 umask 077
 
-while read -r name device publish subscribe <&3; do
-    if [[ -s "$PASSWORDS/$name.pw" && -f "$KIT/accounts/$name.json" ]]; then
-        continue
-    fi
-    # Half made, or its password lost: the kit keeps only a hash, so the
-    # account is made again and whatever held the old password is told below.
-    if [[ -f "$KIT/accounts/$name.json" ]]; then
-        deevnet-kit account rm "$name" >/dev/null
-    fi
-    head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$PASSWORDS/$name.pw.new"
-    echo >> "$PASSWORDS/$name.pw.new"
+# Whether an account the kit holds has the grants the list gives it now. The
+# kit keeps them with the tenant in front, as the broker sees them.
+granted() {
+    TENANT="$tenant" PUBLISH="$2" SUBSCRIBE="$3" python3 -c '
+import json, os, sys
+t = os.environ["TENANT"]
+want = lambda f: sorted([] if f == "-" else [t + "/" + p for p in f.split(",")])
+held = json.load(open(sys.argv[1]))
+sys.exit(0 if sorted(held.get("publish") or []) == want(os.environ["PUBLISH"])
+         and sorted(held.get("subscribe") or []) == want(os.environ["SUBSCRIBE"]) else 1)
+' "$KIT/accounts/$1.json"
+}
 
+while read -r name device publish subscribe <&3; do
     args=(account add "$name")
     [[ "$device" == "-" ]] || args+=(--device "$device")
     if [[ "$publish" != "-" ]]; then
@@ -101,6 +103,26 @@ while read -r name device publish subscribe <&3; do
         IFS=, read -ra patterns <<<"$subscribe"
         for pattern in "${patterns[@]}"; do args+=(--subscribe "$pattern"); done
     fi
+
+    if [[ -s "$PASSWORDS/$name.pw" && -f "$KIT/accounts/$name.json" ]]; then
+        if granted "$name" "$publish" "$subscribe"; then
+            continue
+        fi
+        # The list has changed since the account was made (a new topic, as
+        # ADR-0039's). Made again with the password it has, so nothing that
+        # logs in with it notices.
+        deevnet-kit account rm "$name" >/dev/null
+        deevnet-kit "${args[@]}" --password-file "$PASSWORDS/$name.pw" >/dev/null
+        log "account $tenant-$name granted what the list says now"
+        continue
+    fi
+    # Half made, or its password lost: the kit keeps only a hash, so the
+    # account is made again and whatever held the old password is told below.
+    if [[ -f "$KIT/accounts/$name.json" ]]; then
+        deevnet-kit account rm "$name" >/dev/null
+    fi
+    head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$PASSWORDS/$name.pw.new"
+    echo >> "$PASSWORDS/$name.pw.new"
     deevnet-kit "${args[@]}" --password-file "$PASSWORDS/$name.pw.new" >/dev/null
     mv "$PASSWORDS/$name.pw.new" "$PASSWORDS/$name.pw"
     log "account $tenant-$name made"

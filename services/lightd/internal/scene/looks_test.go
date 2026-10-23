@@ -35,6 +35,46 @@ func TestTheSpectrumIsSixColorsInEqualShares(t *testing.T) {
 	}
 }
 
+func TestTheGrenadeIsTheSleevesRedsAndThePinkOfTheHand(t *testing.T) {
+	opts := DefaultOptions()
+	opts.Effect, opts.Speed, opts.Brightness = "chase", 0.4, 0.8
+	sc, ok := Look(LookGrenade, opts, LookOptions{})
+	if !ok {
+		t.Fatal("the grenade is not a known look")
+	}
+	if sc.V != ContractVersion || len(sc.Palette) != 4 {
+		t.Fatalf("scene %+v", sc)
+	}
+	// The stand's own way of showing a cover.
+	if sc.Effect != "chase" || sc.Speed != 0.4 || sc.Brightness != 0.8 {
+		t.Errorf("effect %q, speed %v, brightness %v", sc.Effect, sc.Speed, sc.Brightness)
+	}
+	// A red ground, the most of it, and a pale pink among the accents.
+	ground := sc.Palette[0]
+	if ground.RGB[0] < 200 || ground.RGB[1] > 40 || ground.Weight < 0.4 {
+		t.Errorf("ground %+v", ground)
+	}
+	pink := false
+	var total float64
+	for _, c := range sc.Palette {
+		total += c.Weight
+		if c.RGB[0] > 220 && c.RGB[1] > 150 && c.RGB[2] > 150 {
+			pink = true
+		}
+	}
+	if !pink {
+		t.Error("no pale pink in the palette")
+	}
+	if math.Abs(total-1) > 0.01 {
+		t.Errorf("shares add to %v", total)
+	}
+	// The preset is not handed out to be changed.
+	sc.Palette[0].RGB = [3]uint8{0, 0, 0}
+	if again, _ := Look(LookGrenade, opts, LookOptions{}); again.Palette[0].RGB == [3]uint8{0, 0, 0} {
+		t.Error("a scene's palette is the preset itself")
+	}
+}
+
 // A look changes what is shown, not how fast or how bright.
 func TestALookKeepsTheStandsSpeedAndBrightness(t *testing.T) {
 	opts := DefaultOptions()

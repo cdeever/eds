@@ -26,6 +26,7 @@ All under the tenant's prefix, `eds/`.
 | `nowplaying/current/art` | nowplayd | yes | its cover, as image bytes |
 | `nowplaying/current/art/small` | nowplayd | yes | the same cover, small: a baseline JPEG, 240 pixels on its longer side |
 | `nowplaying/current/look` | nowplayd | yes | whether that cover's album has a look of its own; with no cover, whether the room is waiting for one |
+| `nowplaying/stand` | the console | yes | which sources the stand is lit for: `records` or `all` |
 | `nowplaying/command` | a controller | **never** | a button press, for whatever is current |
 | `nowplaying/source/<id>/command` | nowplayd | **never** | that press, passed to the current source |
 | `nowplaying/status` | nowplayd | yes (last will) | `online` / `offline` |
@@ -116,11 +117,11 @@ A look belongs to the cover it names and to no other, so the two messages
 can arrive in either order. What a name looks like is `lightd`'s to say; a
 name it does not know is the same as none.
 
-The one album with a look is *The Dark Side of the Moon*, `spectrum`. It is
-matched on the track's own tags: an album that starts with that title, the
-leading "The" or not, by an artist that includes Pink Floyd. A remaster with
-its year in parentheses matches; a copy tagged some other way does not, and is
-lit from its cover.
+Two albums have a look: *The Dark Side of the Moon*, `spectrum`, and
+*American Idiot*, `grenade`. Each is matched on the track's own tags: an
+album that starts with that title, the leading "The" or not, by an artist
+that includes the band. A remaster with its year in parentheses matches; a
+copy tagged some other way does not, and is lit from its cover.
 
 One look is a single track's: `scanner`, for the theme from *Knight Rider*
 ([ADR-0030](/docs/architecture/decisions/0030-a-piece-of-music-can-have-a-look-from-any-source/)).
@@ -134,7 +135,11 @@ source in `NP_DARK_SOURCES`, before any look the album has - but not before
 `scanner`, which is shown from any source - and means that
 nothing is to be lit from this cover
 ([ADR-0028](/docs/architecture/decisions/0028-the-stand-is-for-records/)).
-The cover itself is published as usual. `itunes` is such a source.
+The cover itself is published as usual. `itunes` is such a source. While
+`nowplaying/stand` says `{"v":1,"sources":"all"}` no source is
+([ADR-0039](/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source/)):
+the console switches it, and nowplayd says the current cover's look again
+when it changes. Anything but `all` is `records`.
 
 Nothing is said about a look when no cover is published, so a source reported
 without its cover never has one.
