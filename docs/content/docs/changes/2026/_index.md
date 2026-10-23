@@ -37,4 +37,5 @@ bookCollapseSection: true
 | CHG-0027 | 2026-10-18 | [The Beacon on an ESP32](0027-the-beacon-on-an-esp32/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
 | CHG-0028 | 2026-10-18 | [The Back End on One Pi, Tried on DVNTM](0028-the-back-end-on-one-pi-on-dvntm/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0030 | 2026-10-19 | [The Console Switches the Stand](0030-the-console-switches-the-stand/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0031 | 2026-10-21 | [The Turntable Heard Through a UFO202](0031-the-turntable-heard-through-a-ufo202/) | Configuration | {{< status-badge "complete" "Complete" >}} |
 | CHG-0032 | 2026-10-23 | [American Idiot Has a Look](0032-american-idiot-has-a-look/) | Upgrade | {{< status-badge "complete" "Complete" >}} |

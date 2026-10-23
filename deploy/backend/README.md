@@ -66,7 +66,7 @@ broker accounts. Allow a few minutes.
 make status    # every check should say ok; a driver not yet set up is noted
 make pair      # prints a four-digit code; type it into iTunes
 make spotify   # a browser opens here for Agree; the authorization goes to the Pi
-make turntable DEVICE=plughw:UA4FX
+make turntable DEVICE=plughw:CODEC
 make drivers DRIVERS=itunes,spotify,turntable
 ```
 

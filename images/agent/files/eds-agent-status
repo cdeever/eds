@@ -99,7 +99,7 @@ if [[ ",$drivers," == *",turntable,"* ]]; then
         note "no input named: make turntable DEVICE=..., on the desk (arecord -L lists them)"
     else
         configured=1
-        # plughw:UA4FX,0 and hw:UA4FX name the card UA4FX; "default" names none.
+        # plughw:CODEC,0 and hw:CODEC name the card CODEC; "default" names none.
         card="${device#*:}"; card="${card%%,*}"
         if [[ "$device" != *:* ]]; then ok "listening to $device"
         elif [[ -e "/proc/asound/$card" ]]; then ok "listening to $device"

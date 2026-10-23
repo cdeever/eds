@@ -37,7 +37,7 @@ digraph eds {
         label="Basement"; labeljust=l; style="rounded,filled"; fillcolor="#eef3f9"; color="#9db4cf";
         mediaserver [label="Media server\ndigital out"];
         selector    [label="S/PDIF selector\nturntable or media server"];
-        roland      [label="Roland UA-4FX\nUSB sound card"];
+        soundcard   [label="Behringer UFO202\nUSB sound card"];
         subgraph cluster_pi {
             label="Agent Pi · np-relay"; labeljust=l; style="rounded,filled"; fillcolor="#dbe7f5"; color="#7d9cc2";
             drv_tt      [label="turntable driver\nhears a clip, asks its name"];
@@ -80,7 +80,7 @@ digraph eds {
     { rank=same; turntable; mediaserver; }
     { rank=same; adc; strip; }
     { rank=same; selector; beacon; }
-    { rank=same; roland; itunes; spotify; }
+    { rank=same; soundcard; itunes; spotify; }
     { rank=same; drv_tt; drv_itunes; drv_spotify; }
     { rank=same; broker; shazam; }
     { rank=same; nowplayd; lightd; console; stand; screen; logstore; }
@@ -97,8 +97,8 @@ digraph eds {
     turntable   -> adc      [label="the amplifier's\ntape output"];
     adc         -> selector [label="S/PDIF, down the house"];
     mediaserver -> selector [label="S/PDIF"];
-    selector    -> roland   [label="whichever is selected"];
-    roland      -> drv_tt   [label="USB audio"];
+    selector    -> soundcard [label="whichever is selected"];
+    soundcard   -> drv_tt   [label="USB audio"];
 
     // ---- everything else --------------------------------------------------
     edge [style=solid, color="#5b6470", fontcolor="#3a4048", penwidth=1];

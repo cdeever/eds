@@ -63,7 +63,7 @@ help:
 	@echo "  pair    pair the agent with iTunes; prints a code to type in"
 	@echo "  spotify authorize the agent for Spotify in a browser here, and hand it to the Pi"
 	@echo "  drivers which players the Pi follows: DRIVERS=itunes,spotify,turntable"
-	@echo "  turntable  which input the turntable driver listens to: DEVICE=plughw:UA4FX"
+	@echo "  turntable  which input the turntable driver listens to: DEVICE=plughw:CODEC"
 	@echo "  devices fetch what the stand, the screen and the beacon are provisioned with"
 	@echo "  push    update the services, the agent, their units and tools on the running Pi"
 	@echo "  logs    follow the services and the agent on the Pi"
@@ -132,7 +132,7 @@ drivers:
 	ssh $(SSH) 'sudo sed -i -e "/^NP_DRIVERS=/d" /etc/eds/npagent.env && echo NP_DRIVERS=$(DRIVERS) | sudo tee -a /etc/eds/npagent.env >/dev/null && sudo systemctl restart npagent && sleep 3 && systemctl is-active npagent && sudo grep ^NP_DRIVERS= /etc/eds/npagent.env'
 
 turntable:
-	@case "$(DEVICE)" in *[!A-Za-z0-9:,_=-]*|"") echo "DEVICE must be an ALSA name such as plughw:UA4FX" >&2; exit 2;; esac
+	@case "$(DEVICE)" in *[!A-Za-z0-9:,_=-]*|"") echo "DEVICE must be an ALSA name such as plughw:CODEC" >&2; exit 2;; esac
 	ssh $(SSH) 'sudo sed -i -e "/^NP_TURNTABLE_DEVICE=/d" /etc/eds/npagent.env && echo NP_TURNTABLE_DEVICE=$(DEVICE) | sudo tee -a /etc/eds/npagent.env >/dev/null && sudo systemctl restart npagent && sleep 3 && systemctl is-active npagent && sudo grep ^NP_TURNTABLE_DEVICE= /etc/eds/npagent.env'
 
 # Interactive: it asks which Wi-Fi network the devices are to join, and its
