@@ -25,6 +25,21 @@ var spectrum = [][3]uint8{
 	{140, 0, 255}, // violet
 }
 
+// LookGrenade is the red of a heart-shaped grenade and the pale pink of the
+// hand that holds it.
+const LookGrenade = "grenade"
+
+// grenade is the reading of a clean scan of that sleeve: two reds for the
+// ground, and the pink and salmon that a chase sends around over them. A
+// photograph of a pressing gives four shades of one red instead, which a
+// strip shows as one. Measured once, and kept.
+var grenade = []Color{
+	{RGB: [3]uint8{217, 0, 24}, Weight: 0.45},    // #d90018
+	{RGB: [3]uint8{226, 47, 40}, Weight: 0.31},   // #e22f28
+	{RGB: [3]uint8{239, 182, 176}, Weight: 0.13}, // #efb6b0
+	{RGB: [3]uint8{227, 95, 85}, Weight: 0.11},   // #e35f55
+}
+
 // SpectrumEffects are the motions the spectrum can be shown with: the whole
 // rainbow moving around the strip, or the strip turning through each color in
 // succession. Both are effects every stand already has.
@@ -59,6 +74,16 @@ func Look(name string, opts Options, look LookOptions) (Scene, bool) {
 			Speed:      opts.Speed,
 			Brightness: opts.Brightness,
 			Palette:    palette,
+		}, true
+	case LookGrenade:
+		// The stand's own effect, speed and brightness: it is a cover's
+		// colors, only the right ones.
+		return Scene{
+			V:          ContractVersion,
+			Effect:     opts.Effect,
+			Speed:      opts.Speed,
+			Brightness: opts.Brightness,
+			Palette:    append([]Color(nil), grenade...),
 		}, true
 	case LookScanner:
 		// Its own speed and its own brightness, where the spectrum takes the

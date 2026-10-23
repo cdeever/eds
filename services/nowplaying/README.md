@@ -377,8 +377,8 @@ only thing it sends there. The dashboard is **Outside Services**
 A few albums are lit by something other than their cover's colors
 ([ADR-0019](../../docs/content/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own.md)).
 The list is in `internal/looks`, matched on the artist and album the track
-already carries, and it is short on purpose: the one entry is *The Dark Side
-of the Moon*, whose look is `spectrum`.
+already carries, and it is short on purpose: *The Dark Side of the Moon*,
+whose look is `spectrum`, and *American Idiot*, whose look is `grenade`.
 
 One piece of music has a look too, whatever record it is on and whoever
 plays it
