@@ -108,3 +108,4 @@ and incidents under the same names. To keep the two apart:
 | [0037](0037-hand-kept-secrets-are-encrypted-in-the-repository/) | 2026-10-18 | The secrets nothing else can issue are kept encrypted in the repository, with sops and age | {{< adr-status "Proposed" >}} |
 | [0038](0038-the-turntable-names-the-original-album-by-what-is-on-it/) | 2026-10-19 | The turntable's album is the one the track is on, and the original one, not a time since the last | {{< adr-status "Proposed" >}} |
 | [0039](0039-the-console-can-light-the-stand-for-every-source/) | 2026-10-19 | The console can light the stand for every source, a retained setting that stays until switched back | {{< adr-status "Proposed" >}} |
+| [0040](0040-a-request-can-name-an-album-to-play/) | 2026-10-23 | A request can name an album to play, and iTunes plays it from its own library | {{< adr-status "Proposed" >}} |

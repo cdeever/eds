@@ -9,7 +9,8 @@
 //	npagent watch            follow the players and print, publishing nothing
 //	npagent pair             iTunes: advertise as a remote and wait for the code
 //	npagent forget           iTunes: discard the stored pairing
-//	npagent spotify-auth     Spotify: authorize in a browser, once
+//	npagent play-album ARTIST ALBUM   iTunes: play an album from its first track
+//	npagent spotify-auth    Spotify: authorize in a browser, once
 //	npagent spotify-devices  Spotify: list the account's devices by name
 package main
 
@@ -61,6 +62,8 @@ func main() {
 		err = watch(ctx)
 	case "forget":
 		err = forget()
+	case "play-album":
+		err = playAlbum(ctx, os.Args[2:])
 	case "spotify-auth":
 		err = spotifyAuth(ctx)
 	case "spotify-devices":
@@ -86,7 +89,9 @@ func usage() {
 
   pair             iTunes: advertise as a remote and wait for its code to be typed
   forget           iTunes: discard the stored pairing
-  spotify-auth     Spotify: authorize in a browser on this machine, once
+  play-album ARTIST ALBUM
+                   iTunes: replace what plays with an album, from its first track
+  spotify-auth    Spotify: authorize in a browser on this machine, once
   spotify-devices  Spotify: list the account's devices, to choose which count
 
 Settings, from the environment:

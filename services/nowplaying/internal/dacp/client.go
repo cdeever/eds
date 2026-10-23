@@ -6,6 +6,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -274,6 +276,42 @@ func (c *Client) Volume(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("dacp: unreadable volume")
 	}
 	return int(n), nil
+}
+
+// --- playing an album (ADR-0040) ---------------------------------------------
+//
+// What the phone remote sends to play an album. Unlike the buttons, it
+// chooses what plays. iTunes for Windows refuses this remote the library
+// itself (databases and update answer 403), so the album is named, not
+// looked up: the player matches the names, and what it then says it is
+// playing is the only proof that they matched.
+
+// PlayAlbum replaces what the player is playing with an album, named as the
+// library names it, from its first track, in the album's order. It is two
+// requests, as the remote sends them: empty the queue, then queue the album
+// and play. The player answers both the same whether or not anything
+// matched; ask Now afterwards.
+func (c *Client) PlayAlbum(ctx context.Context, artist, album string) error {
+	if strings.TrimSpace(artist) == "" || strings.TrimSpace(album) == "" {
+		return fmt.Errorf("dacp: an album is played by its artist and its name")
+	}
+	if _, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=clear&session-id=%d", c.session.Load()), 1<<20); err != nil {
+		return err
+	}
+	query := "'daap.songartist:" + quote(artist) + "'+'daap.songalbum:" + quote(album) + "'"
+	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=play&query=%s&index=0&sort=album&session-id=%d",
+		query, c.session.Load()), 1<<20)
+	return err
+}
+
+// quote makes a name safe inside a query's single quotes, and in a URL. The
+// query's own punctuation (quotes, colons, commas, plus signs, parentheses)
+// is written around it literally, as the remote writes it; a name's own is
+// escaped, so a name with a plus sign in it cannot become a second term.
+func quote(name string) string {
+	name = strings.ReplaceAll(name, `\`, `\\`)
+	name = strings.ReplaceAll(name, `'`, `\'`)
+	return strings.ReplaceAll(url.QueryEscape(name), "+", "%20")
 }
 
 // SetVolume sets how loud the player is, 0 to 100.
