@@ -123,7 +123,7 @@ func run(logger *slog.Logger) error {
 
 	// Commands for whatever is current (ADR-0020). The router is given its
 	// bus once there is one, and drops what it is handed before that.
-	commands := &command.Router{Prefix: cfg.Prefix, Logger: logger}
+	commands := &command.Router{Prefix: cfg.Prefix, Logger: logger, AlbumSource: cfg.AlbumSource}
 	commandTopic := contract.CommandTopic(cfg.Prefix)
 
 	// Whether a source's equipment is switched on, for the sources that have

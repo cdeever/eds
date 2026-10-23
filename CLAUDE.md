@@ -359,6 +359,11 @@ Spotify's Web API, only for playback on a device that counts (ADR-0032). The com
 **A command is never retained and a retained one is ignored**; the screen
 sends at QoS 0 and never queues one. The turntable takes none. A controller never
 names a source, and the console sends no command.
+**The one command that is not a button is `play_album`** (ADR-0040): it
+names an artist and an album, and `nowplayd` passes it to `NP_ALBUM_SOURCE`
+(`itunes`) whatever is current. iTunes for Windows refuses this remote its
+library (403 on `databases`), so the album is played by name and the driver
+asks what plays afterward; a miss is a failed command, never a nearer guess.
 
 **A source whose equipment is switched on holds the stand** (ADR-0023). For
 the sources `NP_SOURCE_POWER` names, `nowplayd` reads a beacon's status:

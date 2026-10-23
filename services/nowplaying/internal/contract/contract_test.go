@@ -269,6 +269,42 @@ func TestDecodeRefusesWhatIsNotACommand(t *testing.T) {
 	}
 }
 
+// --- play_album (ADR-0040) ----------------------------------------------------
+
+func TestPlayAlbumsWireForm(t *testing.T) {
+	got, err := EncodeCommand(Command{Command: PlayAlbum, From: "voiced", Artist: "Van Halen", Album: "Van Halen"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"v":1,"command":"play_album","from":"voiced","artist":"Van Halen","album":"Van Halen"}`
+	if string(got) != want {
+		t.Errorf("wire form changed:\n got %s\nwant %s", got, want)
+	}
+	back, err := DecodeCommand(got)
+	if err != nil || back.Artist != "Van Halen" || back.Album != "Van Halen" {
+		t.Errorf("came back as %+v, %v", back, err)
+	}
+}
+
+// An album is played by both its names, or not at all: half a name is a
+// guess, and the wrong record is worse than none.
+func TestPlayAlbumNeedsBothNames(t *testing.T) {
+	long := strings.Repeat("x", 201)
+	for name, payload := range map[string]string{
+		"no artist":          `{"v":1,"command":"play_album","album":"Van Halen"}`,
+		"no album":           `{"v":1,"command":"play_album","artist":"Van Halen"}`,
+		"a blank artist":     `{"v":1,"command":"play_album","artist":"  ","album":"Van Halen"}`,
+		"an artist too long": `{"v":1,"command":"play_album","artist":"` + long + `","album":"Van Halen"}`,
+		"an album too long":  `{"v":1,"command":"play_album","artist":"Van Halen","album":"` + long + `"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := DecodeCommand([]byte(payload)); err == nil {
+				t.Error("accepted")
+			}
+		})
+	}
+}
+
 func TestACommandMayCarryFieldsThisProgramDoesNotKnow(t *testing.T) {
 	if _, err := DecodeCommand([]byte(`{"v":1,"command":"volume_up","by":3}`)); err != nil {
 		t.Errorf("an unknown field was refused: %v", err)

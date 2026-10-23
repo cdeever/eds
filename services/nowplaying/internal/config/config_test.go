@@ -180,6 +180,20 @@ func TestIdleAfterAndNoControls(t *testing.T) {
 	}
 }
 
+func TestAlbumSource(t *testing.T) {
+	if cfg, err := LoadNowplayd("0.1"); err != nil || cfg.AlbumSource != "itunes" {
+		t.Fatalf("default: %q, %v", cfg.AlbumSource, err)
+	}
+	t.Setenv("NP_ALBUM_SOURCE", "")
+	if cfg, err := LoadNowplayd("0.1"); err != nil || cfg.AlbumSource != "" {
+		t.Errorf("set empty: %q, %v", cfg.AlbumSource, err)
+	}
+	t.Setenv("NP_ALBUM_SOURCE", "not a source")
+	if _, err := LoadNowplayd("0.1"); err == nil {
+		t.Error("a name that cannot be a source was accepted")
+	}
+}
+
 func TestDarkSources(t *testing.T) {
 	if cfg, err := LoadNowplayd("0.1"); err != nil || len(cfg.Dark) != 0 {
 		t.Fatalf("default: dark %v, %v", cfg.Dark, err)

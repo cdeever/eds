@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +35,9 @@ type Player interface {
 	Previous(ctx context.Context) error
 	Volume(ctx context.Context) (int, error)
 	SetVolume(ctx context.Context, volume int) error
+
+	// What the remote sends to play an album (ADR-0040).
+	PlayAlbum(ctx context.Context, artist, album string) error
 }
 
 // Driver follows one player.
@@ -54,6 +58,10 @@ type Driver struct {
 	Idle time.Duration
 
 	Now func() time.Time
+
+	// AlbumCheck is how long an album is given to start before the player
+	// is asked what plays; zero is albumCheck.
+	AlbumCheck time.Duration
 
 	// Whether there is a session a command could be sent on. Commands arrive
 	// from the bus, on a goroutine that is not the one following the player.
@@ -96,8 +104,45 @@ func (d *Driver) Command(ctx context.Context, c contract.Command) error {
 		return d.nudge(ctx, VolumeStep)
 	case contract.VolumeDown:
 		return d.nudge(ctx, -VolumeStep)
+	case contract.PlayAlbum:
+		return d.playAlbum(ctx, c.Artist, c.Album)
 	}
 	return fmt.Errorf("itunes: no such command %q", c.Command)
+}
+
+// ErrAlbumNotFound means the player was asked for an album and is not
+// playing it: its library names it differently, or does not have it.
+var ErrAlbumNotFound = errors.New("itunes: the library played no album by those names")
+
+// albumCheck is how long the player is given to start an album before it is
+// asked what it is playing. iTunes for Windows had on 2026-10-23 within one
+// second.
+const albumCheck = 1500 * time.Millisecond
+
+// playAlbum asks for an album by name and then asks what plays, because the
+// player answers a request that matched nothing just as it answers one that
+// matched (ADR-0040). The match is the player's; nothing nearer is tried.
+func (d *Driver) playAlbum(ctx context.Context, artist, album string) error {
+	if err := d.Player.PlayAlbum(ctx, artist, album); err != nil {
+		return err
+	}
+	wait := d.AlbumCheck
+	if wait == 0 {
+		wait = albumCheck
+	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(wait):
+	}
+	now, err := d.Player.Now(ctx)
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(now.Artist, artist) || !strings.EqualFold(now.Album, album) {
+		return fmt.Errorf("%w: asked for %q by %q, playing %q by %q", ErrAlbumNotFound, album, artist, now.Album, now.Artist)
+	}
+	return nil
 }
 
 // nudge moves the volume by step. The player is asked where it is first,

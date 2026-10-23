@@ -159,6 +159,9 @@ type Nowplayd struct {
 	// Dark names sources that light no room: their covers are published
 	// with the look that says so (ADR-0028).
 	Dark []string
+	// AlbumSource is the source play_album is passed to, whatever is
+	// current (ADR-0040). Empty, and no album is played.
+	AlbumSource string
 	// LogEndpoint and LogToken are the tenant's log store and the token
 	// that writes to its workload partition, for the counts of what is
 	// asked of outside services (ADR-0027). Either one empty and the counts
@@ -227,6 +230,10 @@ func LoadNowplayd(version string) (Nowplayd, error) {
 		if !contract.ValidSourceID(source) {
 			return cfg, fmt.Errorf("config: NP_DARK_SOURCES names %q, which cannot be a source", source)
 		}
+	}
+	cfg.AlbumSource = strings.TrimSpace(Str("NP_ALBUM_SOURCE", "itunes"))
+	if cfg.AlbumSource != "" && !contract.ValidSourceID(cfg.AlbumSource) {
+		return cfg, fmt.Errorf("config: NP_ALBUM_SOURCE names %q, which cannot be a source", cfg.AlbumSource)
 	}
 
 	// Each entry is source=beacon. Both become topic levels, and a typo in

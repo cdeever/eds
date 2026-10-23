@@ -246,8 +246,9 @@ It publishes to `nowplaying/command`:
 | Field | |
 |---|---|
 | `v` | `1`. Another version is refused |
-| `command` | `play_pause`, `next`, `previous`, `volume_up` or `volume_down`. Anything else is refused |
+| `command` | `play_pause`, `next`, `previous`, `volume_up`, `volume_down` or `play_album`. Anything else is refused |
 | `from` | optional: who sent it, for the logs. Not trusted for anything |
+| `artist`, `album` | `play_album` only, and both required: the album's names as the player's library has them, at most 200 bytes each |
 
 nowplayd passes the message, unchanged, to `nowplaying/source/<id>/command`
 for the source of the current track. A controller knows no source and no
@@ -265,6 +266,24 @@ player.
   nothing says so.
 - `volume_up` and `volume_down` move the player's volume five points in a
   hundred. There is no ceiling.
+
+### Playing an album
+
+`play_album` chooses what plays rather than pressing a button
+([ADR-0040](/docs/architecture/decisions/0040-a-request-can-name-an-album-to-play/)):
+
+```json
+{"v":1,"command":"play_album","from":"voiced","artist":"Van Halen","album":"Van Halen"}
+```
+
+- **It goes to `NP_ALBUM_SOURCE` (`itunes`), whatever is current**, and is
+  dropped when that is empty. Nothing need be playing.
+- **The player replaces what plays** with the album, from its first track,
+  in the album's order.
+- **The names must be the library's.** iTunes for Windows cannot be asked
+  what its library holds, so the driver asks what plays a moment later; an
+  album that did not start is logged as `driver.command_failed`, "the
+  library played no album by those names". Nothing nearer is tried.
 
 ## Rules for a driver
 

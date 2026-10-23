@@ -36,6 +36,12 @@ type script struct {
 	pressed   []string // the buttons, in the order they were pressed
 	volume    int
 	volumeErr error
+
+	after *dacp.Status // what Now says once an album has been asked for
+}
+
+func (s *script) PlayAlbum(_ context.Context, artist, album string) error {
+	return s.press("album=" + artist + "/" + album)
 }
 
 func (s *script) press(what string) error {
@@ -94,7 +100,15 @@ func (s *script) hand(ctx context.Context) (dacp.Status, error) {
 	return st, nil
 }
 
-func (s *script) Now(ctx context.Context) (dacp.Status, error)            { return s.hand(ctx) }
+func (s *script) Now(ctx context.Context) (dacp.Status, error) {
+	s.mu.Lock()
+	after := s.after
+	s.mu.Unlock()
+	if after != nil {
+		return *after, nil
+	}
+	return s.hand(ctx)
+}
 func (s *script) Wait(ctx context.Context, _ uint32) (dacp.Status, error) { return s.hand(ctx) }
 
 func (s *script) Artwork(context.Context, int) ([]byte, error) {
@@ -401,6 +415,9 @@ func (q *quietPlayer) Next(context.Context) error                   { return nil
 func (q *quietPlayer) Previous(context.Context) error               { return nil }
 func (q *quietPlayer) Volume(context.Context) (int, error)          { return 0, nil }
 func (q *quietPlayer) SetVolume(context.Context, int) error         { return nil }
+func (q *quietPlayer) PlayAlbum(context.Context, string, string) error {
+	return nil
+}
 
 // --- commands (ADR-0020) -----------------------------------------------------
 
@@ -526,6 +543,63 @@ func TestAnUnknownCommandPressesNothing(t *testing.T) {
 	d := live(t, p)
 	if err := d.Command(context.Background(), contract.Command{V: 1, Command: "eject"}); err == nil {
 		t.Error("an unknown command was carried out")
+	}
+	if got := p.presses(); len(got) != 0 {
+		t.Errorf("pressed %v", got)
+	}
+}
+
+// --- play_album (ADR-0040) ---------------------------------------------------
+
+func album(artist, name string) contract.Command {
+	return contract.Command{V: contract.Version, Command: contract.PlayAlbum, From: "test", Artist: artist, Album: name}
+}
+
+// The player's answer to the request says nothing; what it then plays is
+// the proof. The library's capitals need not be the request's.
+func TestAnAlbumIsAskedForAndThenSeenPlaying(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	playing := st(2, true, false, "Van Halen", "Runnin' With The Devil", "Van Halen", abba, 215000)
+	playing.Artist, playing.Album = "VAN HALEN", "van halen"
+	p.mu.Lock()
+	p.after = &playing
+	p.mu.Unlock()
+
+	if err := d.Command(context.Background(), album("Van Halen", "Van Halen")); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.presses(); fmt.Sprint(got) != "[album=Van Halen/Van Halen]" {
+		t.Errorf("pressed %v", got)
+	}
+}
+
+// Whatever plays afterwards, if it is not the album, the album was not
+// found, and nothing nearer is tried.
+func TestAnAlbumThatDoesNotStartIsNotFound(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, true, false, "A", "One", "Album", abba, 231000)}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	still := st(2, true, false, "A", "One", "Album", abba, 230000)
+	p.mu.Lock()
+	p.after = &still
+	p.mu.Unlock()
+
+	err := d.Command(context.Background(), album("Van Halen", "Van Halen I"))
+	if !errors.Is(err, ErrAlbumNotFound) {
+		t.Errorf("err = %v", err)
+	}
+	if got := p.presses(); len(got) != 1 {
+		t.Errorf("pressed %v; only the one request", got)
+	}
+}
+
+func TestAnAlbumWithNoSessionIsRefused(t *testing.T) {
+	p := &script{}
+	d := &Driver{Source: "itunes", GUID: "X", Player: p, Sink: &sink{}, Logger: quiet}
+	if err := d.Command(context.Background(), album("Van Halen", "Van Halen")); !errors.Is(err, ErrNoSession) {
+		t.Errorf("err = %v", err)
 	}
 	if got := p.presses(); len(got) != 0 {
 		t.Errorf("pressed %v", got)
