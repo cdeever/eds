@@ -83,13 +83,13 @@ the amplifier's tape output
 Which input is the Pi's to be told:
 
 ```bash
-make turntable DEVICE=plughw:UA4FX       # which input; arecord -L on the Pi lists them
+make turntable DEVICE=plughw:CODEC       # which input; arecord -L on the Pi lists them
 make drivers DRIVERS=itunes,turntable    # and the driver on
 make drivers DRIVERS=itunes              # and off: nothing is listened to, nothing is asked
 ```
 
 A card for such a Pi is written with both:
-`make card DRIVERS=itunes,turntable TURNTABLE_DEVICE=plughw:UA4FX`.
+`make card DRIVERS=itunes,turntable TURNTABLE_DEVICE=plughw:CODEC`.
 
 The input must be line level and after the phono stage. Set the interface so
 its peaks stay well below full scale; the driver takes anything under

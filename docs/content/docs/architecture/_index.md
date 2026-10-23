@@ -182,7 +182,8 @@ be lit is not settled.
 
 A few albums are lit by something other than their cover. `nowplayd` names
 the look and `lightd` holds what it looks like; *The Dark Side of the Moon*
-gets a spectrum
+gets a spectrum, and *American Idiot* the reds and pink of a clean scan of
+its sleeve
 ([ADR-0019](/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own/)).
 
 The **LP stand** receives the scene and animates it on its 18 LEDs itself.
@@ -201,8 +202,11 @@ The same few messages drive the rest:
   `eds/lightstand/<id>/state`.
 - **The console** subscribes to all of it and serves one page: the track,
   the sleeve, the sources, the devices, and the strip drawn as the stand is
-  drawing it. It only looks
-  ([ADR-0018](/docs/architecture/decisions/0018-a-console-of-eds-own/)).
+  drawing it. It looks
+  ([ADR-0018](/docs/architecture/decisions/0018-a-console-of-eds-own/)),
+  and switches one thing: whether the stand is lit for records only or for
+  every source
+  ([ADR-0039](/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source/)).
 - **The devices and the agent Pi** send a few events each (boot, network,
   scenes, health) to `eds/log/<id>`, which Deevnet IoTaaS carries into the
   tenant's log store. Grafana reads them there

@@ -2,16 +2,18 @@
 //
 // The page is static files compiled into the binary, plus three things the
 // server answers: the picture as JSON, the same picture pushed whenever it
-// changes, and the cover the stand is lit from. Everything is read-only;
-// there is nothing here that changes anything (ADR-0018).
+// changes, and the cover the stand is lit from. It looks (ADR-0018), and
+// changes one thing: which sources the stand is lit for (ADR-0039).
 package web
 
 import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
+	"mime"
 	"net/http"
 	"strings"
 	"sync"
@@ -62,6 +64,11 @@ type Server struct {
 	// Secure is set when this handler is served over TLS. A browser that has
 	// reached the page that way is then told to keep doing so.
 	Secure bool
+
+	// Switch puts the stand's setting on the bus (ADR-0039): view.StandRecords
+	// or view.StandAll. Nil, the page cannot switch it and the route is not
+	// served.
+	Switch func(sources string) error
 
 	mu      sync.Mutex
 	viewers map[chan struct{}]struct{}
@@ -170,9 +177,19 @@ func (s *Server) Handler() http.Handler {
 			h.Set("Strict-Transport-Security", "max-age=86400")
 		}
 
+		if r.URL.Path == standPath && s.Switch != nil {
+			h.Set("Cache-Control", "no-store")
+			if r.Method != http.MethodPost {
+				h.Set("Allow", "POST")
+				http.Error(w, "the stand's setting is changed with a POST", http.StatusMethodNotAllowed)
+				return
+			}
+			s.stand(w, r)
+			return
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			h.Set("Allow", "GET, HEAD")
-			http.Error(w, "the console only looks", http.StatusMethodNotAllowed)
+			http.Error(w, "the console only looks, but for the stand's setting", http.StatusMethodNotAllowed)
 			return
 		}
 		if !strings.HasPrefix(r.URL.Path, "/api/cover/") {
@@ -182,6 +199,56 @@ func (s *Server) Handler() http.Handler {
 		}
 		mux.ServeHTTP(w, r)
 	})
+}
+
+// standPath is the one route that changes anything (ADR-0039).
+const standPath = "/api/stand"
+
+// stand switches which sources the stand is lit for. The page sends JSON
+// from its own origin; anything else is refused, so that another site open in
+// the same browser cannot switch the stand by posting a form here. There is
+// no login: anyone who can open the console can do this, and this is all
+// they can do.
+//
+// It answers with what it published. Whether nowplayd heard it is said by
+// the setting coming back on the bus, and the page shows that, not this.
+func (s *Server) stand(w http.ResponseWriter, r *http.Request) {
+	scheme := "http://"
+	if s.Secure {
+		scheme = "https://"
+	}
+	if origin := r.Header.Get("Origin"); origin != scheme+r.Host {
+		http.Error(w, "the stand is switched from the console's own page", http.StatusForbidden)
+		return
+	}
+	if mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mt != "application/json" {
+		http.Error(w, "the stand's setting is sent as JSON", http.StatusUnsupportedMediaType)
+		return
+	}
+	var body struct {
+		Sources string `json:"sources"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<10)).Decode(&body); err != nil {
+		http.Error(w, "not a setting", http.StatusBadRequest)
+		return
+	}
+	if body.Sources != view.StandRecords && body.Sources != view.StandAll {
+		http.Error(w, fmt.Sprintf("the stand is lit for %q or %q", view.StandRecords, view.StandAll), http.StatusBadRequest)
+		return
+	}
+	if err := s.Switch(body.Sources); err != nil {
+		if s.Logger != nil {
+			s.Logger.Warn("the stand's setting could not be published", "sources", body.Sources, "error", err)
+		}
+		http.Error(w, "the setting could not be put on the bus", http.StatusBadGateway)
+		return
+	}
+	if s.Logger != nil {
+		s.Logger.Info("the stand's sources were switched from the page", "sources", body.Sources, "from", r.RemoteAddr)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusAccepted)
+	_ = json.NewEncoder(w).Encode(map[string]any{"v": view.ContractVersion, "sources": body.Sources})
 }
 
 func (s *Server) state(w http.ResponseWriter, _ *http.Request) {

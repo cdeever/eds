@@ -15,7 +15,7 @@ import (
 // library is C and nothing in this module is (ADR-0007): the agent is built
 // on a desk for a Pi, and stays that simple.
 type ALSA struct {
-	// Device is ALSA's name for the input, e.g. plughw:UA4FX. A plughw
+	// Device is ALSA's name for the input, e.g. plughw:CODEC. A plughw
 	// device, so that ALSA does the converting: an interface offers the
 	// rates and channels it likes, and they are seldom these.
 	Device string

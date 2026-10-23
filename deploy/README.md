@@ -55,8 +55,10 @@ The console serves a page at `https://console.eds.mobile.deevnet.net/`; port
 80 only redirects there. `make units` opens `http` and `https` in the
 workload's own firewall, which otherwise admits SSH and nothing else. Deevnet IoTaaS lets the site's trusted
 and management networks reach a workload; the guest and IoT networks, and
-anything outside, cannot. The page only looks
-([ADR-0018](../docs/content/docs/architecture/decisions/0018-a-console-of-eds-own.md)).
+anything outside, cannot. The page looks
+([ADR-0018](../docs/content/docs/architecture/decisions/0018-a-console-of-eds-own.md)),
+and switches which sources light the stand
+([ADR-0039](../docs/content/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source.md)).
 
 It runs as a user who is not root, with every capability dropped but the one
 that lets it bind a low port, on a read-only filesystem.

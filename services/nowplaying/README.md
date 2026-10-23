@@ -151,7 +151,7 @@ has a recognizer name what it hears
 ([ADR-0021](../../docs/content/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening.md)).
 
 ```bash
-NP_DRIVERS=turntable NP_TURNTABLE_DEVICE=plughw:UA4FX bin/npagent watch
+NP_DRIVERS=turntable NP_TURNTABLE_DEVICE=plughw:CODEC bin/npagent watch
 ```
 
 Linux only, as it stands: it listens with `arecord`. `arecord -L` lists the
@@ -312,6 +312,15 @@ The stand is for records. A source in `NP_DARK_SOURCES`, `itunes` on the
 workload, has its cover published as usual and given the look `dark`, and
 `lightd` lights nothing from it.
 
+Unless the console has switched the stand to every source
+([ADR-0039](../../docs/content/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source.md)).
+nowplayd reads the retained setting `nowplaying/stand`,
+`{"v":1,"sources":"records"}` or `{"v":1,"sources":"all"}`; while it is
+`all`, `NP_DARK_SOURCES` is treated as empty. A change says the current
+cover's look again at once. No setting, or one it cannot read, is
+`records`, and the last is logged. The subscription is optional: an account
+not granted it is warned about, and the stand stays for records.
+
 An idle room is dark unless something is switched on
 ([ADR-0028](../../docs/content/docs/architecture/decisions/0028-the-stand-is-for-records.md)).
 Before the cover topics are emptied, `current/look` is given the look of no
@@ -368,8 +377,8 @@ only thing it sends there. The dashboard is **Outside Services**
 A few albums are lit by something other than their cover's colors
 ([ADR-0019](../../docs/content/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own.md)).
 The list is in `internal/looks`, matched on the artist and album the track
-already carries, and it is short on purpose: the one entry is *The Dark Side
-of the Moon*, whose look is `spectrum`.
+already carries, and it is short on purpose: *The Dark Side of the Moon*,
+whose look is `spectrum`, and *American Idiot*, whose look is `grenade`.
 
 One piece of music has a look too, whatever record it is on and whoever
 plays it

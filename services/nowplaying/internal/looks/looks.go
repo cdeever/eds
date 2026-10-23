@@ -22,6 +22,9 @@ import (
 // Spectrum is the colors of the rainbow, red to violet.
 const Spectrum = "spectrum"
 
+// Grenade is the red of a heart-shaped grenade, held up in a fist.
+const Grenade = "grenade"
+
 // A rule gives a look to an album by an artist. Both are written as a person
 // would write them; they are compared as plain letters.
 type rule struct {
@@ -31,6 +34,10 @@ type rule struct {
 var rules = []rule{
 	// A prism, a beam of white light, and the spectrum it becomes.
 	{artist: "Pink Floyd", album: "The Dark Side of the Moon", look: Spectrum},
+	// A red grenade in a white hand. A photograph of a pressing reads as one
+	// red in four shades, which a strip shows as one red; the sleeve's own
+	// reds and the pink of the hand are the look (CHG-0032).
+	{artist: "Green Day", album: "American Idiot", look: Grenade},
 }
 
 // Scanner is one red point going from end to end and back.

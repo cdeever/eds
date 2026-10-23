@@ -288,7 +288,7 @@ func TestTopicsCoverWhatApplyReads(t *testing.T) {
 		"eds/nowplaying/source/+/state": true, "eds/nowplaying/source/+/status": true,
 		"eds/lightstand/+/scene": true, "eds/lightstand/+/state": true, "eds/lightstand/+/status": true,
 		"eds/lightd/status": true, "eds/beacon/+/status": true,
-		"eds/screen/+/status": true,
+		"eds/screen/+/status": true, "eds/nowplaying/stand": true,
 	}
 	got := Topics("eds")
 	if len(got) != len(want) {
@@ -384,5 +384,32 @@ func TestPresenceIsOnThePage(t *testing.T) {
 	}
 	if string(out) != `{"id":"lp-stand-01","presence":"claimed"}` {
 		t.Errorf("json = %s", out)
+	}
+}
+
+// ADR-0039: the stand's setting is read from the bus, and anything but "all"
+// is records, as it is to nowplayd.
+func TestTheStandsSettingIsReadAndDefaultsToRecords(t *testing.T) {
+	v := New("eds")
+	if got := v.Snapshot().StandSources; got != StandRecords {
+		t.Fatalf("before anything is heard: %q", got)
+	}
+	if !v.ApplyStored("eds/nowplaying/stand", []byte(`{"v":1,"sources":"all"}`)) || v.Snapshot().StandSources != StandAll {
+		t.Fatalf("all was not taken: %q", v.Snapshot().StandSources)
+	}
+	if v.Apply("eds/nowplaying/stand", []byte(`{"v":1,"sources":"all"}`)) {
+		t.Error("the same setting again was a change")
+	}
+	for _, payload := range []string{``, `{"v":1,"sources":"everything"}`, `{"v":2,"sources":"all"}`, `all`} {
+		v.Apply("eds/nowplaying/stand", []byte(`{"v":1,"sources":"all"}`))
+		if !v.Apply("eds/nowplaying/stand", []byte(payload)) || v.Snapshot().StandSources != StandRecords {
+			t.Errorf("%q: %q", payload, v.Snapshot().StandSources)
+		}
+	}
+	if payload, err := EncodeStand(StandAll); err != nil || string(payload) != `{"v":1,"sources":"all"}` {
+		t.Errorf("encoded %s, %v", payload, err)
+	}
+	if _, err := EncodeStand("everything"); err == nil {
+		t.Error("encoded a word nobody reads")
 	}
 }

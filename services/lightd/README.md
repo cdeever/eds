@@ -28,7 +28,9 @@ cover, retained, and lightd follows it.
   ([ADR-0019](../../docs/content/docs/architecture/decisions/0019-an-album-can-have-a-look-of-its-own.md)).
   A cover with a look lightd knows is sent as that look's preset scene and
   the extractor is not asked. The looks are `spectrum`: six colors, red to
-  violet, in equal shares, moved by `LIGHTD_SPECTRUM_EFFECT`; and `scanner`:
+  violet, in equal shares, moved by `LIGHTD_SPECTRUM_EFFECT`; `grenade`: the
+  reds of a clean scan of *American Idiot* and the pale pink of its hand,
+  shown with the stand's usual effect; and `scanner`:
   one red point going from end to end and back, at a speed and brightness of
   its own (ADR-0030). The presets are
   in `internal/scene/looks.go`. lightd does not learn which album it is for.
