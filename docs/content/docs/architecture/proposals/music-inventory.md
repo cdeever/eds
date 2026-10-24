@@ -9,7 +9,7 @@ weight: 1
 |---|---|
 | **Status** | Proposal, not decided and not built |
 | **Date** | 2026-10-24 |
-| **Where** | a project of its own, in its own repository (to be created); its name is to come |
+| **Where** | **eds-inventory**, a project of its own: [repository](https://github.com/cdeever/eds-inventory), [docs](https://cdeever.github.io/eds-inventory/). It runs in EdS's Deevnet IoTaaS tenant |
 | **Would extend** | [ADR-0022](/docs/architecture/decisions/0022-the-owners-collection-names-the-record/), [ADR-0038](/docs/architecture/decisions/0038-the-turntable-names-the-original-album-by-what-is-on-it/), [ADR-0041](/docs/architecture/decisions/0041-an-artists-nth-album-is-counted-in-musicbrainz/), [ADR-0045](/docs/architecture/decisions/0045-an-nth-album-not-owned-is-the-next-one-that-is/), [ADR-0046](/docs/architecture/decisions/0046-requests-are-matched-against-the-owners-library/) |
 
 A local inventory of the owner's music, in every format, that holds one
@@ -94,8 +94,11 @@ is EdS's idea, and stays in EdS.
 
 ## Open questions
 
-- **Where it runs.** Beside EdS, on the services workload, the one-Pi
-  backend or the media server; not decided.
+- **Which machine it runs on.** It runs in EdS's tenant, since a tenant has
+  no way in from another, and EdS asks it as `lightd` asks `palette`. Whether
+  that is the services workload or one of several Pis, when the one-Pi back
+  end ([ADR-0033](/docs/architecture/decisions/0033-the-whole-back-end-on-one-pi/))
+  becomes more than one, is not decided.
 - **How it keeps in step** with Discogs, the libraries and the streaming
   services, and how often.
 - **What EdS does when it is down**: fall back to today's chase, or report
