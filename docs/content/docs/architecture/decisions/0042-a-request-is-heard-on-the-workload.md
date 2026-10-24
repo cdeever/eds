@@ -89,7 +89,12 @@ workload, `scribe` writes it down and `voiced` makes it a command.**
       "AC/DC", spelled out by the voice, "ACDC's Z". Both were said back as
       not found or not understood, and nothing was asked for. Writing down
       took 0.4 s; counting an artist's albums for the first time, 2 s more.
-- [ ] The same on the workload, with `voiced`'s account, passed on by
-      nowplayd to iTunes.
+- [x] The same on the workload, with `voiced`'s account, passed on by
+      nowplayd to iTunes
+      ([CHG-0034](/docs/changes/2026/0034-voiced-and-scribe-on-the-workload/)):
+      published with the reSpeaker's account, *Van Halen* playing 3.3 s
+      later, from stopped.
 - [ ] A request said in the room, through the reSpeaker, plays its album.
 - [ ] How long a request takes, from the end of speaking to the first track.
+      From the recording's arrival: 3.3 s, of which writing it down is
+      3.5 s on the workload's two cores (CHG-0034).

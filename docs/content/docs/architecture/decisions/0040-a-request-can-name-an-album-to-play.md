@@ -124,5 +124,6 @@ Not yet shown:
 - [x] `play_album` on the bus, carried out by the driver
       ([CHG-0033](/docs/changes/2026/0033-an-album-asked-for-on-the-bus/)):
       *Aerosmith* by Aerosmith, from "Make It", within a second.
-- [ ] `play_album` on `nowplaying/command`, passed on by nowplayd from a
-      sender with an account of its own.
+- [x] `play_album` on `nowplaying/command`, passed on by nowplayd from a
+      sender with an account of its own: voiced's, on 2026-10-24
+      ([CHG-0034](/docs/changes/2026/0034-voiced-and-scribe-on-the-workload/)).

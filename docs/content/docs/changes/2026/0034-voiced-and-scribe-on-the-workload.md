@@ -63,11 +63,30 @@ branch's Terraform and apply.
 
 | When (UTC) | What happened |
 |---|---|
+| 00:38:33–00:38:36 | `terraform apply`: 3 added (`respeaker-01` device and account, `voiced`), 2 changed in place (`console`, `nowplayd`), 0 destroyed. |
+| 00:38:44–00:42:59 | `make -C deploy deploy WHERE=builder`: six images built and loaded, `voiced-broker.env` written, `eds-scribe` and `eds-voiced` enabled, all six restarted. |
+| 00:43:09–00:43:22 | nowplayd, lightd, the console and voiced each timed out on their first connection to the broker, and connected on their restart ten seconds later. |
+| 00:43–00:50 | **lightd could not start**: scribe had been given 8732, which is lightd's port on the same host network. The stand had no scenes for seven minutes. |
+| 00:45:50–00:50:20 | scribe moved to 8733 (`191c640`); `ship WHERE=builder`. All six active, each on its own port. nowplayd again timed out once and connected on its restart. |
+| 00:51:26 | The recording, published with `respeaker-01`'s account: scribe wrote it down in 8.9 s, the model loading with it; voiced sent `play_album` for *Van Halen*; nowplayd passed it to iTunes; the reSpeaker's account read what was heard. **iTunes answered 500**, and then refused the session. |
+| 00:53 | By hand on the relay, `npagent play-album` had the same 500, on the play request alone. iTunes had gone to stopped by itself at about 00:50, with half of *Appetite for Destruction* left. |
+| 01:01:57 | iTunes restarted by the owner, who saw nothing wrong on the PC; the relay followed it again within a second, stopped. |
+| 01:03:57 | The recording again: written down in 3.5 s, `play_album` at 01:04:00.9, "Runnin' With The Devil" playing at 01:04:01.2, the driver's check done at 01:04:02.6. From stopped. |
+
+The workload's memory with all six running: 623 MB used of 1953, 1329 MB available.
 
 ### Departures from the plan
 
+- The port: scribe was given lightd's, and moved.
+- Step 5 needed iTunes restarted first. What stuck it is not known.
+
 ## Follow-ups
 
+- scribe loads its model at startup, not on the first request.
+- Services restarted together time out on their first connection to the
+  broker: a longer timeout, or scribe started after the others.
+- Writing a request down takes 3.5 s on the workload's two cores, against
+  0.4 s on a Mac.
 - The reSpeaker's firmware (step 4), and its provisioning from
   `respeaker_01_broker`.
 - Artists misheard as another name ("Arrowsmith"): corrected against the
