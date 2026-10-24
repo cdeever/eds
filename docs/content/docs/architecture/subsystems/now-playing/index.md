@@ -63,10 +63,58 @@ remembered by the broker is shown gray
 The console itself belongs to the [foundation](../#the-foundation), since it
 shows every subsystem.
 
-## A record, from power on to silence
+## iTunes
 
-The turntable is the longest path through Now Playing. This is what
-happens, in order.
+iTunes is asked, not heard. It runs on a computer on the home network, and
+the broker is inside the Deevnet site, with no path between the two. So the
+agent Pi stands in both: one leg at home, where iTunes can be found, and
+one where the broker is
+([ADR-0010](/docs/architecture/decisions/0010-home-lan-relay/)).
+
+The iTunes driver pairs with iTunes once, the way a phone remote does, and
+from then on is told of every change as it happens, with no polling
+([ADR-0011](/docs/architecture/decisions/0011-itunes-by-remote-pairing/)).
+It publishes the cover iTunes holds, then the state that names it. iTunes
+knows its own album, so the Discogs collection is not asked; `nowplayd`
+fills in only what is missing.
+
+iTunes is the source that takes commands: play or pause, next, previous,
+volume up and down from the [Remote Display](../remote-display/), and an
+album by name from [Voice Request](../voice-request/). A track left paused
+for fifteen seconds is treated as nothing playing; iTunes is still named as
+the source, so pressing play resumes it.
+
+## Spotify
+
+Spotify is read from the account. A driver on the agent Pi asks Spotify's
+Web API what the account is playing, every ten seconds, with permission to
+read playback and to change it
+([ADR-0012](/docs/architecture/decisions/0012-spotify-by-web-api/)).
+
+It is shown as iTunes is
+([ADR-0031](/docs/architecture/decisions/0031-spotify-is-shown-like-itunes/)):
+the driver takes the album's picture from the same answer as the track.
+Until 2026-10-13 it was reported with no cover at all
+([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
+It differs from iTunes in these ways:
+
+- **Its commands go by way of Spotify's servers**, not the home network
+  ([ADR-0032](/docs/architecture/decisions/0032-spotify-takes-commands/)),
+  and only for playback on a device that counts.
+- **Only named devices count.** Playback elsewhere on the account, a phone
+  in a car, is reported as stopped.
+- **It is turned off**, for the calls it makes
+  ([CHG-0024](/docs/changes/2026/0024-spotify-turned-off-again/)), as it
+  was once before
+  ([CHG-0011](/docs/changes/2026/0011-spotify-turned-off/),
+  [CHG-0022](/docs/changes/2026/0022-spotify-shown-and-on-again/)).
+
+## Turntable album detection
+
+A turntable cannot say what it is playing, so it is the longest path
+through Now Playing: the record is heard, named, and matched to the album
+in the owner's collection. This is what happens, from the turntable being
+switched on to the music stopping.
 
 ### The turntable is switched on
 
@@ -161,49 +209,3 @@ When the turntable is switched off, the strip cuts the beacon's power. The
 beacon cannot say goodbye, so the broker says it for it: its last will,
 `offline`, about fifteen seconds later. The turntable stops holding the
 room, and whatever else is playing takes it.
-
-## iTunes
-
-iTunes is asked, not heard. It runs on a computer on the home network, and
-the broker is inside the Deevnet site, with no path between the two. So the
-agent Pi stands in both: one leg at home, where iTunes can be found, and
-one where the broker is
-([ADR-0010](/docs/architecture/decisions/0010-home-lan-relay/)).
-
-The iTunes driver pairs with iTunes once, the way a phone remote does, and
-from then on is told of every change as it happens, with no polling
-([ADR-0011](/docs/architecture/decisions/0011-itunes-by-remote-pairing/)).
-It publishes the cover iTunes holds, then the state that names it. iTunes
-knows its own album, so the Discogs collection is not asked; `nowplayd`
-fills in only what is missing.
-
-iTunes is the source that takes commands: play or pause, next, previous,
-volume up and down from the [Remote Display](../remote-display/), and an
-album by name from [Voice Request](../voice-request/). A track left paused
-for fifteen seconds is treated as nothing playing; iTunes is still named as
-the source, so pressing play resumes it.
-
-## Spotify
-
-Spotify is read from the account. A driver on the agent Pi asks Spotify's
-Web API what the account is playing, every ten seconds, with permission to
-read playback and to change it
-([ADR-0012](/docs/architecture/decisions/0012-spotify-by-web-api/)).
-
-It is shown as iTunes is
-([ADR-0031](/docs/architecture/decisions/0031-spotify-is-shown-like-itunes/)):
-the driver takes the album's picture from the same answer as the track.
-Until 2026-10-13 it was reported with no cover at all
-([ADR-0016](/docs/architecture/decisions/0016-a-source-can-be-reported-without-its-cover/)).
-It differs from iTunes in these ways:
-
-- **Its commands go by way of Spotify's servers**, not the home network
-  ([ADR-0032](/docs/architecture/decisions/0032-spotify-takes-commands/)),
-  and only for playback on a device that counts.
-- **Only named devices count.** Playback elsewhere on the account, a phone
-  in a car, is reported as stopped.
-- **It is turned off**, for the calls it makes
-  ([CHG-0024](/docs/changes/2026/0024-spotify-turned-off-again/)), as it
-  was once before
-  ([CHG-0011](/docs/changes/2026/0011-spotify-turned-off/),
-  [CHG-0022](/docs/changes/2026/0022-spotify-shown-and-on-again/)).
