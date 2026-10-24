@@ -16,6 +16,17 @@ the project's own page has the whole of it:
 A media server in the basement sends one digital feed (S/PDIF) to every
 room, and each room's own stereo plays it.
 
+It is built by hand, and that is worth the effort:
+
+- **No monthly subscription fees.** Nothing in the house's sound depends on
+  a company's service or its pricing; the music plays whether or not anyone
+  is paying for an app.
+- **Each room keeps its own stereo**, vintage ones included, instead of
+  speakers chosen by whoever sells the system.
+- **Custom integrations are possible** with the providers already in use,
+  iTunes, Spotify and the owner's Discogs collection among them, in ways no
+  packaged system offers. EdS is one of those integrations.
+
 ### Switching between the turntable and the house music
 
 Put a record on the turntable and it takes over the feed, so the record
