@@ -59,6 +59,46 @@ menu "Ears (reSpeaker Lite)"
 
     endmenu
 
+    menu "Wake word"
+
+        config EA_WAKE_WORD
+            string "What it answers to"
+            default "Hey Jarvis"
+            help
+                For the console and the log. The model is
+                main/models/hey_jarvis.tflite, and the settings below are
+                its manifest's (main/models/hey_jarvis.json).
+
+        config EA_WAKE_CUTOFF
+            int "Probability that counts, of 255"
+            range 1 255
+            default 247
+            help
+                The manifest's probability_cutoff, 0.97, as ESPHome holds it.
+                Lower wakes more readily, and more often for nothing.
+
+        config EA_WAKE_WINDOW
+            int "Answers averaged"
+            range 1 20
+            default 5
+            help
+                The manifest's sliding_window_size.
+
+        config EA_WAKE_STEP_MS
+            int "Feature step, ms"
+            default 10
+            help
+                The manifest's feature_step_size.
+
+        config EA_WAKE_ARENA
+            int "Model arena, bytes"
+            default 22860
+            help
+                The manifest's tensor_arena_size. Twice this is allocated, as
+                ESPHome is prepared to; the console says how much is used.
+
+    endmenu
+
     menu "Button and light"
 
         config EA_BUTTON_GPIO

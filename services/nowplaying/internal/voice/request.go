@@ -59,7 +59,10 @@ var ordinals = map[string]int{
 // album" asks for "Van Halens"): the grammar cannot tell it from a name that
 // ends in one, such as Talking Heads, and whoever looks the artist up can.
 func Parse(words string) (Request, error) {
-	text := clean(words)
+	text, ok := fromPlay(clean(words))
+	if !ok {
+		return Request{}, ErrNotARequest
+	}
 	if m := nthBy.FindStringSubmatch(text); m != nil {
 		if n, ok := ordinal(m[1]); ok {
 			return request(m[2], "", n)
@@ -103,6 +106,27 @@ func ordinal(word string) (int, bool) {
 		}
 	}
 	return 0, false
+}
+
+// before is a word or two ahead of "play": the end of the wake word, which
+// the device keeps a moment of so that "play" keeps its P ("…vis. Play
+// Rocks by Aerosmith"), or a filler ("um, play").
+var before = regexp.MustCompile(`(?i)^((?:\S+\s+){1,2}?)(play\s.*)$`)
+
+// negation, ahead of "play", makes it not a request: "don't play Rocks by
+// Aerosmith" is never a reason to play it.
+var negation = regexp.MustCompile(`(?i)\b(?:don'?t|do\s+not|not|never|no|stop)\b`)
+
+// fromPlay is the words from "play" on, allowing a word or two before it.
+func fromPlay(text string) (string, bool) {
+	if len(text) >= 5 && strings.EqualFold(text[:5], "play ") {
+		return text, true
+	}
+	m := before.FindStringSubmatch(text)
+	if m == nil || negation.MatchString(m[1]) {
+		return "", false
+	}
+	return m[2], true
 }
 
 // politeness is what a person says around a request that is not it.

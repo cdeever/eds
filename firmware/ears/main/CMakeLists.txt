@@ -2,6 +2,8 @@ set(srcs
     "main.c"
     "config/ea_credentials.c"
     "app/audio/pcm.c"
+    "app/audio/endpoint.c"
+    "app/wake/wake.cc"
     "app/events/event_format.c"
     "app/events/event_log.c"
     "hardware/mic.c"
@@ -13,6 +15,7 @@ set(srcs
 set(includes
     "config"
     "app/audio"
+    "app/wake"
     "app/events"
     "hardware"
     "network/wifi"
@@ -31,6 +34,8 @@ idf_component_register(
     SRCS ${srcs}
     INCLUDE_DIRS ${includes}
     EMBED_TXTFILES ${embeds}
+    EMBED_FILES "models/hey_jarvis.tflite"
     REQUIRES nvs_flash esp_wifi esp_event esp_timer esp_app_format app_update
              esp_driver_i2s esp_driver_gpio esp_driver_usb_serial_jtag mqtt
+             esp-tflite-micro esp-micro-speech-features
 )

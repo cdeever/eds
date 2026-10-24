@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "endpoint.h"
 #include "event_format.h"
 #include "pcm.h"
 
@@ -170,6 +171,86 @@ static void test_the_wav_header_is_what_scribe_reads(void)
     CHECK(get32(h + 40) == 64000, "data %u", get32(h + 40));
 }
 
+
+// --- the end of a request ------------------------------------------------------
+
+#define BLOCK 32 // ms, as the device reads
+
+// feed runs blocks of one level for ms, and says what the last one said.
+static ea_endpoint_result_t feed(ea_endpoint_t *e, float db, uint32_t ms)
+{
+    ea_endpoint_result_t r = EA_ENDPOINT_LISTENING;
+    for (uint32_t t = 0; t < ms && r == EA_ENDPOINT_LISTENING; t += BLOCK) {
+        r = ea_endpoint_feed(e, db, BLOCK);
+    }
+    return r;
+}
+
+static ea_endpoint_t quiet_room(void)
+{
+    ea_endpoint_t e;
+    ea_endpoint_init(&e);
+    for (int i = 0; i < 100; i++) {
+        ea_endpoint_idle(&e, -45.0f);
+    }
+    return e;
+}
+
+static void test_a_request_ends_when_the_speaker_stops(void)
+{
+    ea_endpoint_t e = quiet_room();
+    ea_endpoint_start(&e);
+    CHECK(feed(&e, -45.0f, 300) == EA_ENDPOINT_LISTENING, "a breath before speaking");
+    CHECK(feed(&e, -18.0f, 1800) == EA_ENDPOINT_LISTENING, "speaking");
+    CHECK(feed(&e, -45.0f, 400) == EA_ENDPOINT_LISTENING, "a pause between words is not the end");
+    CHECK(feed(&e, -20.0f, 600) == EA_ENDPOINT_LISTENING, "speaking again");
+    CHECK(feed(&e, -45.0f, 800) == EA_ENDPOINT_DONE, "the end");
+    CHECK(e.heard_ms < 4000, "heard %u ms", e.heard_ms);
+}
+
+static void test_nobody_speaking_after_the_wake_word_is_nothing(void)
+{
+    ea_endpoint_t e = quiet_room();
+    ea_endpoint_start(&e);
+    CHECK(feed(&e, -44.0f, 5000) == EA_ENDPOINT_NOTHING, "silence");
+    CHECK(e.heard_ms >= 3000 && e.heard_ms < 3100, "gave up after %u ms", e.heard_ms);
+}
+
+static void test_a_request_in_a_loud_room_ends_at_six_seconds(void)
+{
+    ea_endpoint_t e = quiet_room();
+    ea_endpoint_start(&e);
+    CHECK(feed(&e, -15.0f, 20000) == EA_ENDPOINT_DONE, "never quiet");
+    CHECK(e.heard_ms >= 6000 && e.heard_ms < 6100, "ended at %u ms", e.heard_ms);
+}
+
+// Music that keeps playing raises the floor, so speech is what stands above
+// it, not the music; a shout does not.
+static void test_the_floor_follows_the_room_up_slowly_and_down_at_once(void)
+{
+    ea_endpoint_t e = quiet_room();
+    ea_endpoint_idle(&e, -10.0f); // a door
+    CHECK(e.floor_db < -44.0f, "one loud block moved the floor to %.1f", e.floor_db);
+    for (int i = 0; i < 2000; i++) { // a minute of music
+        ea_endpoint_idle(&e, -30.0f);
+    }
+    CHECK(e.floor_db > -32.0f && e.floor_db <= -30.0f, "after music, floor %.1f", e.floor_db);
+    ea_endpoint_idle(&e, -50.0f);
+    CHECK(e.floor_db == -50.0f, "music stopping, floor %.1f", e.floor_db);
+}
+
+// MUTE is digital silence: the floor does not follow it down to nothing.
+static void test_the_floor_has_limits(void)
+{
+    ea_endpoint_t e = quiet_room();
+    ea_endpoint_idle(&e, -90.0f);
+    CHECK(e.floor_db == -70.0f, "muted, floor %.1f", e.floor_db);
+    for (int i = 0; i < 20000; i++) {
+        ea_endpoint_idle(&e, -5.0f);
+    }
+    CHECK(e.floor_db == -25.0f, "deafening, floor %.1f", e.floor_db);
+}
+
 // --- events --------------------------------------------------------------------
 
 static void test_an_event_is_one_json_line(void)
@@ -194,6 +275,11 @@ int main(void)
     test_a_rate_that_is_not_a_multiple_is_refused();
     test_full_scale_is_clipped_not_wrapped();
     test_the_wav_header_is_what_scribe_reads();
+    test_a_request_ends_when_the_speaker_stops();
+    test_nobody_speaking_after_the_wake_word_is_nothing();
+    test_a_request_in_a_loud_room_ends_at_six_seconds();
+    test_the_floor_follows_the_room_up_slowly_and_down_at_once();
+    test_the_floor_has_limits();
     test_an_event_is_one_json_line();
     printf("%d checks, %d failed\n", checks, failures);
     return failures == 0 ? 0 : 1;

@@ -11,8 +11,10 @@
 #include "event_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "endpoint.h"
 #include "panel.h"
 #include "pcm.h"
+#include "wake.h"
 
 static const char *TAG = "mic";
 
@@ -20,10 +22,33 @@ static const char *TAG = "mic";
 #define BLOCK_FRAMES 512
 
 #define MAX_SAMPLES ((size_t)EA_PCM_RATE * EA_REQUEST_MAX_MS / 1000)
-// What the console asks for: no button is held, so it is heard for this long,
-// or until Enter again.
-#define ASKED_SAMPLES ((size_t)EA_PCM_RATE * 5)
 #define MIN_SAMPLES ((size_t)EA_PCM_RATE * EA_REQUEST_MIN_MS / 1000)
+
+// What was heard just before the wake word was decided on, kept with the
+// request: the model decides a moment after "Jarvis" ends, and a "play" said
+// straight after it lost its P without this (2026-10-24, "Clay Aerosmith's
+// first album"). It may bring the end of the wake word with it; voiced
+// allows a word or two before "play".
+#define PREROLL_SAMPLES ((size_t)EA_PCM_RATE * 350 / 1000)
+static int16_t preroll[PREROLL_SAMPLES];
+static size_t preroll_at; // the next to be written, and so the oldest
+
+static void keep(const int16_t *s, size_t n)
+{
+    for (size_t i = 0; i < n; i++) {
+        preroll[preroll_at] = s[i];
+        preroll_at = (preroll_at + 1) % PREROLL_SAMPLES;
+    }
+}
+
+// The pre-roll, oldest first, into out; returns how many.
+static size_t replay(int16_t *out)
+{
+    for (size_t i = 0; i < PREROLL_SAMPLES; i++) {
+        out[i] = preroll[(preroll_at + i) % PREROLL_SAMPLES];
+    }
+    return PREROLL_SAMPLES;
+}
 
 static i2s_chan_handle_t rx;
 static ea_request_fn deliver;
@@ -74,7 +99,7 @@ static esp_err_t open_i2s(void)
 // firmware. One with frames at no rate a source sends is this device not
 // keeping up - a request being written to the broker holds the reading for
 // seconds - and says nothing about the XMOS chip.
-static void report(uint32_t measured, uint32_t frames, uint32_t elapsed_ms, uint32_t *said)
+static void report(uint32_t measured, uint32_t frames, uint32_t elapsed_ms, uint32_t *said, float floor_db)
 {
     if (measured == 0 && frames > 0) {
         ESP_LOGI(TAG, "%u frames in %u ms: not kept up with; measuring again",
@@ -84,9 +109,9 @@ static void report(uint32_t measured, uint32_t frames, uint32_t elapsed_ms, uint
     if (measured == 0) {
         ESP_LOGW(TAG, "no clock on BCLK GPIO%d", CONFIG_EA_I2S_GPIO_BCLK);
     } else {
-        ESP_LOGI(TAG, "%u Hz; left %.1f dB, right %.1f dB; the voice is taken from the %s",
-                 (unsigned)measured, (double)level[0], (double)level[1],
-                 CONFIG_EA_VOICE_CHANNEL == 0 ? "left" : "right");
+        ESP_LOGI(TAG, "%u Hz; voice %.1f dB over a floor of %.1f; \"%s\" came to %u/255",
+                 (unsigned)measured, (double)level[CONFIG_EA_VOICE_CHANNEL], (double)floor_db,
+                 CONFIG_EA_WAKE_WORD, (unsigned)ea_wake_peak());
     }
     if (measured != *said) {
         *said = measured;
@@ -102,21 +127,34 @@ static void report(uint32_t measured, uint32_t frames, uint32_t elapsed_ms, uint
     }
 }
 
+// How a request began, which says how it ends: a held button when it is let
+// go; the wake word and the console when the speaker stops (endpoint.c), and
+// the console also at a second Enter.
+typedef enum { IDLE, WOKEN, ASKED, HELD } hearing_t;
+
+static const char *hearing_name(hearing_t h)
+{
+    return h == WOKEN ? "woken" : h == ASKED ? "asked" : "held";
+}
+
 static void listen_task(void *arg)
 {
     (void)arg;
     static int32_t frames[BLOCK_FRAMES * EA_PCM_CHANNELS];
+    static int16_t idle[BLOCK_FRAMES]; // a block as 16 kHz mono, for the wake word
     int16_t *samples = (int16_t *)(request + 44);
 
     int64_t window_start = esp_timer_get_time();
     uint32_t window_frames = 0;
     uint32_t said = UINT32_MAX;
 
-    bool hearing = false;
-    bool timed = false; // asked on the console, not held
+    ea_endpoint_t endpoint;
+    ea_endpoint_init(&endpoint);
+
+    hearing_t hearing = IDLE;
     size_t heard = 0;
-    int64_t carry = 0;
-    uint32_t carried = 0;
+    int64_t carry = 0, idle_carry = 0;
+    uint32_t carried = 0, idle_carried = 0;
 
     for (;;) {
         size_t got = 0;
@@ -140,17 +178,29 @@ static void listen_task(void *arg)
             if (measured != 0 || window_frames == 0) {
                 rate = measured;
             }
-            report(measured, window_frames, (uint32_t)((now - window_start) / 1000), &said);
+            report(measured, window_frames, (uint32_t)((now - window_start) / 1000), &said, endpoint.floor_db);
             window_start = now;
             window_frames = 0;
         }
 
+        bool usable = rate != 0 && rate % EA_PCM_RATE == 0;
+        float voice = level[CONFIG_EA_VOICE_CHANNEL];
+        uint32_t block_ms = usable && n > 0 ? (uint32_t)(n * 1000 / rate) : 0;
         bool pressed = ea_panel_pressed();
         bool asked = ea_panel_asked();
-        if ((pressed || asked) && !hearing) {
-            if (rate == 0 || rate % EA_PCM_RATE != 0) {
-                // Said once per press: nothing heard is better than a
-                // request at the wrong speed.
+
+        if (hearing == IDLE) {
+            bool woken = false;
+            if (usable && n > 0) {
+                size_t m = ea_pcm_take(frames, n, CONFIG_EA_VOICE_CHANNEL, rate, idle, BLOCK_FRAMES,
+                                       &idle_carry, &idle_carried);
+                woken = ea_wake_feed(idle, m);
+                keep(idle, m);
+                ea_endpoint_idle(&endpoint, voice);
+            }
+            hearing_t start = woken ? WOKEN : asked ? ASKED : pressed ? HELD : IDLE;
+            if (start != IDLE && !usable) {
+                // Nothing heard is better than a request at the wrong speed.
                 ESP_LOGW(TAG, "not listening: the rate is %u Hz, and 16 kHz cannot be made from it", (unsigned)rate);
                 ea_panel_flash(5, 60, 60);
                 while (ea_panel_pressed()) {
@@ -158,43 +208,68 @@ static void listen_task(void *arg)
                 }
                 continue;
             }
-            hearing = true;
-            timed = !pressed;
-            asked = false; // the Enter that started it does not also stop it
-            heard = 0;
-            carry = 0;
-            carried = 0;
-            ea_panel_light(true);
-            ESP_LOGI(TAG, "listening%s", timed ? " for five seconds (Enter stops)" : "");
-        }
-
-        if (hearing && n > 0) {
-            heard += ea_pcm_take(frames, n, CONFIG_EA_VOICE_CHANNEL, rate, samples + heard,
-                                 MAX_SAMPLES - heard, &carry, &carried);
-        }
-
-        bool done = timed ? (asked || heard >= ASKED_SAMPLES) : (!pressed || heard >= MAX_SAMPLES);
-        if (hearing && done) {
-            hearing = false;
-            ea_panel_light(false);
-            if (heard < MIN_SAMPLES) {
-                ESP_LOGI(TAG, "too short to be a request (%u ms); nothing sent", (unsigned)(heard * 1000 / EA_PCM_RATE));
-                continue;
-            }
-            ea_wav_header(request, (uint32_t)heard);
-            ESP_LOGI(TAG, "heard %u ms; sending", (unsigned)(heard * 1000 / EA_PCM_RATE));
-            deliver(request, 44 + heard * 2);
-            // Whatever the XMOS chip sent meanwhile is stale: start the
-            // measurement again rather than count a gap as a slow clock.
-            window_start = esp_timer_get_time();
-            window_frames = 0;
-            while (ea_panel_pressed()) { // held past fifteen seconds
-                vTaskDelay(pdMS_TO_TICKS(20));
+            if (start != IDLE) {
+                hearing = start;
+                heard = start == WOKEN ? replay(samples) : 0;
+                carry = 0;
+                carried = 0;
+                ea_endpoint_start(&endpoint);
+                ea_panel_light(true);
+                if (start == WOKEN) {
+                    ESP_LOGI(TAG, "woken by \"%s\"; listening until you stop", CONFIG_EA_WAKE_WORD);
+                    ea_event_log(EA_EVENT_INFO, "voice.woken", "Heard \"%s\"", CONFIG_EA_WAKE_WORD);
+                } else {
+                    ESP_LOGI(TAG, "listening until you %s", start == HELD ? "let go" : "stop (or Enter)");
+                }
+                continue; // what woke it is not the request
             }
         }
 
-        if (err == ESP_ERR_TIMEOUT && n == 0) {
-            continue; // no clock: the report says so
+        if (hearing == IDLE) {
+            continue;
+        }
+
+        if (n > 0) {
+            heard += ea_pcm_take(frames, n, CONFIG_EA_VOICE_CHANNEL, rate, samples + heard, MAX_SAMPLES - heard,
+                                 &carry, &carried);
+        }
+        ea_endpoint_result_t ended = EA_ENDPOINT_LISTENING;
+        if (hearing == HELD) {
+            ended = pressed && heard < MAX_SAMPLES ? EA_ENDPOINT_LISTENING : EA_ENDPOINT_DONE;
+        } else {
+            ended = block_ms > 0 ? ea_endpoint_feed(&endpoint, voice, block_ms) : EA_ENDPOINT_LISTENING;
+            if ((hearing == ASKED && asked) || heard >= MAX_SAMPLES) {
+                ended = EA_ENDPOINT_DONE;
+            }
+        }
+        if (ended == EA_ENDPOINT_LISTENING) {
+            continue;
+        }
+
+        hearing_t was = hearing;
+        hearing = IDLE;
+        ea_panel_light(false);
+        ea_wake_reset();
+        unsigned ms = (unsigned)(heard * 1000 / EA_PCM_RATE);
+        if (ended == EA_ENDPOINT_NOTHING) {
+            ESP_LOGI(TAG, "nothing said after %s; nothing sent", hearing_name(was));
+            ea_event_log(EA_EVENT_INFO, "voice.nothing", "Nothing was said after the %s", hearing_name(was));
+            ea_panel_flash(3, 120, 120);
+            continue;
+        }
+        if (heard < MIN_SAMPLES) {
+            ESP_LOGI(TAG, "too short to be a request (%u ms); nothing sent", ms);
+            continue;
+        }
+        ea_wav_header(request, (uint32_t)heard);
+        ESP_LOGI(TAG, "%s, heard %u ms; sending", hearing_name(was), ms);
+        deliver(request, 44 + heard * 2);
+        // Whatever the XMOS chip sent meanwhile is stale: start the
+        // measurement again rather than count a gap as a slow clock.
+        window_start = esp_timer_get_time();
+        window_frames = 0;
+        while (ea_panel_pressed()) { // held past fifteen seconds
+            vTaskDelay(pdMS_TO_TICKS(20));
         }
     }
 }
@@ -214,7 +289,12 @@ esp_err_t ea_mic_start(ea_request_fn on_request)
     ESP_LOGI(TAG, "I2S %s on BCLK %d, WS %d, DIN %d; expecting %d Hz",
              CONFIG_EA_I2S_SLAVE ? "following the XMOS clock" : "driving the clock",
              CONFIG_EA_I2S_GPIO_BCLK, CONFIG_EA_I2S_GPIO_WS, CONFIG_EA_I2S_GPIO_DIN, CONFIG_EA_I2S_RATE);
-    if (xTaskCreatePinnedToCore(listen_task, "listen", 6144, NULL, 5, NULL, 1) != pdPASS) {
+    // Without the wake word the console and the button still ask.
+    if (ea_wake_init() != ESP_OK) {
+        ea_event_log(EA_EVENT_ERROR, "wake.failed", "The wake word could not be loaded");
+    }
+    // The model runs on this task, thirty times a second.
+    if (xTaskCreatePinnedToCore(listen_task, "listen", 12288, NULL, 5, NULL, 1) != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;

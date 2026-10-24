@@ -181,6 +181,10 @@ esp_err_t ea_mqtt_start(void)
         // A request is written in one go, half a megabyte at most; on a
         // slow moment the default would give up part-way.
         .network.timeout_ms = 20000,
+        // And in pieces of this: with the default 1 KB, a five-second
+        // request was 160 writes, each waiting on the one before's
+        // acknowledgment, and took 16 to 22 seconds (CHG-0036).
+        .buffer.out_size = 16384,
     };
 
     client = esp_mqtt_client_init(&config);

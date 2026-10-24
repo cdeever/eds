@@ -25,6 +25,11 @@ func TestRequestsAreRead(t *testing.T) {
 		"Could you please play Kind of Blue by Miles Davis?": {Artist: "Miles Davis", Album: "Kind of Blue"},
 		"Play the album Back in Black by AC/DC, please.":     {Artist: "AC/DC", Album: "Back in Black"},
 		"  PLAY   Rocks   by   Aerosmith  ":                  {Artist: "Aerosmith", Album: "Rocks"},
+
+		// The end of the wake word, kept with the request, or a filler.
+		"...vis. Play Aerosmith's first album.": {Artist: "Aerosmith", Nth: 1},
+		"Jarvis, play Rocks by Aerosmith.":      {Artist: "Aerosmith", Album: "Rocks"},
+		"Um, play Van Halen's first album":      {Artist: "Van Halen", Nth: 1},
 	} {
 		got, err := Parse(words)
 		if err != nil || got != want {
@@ -44,6 +49,12 @@ func TestWhatIsNotARequestIsNotRead(t *testing.T) {
 		"Stop.",
 		"Play by Van Halen",
 		"Play the first album by",
+		"Clay Aerosmith's first album.", // "play" without its P, as it was heard
+		"Don't play Van Halen's first album.",
+		"Do not play Rocks by Aerosmith.",
+		"No, play Rocks by Aerosmith.",
+		"Never play Rocks by Aerosmith.",
+		"One two three play Rocks by Aerosmith.", // too far from the start
 	} {
 		if got, err := Parse(words); !errors.Is(err, ErrNotARequest) {
 			t.Errorf("Parse(%q) = %+v, %v; want not a request", words, got, err)
