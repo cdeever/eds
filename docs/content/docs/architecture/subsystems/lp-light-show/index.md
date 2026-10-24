@@ -7,8 +7,8 @@ aliases:
 
 # LP Light Show
 
-The first vertical, and the reason EdS exists: a record's cover becomes the
-light on its stand. Prop the jacket on the LP stand and it is illuminated in
+The first subsystem, and EdS's first idea of many: a record's cover becomes
+the light on its stand. Prop the jacket on the LP stand and it is illuminated in
 its own colors, set slowly moving, for as long as the record plays. It is
 the first of what may be several light shows, which is why it is named for
 the LP.
@@ -27,9 +27,14 @@ the LP.
 How the three divide the color decisions is in
 [Layer Boundaries](/docs/architecture/boundaries/).
 
+## Outside services
+
+None. Everything it needs comes from Now Playing, and `palette` and
+`lightd` run on EdS's own workload.
+
 ## A cover, to the lights
 
-### 1. The cover is taken apart
+### The cover is taken apart
 
 `lightd` subscribes to Now Playing's cover topic and sees only image bytes;
 it never learns the track or the album
@@ -41,7 +46,7 @@ near-white, near-neutral), clusters what is left, and returns ranked
 swatches, each with its color, its share of the sleeve and how colorful it
 is. The same cover always gives the same answer.
 
-### 2. The colors become a light pattern
+### The colors become a light pattern
 
 `lightd` knows there is a strip on the other end, so the decisions that
 need that knowledge are made here: it rejects swatches too gray to read as
@@ -62,7 +67,7 @@ Some sleeves still want work. One that is all white, all black, black and
 white, or a single color leaves little to choose from, and how those should
 be lit is not settled.
 
-### 3. The stand plays it
+### The stand plays it
 
 The **LP stand** receives the scene and animates it on its 18 LEDs itself,
 applying the gamma curve its own driver and diffuser need. It reports what

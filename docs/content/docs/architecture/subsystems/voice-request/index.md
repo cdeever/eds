@@ -30,28 +30,37 @@ house, or on one carried from room to room.
   album, year, tracks), made from its XML and never committed
   ([ADR-0046](/docs/architecture/decisions/0046-requests-are-matched-against-the-owners-library/)).
 
+## Outside services
+
+Speech is written down on EdS's own workload, not by an outside service.
+One is asked. Every call to one is counted, a minute at a time, on the Outside Services dashboard ([ADR-0027](/docs/architecture/decisions/0027-what-is-asked-of-outside-services-is-counted/)).
+
+| Service | Asked by | For |
+|---|---|---|
+| **MusicBrainz** | `voiced` | counting an artist's studio albums, when an album is asked for by its place |
+
 ## A request, from the word to the music
 
-### 1. The ears wake
+### The ears wake
 
 The ears listen for their wake word on the device itself, and send nothing
 until they hear it. When they do, they say so on `eds/voice/<id>/woken`,
 and keep what follows until the speaker stops, at most six seconds.
 
-### 2. The music is turned down
+### The music is turned down
 
 On `woken`, `voiced` sends `duck` to whatever is current, and iTunes goes to
 a quarter of its volume while the request is heard. It comes back on
 `unduck`, once the request is answered, or by itself after ten seconds
 ([ADR-0044](/docs/architecture/decisions/0044-the-music-is-turned-down-while-a-request-is-heard/)).
 
-### 3. The request is sent and written down
+### The request is sent and written down
 
 The ears send the request as one WAV, 16 kHz mono, on
 `eds/voice/<id>/utterance`, never retained. `voiced` hands it to `scribe`
 over HTTP and gets back words.
 
-### 4. The words become an album
+### The words become an album
 
 `voiced` reads the words with a short grammar: "play X's first album",
 "play the Nth album by X", "play ALBUM by X".
@@ -67,7 +76,7 @@ over HTTP and gets back words.
 - **Words that are not a request** are said back as not understood. Nothing
   nearer is guessed.
 
-### 5. The album plays
+### The album plays
 
 `voiced` publishes `play_album` to `eds/nowplaying/command`, like any
 controller. `nowplayd` passes it to iTunes, whatever is current

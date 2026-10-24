@@ -28,6 +28,19 @@ told, and publishes one answer for everyone else.
   to the source that should carry it out
   ([ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/)).
 
+## Outside services
+
+Now Playing depends on services EdS does not run. Every call to one is counted, a minute at a time, on the Outside Services dashboard ([ADR-0027](/docs/architecture/decisions/0027-what-is-asked-of-outside-services-is-counted/)).
+
+| Service | Asked by | For |
+|---|---|---|
+| **Shazam** | the turntable driver, through `eds-recognize` | naming a clip of a record; an endpoint nobody promised, which may stop working any day |
+| **Discogs** | `nowplayd` | the owner's collection: which record is on the platter, and its sleeve |
+| **Deezer** | `nowplayd` | finding the album a track is on, and its cover |
+| **iTunes Search** (Apple) | `nowplayd` | an album and its cover, when Deezer has none |
+| **MusicBrainz**, with the **Cover Art Archive** | `nowplayd` | what each album is, the original among reissues and compilations, and a cover |
+| **Spotify Web API** | the Spotify driver | what the account is playing, and commands (turned off) |
+
 ## What it offers
 
 The rest of EdS reads Now Playing from these topics, all retained and
@@ -50,104 +63,18 @@ console cannot differ about what is playing, because none of them works it
 out. It also means each lookup is made once and not once per subscriber,
 which keeps what EdS asks of other people's services small.
 
-## A record, from power on to silence
+## Seen on the console
 
-The turntable is the longest path through Now Playing. This is what
-happens, in order.
-
-### 1. The turntable is switched on
-
-The turntable is plugged into the master outlet of a smart power strip,
-which powers its other outlets only while the turntable draws power. Two
-things come on with it: the converter that turns the record into S/PDIF,
-and the **power beacon**, an ESP32 with nothing attached. The strip and the
-converter are older than EdS
-([Background: Sound Around the House](/docs/architecture/spdif/)); the beacon
-was added to the same strip to learn the same thing, without touching the
-path the music takes.
-
-The beacon's connection is its message. It joins the WiFi, connects to the
-broker and publishes `online`, retained, to
-`eds/beacon/turntable-power-01/status`. It knows nothing about turntables;
-`nowplayd` is told which source that beacon speaks for.
-
-From that moment the turntable **holds the room**: `nowplayd` makes it the
-current source before it has played a note, ahead of anything else that is
-playing or paused
-([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)).
-This is why lifting the needle does not hand the room to an iTunes left
-paused in another room.
-
-### 2. The record is heard
-
-A turntable has no data output. It cannot say what is on it; sound is all it
-gives, so EdS listens.
-
-The sound goes from the converter down the house as S/PDIF, through the
-switch it shares with the media server, and into a USB sound card on the
-agent Pi. The **turntable driver** listens to that input all the time and
-reports only what it is sure of
-([ADR-0021](/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening/)):
-
-- silence is `stopped`;
-- music it cannot name yet is `playing`, with no track.
-
-That feed is there whether or not a record is on, which is why power and
-sound are reported separately: the beacon says the turntable is on, the
-driver says whether it is making music.
-
-### 3. The song is named
-
-While music plays, the driver cuts a twelve-second clip and hands it to the
-**recognizer**, a small program that sends it to Shazam and prints a title,
-an artist and an album. The driver knows only "a WAV in, a name out"; the
-recognizer uses an endpoint nobody promised, and is the one file that would
-change if it stopped working.
-
-It was chosen because it costs nothing, which was enough to get the
-turntable going. A paid service with a published API, or fingerprinting the
-record locally and asking nobody, are both being considered for later.
-Either would replace that one file and nothing else.
-
-- The first answer after the needle comes down is believed alone.
-- After that a different name needs two clips that agree, so one wrong
-  answer does not repaint the room mid-song.
-- A second of quiet followed by music is taken as the gap between two
-  tracks: listening starts over and the next answer is believed alone
-  again ([ADR-0026](/docs/architecture/decisions/0026-what-silence-means-on-the-turntable/)).
-
-The driver publishes what it heard, retained, to its own source topic,
-`eds/nowplaying/source/<id>/state`. It looks nothing up and has no cover to
-send.
-
-### 4. The record and its cover are found
-
-A source that hears a track cannot know which record it is on: the same
-song is on the album, a compilation and a box set. So for the turntable,
-`nowplayd` asks the **owner's Discogs collection** first, and its answer
-replaces the album the recognizer named
-([ADR-0022](/docs/architecture/decisions/0022-the-owners-collection-names-the-record/)).
-The sleeve comes from there too, so the picture is of the record actually
-on the platter. If the collection does not have it, the catalogs are asked
-in turn: Deezer, iTunes, MusicBrainz.
-
-Then it publishes the topics above. For the turntable, `current` also says
-there are no controls: a record cannot be skipped from a screen
-([ADR-0025](/docs/architecture/decisions/0025-current-says-when-there-are-no-controls/)).
-
-### 5. The music stops
-
-After twenty seconds of silence the driver says `stopped`. `nowplayd` then
-publishes `current` with no track and **empties** the cover topics, which is
-the one way anything is told there is no cover
-([ADR-0024](/docs/architecture/decisions/0024-paused-long-enough-is-not-playing/)).
-Turning a record over does this too; the cover comes back with the first
-track named on the other side.
-
-When the turntable is switched off, the strip cuts the beacon's power. The
-beacon cannot say goodbye, so the broker says it for it: its last will,
-`offline`, about fifteen seconds later. The turntable stops holding the
-room, and whatever else is playing takes it.
+What Now Playing decides is shown on the console, the page a person looks
+at: <https://console.eds.mobile.deevnet.net/>. It shows what is playing
+whatever the source, a record, iTunes or Spotify, with its sleeve, and the
+current status of the system around it: which sources are reporting and
+what each is doing, which devices are online, and the stand's strip drawn as
+the stand is drawing it. A device heard recently is shown green; one only
+remembered by the broker is shown gray
+([ADR-0034](/docs/architecture/decisions/0034-presence-is-heard-not-remembered/)).
+The console itself belongs to the [foundation](../#the-foundation), since it
+shows every subsystem.
 
 ## iTunes
 
@@ -194,3 +121,104 @@ It differs from iTunes in these ways:
   was once before
   ([CHG-0011](/docs/changes/2026/0011-spotify-turned-off/),
   [CHG-0022](/docs/changes/2026/0022-spotify-shown-and-on-again/)).
+
+## Turntable album detection
+
+A turntable cannot say what it is playing, so it is the longest path
+through Now Playing: the record is heard, named, and matched to the album
+in the owner's collection. This is what happens, from the turntable being
+switched on to the music stopping.
+
+### The turntable is switched on
+
+The turntable is plugged into the master outlet of a smart power strip,
+which powers its other outlets only while the turntable draws power. Two
+things come on with it: the converter that turns the record into S/PDIF,
+and the **power beacon**, an ESP32 with nothing attached. The strip and the
+converter are older than EdS
+([Background: Sound Around the House](/docs/architecture/spdif/)); the beacon
+was added to the same strip to learn the same thing, without touching the
+path the music takes.
+
+The beacon's connection is its message. It joins the WiFi, connects to the
+broker and publishes `online`, retained, to
+`eds/beacon/turntable-power-01/status`. It knows nothing about turntables;
+`nowplayd` is told which source that beacon speaks for.
+
+From that moment the turntable **holds the room**: `nowplayd` makes it the
+current source before it has played a note, ahead of anything else that is
+playing or paused
+([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)).
+This is why lifting the needle does not hand the room to an iTunes left
+paused in another room.
+
+### The record is heard
+
+A turntable has no data output. It cannot say what is on it; sound is all it
+gives, so EdS listens.
+
+The sound goes from the converter down the house as S/PDIF, through the
+switch it shares with the media server, and into a USB sound card on the
+agent Pi. The **turntable driver** listens to that input all the time and
+reports only what it is sure of
+([ADR-0021](/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening/)):
+
+- silence is `stopped`;
+- music it cannot name yet is `playing`, with no track.
+
+That feed is there whether or not a record is on, which is why power and
+sound are reported separately: the beacon says the turntable is on, the
+driver says whether it is making music.
+
+### The song is named
+
+While music plays, the driver cuts a twelve-second clip and hands it to the
+**recognizer**, a small program that sends it to Shazam and prints a title,
+an artist and an album. The driver knows only "a WAV in, a name out"; the
+recognizer uses an endpoint nobody promised, and is the one file that would
+change if it stopped working.
+
+It was chosen because it costs nothing, which was enough to get the
+turntable going. A paid service with a published API, or fingerprinting the
+record locally and asking nobody, are both being considered for later.
+Either would replace that one file and nothing else.
+
+- The first answer after the needle comes down is believed alone.
+- After that a different name needs two clips that agree, so one wrong
+  answer does not repaint the room mid-song.
+- A second of quiet followed by music is taken as the gap between two
+  tracks: listening starts over and the next answer is believed alone
+  again ([ADR-0026](/docs/architecture/decisions/0026-what-silence-means-on-the-turntable/)).
+
+The driver publishes what it heard, retained, to its own source topic,
+`eds/nowplaying/source/<id>/state`. It looks nothing up and has no cover to
+send.
+
+### The record and its cover are found
+
+A source that hears a track cannot know which record it is on: the same
+song is on the album, a compilation and a box set. So for the turntable,
+`nowplayd` asks the **owner's Discogs collection** first, and its answer
+replaces the album the recognizer named
+([ADR-0022](/docs/architecture/decisions/0022-the-owners-collection-names-the-record/)).
+The sleeve comes from there too, so the picture is of the record actually
+on the platter. If the collection does not have it, the catalogs are asked
+in turn: Deezer, iTunes, MusicBrainz.
+
+Then it publishes the topics above. For the turntable, `current` also says
+there are no controls: a record cannot be skipped from a screen
+([ADR-0025](/docs/architecture/decisions/0025-current-says-when-there-are-no-controls/)).
+
+### The music stops
+
+After twenty seconds of silence the driver says `stopped`. `nowplayd` then
+publishes `current` with no track and **empties** the cover topics, which is
+the one way anything is told there is no cover
+([ADR-0024](/docs/architecture/decisions/0024-paused-long-enough-is-not-playing/)).
+Turning a record over does this too; the cover comes back with the first
+track named on the other side.
+
+When the turntable is switched off, the strip cuts the beacon's power. The
+beacon cannot say goodbye, so the broker says it for it: its last will,
+`offline`, about fifteen seconds later. The turntable stops holding the
+room, and whatever else is playing takes it.
