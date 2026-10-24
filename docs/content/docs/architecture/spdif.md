@@ -5,62 +5,62 @@ weight: 1
 
 # Background: Sound Around the House
 
-EdS did not bring the turntable's sound to the basement. A whole-house
-digital audio system was already doing that, was built years before EdS,
-and carries on exactly as it did. EdS listens in on it, and reuses one of
-its switches. This page is the short version; the project's own page has the
-whole of it:
+EdS did not bring music to the rooms of the house. A whole-house digital
+audio system was already doing that, was built years before EdS, and carries
+on exactly as it did. EdS listens in on it. This page is the short version;
+the project's own page has the whole of it:
 [S/PDIF Audio Distribution](https://chrisdeever.com/electronics/spdif-audio-distribution/).
 
 ## What was already there
 
-**One digital feed, in every room.** A media server in the basement plays
-the house's music, and its digital output (S/PDIF) is split and sent to each
-room over the coaxial cable the house was built with for television. Each
-room's own stereo has a small converter (a DAC) on its auxiliary input.
-Switch a room's stereo on and the music is there.
+A media server in the basement sends one digital feed (S/PDIF) to every
+room, and each room's own stereo plays it. Put a record on the turntable and
+it takes over the feed, so the record plays in every room with no button
+pressed anywhere. A smart power strip on the turntable is how the system
+knows a record has taken over: switch the turntable on and the house is the
+record's; switch it off and the media server has it back.
 
-**The turntable is a second source that overrides the first.** The record
-player is upstairs, on its own stereo. A converter (an ADC) on that
-amplifier's tape output turns whatever it is playing into S/PDIF and sends it
-back down to the basement on a second cable. There it meets the media
-server's feed at an **automatic digital selector**, which passes the media
-server until it sees a signal on its other input, and then passes that
-instead. Put a record on and it plays in every room, with no button pressed
-anywhere.
+The rooms with music:
 
-**The power strip is how the selector knows.** The selector switches on the
-presence of a signal, and an ADC that is powered sends one whether or not a
-record is turning. So the ADC is plugged into a smart power strip whose
-master outlet is the turntable's: it has power only while the turntable is
-switched on. Turntable on, ADC on, the selector hands the house to the
-record. Turntable off, the ADC goes quiet and the media server has the house
-back.
-
-All of that is older than EdS and none of it depends on EdS.
+- **Home office and vinyl listening room**: the primary listening room, and
+  home of the turntable and the record collection.
+- **Family room home theater**, which covers the family room and the
+  kitchen.
+- **Master bedroom**, on a vintage Marantz.
+- **Retro gaming room**, on a vintage Carver system like the one in
+  *Ferris Bueller's Day Off*.
+- **Outside**: speakers fed from the basement, and an FM transmitter that
+  carries the feed to a vintage boom box.
 
 ## What EdS adds to it
 
-Two things, and neither is in the path the music takes:
+The music already reaches every room, and it can already be controlled:
+iTunes and Spotify from their phone apps, and the media server itself over
+Remote Desktop. EdS does not replace any of that. It adds ways that are
+more convenient, and more fun, differently for each room, and it stays out
+of the path the music takes.
 
-- **A listener.** A USB sound card on the agent Pi takes the selector's
-  output, as one more room would. The turntable driver hears the same feed
-  the house does
-  ([ADR-0021](/docs/architecture/decisions/0021-the-turntable-is-identified-by-listening/)).
-- **A beacon on the strip.** An ESP32 is plugged into another of the strip's
-  switched outlets, beside the ADC. It has power exactly when the ADC does,
-  and its connection to the broker says so
-  ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)).
+**Today**, in the vinyl listening room, the record is shown: a stand lit in
+the colors of its cover, and a screen beside it that shows the cover and can
+pause, skip and turn down what iTunes is playing. An album can also be asked
+for out loud, and iTunes plays it.
+
+**Meant for later**, and not built yet:
+
+- **Where hands are busy**, as in the kitchen, music is asked for out loud
+  without a phone in hand.
+- **Where people sit**, a screen says what is playing and can change it.
+- **Where the room has a character of its own**, as the gaming room does,
+  lights and looks are its own and not the vinyl room's.
+- **Where there is no screen at all**, outside, a request is still heard
+  and answered.
 
 ## Why this matters to EdS
 
-- **What the Pi hears is not always the turntable.** With the turntable off,
-  the selector passes the media server, and that is what reaches the sound
-  card. Sound alone cannot say a record is playing. The beacon can: while it
-  is offline, the turntable's driver is not listened to.
-- **The strip already answered the question.** The house needed to know
-  "is the turntable on?" long before EdS did, and settled it with a power
-  strip. EdS asks the same strip, with a device that touches nothing in the
-  audio path.
-- **EdS can fail without the music noticing.** The Pi, the broker and every
-  service can be off and a record still plays in every room.
+- **EdS can fail without the music noticing.** Every part of EdS can be off
+  and a record still plays in every room.
+- **The house already knows some things.** The power strip answered "is the
+  turntable on?" long before EdS asked; EdS reads the same strip
+  ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)).
+
+How EdS hears the feed and the strip is in [How EdS Runs](../how-it-runs/).
