@@ -52,6 +52,13 @@ Flash `273912b`'s firmware: the console asks, nothing listens for a name.
 | When (UTC) | What happened |
 |---|---|
 | 02:09–02:13 | First flashed without the pre-roll and the buffer: the model loaded (22,580 of 45,720 arena bytes) and kept up; "Hey Jarvis" woke it at 251/255, nothing else in three minutes passed 1/255. The request ran the full eight seconds in a talking room, was sent in 16 s, and was written "Clay Aerosmith's first album": the P lost. Not a request; nothing played. |
+| 02:16:00–02:16:39 | voiced shipped and the device flashed with the pre-roll, the six-second limit and the 16 KB buffer. |
+| 02:17:04 | The owner, 24 s after the device started: woken at 253/255. The device had not yet reached the broker - its first connection waited out the 20-second network timeout set for sending - so the request was kept back: "no broker; the request was not sent". |
+| 02:19:43 | The owner again: woken at 250/255, the request ended by the quiet after 2.3 s, sent. scribe wrote it "So this is what I think.", not confident, in 10 s: the owner was on a Zoom call beside the reSpeaker, and it was the call's voice. Nothing played. |
+| 02:22:40–02:27:39 | The network timeout put back to the default (the buffer is what made sending fast); each request's console line says how it ended; scribe decodes once, without Whisper's warmer retries, which is where the ten seconds went. Same words and verdicts on every recording tried. Restarted, the device was on the broker in 5.4 s. |
+
+Over the evening, with music and a Zoom call beside it, nothing but the
+owner's "Hey Jarvis" passed 1/255.
 
 ### Departures from the plan
 
