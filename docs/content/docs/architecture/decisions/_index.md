@@ -111,3 +111,4 @@ and incidents under the same names. To keep the two apart:
 | [0040](0040-a-request-can-name-an-album-to-play/) | 2026-10-23 | A request can name an album to play, and iTunes plays it from its own library | {{< adr-status "Proposed" >}} |
 | [0041](0041-an-artists-nth-album-is-counted-in-musicbrainz/) | 2026-10-24 | An artist's first album is their first studio album, counted in MusicBrainz | {{< adr-status "Proposed" >}} |
 | [0042](0042-a-request-is-heard-on-the-workload/) | 2026-10-24 | A spoken request is sent whole to the workload, written down there, and made a command | {{< adr-status "Proposed" >}} |
+| [0043](0043-the-respeaker-runs-firmware-of-edss-own/) | 2026-10-24 | The reSpeaker runs firmware of EdS's own, and sends a request when its button is held, then when it hears its name | {{< adr-status "Proposed" >}} |

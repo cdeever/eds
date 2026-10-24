@@ -1,0 +1,6 @@
+dependencies:
+  idf: ">=6.0"
+
+  # esp-mqtt shipped inside IDF through 5.x and moved out to the component
+  # registry in 6.0, as the screen's notes.
+  espressif/mqtt: "^1.1.0"

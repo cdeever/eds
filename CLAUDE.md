@@ -27,6 +27,7 @@ builds the monorepo as a whole; work inside one project directory at a time.
 | `firmware/lp-stand` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
 | `firmware/cover-screen` | C / ESP-IDF | `make test pictures` (host), `make build flash` (device) |
 | `firmware/power-beacon` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
+| `firmware/ears` | C / ESP-IDF (ESP32-S3) | `make test` (host), `make build flash provision` (device) |
 | `tools/ota` | Go 1.25 | `make check test-integration`; run by `make ota` in a firmware |
 | `infra/deevnet-tenant-eds` | Terraform | `make paths init plan apply` |
 | `images` | Ansible / shell | `make -C deploy/relay image fetch`, `make -C deploy/backend image fetch` (build on builder) |
@@ -225,6 +226,22 @@ keepalive is ten seconds, on purpose: that is how soon the will is sent.
 Makefile): the stand and the screen are ESP32s too, on the same ports. The
 old S2 was erased; never provision two boards as one beacon. Its credentials, WiFi, event log and partition table
 are copies of the stand's too.
+
+### ears (`firmware/ears`)
+
+```bash
+make test                      # host tests for the sound and the events, gcc only
+. ~/.espressif/tools/activate_idf_v6.1.sh
+make build flash provision monitor   # PORT defaults to /dev/cu.usbmodem2101
+```
+
+The reSpeaker Lite's XIAO ESP32-S3 (ADR-0043). The XMOS chip beside it
+sends one cleaned-up voice over I2S and drives the clock; the firmware
+measures the rate and prints both channels' levels, and while the XIAO's
+BOOT button is held keeps what is said as 16 kHz mono, sent on release as one
+WAV to `voice/respeaker-01/utterance` (ADR-0042). `app/audio/pcm.c` is the
+host-tested half. Its credentials, WiFi, event log and provisioning are
+copies of the screen's. `flash` and `provision` check its MAC.
 
 ### Updates over the air (`tools/ota`, all three firmwares)
 
