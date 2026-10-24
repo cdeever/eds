@@ -58,6 +58,14 @@ Aerosmith's albums in MusicBrainz after a restart had forgotten them.
 
 | When (UTC) | What happened |
 |---|---|
+| 02:38:38–02:42:13 | `deploy WHERE=builder` from `668bb1f`: all six, `/var/lib/eds-voiced` made; no timeouts. |
+| 02:42:44 | `respeaker-01` flashed. |
+| 02:43:21 | The owner asked. The device took 27 s to join the WiFi at -76 to -84 dBm; the request ran to the limit over Aerosmith still playing, and its send stalled ten seconds and was lost. Nothing played. |
+| 02:52 | The owner added an antenna to the XIAO and moved the access point: -45 dBm, the WiFi in 0.9 s, the broker in 3.2 s. |
+| 02:55:23 | ADR-0044's two grants applied: `respeaker-01` may publish `woken`, voiced may read it. |
+| 02:58–03:20 | The deploy for ADR-0044 hung the core router, twice ([INC-0002](/docs/incidents/2026/0002-deploys-hung-the-core-router/)). Nothing was restarted. |
+| 03:29 | nowplayd and voiced (`93bfca1`) copied alone, 20 MB in 4 s, and restarted; the relay's npagent pushed; the device flashed by USB. scribe left as it was: its change is the 48-token bound. |
+| 03:34 | `load.sh` in place: images sent only when their sources change, at 5 MB/s. |
 
 ### Departures from the plan
 

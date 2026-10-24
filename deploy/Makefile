@@ -32,7 +32,7 @@ help:
 	@echo
 	@echo "  deploy   everything: images, settings, units, start"
 	@echo "  images   build the six images for linux/amd64"
-	@echo "  ship     build and copy the images, then restart (a new version)"
+	@echo "  ship     build, copy the images that changed (rate-capped), then restart"
 	@echo "  load     copy the built images to the workload"
 	@echo "  kit-env  write kit.env and each service's broker login from the tenant's Terraform outputs"
 	@echo "  tls-files  write the console's key and certificate from the tenant's Terraform outputs"
@@ -51,10 +51,11 @@ ifeq ($(WHERE),builder)
 images:
 	ssh $(BUILDER) 'mkdir -p $(BUILD_DIR)/deploy'
 	rsync -a --delete --exclude .venv/ --exclude bin/ --exclude __pycache__/ --exclude '._*' --exclude .DS_Store --exclude .pytest_cache/ $(SVC)/ $(BUILDER):$(BUILD_DIR)/services/
-	rsync -a Makefile $(BUILDER):$(BUILD_DIR)/deploy/Makefile
+	rsync -a Makefile load.sh $(BUILDER):$(BUILD_DIR)/deploy/
 	ssh $(BUILDER) 'make -C $(BUILD_DIR)/deploy images VERSION=$(VERSION)'
 
 load:
+	rsync -a load.sh $(BUILDER):$(BUILD_DIR)/deploy/
 	ssh $(BUILDER) 'make -C $(BUILD_DIR)/deploy load HOST=$(HOST)'
 
 else
@@ -67,24 +68,25 @@ else
 # IoTaaS's images as well, and nothing of theirs matches.
 BUILD := $(CONTAINER) build --platform linux/amd64 --layers=false --label eds.deploy=1
 
+# What an image was built from, as a hash: its directory's files, as the
+# images target sees them. load.sh sends an image only when the workload's
+# carries a different one (CHG-0037).
+source = $(shell cd $(SVC)/$(1) && find . -type f -not -path './.venv/*' -not -path './bin/*' -not -path '*/__pycache__/*' -not -path './.pytest_cache/*' | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -c1-16)
+
 images:
-	$(BUILD) -t localhost/eds-palette:latest $(SVC)/palette
-	$(BUILD) -t localhost/eds-lightd:latest $(SVC)/lightd
-	$(BUILD) --build-arg VERSION=$(VERSION) -t localhost/eds-nowplayd:latest -f $(SVC)/nowplaying/Containerfile $(SVC)/nowplaying
-	$(BUILD) --build-arg VERSION=$(VERSION) -t localhost/eds-console:latest -f $(SVC)/console/Containerfile $(SVC)/console
-	$(BUILD) -t localhost/eds-scribe:latest $(SVC)/scribe
-	$(BUILD) --build-arg VERSION=$(VERSION) -t localhost/eds-voiced:latest -f $(SVC)/nowplaying/Containerfile.voiced $(SVC)/nowplaying
+	$(BUILD) --label eds.source=$(call source,palette) -t localhost/eds-palette:latest $(SVC)/palette
+	$(BUILD) --label eds.source=$(call source,lightd) -t localhost/eds-lightd:latest $(SVC)/lightd
+	$(BUILD) --label eds.source=$(call source,nowplaying) --build-arg VERSION=$(VERSION) -t localhost/eds-nowplayd:latest -f $(SVC)/nowplaying/Containerfile $(SVC)/nowplaying
+	$(BUILD) --label eds.source=$(call source,console) --build-arg VERSION=$(VERSION) -t localhost/eds-console:latest -f $(SVC)/console/Containerfile $(SVC)/console
+	$(BUILD) --label eds.source=$(call source,scribe) -t localhost/eds-scribe:latest $(SVC)/scribe
+	$(BUILD) --label eds.source=$(call source,nowplaying) --build-arg VERSION=$(VERSION) -t localhost/eds-voiced:latest -f $(SVC)/nowplaying/Containerfile.voiced $(SVC)/nowplaying
 	$(CONTAINER) image prune -f --filter label=eds.deploy=1 >/dev/null
 
-# One image per archive: a multi-image `podman save` without
-# --multi-image-archive loads back as ONE image under every tag.
+# Only what changed, a file at a time, at a capped rate: load.sh. One image
+# per archive: a multi-image `podman save` without --multi-image-archive
+# loads back as ONE image under every tag.
 load:
-	$(CONTAINER) save localhost/eds-palette:latest | ssh $(HOST) sudo podman load
-	$(CONTAINER) save localhost/eds-lightd:latest | ssh $(HOST) sudo podman load
-	$(CONTAINER) save localhost/eds-nowplayd:latest | ssh $(HOST) sudo podman load
-	$(CONTAINER) save localhost/eds-console:latest | ssh $(HOST) sudo podman load
-	$(CONTAINER) save localhost/eds-scribe:latest | ssh $(HOST) sudo podman load
-	$(CONTAINER) save localhost/eds-voiced:latest | ssh $(HOST) sudo podman load
+	CONTAINER=$(CONTAINER) ./load.sh $(HOST) palette lightd nowplayd console scribe voiced
 
 endif
 
