@@ -29,7 +29,7 @@ How the three divide the color decisions is in
 
 ## A cover, to the lights
 
-### 1. The cover is taken apart
+### The cover is taken apart
 
 `lightd` subscribes to Now Playing's cover topic and sees only image bytes;
 it never learns the track or the album
@@ -41,7 +41,7 @@ near-white, near-neutral), clusters what is left, and returns ranked
 swatches, each with its color, its share of the sleeve and how colorful it
 is. The same cover always gives the same answer.
 
-### 2. The colors become a light pattern
+### The colors become a light pattern
 
 `lightd` knows there is a strip on the other end, so the decisions that
 need that knowledge are made here: it rejects swatches too gray to read as
@@ -62,7 +62,7 @@ Some sleeves still want work. One that is all white, all black, black and
 white, or a single color leaves little to choose from, and how those should
 be lit is not settled.
 
-### 3. The stand plays it
+### The stand plays it
 
 The **LP stand** receives the scene and animates it on its 18 LEDs itself,
 applying the gamma curve its own driver and diffuser need. It reports what

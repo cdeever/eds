@@ -50,12 +50,25 @@ console cannot differ about what is playing, because none of them works it
 out. It also means each lookup is made once and not once per subscriber,
 which keeps what EdS asks of other people's services small.
 
+## Seen on the console
+
+What Now Playing decides is shown on the console, the page a person looks
+at: <https://console.eds.mobile.deevnet.net/>. It shows what is playing
+whatever the source, a record, iTunes or Spotify, with its sleeve, and the
+current status of the system around it: which sources are reporting and
+what each is doing, which devices are online, and the stand's strip drawn as
+the stand is drawing it. A device heard recently is shown green; one only
+remembered by the broker is shown gray
+([ADR-0034](/docs/architecture/decisions/0034-presence-is-heard-not-remembered/)).
+The console itself belongs to the [foundation](../#the-foundation), since it
+shows every subsystem.
+
 ## A record, from power on to silence
 
 The turntable is the longest path through Now Playing. This is what
 happens, in order.
 
-### 1. The turntable is switched on
+### The turntable is switched on
 
 The turntable is plugged into the master outlet of a smart power strip,
 which powers its other outlets only while the turntable draws power. Two
@@ -78,7 +91,7 @@ playing or paused
 This is why lifting the needle does not hand the room to an iTunes left
 paused in another room.
 
-### 2. The record is heard
+### The record is heard
 
 A turntable has no data output. It cannot say what is on it; sound is all it
 gives, so EdS listens.
@@ -96,7 +109,7 @@ That feed is there whether or not a record is on, which is why power and
 sound are reported separately: the beacon says the turntable is on, the
 driver says whether it is making music.
 
-### 3. The song is named
+### The song is named
 
 While music plays, the driver cuts a twelve-second clip and hands it to the
 **recognizer**, a small program that sends it to Shazam and prints a title,
@@ -120,7 +133,7 @@ The driver publishes what it heard, retained, to its own source topic,
 `eds/nowplaying/source/<id>/state`. It looks nothing up and has no cover to
 send.
 
-### 4. The record and its cover are found
+### The record and its cover are found
 
 A source that hears a track cannot know which record it is on: the same
 song is on the album, a compilation and a box set. So for the turntable,
@@ -135,7 +148,7 @@ Then it publishes the topics above. For the turntable, `current` also says
 there are no controls: a record cannot be skipped from a screen
 ([ADR-0025](/docs/architecture/decisions/0025-current-says-when-there-are-no-controls/)).
 
-### 5. The music stops
+### The music stops
 
 After twenty seconds of silence the driver says `stopped`. `nowplayd` then
 publishes `current` with no track and **empties** the cover topics, which is
