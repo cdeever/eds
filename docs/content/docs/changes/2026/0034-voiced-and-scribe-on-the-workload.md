@@ -72,6 +72,7 @@ branch's Terraform and apply.
 | 00:53 | By hand on the relay, `npagent play-album` had the same 500, on the play request alone. iTunes had gone to stopped by itself at about 00:50, with half of *Appetite for Destruction* left. |
 | 01:01:57 | iTunes restarted by the owner, who saw nothing wrong on the PC; the relay followed it again within a second, stopped. |
 | 01:03:57 | The recording again: written down in 3.5 s, `play_album` at 01:04:00.9, "Runnin' With The Devil" playing at 01:04:01.2, the driver's check done at 01:04:02.6. From stopped. |
+| 01:07:05–01:10:47 | `deploy WHERE=builder` again, from `5a621ef`: scribe loads its model as it starts, and has a quarter of the others' CPU share. No service timed out connecting to the broker. scribe loaded its model in 5.0 s; its first request took 3.5 s, as the next did. |
 
 The workload's memory with all six running: 623 MB used of 1953, 1329 MB available.
 
@@ -82,11 +83,8 @@ The workload's memory with all six running: 623 MB used of 1953, 1329 MB availab
 
 ## Follow-ups
 
-- scribe loads its model at startup, not on the first request.
-- Services restarted together time out on their first connection to the
-  broker: a longer timeout, or scribe started after the others.
-- Writing a request down takes 3.5 s on the workload's two cores, against
-  0.4 s on a Mac.
+- Writing a request down takes 3.4 s for 1.7 s of speech on the
+  workload's two cores, against 0.4 s on a Mac: `tiny.en`, or more cores.
 - The reSpeaker's firmware (step 4), and its provisioning from
   `respeaker_01_broker`.
 - Artists misheard as another name ("Arrowsmith"): corrected against the
