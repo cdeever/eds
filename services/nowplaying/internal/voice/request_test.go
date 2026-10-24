@@ -38,6 +38,12 @@ func TestRequestsAreRead(t *testing.T) {
 		"...vis. Pray the third album by Boston": {Artist: "Boston", Nth: 3},
 		// The end of "Hey Jarvis", as scribe wrote it, and "play" as "played".
 		"And each of us played Van Halen's first album.": {Artist: "Van Halen", Nth: 1},
+		"Lee Jarvis, Play Van Halen's first album.":      {Artist: "Van Halen", Nth: 1},
+		// "Playing", and the comma scribe writes for a possessive after a
+		// name ending in s, as they were heard on 2026-10-24.
+		"The band was very generous. Playing Led Zeppelin's first album.": {Artist: "Led Zeppelin", Nth: 1},
+		"Clay Genesis, first album.":                                      {Artist: "Genesis", Nth: 1},
+		"Play Led Zeppelin, first album.":                                 {Artist: "Led Zeppelin", Nth: 1},
 	} {
 		got, err := Parse(words)
 		if err != nil || got != want {
@@ -59,8 +65,13 @@ func TestWhatIsNotARequestIsNotRead(t *testing.T) {
 		"Play the first album by",
 		"Clay Rocks by Aerosmith.", // a misheard play, without a place: too like talk
 		"They went by the store.",
-		"Don't pay Van Halen's first album.",     // a negation, before a misheard play
-		"They said it was his first album.",      // no album by its place
+		"Don't pay Van Halen's first album.",       // a negation, before a misheard play
+		"They said it was his first album.",        // no album by its place
+		"Travis, third Led Zeppelin, first album.", // no play, nor any word for it
+		"They saw it, first album.",                // a comma for a possessive, and a pronoun for a name
+		"Pay them, first album.",
+		"Play his first album.",
+		"Play the second album by them.",
 		"I told him to play Rocks by Aerosmith.", // ALBUM by ARTIST, too far in
 		"I don't think you should play Van Halen's first album.",
 		"One two three four five six play Van Halen's first album.", // six words in

@@ -35,10 +35,13 @@ var (
 	// "play the first album by X", "play the debut record from X"
 	nthBy = regexp.MustCompile(`(?i)^play\s+(?:the\s+|their\s+|his\s+|her\s+)?(\S+(?:\s+recent)?)\s+(?:album|record|lp)\s+(?:by|from)\s+(.+)$`)
 	// "play X's first album", "play Van Halens first album"
-	possessive = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|s'|’|')?\s+(\S+(?:\s+recent)?)\s+(?:album|record|lp)$`)
+	possessive = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|s'|’|'|,)?\s+(\S+(?:\s+recent)?)\s+(?:album|record|lp)$`)
 	// "play Abbey Road by the Beatles"
 	named = regexp.MustCompile(`(?i)^play\s+(?:the\s+album\s+)?(.+?)\s+by\s+(.+)$`)
 )
+
+// pronoun ends a phrase that names nobody.
+var pronoun = regexp.MustCompile(`(?i)(?:^|\s)(?:it|them|him|her|us|me|you|this|that|his|its|their|our|my|your|those|these)$`)
 
 // inner is a possessive inside a name, with words after it.
 var inner = regexp.MustCompile(`(?i)(?:'s|’s)\s`)
@@ -99,8 +102,9 @@ func byPlace(text string) (Request, error) {
 
 // marked is "play X's Nth album" with the possessive said: without it,
 // after a "play" that was misheard, any sentence ending "his first album"
-// would be one.
-var marked = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|s')\s+(\S+(?:\s+recent)?)\s+(?:album|record|lp)$`)
+// would be one. For a name ending in s, scribe writes the possessive as a
+// comma: "Genesis, first album", "Led Zeppelin, first album" (2026-10-24).
+var marked = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|s'|,)\s+(\S+(?:\s+recent)?)\s+(?:album|record|lp)$`)
 
 // strictlyByPlace is whether the words are an album by its place in a form
 // that is not said by accident.
@@ -113,7 +117,7 @@ func strictlyByPlace(text string) bool {
 // device keeps 600 ms from before the wake word was decided on, and scribe
 // has written the end of "Hey Jarvis" in it as "And each of us" (2026-10-24).
 // Only an album by its place, strictly said, is read this far in.
-var far = regexp.MustCompile(`(?i)^((?:\S+\s+){0,5}?)(?:play|tae|tay|they|clay|lay|pay|pray|plate|flay|slay|blay|pla|ple|played|plays)[,.]?\s+(.+)$`)
+var far = regexp.MustCompile(`(?i)^((?:\S+\s+){0,5}?)(?:play|playing|tae|tay|they|clay|lay|pay|pray|plate|flay|slay|blay|pla|ple|played|plays)[,.]?\s+(.+)$`)
 
 // farPlay is the words from "play", or its mishearing, made "play", never
 // after a negation.
@@ -133,6 +137,12 @@ func request(artist, album string, nth int) (Request, error) {
 	// A possessive with more after it is not a name, but words misheard:
 	// "ACDC's Z" was AC/DC's, said by a voice that spelled it out.
 	if inner.MatchString(artist) {
+		return Request{}, ErrNotARequest
+	}
+	// Nor is a pronoun, or words ending in one: "play his first album"
+	// names nobody, and "they saw it, first album" read with a misheard
+	// "play" and a comma for a possessive would ask for an artist "saw it".
+	if pronoun.MatchString(artist) {
 		return Request{}, ErrNotARequest
 	}
 	return Request{Artist: artist, Album: album, Nth: nth}, nil
