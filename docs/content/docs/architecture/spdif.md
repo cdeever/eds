@@ -47,7 +47,7 @@ pause, skip and turn down what iTunes is playing.
 **In development**, an album can be asked for out loud, and iTunes plays it.
 For now there is one device that listens, the ears, and it sits wherever
 it is being worked on. Ears are meant to be on several devices throughout
-the house.
+the house, or on one that is carried from room to room.
 
 **Meant for later**, and not built yet:
 
