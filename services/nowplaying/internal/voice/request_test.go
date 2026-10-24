@@ -30,6 +30,12 @@ func TestRequestsAreRead(t *testing.T) {
 		"...vis. Play Aerosmith's first album.": {Artist: "Aerosmith", Nth: 1},
 		"Jarvis, play Rocks by Aerosmith.":      {Artist: "Aerosmith", Album: "Rocks"},
 		"Um, play Van Halen's first album":      {Artist: "Van Halen", Nth: 1},
+
+		// "play" misheard, where the rest is an album by its place, as
+		// scribe wrote it on 2026-10-24 and before.
+		"Tae Van Halen's first album.":           {Artist: "Van Halen", Nth: 1},
+		"Clay Aerosmith's first album.":          {Artist: "Aerosmith", Nth: 1},
+		"...vis. Pray the third album by Boston": {Artist: "Boston", Nth: 3},
 	} {
 		got, err := Parse(words)
 		if err != nil || got != want {
@@ -49,7 +55,10 @@ func TestWhatIsNotARequestIsNotRead(t *testing.T) {
 		"Stop.",
 		"Play by Van Halen",
 		"Play the first album by",
-		"Clay Aerosmith's first album.", // "play" without its P, as it was heard
+		"Clay Rocks by Aerosmith.", // a misheard play, without a place: too like talk
+		"They went by the store.",
+		"Don't pay Van Halen's first album.", // a negation, before a misheard play
+		"They said it was his first album.",  // no album by its place
 		"Don't play Van Halen's first album.",
 		"Do not play Rocks by Aerosmith.",
 		"No, play Rocks by Aerosmith.",

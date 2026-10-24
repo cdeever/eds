@@ -61,8 +61,29 @@ var ordinals = map[string]int{
 func Parse(words string) (Request, error) {
 	text, ok := fromPlay(clean(words))
 	if !ok {
+		// "play" misheard is taken for "play" only where the rest is an
+		// album by its place: "Tae Van Halen's first album" was one
+		// (2026-10-24), and a place and the word "album" are not said by
+		// accident. "ALBUM by ARTIST" is too like ordinary talk, and needs
+		// the word itself.
+		if text, ok = misheardPlay(clean(words)); ok {
+			if r, err := byPlace(text); err == nil && strictlyByPlace(text) {
+				return r, nil
+			}
+		}
 		return Request{}, ErrNotARequest
 	}
+	if r, err := byPlace(text); err == nil {
+		return r, nil
+	}
+	if m := named.FindStringSubmatch(text); m != nil {
+		return request(m[2], m[1], 0)
+	}
+	return Request{}, ErrNotARequest
+}
+
+// byPlace reads "play the Nth album by X" and "play X's Nth album".
+func byPlace(text string) (Request, error) {
 	if m := nthBy.FindStringSubmatch(text); m != nil {
 		if n, ok := ordinal(m[1]); ok {
 			return request(m[2], "", n)
@@ -73,10 +94,32 @@ func Parse(words string) (Request, error) {
 			return request(m[1], "", n)
 		}
 	}
-	if m := named.FindStringSubmatch(text); m != nil {
-		return request(m[2], m[1], 0)
-	}
 	return Request{}, ErrNotARequest
+}
+
+// marked is "play X's Nth album" with the possessive said: without it,
+// after a "play" that was misheard, any sentence ending "his first album"
+// would be one.
+var marked = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|s')\s+(\S+(?:\s+recent)?)\s+(?:album|record|lp)$`)
+
+// strictlyByPlace is whether the words are an album by its place in a form
+// that is not said by accident.
+func strictlyByPlace(text string) bool {
+	return nthBy.MatchString(text) || marked.MatchString(text)
+}
+
+// misheard are what speech-to-text has written for "play" when its P was
+// clipped or smeared, at the start of a request: "Clay", "Tae".
+var misheard = regexp.MustCompile(`(?i)^((?:\S+\s+){0,2}?)(?:tae|tay|they|clay|lay|pay|pray|plate|flay|slay|blay|pla|ple|played|plays)[,.]?\s+(.+)$`)
+
+// misheardPlay is the words with a misheard "play" made "play", allowing a
+// word or two before it, never a negation.
+func misheardPlay(text string) (string, bool) {
+	m := misheard.FindStringSubmatch(text)
+	if m == nil || negation.MatchString(m[1]) {
+		return "", false
+	}
+	return "play " + m[2], true
 }
 
 func request(artist, album string, nth int) (Request, error) {

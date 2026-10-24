@@ -28,9 +28,10 @@ static const char *TAG = "mic";
 // What was heard just before the wake word was decided on, kept with the
 // request: the model decides a moment after "Jarvis" ends, and a "play" said
 // straight after it lost its P without this (2026-10-24, "Clay Aerosmith's
-// first album"). It may bring the end of the wake word with it; voiced
-// allows a word or two before "play".
-#define PREROLL_SAMPLES ((size_t)EA_PCM_RATE * 350 / 1000)
+// first album"), and at 350 ms still did ("Tae Van Halen's first album").
+// It brings the end of the wake word with it; voiced allows a word or two
+// before "play".
+#define PREROLL_SAMPLES ((size_t)EA_PCM_RATE * 600 / 1000)
 static int16_t preroll[PREROLL_SAMPLES];
 static size_t preroll_at; // the next to be written, and so the oldest
 
