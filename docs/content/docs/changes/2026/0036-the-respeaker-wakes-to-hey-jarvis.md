@@ -51,7 +51,7 @@ Flash `273912b`'s firmware: the console asks, nothing listens for a name.
 
 | When (UTC) | What happened |
 |---|---|
-| 02:21 | First flashed without the pre-roll and the buffer: the model loaded (22,580 of 45,720 arena bytes) and kept up; "Hey Jarvis" woke it at 251/255, nothing else in three minutes passed 1/255. The request ran the full eight seconds in a talking room, was sent in 16 s, and was written "Clay Aerosmith's first album": the P lost. Not a request; nothing played. |
+| 02:09–02:13 | First flashed without the pre-roll and the buffer: the model loaded (22,580 of 45,720 arena bytes) and kept up; "Hey Jarvis" woke it at 251/255, nothing else in three minutes passed 1/255. The request ran the full eight seconds in a talking room, was sent in 16 s, and was written "Clay Aerosmith's first album": the P lost. Not a request; nothing played. |
 
 ### Departures from the plan
 
