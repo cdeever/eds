@@ -7,7 +7,7 @@ weight: 40
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}} — until `play_album` on the bus has played an album through the driver (the request itself is shown); see [What would settle it](#what-would-settle-it) |
+| **Status** | {{< adr-status "Proposed" >}} — until `play_album` sent to `nowplaying/command` has played an album through nowplayd and the driver (the driver's half is shown); see [What would settle it](#what-would-settle-it) |
 | **Date** | 2026-10-23 |
 | **Scope** | A sixth command, `play_album`, that names an album rather than pressing a button; which player carries it out; and what the iTunes driver asks of the player's library to do it. The first thing to send it is meant to be a voice ("Hey Ed, play Van Halen's first album"), which is a decision of its own. |
 | **Extends** | [ADR-0020](/docs/architecture/decisions/0020-a-touch-screen-that-can-change-what-plays/), whose five commands press buttons on whatever is playing, and [ADR-0011](/docs/architecture/decisions/0011-itunes-by-remote-pairing/), whose pairing has only read what plays and pressed those buttons |
@@ -119,4 +119,8 @@ Not yet shown:
       on from where it was.
 - [ ] A name with an apostrophe (*Guns N' Roses*), and an album whose
       tracks name guests.
-- [ ] `play_album` on the bus, carried out by the driver.
+- [x] `play_album` on the bus, carried out by the driver
+      ([CHG-0033](/docs/changes/2026/0033-an-album-asked-for-on-the-bus/)):
+      *Aerosmith* by Aerosmith, from "Make It", within a second.
+- [ ] `play_album` on `nowplaying/command`, passed on by nowplayd from a
+      sender with an account of its own.

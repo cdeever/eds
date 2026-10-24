@@ -59,10 +59,18 @@ Ship and push `main` again: `git switch main`, then the two commands above.
 
 | When (UTC) | What happened |
 |---|---|
+| 00:00:45–00:02:25 | `ship WHERE=builder` from `22889ba`: the four images built on the Builder and loaded; all four services active at 00:02:24. nowplayd at once had iTunes playing *Van Halen*, "Ain't Talkin' 'Bout Love", and listed the Discogs collection (227 records). |
+| 00:02:49 | `make -C deploy/relay push`: installed `22889ba`; `npagent` active, iTunes followed again. |
+| 00:02:57 | `play_album` for *Aerosmith* by Aerosmith, asked for by the owner, published with nowplayd's account on `eds/nowplaying/source/itunes/command`. Within a second the driver reported *Aerosmith*, "Make It", the album's first track, and nowplayd published it as `current`. At 00:02:59, after the check, the driver logged `command: play_album` as done. |
 
 ### Departures from the plan
 
+- Step 5, an album the library does not have, was not run: it would have
+  emptied the queue under the album the owner had just asked for.
+
 ## Follow-ups
 
+- Step 5, when nothing is being listened to: what iTunes does with an
+  album it does not have, and that the driver logs it.
 - An account that may publish `nowplaying/command` for whatever sends
   `play_album` by voice, in the tenant's Terraform.
