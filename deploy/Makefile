@@ -25,7 +25,7 @@ VERSION   ?= $(shell git -C $(REPO) describe --always --dirty 2>/dev/null || ech
 SERVICES := eds-palette eds-lightd eds-nowplayd eds-console eds-scribe eds-voiced
 UNITS    := $(addsuffix .service,$(SERVICES))
 
-.PHONY: help images load kit-env broker-env tls-files discogs-env ship units deploy restart status logs clean
+.PHONY: help images load kit-env broker-env tls-files discogs-env ship units deploy restart prune status logs clean
 
 help:
 	@echo "deploy - palette, lightd, nowplayd, the console, scribe and voiced onto $(HOST)"
@@ -145,6 +145,17 @@ tls-files:
 ship: images
 	$(MAKE) load
 	ssh $(HOST) sudo systemctl restart $(SERVICES)
+	$(MAKE) prune
+
+# What a deploy replaced, untagged now, once the services have let go of it:
+# the workload has room for a few of these, not one every deploy. Before the
+# restart, the running containers still hold the old ones, and podman will
+# not prune an image in use. Every untagged image, not only those labelled
+# eds.deploy: images loaded or relabelled there lose the label, and fifty
+# were left after one evening. The workload holds EdS's images and nothing
+# else.
+prune:
+	ssh $(HOST) 'sudo podman image prune -f >/dev/null'
 
 # discogs.env is kept by hand: NP_DISCOGS_USER and NP_DISCOGS_TOKEN, a personal
 # access token from discogs.com/settings/developers. Secret, gitignored, and

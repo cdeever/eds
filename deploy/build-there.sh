@@ -26,7 +26,4 @@ tar -C "$DIR" --exclude .venv --exclude __pycache__ --exclude .pytest_cache -czf
   "${SSH[@]}" "d=\$(mktemp -d); tar -xzf - -C \$d \
     && sudo podman build -q --pull=never --label eds.deploy=1 --label eds.source=$SOURCE -t $image -f \$d/$FILE \$d >/dev/null; \
     rc=\$?; rm -rf \$d; exit \$rc"
-# What it replaced, untagged now: the workload has room for a few of these,
-# not one every deploy.
-"${SSH[@]}" "sudo podman image prune -f --filter label=eds.deploy=1 >/dev/null"
 echo "$NAME: built there"

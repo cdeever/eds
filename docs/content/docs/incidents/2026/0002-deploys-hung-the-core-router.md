@@ -91,7 +91,7 @@ by hand, small ones only; the services were restarted one at a time.
 
 | # | Follow-up | Where | Status |
 |---|---|---|---|
-| 4 | A smaller scribe image: the model and its runtime are most of it | `services/scribe` | {{< action-status "Open" >}} |
+| 4 | A smaller scribe image, sent less: 767 MB to 533 with what it never runs taken out, sent compressed (256 MB), and split so that its 60 KB of code is built on the workload on a base sent only when its dependencies change ([CHG-0039](/docs/changes/2026/0039-scribe-in-two-and-hey-jarvis-in-its-prompt/)) | `services/scribe`, `deploy/` | {{< action-status "Done" >}} |
 
 ## Lessons learned
 

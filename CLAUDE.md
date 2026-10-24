@@ -330,7 +330,15 @@ console can switch it (ADR-0039): the retained setting
 `nowplaying/stand`, `{"v":1,"sources":"records"|"all"}`, which `nowplayd`
 reads; `all` treats `NP_DARK_SOURCES` as empty until switched back, and
 nothing, or anything unreadable, is `records`. `make -C deploy deploy WHERE=builder`
-deploys all four services (the Mac has no container tool; the Builder builds).
+deploys the six services (the Mac has no container tool; the Builder builds).
+**A deploy moves only what changed** (INC-0002): each image carries
+`eds.source`, a hash of its sources; unchanged ones are neither built nor
+sent, and changed ones go compressed at 5 MB/s (`deploy/load.sh`).
+**scribe is two images**: `eds-scribe-base` (runtime, libraries, model),
+sent when `Containerfile.base` or `pyproject.toml` change, and `eds-scribe`,
+its 60 KB of code, built on the workload on that base
+(`deploy/build-there.sh`). Never stream images to the workload by hand:
+two gigabytes through the core router hung it.
 
 The console (`services/console`, ADR-0018) is the page a person looks at:
 `https://console.eds.mobile.deevnet.net/`. It subscribes to the bus and serves
