@@ -4,14 +4,35 @@
 # the workload is not where things are downloaded from, and the first request
 # should not wait for it. Nothing is secret; SCRIBE_MODEL and SCRIBE_THREADS
 # are the only settings.
+#
+# What faster-whisper brings that scribe never runs is taken out again, about
+# 230 MB of 767 (INC-0002): PyAV, which decodes audio files - scribe hands the
+# model samples - and onnxruntime, which only the VAD filter imports, and
+# scribe turns it off. faster_whisper/audio.py imports av at the top all the
+# same, so an empty one stands in for it; the self-test below is what says
+# that holds. uvicorn runs on asyncio without uvloop and its other extras.
+#
+# Downloads are cached on the Builder between builds, so a change to scribe's
+# own code does not fetch its packages and its model again through the core
+# router.
 FROM docker.io/library/python:3.13-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_ROOT_USER_ACTION=ignore \
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_ROOT_USER_ACTION=ignore \
     HF_HOME=/opt/models SCRIBE_MODEL=base.en
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install . && useradd --system --no-create-home scribe \
-    && python -c "from faster_whisper import WhisperModel; WhisperModel('base.en', device='cpu', compute_type='int8')" \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/root/.cache/eds-models \
+    pip install . \
+    && HF_HOME=/root/.cache/eds-models python -c "from faster_whisper import WhisperModel; WhisperModel('base.en', device='cpu', compute_type='int8')" \
+    && mkdir -p /opt/models && cp -a /root/.cache/eds-models/hub /opt/models/ \
+    && pip uninstall -y -q av onnxruntime hf-xet uvloop httptools watchfiles websockets \
+    && site=$(python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])") \
+    && mkdir "$site/av" \
+    && printf '"""Not PyAV: scribe never decodes a file (see the Containerfile)."""\n' > "$site/av/__init__.py" \
+    && HF_HUB_OFFLINE=1 python -m eds_scribe.selftest \
+    && pip uninstall -y -q pip \
+    && useradd --system --no-create-home scribe \
     && chmod -R a+rX /opt/models
 ENV HF_HUB_OFFLINE=1
 USER scribe

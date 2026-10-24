@@ -9,7 +9,9 @@
 # it is. A build is not reproducible - the same sources make a new image id
 # every time - so the label is compared, not the id.
 #
-# What is sent goes as a file, at a capped rate. Every deploy used to stream
+# What is sent goes as a file, compressed, at a capped rate: gzip -1 halves an
+# image, scribe's from 508 MB to 256, and podman loads it as it is. Every
+# deploy used to stream
 # every image, scribe's 767 MB and palette's 256 MB among them, through the
 # core router between the Builder's segment and the workload's, as fast as
 # it would go; on 2026-10-24 the router hung under it twice (CHG-0037).
@@ -31,11 +33,11 @@ for name in "$@"; do
     continue
   fi
 
-  archive="$(mktemp -d)/eds-$name.tar"
-  "$CONTAINER" save -q -o "$archive" "$image"
+  archive="$(mktemp -d)/eds-$name.tar.gz"
+  "$CONTAINER" save -q "$image" | gzip -1 > "$archive"
   size=$(du -h "$archive" | cut -f1)
   echo "$name: sources ${have:-unknown} -> $want; sending $size at $((LIMIT_KBIT / 8000)) MB/s"
-  scp -q -o BatchMode=yes -l "$LIMIT_KBIT" "$archive" "$HOST:/var/tmp/eds-$name.tar"
-  "${SSH[@]}" "sudo podman load -q -i /var/tmp/eds-$name.tar; rm -f /var/tmp/eds-$name.tar"
+  scp -q -o BatchMode=yes -l "$LIMIT_KBIT" "$archive" "$HOST:/var/tmp/eds-$name.tar.gz"
+  "${SSH[@]}" "sudo podman load -q -i /var/tmp/eds-$name.tar.gz; rm -f /var/tmp/eds-$name.tar.gz"
   rm -rf "$(dirname "$archive")"
 done
