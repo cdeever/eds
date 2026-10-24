@@ -7,7 +7,7 @@ weight: 47
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}} — until a spoken request plays an album the inventory chose; see [What would settle it](#what-would-settle-it) |
+| **Status** | {{< adr-status "Accepted" >}} 2026-10-24 — settled by [CHG-0041](/docs/changes/2026/0041-voiced-asks-eds-inventory/) |
 | **Date** | 2026-10-24 |
 | **Scope** | Where voiced finds the owner's artists and albums when it turns a request into `play_album`. Not how it parses a request, or counts an artist's albums in MusicBrainz, which are unchanged. |
 | **Extends** | [ADR-0046](/docs/architecture/decisions/0046-requests-are-matched-against-the-owners-library/), whose matching moves to the inventory unchanged |
@@ -68,3 +68,8 @@ and albums.**
 ## What would settle it
 
 - A spoken request, on the workload, plays an album the inventory chose.
+
+**Settled, 2026-10-24** ([CHG-0041](/docs/changes/2026/0041-voiced-asks-eds-inventory/)):
+"Hey Jarvis. Play Led Zeppelin's first album." was matched by the inventory
+on the workload and played *Led Zeppelin*. The inventory answered in tens of
+milliseconds; the seconds the request took were MusicBrainz's.
