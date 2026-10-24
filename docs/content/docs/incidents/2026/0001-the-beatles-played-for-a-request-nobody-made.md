@@ -35,9 +35,13 @@ make out could have done the same since voiced went on the workload
 
 ## Detection
 
-The owner heard the Beatles and said so: "it worked -- kind of." The device's
-console and voiced's log both showed the words, `"understood":true`, and the
-album: nothing anywhere said it was wrong, because nothing could tell.
+The owner heard the opening of "Come Together" and took it for Aerosmith's
+cover, from their greatest hits: the right artist, the wrong album, picked by
+mistake. Hence "it worked -- kind of." Only as the song played on was it
+plain that it was the Beatles' own, from *Abbey Road*, and that nothing of
+Aerosmith's had been played at all. The device's console and voiced's log
+both showed the words, `"understood":true`, and the album: nothing anywhere
+said it was wrong, because nothing could tell.
 
 ## Timeline
 
@@ -91,6 +95,9 @@ minutes after the incident was understood.
   later windows as clear speech.
 - **The test that would have caught it was not written**: silence and noise
   through scribe were only tried after.
+- **The wrong album sounded nearly right.** Aerosmith recorded "Come
+  Together" too, so its first bars passed for a near miss, Aerosmith on the
+  wrong album, rather than a request nobody made.
 
 ## Corrective actions
 
@@ -110,7 +117,7 @@ minutes after the incident was understood.
 
 | # | Follow-up | Where | Status |
 |---|---|---|---|
-| 5 | A light the room can see while the device listens: the reSpeaker's own LED, or a wake word, which needs no watching | `firmware/ears` | {{< action-status "Open" >}} |
+| 5 | A light the room can see while the device listens: the reSpeaker's own LED, or a wake word, which needs no watching | `firmware/ears`, the wake word ([CHG-0036](/docs/changes/2026/0036-the-respeaker-wakes-to-hey-jarvis/)) | {{< action-status "Done" >}} |
 
 ## Lessons learned
 
