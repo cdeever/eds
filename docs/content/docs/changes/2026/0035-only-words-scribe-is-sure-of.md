@@ -54,7 +54,7 @@ which is to say, put INC-0001 back. Not done.
 |---|---|
 | 01:46:01–01:49:27 | `ship WHERE=builder` from `e9ed753`: six images, all six restarted; no service timed out connecting. |
 | 01:49:50 | `respeaker-01` flashed. |
-| 01:50 | On the workload, scribe: the owner-free recording of "Play Aerosmith's first album" confident (no speech 0.005); five seconds of silence not, and no words. |
+| 01:50 | On the workload, scribe: macOS `say`'s "Play Aerosmith's first album" confident (no speech 0.005); five seconds of silence not, and no words. |
 | 01:51:41 | Two windows asked for on the console. In the room, someone else was speaking: the first written as talk and not confident ("not heard clearly"), the second as clear talk that was no request ("not a request"). Nothing played. |
 | 01:54:23 | The owner, in the window: "Play Aerosmith's first album." The WAV reached the broker whole (160,812 bytes, tapped with voiced's account); scribe wrote it confidently in 3.5 s; voiced asked for *Aerosmith* at 01:54:30.8; "Make It" played at 01:54:31.1. |
 
@@ -62,7 +62,7 @@ which is to say, put INC-0001 back. Not done.
 
 - Step 3, nothing said, was the room's own talk instead of silence: a
   harder test, passed.
-- The device took about 22 s to finish sending the second request, though
+- The device took about 22 s to finish sending the request, though
   voiced had it within five; its console never showed what was heard. Left
   as a follow-up.
 
