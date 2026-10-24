@@ -17,9 +17,11 @@ weight: 45
 ## Context
 
 "Genesis' first album" was heard right, twice, and counted right: *From
-Genesis to Revelation*, 1969. The owner's iTunes does not have it. iTunes
-was asked for it, played nothing, and - having emptied its queue first -
-stopped what was playing (CHG-0039). The library cannot be asked what it
+Genesis to Revelation*, 1969. The owner's iTunes has it as its reissue,
+*And the Word Was…*, and so was asked for a title it has not got. With
+nothing matched it played the band's other songs from *Abacab*, the first by
+name, which the driver rightly took for a miss; where nothing at all
+matches, having emptied its queue, it stops. The library cannot be asked what it
 has ([ADR-0040](/docs/architecture/decisions/0040-a-request-can-name-an-album-to-play/)),
 so a miss is only found by trying.
 
@@ -46,7 +48,18 @@ them the library has.**
 - **The driver tries each as it tries the first**, and stops at the first
   the player says it is playing. It logs which, or all it tried.
 - **A command that names alternatives may take longer**: twenty seconds in
-  the agent, where a button has five. Each miss is about two.
+  the agent, where a button has five. Each miss is about a second and a
+  half.
+- **Before the next album, the album's other names**: the titles its
+  releases have gone by in MusicBrainz, most used first, up to three - the
+  owner's *From Genesis to Revelation* is its reissue, *And the Word Was…*.
+  Never one that is the artist's name, or that begins another of their
+  albums or is begun by one, since the player matches by the start of a
+  title: a reissue called "Genesis" would play the 1983 *Genesis*.
+- **A title is matched by its start** (ADR-0040 amended): the library's
+  "Led Zeppelin II (Remastered)" is "Led Zeppelin II". The driver takes what
+  plays for the album only if nothing but an edition's note follows the
+  title - "(…", "[…", "- …", "…" - so "Van Halen II" is never "Van Halen".
 
 ## Consequences
 

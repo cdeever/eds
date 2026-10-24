@@ -723,3 +723,31 @@ func TestNoneOfThemOwnedIsNotFound(t *testing.T) {
 		t.Errorf("tried %d, want both", n)
 	}
 }
+
+// A library's title is the one asked for, or it with an edition's note;
+// never another album that begins the same.
+func TestATitleIsTheOneAskedForOrItWithANote(t *testing.T) {
+	for title, asked := range map[string]string{
+		"Led Zeppelin II (Remastered)":      "Led Zeppelin II",
+		"And the Word Was...":               "And the Word Was…",
+		"Appetite For Destruction":          "Appetite for Destruction",
+		"Rocks [Deluxe Edition]":            "Rocks",
+		"Toys in the Attic - 2013 Remaster": "Toys in the Attic",
+		"Van Halen":                         "Van Halen",
+	} {
+		if !begins(title, asked) {
+			t.Errorf("%q was not taken for %q", title, asked)
+		}
+	}
+	for title, asked := range map[string]string{
+		"Van Halen II":     "Van Halen",
+		"Led Zeppelin III": "Led Zeppelin",
+		"Genesis Live":     "Genesis",
+		"Abacab":           "From Genesis to Revelation",
+		"":                 "Rocks",
+	} {
+		if begins(title, asked) {
+			t.Errorf("%q was taken for %q", title, asked)
+		}
+	}
+}

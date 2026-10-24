@@ -45,9 +45,9 @@ func (d *discographies) Discography(_ context.Context, artist string) (resolve.D
 	d.mu.Unlock()
 	switch resolve.Simplify(artist) {
 	case "vanhalen":
-		return resolve.Discography{Artist: "Van Halen", Albums: []resolve.StudioAlbum{{Title: "Van Halen"}, {Title: "Van Halen II"}}}, nil
+		return resolve.Discography{Artist: "Van Halen", Albums: []resolve.StudioAlbum{{Title: "Van Halen", ID: "vh1"}, {Title: "Van Halen II", ID: "vh2"}}}, nil
 	case "gunsnroses":
-		return resolve.Discography{Artist: "Guns N' Roses", Albums: []resolve.StudioAlbum{{Title: "Appetite for Destruction"}}}, nil
+		return resolve.Discography{Artist: "Guns N' Roses", Albums: []resolve.StudioAlbum{{Title: "Appetite for Destruction", ID: "gnr1"}}}, nil
 	}
 	return resolve.Discography{}, fmt.Errorf("%w: MusicBrainz knows no artist %q", resolve.ErrNotFound, artist)
 }
@@ -255,16 +255,26 @@ type fiveAlbums struct{}
 
 func (fiveAlbums) Discography(context.Context, string) (resolve.Discography, error) {
 	return resolve.Discography{Artist: "Genesis", Albums: []resolve.StudioAlbum{
-		{Title: "From Genesis to Revelation"}, {Title: "Trespass"}, {Title: "Nursery Cryme"},
-		{Title: "Foxtrot"}, {Title: "Selling England by the Pound"},
+		{Title: "From Genesis to Revelation", ID: "g1"}, {Title: "Trespass", ID: "g2"}, {Title: "Nursery Cryme", ID: "g3"},
+		{Title: "Foxtrot", ID: "g4"}, {Title: "Selling England by the Pound", ID: "g5"}, {Title: "Genesis", ID: "g12"},
 	}}, nil
+}
+
+// The names MusicBrainz has for the first album's releases, most used
+// first, as it answered on 2026-10-24: one of them the band's name, which
+// is also an album of theirs.
+func (fiveAlbums) Titles(_ context.Context, a resolve.StudioAlbum) ([]string, error) {
+	if a.ID != "g1" {
+		return nil, nil
+	}
+	return []string{"Genesis", "And the Word Was…", "In the Beginning", "Where the Sour Turns to Sweet", "The Genesis of Genesis"}, nil
 }
 
 func TestTheAlbumsAfterTheOneAskedForAreNamedInstead(t *testing.T) {
 	for r, want := range map[Request]string{
-		{Artist: "Genesis", Nth: 1}:           "From Genesis to Revelation [Trespass Nursery Cryme Foxtrot]",
-		{Artist: "Genesis", Nth: 4}:           "Foxtrot [Selling England by the Pound]",
-		{Artist: "Genesis", Nth: -1}:          "Selling England by the Pound [Foxtrot Nursery Cryme Trespass]",
+		{Artist: "Genesis", Nth: 1}:           "From Genesis to Revelation [And the Word Was… In the Beginning Where the Sour Turns to Sweet Trespass Nursery Cryme Foxtrot]", // its other safe names first; not "Genesis"
+		{Artist: "Genesis", Nth: 4}:           "Foxtrot [Selling England by the Pound Genesis]",
+		{Artist: "Genesis", Nth: -1}:          "Genesis [Selling England by the Pound Foxtrot Nursery Cryme]",
 		{Artist: "Genesis", Album: "Foxtrot"}: "Foxtrot []",
 	} {
 		_, album, instead, err := Album(context.Background(), fiveAlbums{}, r)

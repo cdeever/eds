@@ -290,9 +290,10 @@ type Command struct {
 	Instead []string `json:"instead,omitempty"`
 }
 
-// MaxInstead is how many alternatives a play_album may carry: each the
-// library lacks is two seconds of trying.
-const MaxInstead = 3
+// MaxInstead is how many alternatives a play_album may carry: other names
+// for the album, then the artist's next albums. Each the library lacks is a
+// second and a half of trying.
+const MaxInstead = 6
 
 // Validate reports the first thing wrong with a command.
 func (c Command) Validate() error {

@@ -78,3 +78,19 @@ func TestAnUnreadableFileIsStartedAgain(t *testing.T) {
 		t.Errorf("the rewritten file was not read: asked %d", n)
 	}
 }
+
+// Kept before albums had their MusicBrainz ids, a discography is asked for
+// again: without them, an album's other names cannot be.
+func TestADiscographyKeptWithoutIDsIsAskedForAgain(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "discographies.json")
+	old := `{"vanhalen":{"discography":{"Artist":"Van Halen","Albums":[{"Title":"Van Halen","Released":"1978-02-10"}]},"found":"2026-10-24T02:42:00Z"}}`
+	if err := os.WriteFile(path, []byte(old), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	d := &discographies{}
+	r := &Remembered{Next: d, Path: path, Logger: quiet}
+	got, err := r.Discography(context.Background(), "Van Halen")
+	if err != nil || len(d.asked) != 1 || got.Albums[0].ID != "vh1" {
+		t.Errorf("%+v, %v, asked %q", got, err, d.asked)
+	}
+}

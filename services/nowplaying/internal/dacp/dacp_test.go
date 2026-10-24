@@ -515,7 +515,7 @@ func TestPlayingAnAlbumEmptiesTheQueueThenPlaysItByName(t *testing.T) {
 	}
 	want := []string{
 		"/ctrl-int/1/cue?command=clear&session-id=99",
-		"/ctrl-int/1/cue?command=play&query='daap.songartist:Van%20Halen'+'daap.songalbum:Van%20Halen'&index=0&sort=album&session-id=99",
+		"/ctrl-int/1/cue?command=play&query='daap.songartist:Van%20Halen'+'daap.songalbum:Van%20Halen*'&index=0&sort=album&session-id=99",
 	}
 	if len(p.requests) != len(want) {
 		t.Fatalf("requests = %q", p.requests)
@@ -546,5 +546,18 @@ func TestPlayingAnAlbumWithoutASessionFails(t *testing.T) {
 	c := against(t, p)
 	if err := c.PlayAlbum(context.Background(), "Van Halen", "Van Halen"); err == nil {
 		t.Error("a play with no session was called a success")
+	}
+}
+
+func TestAnAlbumIsMatchedByTheStartOfItsTitle(t *testing.T) {
+	for in, want := range map[string]string{
+		"And the Word Was…":     "And the Word Was",
+		"And the Word Was.....": "And the Word Was",
+		"Led Zeppelin II ":      "Led Zeppelin II",
+		"Rocks":                 "Rocks",
+	} {
+		if got := Stem(in); got != want {
+			t.Errorf("Stem(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

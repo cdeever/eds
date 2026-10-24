@@ -373,7 +373,7 @@ func TestPlayAlbumMayNameAFewAlbumsInstead(t *testing.T) {
 		t.Errorf("came back as %+v, %v", back, err)
 	}
 	for name, bad := range map[string][]string{
-		"four":  {"a", "b", "c", "d"},
+		"seven": {"a", "b", "c", "d", "e", "f", "g"},
 		"empty": {"Trespass", " "},
 		"long":  {strings.Repeat("x", 201)},
 	} {

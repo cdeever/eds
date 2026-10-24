@@ -286,11 +286,18 @@ func (c *Client) Volume(ctx context.Context) (int, error) {
 // looked up: the player matches the names, and what it then says it is
 // playing is the only proof that they matched.
 
-// PlayAlbum replaces what the player is playing with an album, named as the
-// library names it, from its first track, in the album's order. It is two
-// requests, as the remote sends them: empty the queue, then queue the album
-// and play. The player answers both the same whether or not anything
-// matched; ask Now afterwards.
+// PlayAlbum replaces what the player is playing with an album, from its
+// first track, in the album's order. The album is any of the artist's whose
+// title begins with album's: a library's "Led Zeppelin II (Remastered)" is
+// MusicBrainz's "Led Zeppelin II", and among those beginning alike the
+// shortest sorts first, so "Led Zeppelin" is not "Led Zeppelin II". A
+// trailing ellipsis is not part of the match ("And the Word Was…").
+//
+// It is two requests, as the remote sends them: empty the queue, then queue
+// the album and play. The player answers both the same whether or not
+// anything matched, and with nothing matched it plays the artist's songs
+// instead, from the album first by name (2026-10-24, "Abacab" for "From
+// Genesis to Revelation"); ask Now afterwards.
 func (c *Client) PlayAlbum(ctx context.Context, artist, album string) error {
 	if strings.TrimSpace(artist) == "" || strings.TrimSpace(album) == "" {
 		return fmt.Errorf("dacp: an album is played by its artist and its name")
@@ -298,10 +305,16 @@ func (c *Client) PlayAlbum(ctx context.Context, artist, album string) error {
 	if _, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=clear&session-id=%d", c.session.Load()), 1<<20); err != nil {
 		return err
 	}
-	query := "'daap.songartist:" + quote(artist) + "'+'daap.songalbum:" + quote(album) + "'"
+	query := "'daap.songartist:" + quote(artist) + "'+'daap.songalbum:" + quote(Stem(album)) + "*'"
 	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=play&query=%s&index=0&sort=album&session-id=%d",
 		query, c.session.Load()), 1<<20)
 	return err
+}
+
+// Stem is an album's title as it is matched: without a trailing ellipsis,
+// full stops or spaces, which libraries write three ways.
+func Stem(album string) string {
+	return strings.TrimRight(strings.TrimSpace(album), ".… ")
 }
 
 // quote makes a name safe inside a query's single quotes, and in a URL. The

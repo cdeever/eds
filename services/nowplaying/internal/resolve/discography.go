@@ -23,6 +23,9 @@ type Discography struct {
 type StudioAlbum struct {
 	Title    string
 	Released string // its first release, YYYY[-MM[-DD]]
+	// ID is MusicBrainz's release group: the album, whatever each release of
+	// it has been called (Titles).
+	ID string `json:",omitempty"`
 }
 
 // Nth is the nth studio album, counted from 1; a negative n counts from the
@@ -130,6 +133,7 @@ func (o *Originals) studioAlbums(ctx context.Context, id, name string) (Discogra
 		var found struct {
 			Count  int `json:"release-group-count"`
 			Groups []struct {
+				ID        string   `json:"id"`
 				Title     string   `json:"title"`
 				Primary   string   `json:"primary-type"`
 				Secondary []string `json:"secondary-types"`
@@ -157,7 +161,7 @@ func (o *Originals) studioAlbums(ctx context.Context, id, name string) (Discogra
 			if g.Primary != "Album" || len(g.Secondary) > 0 || simplify(strings.Join(names, " ")) != simplify(name) {
 				continue
 			}
-			d.Albums = append(d.Albums, StudioAlbum{Title: libraryName(g.Title), Released: g.First})
+			d.Albums = append(d.Albums, StudioAlbum{Title: libraryName(g.Title), Released: g.First, ID: g.ID})
 		}
 		offset += len(found.Groups)
 		if len(found.Groups) == 0 || offset >= found.Count {
@@ -208,4 +212,37 @@ func libraryName(title string) string {
 		title = strings.TrimSpace(title[1 : len(title)-1])
 	}
 	return title
+}
+
+// Titles are the other names an album's releases have gone by, most used
+// first, as a library might have it instead (ADR-0045): Genesis' first,
+// *From Genesis to Revelation*, is in one owner's library as its reissue,
+// *And the Word Was…* (2026-10-24). The album's own title is not among them.
+func (o *Originals) Titles(ctx context.Context, album StudioAlbum) ([]string, error) {
+	if album.ID == "" {
+		return nil, nil
+	}
+	var found struct {
+		Releases []struct {
+			Title string `json:"title"`
+		} `json:"releases"`
+	}
+	endpoint := fmt.Sprintf("%s/ws/2/release?release-group=%s&fmt=json&limit=100", o.MusicBrainz, url.QueryEscape(album.ID))
+	if err := o.askMB(ctx, endpoint, &found); err != nil {
+		return nil, err
+	}
+	counts := map[string]int{}
+	var order []string
+	for _, r := range found.Releases {
+		t := libraryName(r.Title)
+		if t == "" || simplify(t) == simplify(album.Title) {
+			continue
+		}
+		if counts[t] == 0 {
+			order = append(order, t)
+		}
+		counts[t]++
+	}
+	sort.SliceStable(order, func(i, j int) bool { return counts[order[i]] > counts[order[j]] })
+	return order, nil
 }

@@ -64,6 +64,16 @@ type Counter interface {
 	Discography(ctx context.Context, artist string) (resolve.Discography, error)
 }
 
+// Titler knows the other names an album's releases have gone by (ADR-0045).
+// A Counter that is not one names no others.
+type Titler interface {
+	Titles(ctx context.Context, album resolve.StudioAlbum) ([]string, error)
+}
+
+// maxOtherTitles is how many of an album's other names are tried before the
+// artist's next album.
+const maxOtherTitles = 3
+
 // Listener makes each request heard into a command.
 type Listener struct {
 	Prefix  string
@@ -191,11 +201,12 @@ func Album(ctx context.Context, albums Counter, r Request) (artist, album string
 	if err != nil {
 		return "", "", nil, err
 	}
+	instead = otherTitles(ctx, albums, d, a)
 	step := 1
 	if r.Nth < 0 {
 		step = -1
 	}
-	for n := r.Nth + step; len(instead) < contract.MaxInstead && n != 0; n += step {
+	for n, next := r.Nth+step, 0; len(instead) < contract.MaxInstead && n != 0 && next < 3; n, next = n+step, next+1 {
 		next, err := d.Nth(n)
 		if err != nil {
 			break
@@ -203,6 +214,45 @@ func Album(ctx context.Context, albums Counter, r Request) (artist, album string
 		instead = append(instead, next.Title)
 	}
 	return d.Artist, a.Title, instead, nil
+}
+
+// otherTitles are the names album's releases have gone by that are safe to
+// ask the library for: not the artist's own name, and not the beginning of
+// another of the artist's albums or begun by one, since the player matches a
+// title by its start - a Genesis reissue called "Genesis" would play their
+// 1983 album. A lookup that fails names none: the album and the next ones
+// are still tried.
+func otherTitles(ctx context.Context, albums Counter, d resolve.Discography, album resolve.StudioAlbum) []string {
+	titler, ok := albums.(Titler)
+	if !ok {
+		return nil
+	}
+	titles, err := titler.Titles(ctx, album)
+	if err != nil {
+		return nil
+	}
+	var safe []string
+	for _, t := range titles {
+		name := resolve.Simplify(t)
+		if len(name) < 4 || name == resolve.Simplify(d.Artist) {
+			continue
+		}
+		clash := false
+		for _, other := range d.Albums {
+			o := resolve.Simplify(other.Title)
+			if other.ID != album.ID && (strings.HasPrefix(o, name) || strings.HasPrefix(name, o)) {
+				clash = true
+				break
+			}
+		}
+		if !clash {
+			safe = append(safe, t)
+		}
+		if len(safe) == maxOtherTitles {
+			break
+		}
+	}
+	return safe
 }
 
 func reason(err error) string {

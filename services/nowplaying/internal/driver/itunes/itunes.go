@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/dacp"
@@ -179,19 +180,55 @@ func (d *Driver) playAlbum(ctx context.Context, artist, album string) error {
 	if wait == 0 {
 		wait = albumCheck
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-time.After(wait):
+	// Asked as soon as it might have started, and again until the wait is
+	// out: an album that is there is known in a few tenths of a second, one
+	// that is not only when the wait is.
+	deadline := time.Now().Add(wait)
+	var now dacp.Status
+	for {
+		step := min(wait/6, time.Until(deadline))
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(max(step, 0)):
+		}
+		var err error
+		if now, err = d.Player.Now(ctx); err != nil {
+			return err
+		}
+		if strings.EqualFold(now.Artist, artist) && begins(now.Album, album) {
+			return nil
+		}
+		if !time.Now().Before(deadline) {
+			break
+		}
 	}
-	now, err := d.Player.Now(ctx)
-	if err != nil {
-		return err
+	return fmt.Errorf("%w: asked for %q by %q, playing %q by %q", ErrAlbumNotFound, album, artist, now.Album, now.Artist)
+}
+
+// begins is whether a library's title is the one asked for, alone or with
+// an edition's note after it: "Led Zeppelin II (Remastered)" is "Led
+// Zeppelin II", and "And the Word Was..." is "And the Word Was…". More of a
+// name is not a note: "Van Halen II" is not "Van Halen", which the player's
+// match by the start of a title would otherwise play for it.
+func begins(title, asked string) bool {
+	t, a := plain(title), plain(dacp.Stem(asked))
+	if a == "" || !strings.HasPrefix(t, a) {
+		return false
 	}
-	if !strings.EqualFold(now.Artist, artist) || !strings.EqualFold(now.Album, album) {
-		return fmt.Errorf("%w: asked for %q by %q, playing %q by %q", ErrAlbumNotFound, album, artist, now.Album, now.Artist)
+	rest := strings.TrimSpace(t[len(a):])
+	if rest == "" {
+		return true
 	}
-	return nil
+	r, _ := utf8.DecodeRuneInString(rest)
+	return strings.ContainsRune("([{-–—:…./,", r)
+}
+
+// plain is a title as titles are compared: without case, with straight
+// quotes and single spaces.
+func plain(s string) string {
+	s = strings.NewReplacer("’", "'", "‘", "'", "“", `"`, "”", `"`).Replace(strings.ToLower(s))
+	return strings.Join(strings.Fields(s), " ")
 }
 
 // nudge moves the volume by step. The player is asked where it is first,

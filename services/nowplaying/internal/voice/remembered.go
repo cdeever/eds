@@ -45,7 +45,9 @@ func (r *Remembered) Discography(ctx context.Context, artist string) (resolve.Di
 	r.load()
 	kept, ok := r.kept[key]
 	r.mu.Unlock()
-	if ok && r.now().Sub(kept.Found) < r.maxAge() {
+	// Kept before albums had their MusicBrainz ids (ADR-0045), it is asked
+	// for again: without them, an album's other names cannot be.
+	if ok && r.now().Sub(kept.Found) < r.maxAge() && hasIDs(kept.Discography) {
 		return kept.Discography, nil
 	}
 
@@ -127,4 +129,22 @@ func (r *Remembered) logger() *slog.Logger {
 		return r.Logger
 	}
 	return slog.Default()
+}
+
+func hasIDs(d resolve.Discography) bool {
+	for _, a := range d.Albums {
+		if a.ID == "" {
+			return false
+		}
+	}
+	return len(d.Albums) > 0
+}
+
+// Titles asks the counter behind, which keeps nothing of them: they are
+// asked for only when an album is, once a request.
+func (r *Remembered) Titles(ctx context.Context, album resolve.StudioAlbum) ([]string, error) {
+	if t, ok := r.Next.(Titler); ok {
+		return t.Titles(ctx, album)
+	}
+	return nil, nil
 }
