@@ -42,13 +42,17 @@ of the path the music takes.
 
 **Today**, in the vinyl listening room, the record is shown: a stand lit in
 the colors of its cover, and a screen beside it that shows the cover and can
-pause, skip and turn down what iTunes is playing. An album can also be asked
-for out loud, and iTunes plays it.
+pause, skip and turn down what iTunes is playing.
+
+**In development**, an album can be asked for out loud, and iTunes plays it.
+For now there is one device that listens, the ears, and it sits wherever
+it is being worked on. Ears are meant to be on several devices throughout
+the house.
 
 **Meant for later**, and not built yet:
 
-- **Where hands are busy**, as in the kitchen, music is asked for out loud
-  without a phone in hand.
+- **Where hands are busy**, as in the kitchen, the room has ears of its
+  own, and music is asked for without a phone in hand.
 - **Where people sit**, a screen says what is playing and can change it.
 - **Where the room has a character of its own**, as the gaming room does,
   lights and looks are its own and not the vinyl room's.
