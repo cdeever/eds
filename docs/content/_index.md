@@ -38,7 +38,7 @@ When the music stops, the light settles to a low, warm glow.
 
 ## A screen that belongs to the stereo
 
-Beside the turntable is a small touch screen with one job. It shows the
+A small touch screen has one job. It shows the
 cover of whatever is playing. Touch it and it becomes a remote for iTunes:
 play, pause, skip, louder, quieter, without reaching for a phone. It is
 always where you are standing, and it is never busy being anything else.
@@ -65,8 +65,8 @@ media server itself over Remote Desktop. EdS does not replace any of that.
 It adds ways that are more convenient, and more fun, differently for each
 room, and it stays out of the path the music takes.
 
-**Today** that is the vinyl listening room: the LP stand and the screen
-beside it, above.
+**Today** that is the vinyl listening room: the LP stand and the touch
+screen, above.
 
 **In development**, an album can be asked for out loud, and iTunes plays it.
 For now there is one device that listens, the ears, and it sits wherever
