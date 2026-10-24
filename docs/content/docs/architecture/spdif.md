@@ -41,8 +41,9 @@ its digital output is the primary source for every room.
 
 ### The digital S/PDIF switch
 
-Between the sources and the rooms is an automatic digital switch. The media
-server is on its primary input, and its other inputs are overrides: when a
+Before the music is sent through the house, the media server's sound card
+digital output passes through an automatic digital switch. The media server
+is on the switch's primary input, and its other inputs are overrides: when a
 signal appears on one, the switch passes that source to the house instead,
 and when the signal goes away, the media server has the house back. Nobody
 presses a button.
