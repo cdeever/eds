@@ -36,6 +36,8 @@ func TestRequestsAreRead(t *testing.T) {
 		"Tae Van Halen's first album.":           {Artist: "Van Halen", Nth: 1},
 		"Clay Aerosmith's first album.":          {Artist: "Aerosmith", Nth: 1},
 		"...vis. Pray the third album by Boston": {Artist: "Boston", Nth: 3},
+		// The end of "Hey Jarvis", as scribe wrote it, and "play" as "played".
+		"And each of us played Van Halen's first album.": {Artist: "Van Halen", Nth: 1},
 	} {
 		got, err := Parse(words)
 		if err != nil || got != want {
@@ -57,13 +59,16 @@ func TestWhatIsNotARequestIsNotRead(t *testing.T) {
 		"Play the first album by",
 		"Clay Rocks by Aerosmith.", // a misheard play, without a place: too like talk
 		"They went by the store.",
-		"Don't pay Van Halen's first album.", // a negation, before a misheard play
-		"They said it was his first album.",  // no album by its place
+		"Don't pay Van Halen's first album.",     // a negation, before a misheard play
+		"They said it was his first album.",      // no album by its place
+		"I told him to play Rocks by Aerosmith.", // ALBUM by ARTIST, too far in
+		"I don't think you should play Van Halen's first album.",
+		"One two three four five six play Van Halen's first album.", // six words in
 		"Don't play Van Halen's first album.",
 		"Do not play Rocks by Aerosmith.",
 		"No, play Rocks by Aerosmith.",
 		"Never play Rocks by Aerosmith.",
-		"One two three play Rocks by Aerosmith.", // too far from the start
+		"One two three play Rocks by Aerosmith.", // ALBUM by ARTIST, too far from the start
 	} {
 		if got, err := Parse(words); !errors.Is(err, ErrNotARequest) {
 			t.Errorf("Parse(%q) = %+v, %v; want not a request", words, got, err)

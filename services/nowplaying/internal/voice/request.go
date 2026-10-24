@@ -66,7 +66,7 @@ func Parse(words string) (Request, error) {
 		// (2026-10-24), and a place and the word "album" are not said by
 		// accident. "ALBUM by ARTIST" is too like ordinary talk, and needs
 		// the word itself.
-		if text, ok = misheardPlay(clean(words)); ok {
+		if text, ok = farPlay(clean(words)); ok {
 			if r, err := byPlace(text); err == nil && strictlyByPlace(text) {
 				return r, nil
 			}
@@ -108,14 +108,17 @@ func strictlyByPlace(text string) bool {
 	return nthBy.MatchString(text) || marked.MatchString(text)
 }
 
-// misheard are what speech-to-text has written for "play" when its P was
-// clipped or smeared, at the start of a request: "Clay", "Tae".
-var misheard = regexp.MustCompile(`(?i)^((?:\S+\s+){0,2}?)(?:tae|tay|they|clay|lay|pay|pray|plate|flay|slay|blay|pla|ple|played|plays)[,.]?\s+(.+)$`)
+// far finds "play", or what speech-to-text has written for it when its P
+// was clipped or smeared ("Clay", "Tae", "played"), up to five words in: the
+// device keeps 600 ms from before the wake word was decided on, and scribe
+// has written the end of "Hey Jarvis" in it as "And each of us" (2026-10-24).
+// Only an album by its place, strictly said, is read this far in.
+var far = regexp.MustCompile(`(?i)^((?:\S+\s+){0,5}?)(?:play|tae|tay|they|clay|lay|pay|pray|plate|flay|slay|blay|pla|ple|played|plays)[,.]?\s+(.+)$`)
 
-// misheardPlay is the words with a misheard "play" made "play", allowing a
-// word or two before it, never a negation.
-func misheardPlay(text string) (string, bool) {
-	m := misheard.FindStringSubmatch(text)
+// farPlay is the words from "play", or its mishearing, made "play", never
+// after a negation.
+func farPlay(text string) (string, bool) {
+	m := far.FindStringSubmatch(text)
 	if m == nil || negation.MatchString(m[1]) {
 		return "", false
 	}

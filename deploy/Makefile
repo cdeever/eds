@@ -73,13 +73,21 @@ BUILD := $(CONTAINER) build --platform linux/amd64 --layers=false --label eds.de
 # carries a different one (CHG-0037).
 source = $(shell cd $(SVC)/$(1) && find . -type f -not -path './.venv/*' -not -path './bin/*' -not -path '*/__pycache__/*' -not -path './.pytest_cache/*' | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -c1-16)
 
+# An image already built from the same sources is not built again: a build
+# fetches its base image, packages and, for scribe, its model, all through
+# the core router (INC-0002), to make an image the same as the last.
+# $(1) the image, $(2) its directory, then the build's own arguments.
+built = $(CONTAINER) image inspect --format '{{index .Labels "eds.source"}}' localhost/eds-$(1):latest 2>/dev/null | grep -qx '$(call source,$(2))'
+build = if $(call built,$(1),$(2)); then echo "$(1): sources unchanged ($(call source,$(2))), not built"; \
+	else $(BUILD) --label eds.source=$(call source,$(2)) -t localhost/eds-$(1):latest $(3); fi
+
 images:
-	$(BUILD) --label eds.source=$(call source,palette) -t localhost/eds-palette:latest $(SVC)/palette
-	$(BUILD) --label eds.source=$(call source,lightd) -t localhost/eds-lightd:latest $(SVC)/lightd
-	$(BUILD) --label eds.source=$(call source,nowplaying) --build-arg VERSION=$(VERSION) -t localhost/eds-nowplayd:latest -f $(SVC)/nowplaying/Containerfile $(SVC)/nowplaying
-	$(BUILD) --label eds.source=$(call source,console) --build-arg VERSION=$(VERSION) -t localhost/eds-console:latest -f $(SVC)/console/Containerfile $(SVC)/console
-	$(BUILD) --label eds.source=$(call source,scribe) -t localhost/eds-scribe:latest $(SVC)/scribe
-	$(BUILD) --label eds.source=$(call source,nowplaying) --build-arg VERSION=$(VERSION) -t localhost/eds-voiced:latest -f $(SVC)/nowplaying/Containerfile.voiced $(SVC)/nowplaying
+	@$(call build,palette,palette,$(SVC)/palette)
+	@$(call build,lightd,lightd,$(SVC)/lightd)
+	@$(call build,nowplayd,nowplaying,--build-arg VERSION=$(VERSION) -f $(SVC)/nowplaying/Containerfile $(SVC)/nowplaying)
+	@$(call build,console,console,--build-arg VERSION=$(VERSION) -f $(SVC)/console/Containerfile $(SVC)/console)
+	@$(call build,scribe,scribe,$(SVC)/scribe)
+	@$(call build,voiced,nowplaying,--build-arg VERSION=$(VERSION) -f $(SVC)/nowplaying/Containerfile.voiced $(SVC)/nowplaying)
 	$(CONTAINER) image prune -f --filter label=eds.deploy=1 >/dev/null
 
 # Only what changed, a file at a time, at a capped rate: load.sh. One image
