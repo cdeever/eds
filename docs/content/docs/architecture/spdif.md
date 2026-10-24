@@ -16,6 +16,18 @@ the project's own page has the whole of it:
 One digital feed (S/PDIF) is sent from the basement to every room, and each
 room's own stereo plays it.
 
+### Listening areas
+
+- **Home office and vinyl listening room**: the primary listening room, and
+  home of the record collection.
+- **Family room home theater**, which covers the family room and the
+  kitchen.
+- **Master bedroom**, on a vintage Marantz.
+- **Retro gaming room**, on a vintage Carver system like the one in
+  *Ferris Bueller's Day Off*.
+- **Outside**: speakers fed from the basement, and an FM transmitter that
+  carries the feed to a vintage boom box.
+
 ### The media server and its sources
 
 A media server in the basement plays the house's music, from more than one
@@ -24,27 +36,27 @@ source:
 - **Local collections**, in iTunes and MusicBee.
 - **Streaming services**, Spotify and Tidal among them.
 
-Whatever it plays is what the house hears.
+It is the house's central digital library and its gateway to streaming, and
+its digital output is the primary source for every room.
+
+### The digital S/PDIF switch
+
+Between the sources and the rooms is an automatic digital switch. The media
+server is on its primary input, and its other inputs are overrides: when a
+signal appears on one, the switch passes that source to the house instead,
+and when the signal goes away, the media server has the house back. Nobody
+presses a button.
 
 ### Switching between the turntable and the house music
 
-Put a record on the turntable and it takes over the feed, so the record
-plays in every room with no button pressed anywhere. A smart power strip on
-the turntable is how the system knows a record has taken over: switch the
-turntable on and the house is the record's; switch it off and the media
-server has it back.
+The turntable is one of those overrides. A converter on its amplifier, in
+the primary listening room, turns the record into S/PDIF and sends it down
+to the switch. Put a record on and it plays in every room.
 
-### Listening areas
-
-- **Home office and vinyl listening room**: the primary listening room, and
-  home of the turntable and the record collection.
-- **Family room home theater**, which covers the family room and the
-  kitchen.
-- **Master bedroom**, on a vintage Marantz.
-- **Retro gaming room**, on a vintage Carver system like the one in
-  *Ferris Bueller's Day Off*.
-- **Outside**: speakers fed from the basement, and an FM transmitter that
-  carries the feed to a vintage boom box.
+A powered converter sends a signal whether or not a record is turning, so
+it is plugged into a smart power strip that powers it only while the
+turntable is switched on. Turntable on, and the house is the record's;
+turntable off, and the media server has it back.
 
 ## What EdS adds to it
 
