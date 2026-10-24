@@ -73,5 +73,7 @@ then after a wake word.**
 - [x] A request said into it plays its album: asked from the console, not a
       button, since the voice kit's buttons are the XMOS chip's; *Aerosmith*,
       2026-10-24 ([CHG-0035](/docs/changes/2026/0035-only-words-scribe-is-sure-of/)).
-- [ ] The same after a wake word.
+- [x] The same after a wake word: "Hey Jarvis, play Aerosmith's first
+      album" played it, 2026-10-24, 21 s from the wake word to the music
+      ([CHG-0036](/docs/changes/2026/0036-the-respeaker-wakes-to-hey-jarvis/)).
 - [ ] An update through the broker, and a rollback.

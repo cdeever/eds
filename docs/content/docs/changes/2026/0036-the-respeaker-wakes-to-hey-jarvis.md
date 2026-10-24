@@ -9,7 +9,7 @@ weight: 36
 |---|---|
 | **Date** | 2026-10-24 |
 | **Change type** | Upgrade |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-24 |
 | **Systems** | `respeaker-01`: firmware flashed by cable. The services workload: `eds-voiced` rebuilt with the others and all restarted |
 | **How** | `make -C firmware/ears build flash`; `make -C deploy ship WHERE=builder` |
 | **Risk** | Low. Most likely to go wrong: the device waking for something that is not its name, which sends a few seconds of the room; voiced acts only on a request it is sure of (INC-0001) |
@@ -57,11 +57,20 @@ Flash `273912b`'s firmware: the console asks, nothing listens for a name.
 | 02:19:43 | The owner again: woken at 250/255, the request ended by the quiet after 2.3 s, sent. scribe wrote it "So this is what I think.", not confident, in 10 s: the owner was on a Zoom call beside the reSpeaker, and it was the call's voice. Nothing played. |
 | 02:22:40–02:27:39 | The network timeout put back to the default (the buffer is what made sending fast); each request's console line says how it ended; scribe decodes once, without Whisper's warmer retries, which is where the ten seconds went. Same words and verdicts on every recording tried. Restarted, the device was on the broker in 5.4 s. |
 
+| 02:30:20 | The owner, off the call: "Hey Jarvis, play Aerosmith's first album." Woken; the request heard for 6.4 s, the limit and its pre-roll, and sent at 02:30:31 in 5.3 s (203,756 bytes). scribe wrote "Play Aerosmith's first album." in 4.6 s; voiced counted it in MusicBrainz, three calls with one retried, and asked for *Aerosmith* at 02:30:40.8. "Make It" played at 02:30:41.0. |
+
 Over the evening, with music and a Zoom call beside it, nothing but the
 owner's "Hey Jarvis" passed 1/255.
 
 ### Departures from the plan
 
+- A request is sent in 5.3 s, not under two.
+- From the wake word to the music was 21 s: the request ran to the limit
+  rather than ending at the quiet, and voiced had started minutes before
+  with no artist counted yet.
+
 ## Follow-ups
 
 - "Hey Ed", trained.
+- Faster: the end of a request in a room with sound in it; the send; the
+  first count of an artist, which a restart forgets.
