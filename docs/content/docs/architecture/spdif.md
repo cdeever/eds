@@ -13,26 +13,18 @@ the project's own page has the whole of it:
 
 ## Whole-house digital sound distribution
 
-A media server in the basement sends one digital feed (S/PDIF) to every
-room, and each room's own stereo plays it.
+One digital feed (S/PDIF) is sent from the basement to every room, and each
+room's own stereo plays it.
 
-**My music, my control.** It is built by hand, and that is worth the
-effort:
+### The media server and its sources
 
-- **No monthly subscription fees.** Nothing in the house's sound depends on
-  a company's service or its pricing; the music plays whether or not anyone
-  is paying for an app.
-- **Each room keeps its own stereo**, vintage ones included, instead of
-  speakers chosen by whoever sells the system.
-- **Custom integrations are possible** with the providers already in use,
-  iTunes, Spotify and the owner's Discogs collection among them, in ways no
-  packaged system offers. EdS is one of those integrations.
-- **No microphones listening to every conversation** and sending it to the
-  cloud. EdS's ears listen for a wake word on the device itself, and send
-  nothing until they hear it; then only the request, which
-  is written down on EdS's own workload, not by someone else's service. The
-  one sound EdS sends out of the house is a few seconds of the record, to
-  name it.
+A media server in the basement plays the house's music, from more than one
+source:
+
+- **Local collections**, in iTunes and MusicBee.
+- **Streaming services**, Spotify and Tidal among them.
+
+Whatever it plays is what the house hears.
 
 ### Switching between the turntable and the house music
 
