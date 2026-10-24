@@ -127,13 +127,36 @@ func (d *Driver) Command(ctx context.Context, c contract.Command) error {
 		if err := d.unduck(ctx); err != nil {
 			d.logger().Warn("the volume could not be brought back before an album", "error", err)
 		}
-		return d.playAlbum(ctx, c.Artist, c.Album)
+		return d.playFirstOwned(ctx, c.Artist, append([]string{c.Album}, c.Instead...))
 	case contract.Duck:
 		return d.duck(ctx)
 	case contract.Unduck:
 		return d.unduck(ctx)
 	}
 	return fmt.Errorf("itunes: no such command %q", c.Command)
+}
+
+// playFirstOwned plays the first of the albums the library has (ADR-0045):
+// the one asked for, then each instead, in order. A miss is only found by
+// trying, and each try empties the queue, so a miss on all of them leaves
+// the player stopped.
+func (d *Driver) playFirstOwned(ctx context.Context, artist string, albums []string) error {
+	var missed []string
+	for i, album := range albums {
+		err := d.playAlbum(ctx, artist, album)
+		if err == nil {
+			if i > 0 {
+				d.logger().Info("the library had not got what was asked for; played the next it has",
+					"artist", artist, "asked", albums[0], "played", album, "missed", missed)
+			}
+			return nil
+		}
+		if !errors.Is(err, ErrAlbumNotFound) {
+			return err
+		}
+		missed = append(missed, album)
+	}
+	return fmt.Errorf("%w: tried %q by %q", ErrAlbumNotFound, missed, artist)
 }
 
 // ErrAlbumNotFound means the player was asked for an album and is not

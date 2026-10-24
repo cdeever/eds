@@ -285,7 +285,14 @@ type Command struct {
 	// library names it. Nothing else carries them.
 	Artist string `json:"artist,omitempty"`
 	Album  string `json:"album,omitempty"`
+	// Instead are the artist's albums to try, in order, if the library has
+	// not got Album (ADR-0045). play_album only, and at most MaxInstead.
+	Instead []string `json:"instead,omitempty"`
 }
+
+// MaxInstead is how many alternatives a play_album may carry: each the
+// library lacks is two seconds of trying.
+const MaxInstead = 3
 
 // Validate reports the first thing wrong with a command.
 func (c Command) Validate() error {
@@ -302,6 +309,14 @@ func (c Command) Validate() error {
 			}
 			if len(f.name) > maxName {
 				return fmt.Errorf("contract: play_album's %s is longer than %d bytes", f.field, maxName)
+			}
+		}
+		if len(c.Instead) > MaxInstead {
+			return fmt.Errorf("contract: play_album names %d albums instead, at most %d", len(c.Instead), MaxInstead)
+		}
+		for _, a := range c.Instead {
+			if strings.TrimSpace(a) == "" || len(a) > maxName {
+				return fmt.Errorf("contract: play_album names an album instead that is empty or longer than %d bytes", maxName)
 			}
 		}
 		return nil

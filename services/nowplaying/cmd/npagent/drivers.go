@@ -466,6 +466,10 @@ func run(ctx context.Context) error {
 // pressed it has pressed again, or given up.
 const commandTimeout = 5 * time.Second
 
+// albumTimeout is how long a play_album may take that names albums to try
+// instead (ADR-0045): each the library lacks is about two seconds.
+const albumTimeout = 20 * time.Second
+
 // commander is what a driver's connection does with a message on its command
 // topic: carry it out, and say so where it will be seen. The player reporting
 // the change is the answer on the bus; this is the answer in the log store,
@@ -487,7 +491,11 @@ func commander(ctx context.Context, logger *slog.Logger, source string,
 			return
 		}
 
-		short, cancel := context.WithTimeout(ctx, commandTimeout)
+		timeout := commandTimeout
+		if c.Command == contract.PlayAlbum && len(c.Instead) > 0 {
+			timeout = albumTimeout
+		}
+		short, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 		if err := do(short, c); err != nil {
 			logger.Warn("command failed: "+c.Command, events.Key, "driver.command_failed",

@@ -145,14 +145,14 @@ func (l *Listener) hear(ctx context.Context, device string, wav []byte) Heard {
 		heard.Reason = "not a request for an album"
 		return heard
 	}
-	artist, album, err := Album(ctx, l.Albums, r)
+	artist, album, instead, err := Album(ctx, l.Albums, r)
 	if err != nil {
 		log.Info("no album for the request", "artist", r.Artist, "nth", r.Nth, "error", err)
 		heard.Reason = "no such album: " + reason(err)
 		return heard
 	}
 
-	c, err := contract.EncodeCommand(contract.Command{Command: contract.PlayAlbum, From: "voiced", Artist: artist, Album: album})
+	c, err := contract.EncodeCommand(contract.Command{Command: contract.PlayAlbum, From: "voiced", Artist: artist, Album: album, Instead: instead})
 	if err == nil {
 		err = l.Publish(contract.CommandTopic(l.Prefix), c, false)
 	}
@@ -169,9 +169,14 @@ func (l *Listener) hear(ctx context.Context, device string, wav []byte) Heard {
 // Album names the album a request asks for: as said, or counted among the
 // artist's studio albums. An artist heard without an apostrophe ("Van
 // Halens") is asked for again without its s when no artist has the name.
-func Album(ctx context.Context, albums Counter, r Request) (artist, album string, err error) {
+//
+// For an album asked for by its place, instead are the artist's next studio
+// albums after it, up to contract.MaxInstead, to play if the library has not
+// got it (ADR-0045): the later ones for the first or the Nth, the earlier
+// ones for the latest.
+func Album(ctx context.Context, albums Counter, r Request) (artist, album string, instead []string, err error) {
 	if r.Album != "" {
-		return r.Artist, r.Album, nil
+		return r.Artist, r.Album, nil, nil
 	}
 	d, err := albums.Discography(ctx, r.Artist)
 	if errors.Is(err, resolve.ErrNotFound) {
@@ -180,13 +185,24 @@ func Album(ctx context.Context, albums Counter, r Request) (artist, album string
 		}
 	}
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 	a, err := d.Nth(r.Nth)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
-	return d.Artist, a.Title, nil
+	step := 1
+	if r.Nth < 0 {
+		step = -1
+	}
+	for n := r.Nth + step; len(instead) < contract.MaxInstead && n != 0; n += step {
+		next, err := d.Nth(n)
+		if err != nil {
+			break
+		}
+		instead = append(instead, next.Title)
+	}
+	return d.Artist, a.Title, instead, nil
 }
 
 func reason(err error) string {

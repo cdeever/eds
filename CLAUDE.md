@@ -395,6 +395,10 @@ names an artist and an album, and `nowplayd` passes it to `NP_ALBUM_SOURCE`
 (`itunes`) whatever is current. iTunes for Windows refuses this remote its
 library (403 on `databases`), so the album is played by name and the driver
 asks what plays afterward; a miss is a failed command, never a nearer guess.
+For an album asked for by its place, voiced names up to three of the
+artist's next albums in `instead`, and the driver plays the first the
+library has (ADR-0045): "Genesis' first album" is the first of theirs the
+owner has. A miss empties iTunes' queue, so missing them all stops the music.
 
 **A request can be spoken** (ADR-0042). A device sends what followed its
 wake word as one WAV on `voice/<id>/utterance`; `voiced`

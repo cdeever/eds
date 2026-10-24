@@ -249,6 +249,7 @@ It publishes to `nowplaying/command`:
 | `command` | `play_pause`, `next`, `previous`, `volume_up`, `volume_down`, `duck`, `unduck` or `play_album`. Anything else is refused |
 | `from` | optional: who sent it, for the logs. Not trusted for anything |
 | `artist`, `album` | `play_album` only, and both required: the album's names as the player's library has them, at most 200 bytes each |
+| `instead` | `play_album` only, optional: up to three more albums by the artist, tried in order if the library has not got `album` ([ADR-0045](/docs/architecture/decisions/0045-an-nth-album-not-owned-is-the-next-one-that-is/)) |
 
 nowplayd passes the message, unchanged, to `nowplaying/source/<id>/command`
 for the source of the current track. A controller knows no source and no

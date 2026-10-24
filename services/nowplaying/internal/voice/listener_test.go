@@ -248,3 +248,28 @@ func TestARetainedWakeDucksNothing(t *testing.T) {
 		t.Errorf("published %+v", *out)
 	}
 }
+
+// --- albums instead (ADR-0045) -------------------------------------------------
+
+type fiveAlbums struct{}
+
+func (fiveAlbums) Discography(context.Context, string) (resolve.Discography, error) {
+	return resolve.Discography{Artist: "Genesis", Albums: []resolve.StudioAlbum{
+		{Title: "From Genesis to Revelation"}, {Title: "Trespass"}, {Title: "Nursery Cryme"},
+		{Title: "Foxtrot"}, {Title: "Selling England by the Pound"},
+	}}, nil
+}
+
+func TestTheAlbumsAfterTheOneAskedForAreNamedInstead(t *testing.T) {
+	for r, want := range map[Request]string{
+		{Artist: "Genesis", Nth: 1}:           "From Genesis to Revelation [Trespass Nursery Cryme Foxtrot]",
+		{Artist: "Genesis", Nth: 4}:           "Foxtrot [Selling England by the Pound]",
+		{Artist: "Genesis", Nth: -1}:          "Selling England by the Pound [Foxtrot Nursery Cryme Trespass]",
+		{Artist: "Genesis", Album: "Foxtrot"}: "Foxtrot []",
+	} {
+		_, album, instead, err := Album(context.Background(), fiveAlbums{}, r)
+		if got := fmt.Sprintf("%s %v", album, instead); err != nil || got != want {
+			t.Errorf("%+v: %s, %v; want %s", r, got, err, want)
+		}
+	}
+}

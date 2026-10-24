@@ -113,3 +113,4 @@ and incidents under the same names. To keep the two apart:
 | [0042](0042-a-request-is-heard-on-the-workload/) | 2026-10-24 | A spoken request is sent whole to the workload, written down there, and made a command | {{< adr-status "Proposed" >}} |
 | [0043](0043-the-respeaker-runs-firmware-of-edss-own/) | 2026-10-24 | The reSpeaker runs firmware of EdS's own, and sends a request when its button is held, then when it hears its name | {{< adr-status "Proposed" >}} |
 | [0044](0044-the-music-is-turned-down-while-a-request-is-heard/) | 2026-10-24 | The music is turned down while a request is heard, and comes back by itself | {{< adr-status "Proposed" >}} |
+| [0045](0045-an-nth-album-not-owned-is-the-next-one-that-is/) | 2026-10-24 | An artist's Nth album, when the library does not have it, is the next of theirs it does | {{< adr-status "Proposed" >}} |

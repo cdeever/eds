@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -38,9 +39,23 @@ type script struct {
 	volumeErr error
 
 	after *dacp.Status // what Now says once an album has been asked for
+
+	// owned, when set, is the library: an album asked for that is in it is
+	// what Now says plays after; one that is not leaves the player stopped,
+	// as iTunes was left on 2026-10-24.
+	owned map[string]bool
 }
 
 func (s *script) PlayAlbum(_ context.Context, artist, album string) error {
+	if s.owned != nil {
+		s.mu.Lock()
+		played := dacp.Status{Revision: 9}
+		if s.owned[album] {
+			played = st(9, true, false, artist, "One", album, abba, 200000)
+		}
+		s.after = &played
+		s.mu.Unlock()
+	}
 	return s.press("album=" + artist + "/" + album)
 }
 
@@ -672,5 +687,39 @@ func TestAVolumePressEndsADuckWhereItIs(t *testing.T) {
 	_ = d.Command(context.Background(), command(contract.Unduck))
 	if got := fmt.Sprint(p.presses()); got != "[volume=15 volume=20]" {
 		t.Errorf("pressed %s", got)
+	}
+}
+
+// --- albums instead (ADR-0045) -------------------------------------------------
+
+func TestTheNextAlbumTheLibraryHasIsPlayed(t *testing.T) {
+	p := playing(60)
+	p.owned = map[string]bool{"Trespass": true, "Foxtrot": true}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	c := album("Genesis", "From Genesis to Revelation")
+	c.Instead = []string{"Trespass", "Nursery Cryme", "Foxtrot"}
+	if err := d.Command(context.Background(), c); err != nil {
+		t.Fatal(err)
+	}
+	// The first it has, and no further.
+	if got := fmt.Sprint(p.presses()); got != "[album=Genesis/From Genesis to Revelation album=Genesis/Trespass]" {
+		t.Errorf("pressed %s", got)
+	}
+}
+
+func TestNoneOfThemOwnedIsNotFound(t *testing.T) {
+	p := playing(60)
+	p.owned = map[string]bool{}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	c := album("Genesis", "From Genesis to Revelation")
+	c.Instead = []string{"Trespass"}
+	err := d.Command(context.Background(), c)
+	if !errors.Is(err, ErrAlbumNotFound) || !strings.Contains(err.Error(), "Trespass") {
+		t.Errorf("err = %v", err)
+	}
+	if n := len(p.presses()); n != 2 {
+		t.Errorf("tried %d, want both", n)
 	}
 }

@@ -359,3 +359,28 @@ func TestTheStandSettingDefaultsToRecords(t *testing.T) {
 		t.Error("encoded a setting nobody can read")
 	}
 }
+
+// --- albums instead (ADR-0045) -------------------------------------------------
+
+func TestPlayAlbumMayNameAFewAlbumsInstead(t *testing.T) {
+	ok := Command{Command: PlayAlbum, Artist: "Genesis", Album: "From Genesis to Revelation", Instead: []string{"Trespass", "Nursery Cryme", "Foxtrot"}}
+	payload, err := EncodeCommand(ok)
+	if err != nil {
+		t.Fatal(err)
+	}
+	back, err := DecodeCommand(payload)
+	if err != nil || len(back.Instead) != 3 || back.Instead[0] != "Trespass" {
+		t.Errorf("came back as %+v, %v", back, err)
+	}
+	for name, bad := range map[string][]string{
+		"four":  {"a", "b", "c", "d"},
+		"empty": {"Trespass", " "},
+		"long":  {strings.Repeat("x", 201)},
+	} {
+		c := ok
+		c.Instead = bad
+		if _, err := EncodeCommand(c); err == nil {
+			t.Errorf("%s: encoded", name)
+		}
+	}
+}
