@@ -68,7 +68,10 @@ then after a wake word.**
 
 ## What would settle it
 
-- [ ] The rate and channel the XMOS chip sends, measured.
-- [ ] A request said with the button held plays its album.
+- [x] The rate and channel the XMOS chip sends, measured: 16 kHz on BCLK 8,
+      WS 7, DIN 44, the voice the same on both channels (2026-10-24).
+- [x] A request said into it plays its album: asked from the console, not a
+      button, since the voice kit's buttons are the XMOS chip's; *Aerosmith*,
+      2026-10-24 ([CHG-0035](/docs/changes/2026/0035-only-words-scribe-is-sure-of/)).
 - [ ] The same after a wake word.
 - [ ] An update through the broker, and a rollback.

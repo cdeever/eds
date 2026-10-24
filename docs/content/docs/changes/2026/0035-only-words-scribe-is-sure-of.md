@@ -9,7 +9,7 @@ weight: 35
 |---|---|
 | **Date** | 2026-10-24 |
 | **Change type** | Upgrade |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} 2026-10-24 |
 | **Systems** | The services workload: the six services rebuilt, `eds-scribe` and `eds-voiced` changed, all restarted. `respeaker-01`: firmware flashed by cable |
 | **How** | `make -C deploy ship WHERE=builder`; `make -C firmware/ears build flash`, from `e9ed753` on `voice-play-album` |
 | **Risk** | Low. Most likely to go wrong: scribe's thresholds refusing speech it should take, which is a request said again, not a record played wrongly |
@@ -52,9 +52,22 @@ which is to say, put INC-0001 back. Not done.
 
 | When (UTC) | What happened |
 |---|---|
+| 01:46:01–01:49:27 | `ship WHERE=builder` from `e9ed753`: six images, all six restarted; no service timed out connecting. |
+| 01:49:50 | `respeaker-01` flashed. |
+| 01:50 | On the workload, scribe: the owner-free recording of "Play Aerosmith's first album" confident (no speech 0.005); five seconds of silence not, and no words. |
+| 01:51:41 | Two windows asked for on the console. In the room, someone else was speaking: the first written as talk and not confident ("not heard clearly"), the second as clear talk that was no request ("not a request"). Nothing played. |
+| 01:54:23 | The owner, in the window: "Play Aerosmith's first album." The WAV reached the broker whole (160,812 bytes, tapped with voiced's account); scribe wrote it confidently in 3.5 s; voiced asked for *Aerosmith* at 01:54:30.8; "Make It" played at 01:54:31.1. |
 
 ### Departures from the plan
+
+- Step 3, nothing said, was the room's own talk instead of silence: a
+  harder test, passed.
+- The device took about 22 s to finish sending the second request, though
+  voiced had it within five; its console never showed what was heard. Left
+  as a follow-up.
 
 ## Follow-ups
 
 - The wake word.
+- The device's send: `esp_mqtt_client_publish` of 160 KB held the listening
+  for ~22 s on a -69 dBm link, and the heard reply did not reach the console.

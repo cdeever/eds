@@ -94,7 +94,11 @@ workload, `scribe` writes it down and `voiced` makes it a command.**
       ([CHG-0034](/docs/changes/2026/0034-voiced-and-scribe-on-the-workload/)):
       published with the reSpeaker's account, *Van Halen* playing about
       4 s later, from stopped.
-- [ ] A request said in the room, through the reSpeaker, plays its album.
+- [x] A request said in the room, through the reSpeaker, plays its album:
+      "Play Aerosmith's first album", 2026-10-24
+      ([CHG-0035](/docs/changes/2026/0035-only-words-scribe-is-sure-of/)).
+      The first attempt played *Abbey Road* instead
+      ([INC-0001](/docs/incidents/2026/0001-the-beatles-played-for-a-request-nobody-made/)).
 - [ ] How long a request takes, from the end of speaking to the first track.
       From the recording's arrival: about 4 s, of which writing it down
       is 3.5 s on the workload's two cores (CHG-0034).

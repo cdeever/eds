@@ -38,5 +38,13 @@ the model is ready waits for it (`SCRIBE_PRELOAD=0` leaves it to the first
 request). Writing down runs off the event loop. Requests are written down one at a time,
 because two at once on two cores are each slower than both in turn.
 
-The model is prompted with a sentence like the requests it will hear, which
-makes it likelier to write names as names.
+The model is prompted with a list of band names, which makes it likelier to
+write names as names ("Aerosmith", where none wrote "Arrowsmith"). **The
+prompt must never be a request**: given what it cannot make out, the model
+can write its prompt back, and once that played the Beatles for nobody
+(INC-0001). Each answer says whether the words are worth acting on
+(`confident`), by Whisper's own thresholds, and voiced acts on nothing else.
+
+Trying a change to the model or the prompt: write down a few requests, and
+five seconds of silence, of noise and of hum (`make scribe WAVS=…`). None of
+the last three may come back confident.

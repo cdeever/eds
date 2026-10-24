@@ -34,4 +34,4 @@ EdS record that links to Deevnet IoTaaS's.
 
 | ID | Date | Incident | Root cause | Status | Substatus |
 |---|---|---|---|---|---|
-| | | *None recorded yet.* | | | |
+| [INC-0001](2026/0001-the-beatles-played-for-a-request-nobody-made/) | 2026-10-24 | The Beatles played for a request nobody made | scribe's prompt was a request, which it wrote back for audio it could not make out, and voiced acted on any words | Open | {{< inc-status "Hardening" >}} |
