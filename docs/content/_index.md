@@ -28,9 +28,9 @@ Switch EdS off and the stereo plays exactly as it did before.
 ## The light follows the sleeve
 
 A record's jacket is twelve inches square of album art, and most of the
-time it sits in a crate. Prop it on the LP stand and it is on display, lit
-from behind in its own colors. EdS reads the cover art, draws out its
-colors, and sets them moving behind the sleeve: a slow wash for one record,
+time it sits in a crate. Prop it on the LP stand and it is on display,
+illuminated in its own colors. EdS reads the cover art, draws out its
+colors, and sets them moving along the stand: a slow wash for one record,
 a chase of accents for the next. The room takes on the look of the album
 for as long as it plays, without anyone choosing a thing.
 
