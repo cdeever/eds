@@ -283,3 +283,18 @@ func TestTheAlbumsAfterTheOneAskedForAreNamedInstead(t *testing.T) {
 		}
 	}
 }
+
+// An inventory that does not answer leaves voiced as it is with no library:
+// the album is guessed at, as the catalog names it, and asked for.
+func TestAnInventoryThatDoesNotAnswerIsGuessedAround(t *testing.T) {
+	l, out, _ := listen(t, "Play Van Halen's first album.")
+	l.Library = &Inventory{URL: "http://127.0.0.1:1"}
+	l.Handle(utterance("respeaker-01"))
+	if len(*out) < 2 {
+		t.Fatalf("published %+v", *out)
+	}
+	c, err := contract.DecodeCommand([]byte((*out)[0].payload))
+	if err != nil || c.Artist != "Van Halen" || c.Album != "Van Halen" {
+		t.Errorf("command %+v, %v", c, err)
+	}
+}

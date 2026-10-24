@@ -15,9 +15,12 @@
 //	NP_CONTACT                   what MusicBrainz is told, as for nowplayd
 //	NP_STATE_DIR                 where discographies are kept across restarts
 //	                             (default: none; they are asked for again)
-//	NP_LIBRARY                   the owner's library index, from cmd/library
-//	                             (ADR-0046; default: none, and albums are
-//	                             asked for by the catalog's names)
+//	NP_INVENTORY_URL             eds-inventory, asked for the owner's albums
+//	                             (ADR-0047; e.g. http://127.0.0.1:8740)
+//	NP_LIBRARY                   the owner's library index, from cmd/library,
+//	                             when there is no inventory (ADR-0046). With
+//	                             neither, albums are asked for by the
+//	                             catalog's names
 package main
 
 import (
@@ -66,6 +69,7 @@ func run(logger *slog.Logger) error {
 	scribe := config.Str("NP_SCRIBE_URL", "http://127.0.0.1:8733")
 	stateDir := config.Str("NP_STATE_DIR", "")
 	libraryPath := config.Str("NP_LIBRARY", "")
+	inventoryURL := config.Str("NP_INVENTORY_URL", "")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -103,9 +107,13 @@ func run(logger *slog.Logger) error {
 		Logger:  logger,
 		Timeout: 90 * time.Second,
 	}
-	// A nil *library.File is not a nil Library.
-	if libraryPath != "" {
-		listener.Library = &library.File{Path: libraryPath}
+	// A nil *voice.Inventory is not a nil Library. The inventory runs
+	// beside voiced: it is not an outside service, and is not counted.
+	switch {
+	case inventoryURL != "":
+		listener.Library = &voice.Inventory{URL: inventoryURL, HTTP: &http.Client{Timeout: 5 * time.Second}}
+	case libraryPath != "":
+		listener.Library = voice.IndexFile{File: &library.File{Path: libraryPath}}
 	}
 
 	b := common.Broker
