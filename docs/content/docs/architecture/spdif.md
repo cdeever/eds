@@ -71,9 +71,16 @@ Remote Desktop. EdS does not replace any of that. It adds ways that are
 more convenient, and more fun, differently for each room, and it stays out
 of the path the music takes.
 
-**Today**, in the vinyl listening room, the record is shown: a stand lit in
-the colors of its cover, and a screen beside it that shows the cover and can
-pause, skip and turn down what iTunes is playing.
+**Today**, in the vinyl listening room:
+
+- **The LP stand.** A record's jacket is twelve inches square of album art,
+  and most of the time it sits in a crate. On the stand, the jacket of the
+  record that is playing is on display, lit from behind in its own colors:
+  drawn from the cover itself and set slowly moving, so the room takes on
+  the look of the album for as long as it plays.
+- **The cover screen.** A small touch screen beside it shows the cover of
+  whatever is playing, and for iTunes it is a remote too: play, pause,
+  skip, louder, quieter, without reaching for a phone.
 
 **In development**, an album can be asked for out loud, and iTunes plays it.
 For now there is one device that listens, the ears, and it sits wherever
