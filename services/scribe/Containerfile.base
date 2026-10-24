@@ -1,0 +1,37 @@
+# scribe's base - everything but scribe's own code (INC-0002).
+#
+# The runtime, faster-whisper and its libraries, and the model: 500 MB that
+# changes when pyproject.toml's dependencies or this file do, and not when
+# scribe's code does. It is built on the Builder and sent to the workload
+# when it changes; Containerfile, scribe's 60 KB, is built on the workload
+# on top of it, so a change to scribe's code moves the code and nothing else.
+#
+# What faster-whisper brings that scribe never runs is taken out again, about
+# 230 MB: PyAV, which decodes audio files - scribe hands the model samples -
+# and onnxruntime, which only the VAD filter imports, and scribe turns it
+# off. faster_whisper/audio.py imports av at the top all the same, so an
+# empty one stands in for it; scribe's own image checks that holds when it is
+# built. uvicorn runs on asyncio without uvloop and its other extras.
+#
+# Downloads are cached on the Builder between builds.
+FROM docker.io/library/python:3.13-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_ROOT_USER_ACTION=ignore \
+    HF_HOME=/opt/models SCRIBE_MODEL=base.en
+WORKDIR /app
+COPY pyproject.toml ./
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/root/.cache/eds-models \
+    python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']))" > /tmp/requirements.txt \
+    && pip install -r /tmp/requirements.txt \
+    && HF_HOME=/root/.cache/eds-models python -c "from faster_whisper import WhisperModel; WhisperModel('base.en', device='cpu', compute_type='int8')" \
+    && mkdir -p /opt/models && cp -a /root/.cache/eds-models/hub /opt/models/ \
+    && pip uninstall -y -q av onnxruntime hf-xet uvloop httptools watchfiles websockets \
+    && site=$(python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])") \
+    && mkdir "$site/av" \
+    && printf '"""Not PyAV: scribe never decodes a file (see Containerfile.base)."""\n' > "$site/av/__init__.py" \
+    && pip uninstall -y -q pip \
+    && useradd --system --no-create-home scribe \
+    && chmod -R a+rX /opt/models \
+    && rm -f /tmp/requirements.txt pyproject.toml
+ENV HF_HUB_OFFLINE=1
+USER scribe

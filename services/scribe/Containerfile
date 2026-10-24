@@ -1,40 +1,17 @@
 # scribe - a short spoken request in, its words out (ADR-0042).
 #
-# The model is fetched when the image is built, not when the service starts:
-# the workload is not where things are downloaded from, and the first request
-# should not wait for it. Nothing is secret; SCRIBE_MODEL and SCRIBE_THREADS
-# are the only settings.
+# scribe's own code, 60 KB, on scribe's base (Containerfile.base), which
+# holds the runtime, the libraries and the model. It is built where it runs:
+# deploy/ sends the sources to the workload and builds this there, from the
+# base already loaded, with no network. The self-test is what says the image
+# works - the model loaded offline, a second of tone written down as nothing
+# it is sure of - before the service is restarted onto it.
 #
-# What faster-whisper brings that scribe never runs is taken out again, about
-# 230 MB of 767 (INC-0002): PyAV, which decodes audio files - scribe hands the
-# model samples - and onnxruntime, which only the VAD filter imports, and
-# scribe turns it off. faster_whisper/audio.py imports av at the top all the
-# same, so an empty one stands in for it; the self-test below is what says
-# that holds. uvicorn runs on asyncio without uvloop and its other extras.
-#
-# Downloads are cached on the Builder between builds, so a change to scribe's
-# own code does not fetch its packages and its model again through the core
-# router.
-FROM docker.io/library/python:3.13-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_ROOT_USER_ACTION=ignore \
-    HF_HOME=/opt/models SCRIBE_MODEL=base.en
-WORKDIR /app
-COPY pyproject.toml README.md ./
-COPY src ./src
-RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=cache,target=/root/.cache/eds-models \
-    pip install . \
-    && HF_HOME=/root/.cache/eds-models python -c "from faster_whisper import WhisperModel; WhisperModel('base.en', device='cpu', compute_type='int8')" \
-    && mkdir -p /opt/models && cp -a /root/.cache/eds-models/hub /opt/models/ \
-    && pip uninstall -y -q av onnxruntime hf-xet uvloop httptools watchfiles websockets \
-    && site=$(python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])") \
-    && mkdir "$site/av" \
-    && printf '"""Not PyAV: scribe never decodes a file (see the Containerfile)."""\n' > "$site/av/__init__.py" \
-    && HF_HUB_OFFLINE=1 python -m eds_scribe.selftest \
-    && pip uninstall -y -q pip \
-    && useradd --system --no-create-home scribe \
-    && chmod -R a+rX /opt/models
-ENV HF_HUB_OFFLINE=1
-USER scribe
+# On a machine of its own: build Containerfile.base as
+# localhost/eds-scribe-base:latest first.
+FROM localhost/eds-scribe-base:latest
+COPY src /app/src
+ENV PYTHONPATH=/app/src
+RUN python -m eds_scribe.selftest
 EXPOSE 8733
 CMD ["uvicorn", "eds_scribe.api:app", "--host", "0.0.0.0", "--port", "8733"]

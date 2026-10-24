@@ -35,7 +35,10 @@ var (
 	// "play the first album by X", "play the debut record from X"
 	nthBy = regexp.MustCompile(`(?i)^play\s+(?:the\s+|their\s+|his\s+|her\s+)?(\S+(?:\s+recent)?)\s+(?:album|record|lp)\s+(?:by|from)\s+(.+)$`)
 	// "play X's first album", "play Van Halens first album"
-	possessive = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|s'|’|'|,)?\s+(\S+(?:\s+recent)?)\s+(?:album|record|lp)$`)
+	// No "s'" of its own: with the name taken as short as it can be,
+	// "Genesis' first album" would ask for "Genesi". The apostrophe alone
+	// covers it, and "the Beatles' latest album" with it.
+	possessive = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|’|'|,)?\s+(\S+(?:\s+recent)?)\s+(?:album|record|lp)$`)
 	// "play Abbey Road by the Beatles"
 	named = regexp.MustCompile(`(?i)^play\s+(?:the\s+album\s+)?(.+?)\s+by\s+(.+)$`)
 )
@@ -104,7 +107,7 @@ func byPlace(text string) (Request, error) {
 // after a "play" that was misheard, any sentence ending "his first album"
 // would be one. For a name ending in s, scribe writes the possessive as a
 // comma: "Genesis, first album", "Led Zeppelin, first album" (2026-10-24).
-var marked = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|s'|,)\s+(\S+(?:\s+recent)?)\s+(?:album|record|lp)$`)
+var marked = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|’|'|,)\s+(\S+(?:\s+recent)?)\s+(?:album|record|lp)$`)
 
 // strictlyByPlace is whether the words are an album by its place in a form
 // that is not said by accident.
@@ -186,7 +189,7 @@ func fromPlay(text string) (string, bool) {
 }
 
 // politeness is what a person says around a request that is not it.
-var politeness = regexp.MustCompile(`(?i)^(?:(?:hey|okay|ok|hi)\s+ed[,.!]?\s+|ed[,.!]\s+)?(?:(?:can|could|would|will)\s+you\s+(?:please\s+)?|please\s+)?`)
+var politeness = regexp.MustCompile(`(?i)^(?:(?:hey|okay|ok|hi)\s+(?:ed|jarvis)[,.!]?\s+|(?:ed|jarvis)[,.!]\s+)?(?:(?:can|could|would|will)\s+you\s+(?:please\s+)?|please\s+)?`)
 
 // clean is the words as one line: no surrounding punctuation, no wake word
 // or "please", and "play" however it was capitalized.

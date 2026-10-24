@@ -51,11 +51,11 @@ ifeq ($(WHERE),builder)
 images:
 	ssh $(BUILDER) 'mkdir -p $(BUILD_DIR)/deploy'
 	rsync -a --delete --exclude .venv/ --exclude bin/ --exclude __pycache__/ --exclude '._*' --exclude .DS_Store --exclude .pytest_cache/ $(SVC)/ $(BUILDER):$(BUILD_DIR)/services/
-	rsync -a Makefile load.sh $(BUILDER):$(BUILD_DIR)/deploy/
+	rsync -a Makefile load.sh build-there.sh $(BUILDER):$(BUILD_DIR)/deploy/
 	ssh $(BUILDER) 'make -C $(BUILD_DIR)/deploy images VERSION=$(VERSION)'
 
 load:
-	rsync -a load.sh $(BUILDER):$(BUILD_DIR)/deploy/
+	rsync -a load.sh build-there.sh $(BUILDER):$(BUILD_DIR)/deploy/
 	ssh $(BUILDER) 'make -C $(BUILD_DIR)/deploy load HOST=$(HOST)'
 
 else
@@ -72,29 +72,37 @@ BUILD := $(CONTAINER) build --platform linux/amd64 --layers=false --label eds.de
 # images target sees them. load.sh sends an image only when the workload's
 # carries a different one (CHG-0037).
 source = $(shell cd $(SVC)/$(1) && find . -type f -not -path './.venv/*' -not -path './bin/*' -not -path '*/__pycache__/*' -not -path './.pytest_cache/*' | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -c1-16)
+# The same for named files in a directory: scribe's base is its
+# Containerfile.base and the dependencies in pyproject.toml, and nothing else.
+files = $(shell cd $(SVC)/$(1) && sha256sum $(2) | sha256sum | cut -c1-16)
 
 # An image already built from the same sources is not built again: a build
 # fetches its base image, packages and, for scribe, its model, all through
 # the core router (INC-0002), to make an image the same as the last.
 # $(1) the image, $(2) its directory, then the build's own arguments.
-built = $(CONTAINER) image inspect --format '{{index .Labels "eds.source"}}' localhost/eds-$(1):latest 2>/dev/null | grep -qx '$(call source,$(2))'
-build = if $(call built,$(1),$(2)); then echo "$(1): sources unchanged ($(call source,$(2))), not built"; \
-	else $(BUILD) --label eds.source=$(call source,$(2)) -t localhost/eds-$(1):latest $(3); fi
+# $(1) the image, $(2) its sources' hash, then the build's own arguments.
+built = $(CONTAINER) image inspect --format '{{index .Labels "eds.source"}}' localhost/eds-$(1):latest 2>/dev/null | grep -qx '$(2)'
+build = if $(call built,$(1),$(2)); then echo "$(1): sources unchanged ($(2)), not built"; \
+	else $(BUILD) --label eds.source=$(2) -t localhost/eds-$(1):latest $(3); fi
 
 images:
-	@$(call build,palette,palette,$(SVC)/palette)
-	@$(call build,lightd,lightd,$(SVC)/lightd)
-	@$(call build,nowplayd,nowplaying,--build-arg VERSION=$(VERSION) -f $(SVC)/nowplaying/Containerfile $(SVC)/nowplaying)
-	@$(call build,console,console,--build-arg VERSION=$(VERSION) -f $(SVC)/console/Containerfile $(SVC)/console)
-	@$(call build,scribe,scribe,$(SVC)/scribe)
-	@$(call build,voiced,nowplaying,--build-arg VERSION=$(VERSION) -f $(SVC)/nowplaying/Containerfile.voiced $(SVC)/nowplaying)
+	@$(call build,palette,$(call source,palette),$(SVC)/palette)
+	@$(call build,lightd,$(call source,lightd),$(SVC)/lightd)
+	@$(call build,nowplayd,$(call source,nowplaying),--build-arg VERSION=$(VERSION) -f $(SVC)/nowplaying/Containerfile $(SVC)/nowplaying)
+	@$(call build,console,$(call source,console),--build-arg VERSION=$(VERSION) -f $(SVC)/console/Containerfile $(SVC)/console)
+	@$(call build,scribe-base,$(call files,scribe,Containerfile.base pyproject.toml),-f $(SVC)/scribe/Containerfile.base $(SVC)/scribe)
+	@$(call build,voiced,$(call source,nowplaying),--build-arg VERSION=$(VERSION) -f $(SVC)/nowplaying/Containerfile.voiced $(SVC)/nowplaying)
 	$(CONTAINER) image prune -f --filter label=eds.deploy=1 >/dev/null
 
-# Only what changed, a file at a time, at a capped rate: load.sh. One image
+# Only what changed, a file at a time, compressed, at a capped rate: load.sh. One image
 # per archive: a multi-image `podman save` without --multi-image-archive
 # loads back as ONE image under every tag.
+#
+# scribe is two: its base is sent as the others are, and its own code is
+# built on the workload, on that base, from its sources (build-there.sh).
 load:
-	CONTAINER=$(CONTAINER) ./load.sh $(HOST) palette lightd nowplayd console scribe voiced
+	CONTAINER=$(CONTAINER) ./load.sh $(HOST) palette lightd nowplayd console scribe-base voiced
+	./build-there.sh $(HOST) scribe $(SVC)/scribe $(call source,scribe)
 
 endif
 

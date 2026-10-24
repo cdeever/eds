@@ -39,6 +39,12 @@ func TestRequestsAreRead(t *testing.T) {
 		// The end of "Hey Jarvis", as scribe wrote it, and "play" as "played".
 		"And each of us played Van Halen's first album.": {Artist: "Van Halen", Nth: 1},
 		"Lee Jarvis, Play Van Halen's first album.":      {Artist: "Van Halen", Nth: 1},
+		// As scribe writes the end of the wake word with "Hey Jarvis" in its prompt.
+		"Jarvis, Play Van Halen's first album.":     {Artist: "Van Halen", Nth: 1},
+		"Jarvis, played Genesis' first album.":      {Artist: "Genesis", Nth: 1},
+		"And Jarvis, played Genesis's first album.": {Artist: "Genesis", Nth: 1},
+		"Hey Jarvis, play Rocks by Aerosmith.":      {Artist: "Aerosmith", Album: "Rocks"},
+		"Play the Beatles' latest album.":           {Artist: "the Beatles", Nth: -1},
 		// "Playing", and the comma scribe writes for a possessive after a
 		// name ending in s, as they were heard on 2026-10-24.
 		"The band was very generous. Playing Led Zeppelin's first album.": {Artist: "Led Zeppelin", Nth: 1},
