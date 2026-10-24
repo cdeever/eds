@@ -8,7 +8,7 @@ weight: 34
 | | |
 |---|---|
 | **Date** | 2026-10-24 |
-| **Change type** | New service |
+| **Change type** | Deployment |
 | **Status** | {{< status-badge "in-progress" "In progress" >}} |
 | **Systems** | The tenant's Terraform on the mobile site's API: broker accounts for `voiced` and `respeaker-01` and the device `respeaker-01` created; `console` and `nowplayd` given `nowplaying/stand`. The services workload: `eds-scribe` and `eds-voiced` added, the other four rebuilt and restarted |
 | **How** | `make -C infra/deevnet-tenant-eds apply`, then `make -C deploy kit-env deploy WHERE=builder`, from the branch `voice-play-album` |
