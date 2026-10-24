@@ -50,14 +50,18 @@ presses a button.
 
 ### Switching between the turntable and the house music
 
-The turntable is one of those overrides. A converter on its amplifier, in
-the primary listening room, turns the record into S/PDIF and sends it down
-to the switch. Put a record on and it plays in every room.
+The turntable is one of those overrides. The home office stereo's analog
+output, with the turntable playing through it, is converted to digital and
+sent to the switch as its second input.
 
-A powered converter sends a signal whether or not a record is turning, so
-it is plugged into a smart power strip that powers it only while the
-turntable is switched on. Turntable on, and the house is the record's;
-turntable off, and the media server has it back.
+Wiring it in directly is not enough for the switch to change over by
+itself. The converter (an ADC) sends a signal whenever it has power, even
+with nothing playing, so the switch would never hand the house back. A
+smart power strip was added so that the ADC has power only while the
+turntable does.
+
+The result: turn on the turntable, and the house's music is the spinning
+record. Turn it off, and the media server has the house back.
 
 ## What EdS adds to it
 
