@@ -11,8 +11,14 @@ left alone. A **XIAO ESP32-S3** (8 MB PSRAM, 8 MB flash, MAC
 Asked, it keeps what is said as 16 kHz mono and sends it as one WAV to
 `eds/voice/respeaker-01/utterance`, where voiced makes it a request for an
 album ([ADR-0042](../../docs/content/docs/architecture/decisions/0042-a-request-is-heard-on-the-workload.md)).
-What voiced made of it comes back on `…/heard`. A wake word comes next;
-until then it is asked in one of two ways:
+What voiced made of it comes back on `…/heard`.
+
+It is asked by name: **"Hey Jarvis"**, ESPHome's microWakeWord model
+(`main/models/`), heard on the XIAO itself and never sent anywhere
+([CHG-0036](../../docs/content/docs/changes/2026/0036-the-respeaker-wakes-to-hey-jarvis.md)).
+Nothing leaves the device until it is woken; then what follows is heard
+until the speaker stops, at most six seconds. It stands in until EdS has a
+name of its own. It can also be asked in two other ways:
 
 - **Enter on its USB console** (`make monitor`): it hears five seconds, or
   until Enter again.
@@ -40,7 +46,7 @@ The XIAO's yellow LED:
 | | |
 |---|---|
 | two quick flashes | connected to the broker |
-| lit | listening, while the button is held |
+| lit | listening to a request |
 | one long flash | voiced asked for an album |
 | three short flashes | not understood, not sent, or no broker |
 | five fast flashes | the button was pressed with no usable sound to listen to |

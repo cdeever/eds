@@ -237,9 +237,11 @@ make build flash provision monitor   # PORT defaults to /dev/cu.usbmodem2101
 
 The reSpeaker Lite's XIAO ESP32-S3 (ADR-0043). The XMOS chip beside it
 sends one cleaned-up voice over I2S and drives the clock; the firmware
-measures the rate and prints both channels' levels, and while the XIAO's
-BOOT button is held keeps what is said as 16 kHz mono, sent on release as one
-WAV to `voice/respeaker-01/utterance` (ADR-0042). `app/audio/pcm.c` is the
+measures the rate and prints both channels' levels. Woken by "Hey Jarvis"
+(microWakeWord, on the device; CHG-0036), or while the XIAO's BOOT button is
+held, it keeps what is said as 16 kHz mono and sends it as one WAV to
+`voice/respeaker-01/utterance` (ADR-0042). Nothing leaves it before it is
+woken; keep it that way, since the docs promise it. `app/audio/pcm.c` is the
 host-tested half. Its credentials, WiFi, event log and provisioning are
 copies of the screen's. `flash` and `provision` check its MAC.
 
