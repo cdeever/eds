@@ -250,6 +250,24 @@ const (
 	VolumeDown = "volume_down"
 )
 
+// Duck and Unduck lower what is playing while a request is heard, and bring
+// it back (ADR-0044). They go to the current source, as the buttons do; the
+// driver brings the music back by itself if Unduck never comes.
+const (
+	Duck   = "duck"
+	Unduck = "unduck"
+)
+
+// PlayAlbum is not a button: it chooses what plays, by naming an album, and
+// goes to the source that has a library rather than to the current one
+// (ADR-0040).
+const PlayAlbum = "play_album"
+
+// maxName bounds an artist's or an album's name in a command. The longest
+// real ones are a few dozen characters; this is far past them, and short of
+// anything that could only be a mistake or a trick.
+const maxName = 200
+
 // Command is one request to change what a player is doing (ADR-0020).
 //
 // A command is a moment, not a state, and that sets it apart from everything
@@ -262,7 +280,20 @@ type Command struct {
 	// From names the controller, for whoever reads the logs. Nothing is
 	// decided by it: the broker's grant is what says who may command.
 	From string `json:"from,omitempty"`
+
+	// Artist and Album name the album play_album asks for, as the player's
+	// library names it. Nothing else carries them.
+	Artist string `json:"artist,omitempty"`
+	Album  string `json:"album,omitempty"`
+	// Instead are the artist's albums to try, in order, if the library has
+	// not got Album (ADR-0045). play_album only, and at most MaxInstead.
+	Instead []string `json:"instead,omitempty"`
 }
+
+// MaxInstead is how many alternatives a play_album may carry: other names
+// for the album, then the artist's next albums. Each the library lacks is a
+// second and a half of trying.
+const MaxInstead = 6
 
 // Validate reports the first thing wrong with a command.
 func (c Command) Validate() error {
@@ -270,7 +301,25 @@ func (c Command) Validate() error {
 		return fmt.Errorf("contract: version %d, this program speaks %d", c.V, Version)
 	}
 	switch c.Command {
-	case PlayPause, Next, Previous, VolumeUp, VolumeDown:
+	case PlayPause, Next, Previous, VolumeUp, VolumeDown, Duck, Unduck:
+		return nil
+	case PlayAlbum:
+		for _, f := range [...]struct{ field, name string }{{"artist", c.Artist}, {"album", c.Album}} {
+			if strings.TrimSpace(f.name) == "" {
+				return fmt.Errorf("contract: play_album names no %s", f.field)
+			}
+			if len(f.name) > maxName {
+				return fmt.Errorf("contract: play_album's %s is longer than %d bytes", f.field, maxName)
+			}
+		}
+		if len(c.Instead) > MaxInstead {
+			return fmt.Errorf("contract: play_album names %d albums instead, at most %d", len(c.Instead), MaxInstead)
+		}
+		for _, a := range c.Instead {
+			if strings.TrimSpace(a) == "" || len(a) > maxName {
+				return fmt.Errorf("contract: play_album names an album instead that is empty or longer than %d bytes", maxName)
+			}
+		}
 		return nil
 	}
 	return fmt.Errorf("contract: unknown command %q", c.Command)

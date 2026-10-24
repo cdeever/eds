@@ -265,6 +265,26 @@ resource "deevnet_iot_broker_account" "nowplayd" {
   ]
 }
 
+# voiced, on the services workload (ADR-0042). It hears every device's spoken
+# requests, as one filter granted as that filter, and asks nowplayd for the
+# album one names: play_album on the command topic, as a controller does
+# (ADR-0040). What it made of a request is said back to the device. It reads
+# nothing else, and cannot address a player directly.
+resource "deevnet_iot_broker_account" "voiced" {
+  tenant = deevnet_tenant.eds.name
+  name   = "voiced"
+
+  publish = [
+    "voiced/status",      # its own presence, and its last will
+    "nowplaying/command", # play_album, for an album asked for aloud
+    "voice/+/heard",      # what was made of a request, to the device that sent it
+  ]
+  subscribe = [
+    "voice/+/utterance", # what each device heard after its wake word, as a WAV
+    "voice/+/woken",     # that one just woke: the music is turned down (ADR-0044)
+  ]
+}
+
 # The console, on the services workload (ADR-0018).
 #
 # It looks: every topic it reads, and two it writes - its own presence, and
@@ -349,6 +369,39 @@ resource "deevnet_iot_broker_account" "np_relay" {
   subscribe = [
     "nowplaying/source/itunes/command",
     "nowplaying/source/spotify/command",
+  ]
+}
+
+# --- The reSpeaker (ADR-0042) -----------------------------------------------
+#
+# A microphone array and an ESP32-S3 that listens for its wake word and sends
+# what followed it. Registered as the screen is: firmware its owner controls,
+# and an entry that lets its account publish under log/.
+resource "deevnet_iot_device" "respeaker_01" {
+  tenant      = deevnet_tenant.eds.name
+  name        = "respeaker-01"
+  trust_class = "iot"
+}
+
+# Its account. What it says is audio, which voiced writes down and reads as a
+# request; it cannot command anything itself. The worst this credential can
+# do is ask for an album by speaking, which a person in the room can do too.
+#
+# CAREFUL: replacing this resource issues a NEW password, and the device stops
+# connecting until it is reprovisioned.
+resource "deevnet_iot_broker_account" "respeaker_01" {
+  tenant = deevnet_tenant.eds.name
+  name   = "respeaker-01"
+  device = deevnet_iot_device.respeaker_01.name
+
+  publish = [
+    "voice/respeaker-01/status",    # its own presence, and its last will
+    "voice/respeaker-01/utterance", # what followed the wake word, as a WAV
+    "voice/respeaker-01/woken",     # that the wake word was just heard (ADR-0044)
+    "log/respeaker-01",             # its own events, into the tenant's log store
+  ]
+  subscribe = [
+    "voice/respeaker-01/heard", # what voiced made of it, for a light or a sound
   ]
 }
 

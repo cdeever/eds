@@ -23,9 +23,11 @@ builds the monorepo as a whole; work inside one project directory at a time.
 | `services/lightd` | Go 1.25 | `make check build run` |
 | `services/nowplaying` | Go 1.25 | `make check test-integration run` |
 | `services/console` | Go 1.25 + a static page | `make check run feed` |
+| `services/scribe` | Python 3.11+ / FastAPI / faster-whisper | `make venv PYTHON=python3.12 test serve` |
 | `firmware/lp-stand` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
 | `firmware/cover-screen` | C / ESP-IDF | `make test pictures` (host), `make build flash` (device) |
 | `firmware/power-beacon` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
+| `firmware/ears` | C / ESP-IDF (ESP32-S3) | `make test` (host), `make build flash provision` (device) |
 | `tools/ota` | Go 1.25 | `make check test-integration`; run by `make ota` in a firmware |
 | `infra/deevnet-tenant-eds` | Terraform | `make paths init plan apply` |
 | `images` | Ansible / shell | `make -C deploy/relay image fetch`, `make -C deploy/backend image fetch` (build on builder) |
@@ -225,6 +227,22 @@ Makefile): the stand and the screen are ESP32s too, on the same ports. The
 old S2 was erased; never provision two boards as one beacon. Its credentials, WiFi, event log and partition table
 are copies of the stand's too.
 
+### ears (`firmware/ears`)
+
+```bash
+make test                      # host tests for the sound and the events, gcc only
+. ~/.espressif/tools/activate_idf_v6.1.sh
+make build flash provision monitor   # PORT defaults to /dev/cu.usbmodem2101
+```
+
+The reSpeaker Lite's XIAO ESP32-S3 (ADR-0043). The XMOS chip beside it
+sends one cleaned-up voice over I2S and drives the clock; the firmware
+measures the rate and prints both channels' levels, and while the XIAO's
+BOOT button is held keeps what is said as 16 kHz mono, sent on release as one
+WAV to `voice/respeaker-01/utterance` (ADR-0042). `app/audio/pcm.c` is the
+host-tested half. Its credentials, WiFi, event log and provisioning are
+copies of the screen's. `flash` and `provision` check its MAC.
+
 ### Updates over the air (`tools/ota`, all three firmwares)
 
 ```bash
@@ -312,7 +330,15 @@ console can switch it (ADR-0039): the retained setting
 `nowplaying/stand`, `{"v":1,"sources":"records"|"all"}`, which `nowplayd`
 reads; `all` treats `NP_DARK_SOURCES` as empty until switched back, and
 nothing, or anything unreadable, is `records`. `make -C deploy deploy WHERE=builder`
-deploys all four services (the Mac has no container tool; the Builder builds).
+deploys the six services (the Mac has no container tool; the Builder builds).
+**A deploy moves only what changed** (INC-0002): each image carries
+`eds.source`, a hash of its sources; unchanged ones are neither built nor
+sent, and changed ones go compressed at 5 MB/s (`deploy/load.sh`).
+**scribe is two images**: `eds-scribe-base` (runtime, libraries, model),
+sent when `Containerfile.base` or `pyproject.toml` change, and `eds-scribe`,
+its 60 KB of code, built on the workload on that base
+(`deploy/build-there.sh`). Never stream images to the workload by hand:
+two gigabytes through the core router hung it.
 
 The console (`services/console`, ADR-0018) is the page a person looks at:
 `https://console.eds.mobile.deevnet.net/`. It subscribes to the bus and serves
@@ -359,6 +385,39 @@ Spotify's Web API, only for playback on a device that counts (ADR-0032). The com
 **A command is never retained and a retained one is ignored**; the screen
 sends at QoS 0 and never queues one. The turntable takes none. A controller never
 names a source, and the console sends no command.
+**`duck` and `unduck` turn the music down while a request is heard**
+(ADR-0044): the device publishes `voice/<id>/woken`, voiced sends `duck` to
+whatever is current, and `unduck` once it has answered; the iTunes driver
+goes to a quarter and comes back on `unduck`, before a `play_album`, or by
+itself after ten seconds. A volume press while ducked ends it where it is.
+**The one command that is not a button is `play_album`** (ADR-0040): it
+names an artist and an album, and `nowplayd` passes it to `NP_ALBUM_SOURCE`
+(`itunes`) whatever is current. iTunes for Windows refuses this remote its
+library (403 on `databases`), so the album is played by name and the driver
+asks what plays afterward; a miss is a failed command, never a nearer guess.
+For an album asked for by its place, voiced names up to three of the
+artist's next albums in `instead`, and the driver plays the first the
+library has (ADR-0045): "Genesis' first album" is the first of theirs the
+owner has. A miss empties iTunes' queue, so missing them all stops the music.
+**With the owner's library indexed, voiced chooses from it** (ADR-0046):
+`cmd/library index` makes `library.json` from iTunes' XML (artist, album,
+year, tracks, compilation; nothing else), `make -C deploy library XML=…`
+copies it to `/var/lib/eds-voiced`, and `internal/library` finds the
+nearest artist and album, so `play_album` names titles the library has.
+**Neither the XML nor the index is ever committed**; without one, voiced
+guesses as above.
+
+**A request can be spoken** (ADR-0042). A device sends what followed its
+wake word as one WAV on `voice/<id>/utterance`; `voiced`
+(`services/nowplaying/cmd/voiced`, its own service and broker account) has
+`scribe` write it down, reads it with `internal/voice`'s short grammar
+("play X's first album", "play the Nth album by X", "play ALBUM by X"),
+counts the artist's studio albums in MusicBrainz when a place is named
+(ADR-0041, `resolve.Originals.Discography`), sends `play_album`, and says
+what it made of it on `voice/<id>/heard`. **scribe knows nothing about
+music**, as palette knows nothing about it: a WAV in, words out. Words that
+are not a request are said back as not understood; nothing nearer is
+guessed. `go run ./cmd/discography ARTIST [N]` checks a count by hand.
 
 **A source whose equipment is switched on holds the stand** (ADR-0023). For
 the sources `NP_SOURCE_POWER` names, `nowplayd` reads a beacon's status:
@@ -410,6 +469,10 @@ on the console, which is told and cannot find out.
 | `eds/nowplaying/current/art/small` | nowplayd → cover screen | yes |
 | `eds/nowplaying/command` | cover screen → nowplayd | **never** |
 | `eds/nowplaying/source/<id>/command` | nowplayd → driver | **never** |
+| `eds/voice/<id>/utterance` | device → voiced | **never** |
+| `eds/voice/<id>/woken` | device → voiced | **never** |
+| `eds/voice/<id>/heard` | voiced → device | **never** |
+| `eds/voiced/status` | voiced → broker | yes (LWT) |
 | `eds/screen/<id>/status` | device → broker | yes (LWT) |
 | `eds/beacon/<id>/status` | device → nowplayd, console | yes (LWT) |
 | `eds/console/status` | console → broker | yes (LWT) |

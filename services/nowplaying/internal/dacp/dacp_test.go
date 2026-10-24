@@ -300,6 +300,13 @@ func (p *player) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		_, _ = w.Write(Encode("cmgt", join(u32("mstt", 200), u32("cmvo", 65))))
 
+	case "/ctrl-int/1/cue":
+		if r.URL.Query().Get("session-id") != "99" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+
 	default:
 		http.NotFound(w, r)
 	}
@@ -473,5 +480,101 @@ func TestAButtonWithoutASessionFails(t *testing.T) {
 	c := against(t, p)
 	if err := c.Next(context.Background()); err == nil {
 		t.Error("a press with no session was called a success")
+	}
+}
+
+// --- playing an album (ADR-0040) --------------------------------------------
+
+// A name's own punctuation must stay inside its term: an apostrophe would
+// end the quote, and a plus sign would start another term.
+func TestANameCannotBreakOutOfItsQuotes(t *testing.T) {
+	for name, want := range map[string]string{
+		"Guns N' Roses":     `Guns%20N%5C%27%20Roses`,
+		"Simon + Garfunkel": `Simon%20%2B%20Garfunkel`,
+		`AC\DC`:             `AC%5C%5CDC`,
+		"Mötley Crüe":       `M%C3%B6tley%20Cr%C3%BCe`,
+	} {
+		if got := quote(name); got != want {
+			t.Errorf("quote(%q) = %q, want %q", name, got, want)
+		}
+	}
+}
+
+// What iTunes for Windows played Van Halen's first album from, on 2026-10-23.
+func TestPlayingAnAlbumEmptiesTheQueueThenPlaysItByName(t *testing.T) {
+	p := &player{guid: "00000000DEADBEEF", change: make(chan string, 1)}
+	c := against(t, p)
+	ctx := context.Background()
+	if err := c.Login(ctx, p.guid); err != nil {
+		t.Fatal(err)
+	}
+	p.requests = nil
+
+	if err := c.PlayAlbum(ctx, "Van Halen", "Van Halen"); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"/ctrl-int/1/cue?command=clear&session-id=99",
+		"/ctrl-int/1/cue?command=play&query='daap.songartist:Van%20Halen'+'daap.songalbum:Van%20Halen*'&index=0&sort=album&session-id=99",
+	}
+	if len(p.requests) != len(want) {
+		t.Fatalf("requests = %q", p.requests)
+	}
+	for i := range want {
+		if p.requests[i] != want[i] {
+			t.Errorf("request %d = %q, want %q", i, p.requests[i], want[i])
+		}
+	}
+}
+
+func TestAnAlbumWithoutBothNamesIsNotSent(t *testing.T) {
+	p := &player{guid: "00000000DEADBEEF", change: make(chan string, 1)}
+	c := against(t, p)
+	for _, names := range [][2]string{{"", "Van Halen"}, {"Van Halen", " "}} {
+		if err := c.PlayAlbum(context.Background(), names[0], names[1]); err == nil {
+			t.Errorf("%q was played", names)
+		}
+	}
+	if len(p.requests) != 0 {
+		t.Errorf("the player was asked: %q", p.requests)
+	}
+}
+
+// Without a session the player refuses, and that is an error, not a play.
+func TestPlayingAnAlbumWithoutASessionFails(t *testing.T) {
+	p := &player{guid: "00000000DEADBEEF", change: make(chan string, 1)}
+	c := against(t, p)
+	if err := c.PlayAlbum(context.Background(), "Van Halen", "Van Halen"); err == nil {
+		t.Error("a play with no session was called a success")
+	}
+}
+
+func TestAnAlbumIsMatchedByTheStartOfItsTitle(t *testing.T) {
+	for in, want := range map[string]string{
+		"And the Word Was…":     "And the Word Was",
+		"And the Word Was.....": "And the Word Was",
+		"Led Zeppelin II ":      "Led Zeppelin II",
+		"Rocks":                 "Rocks",
+	} {
+		if got := Stem(in); got != want {
+			t.Errorf("Stem(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestAPlayerIsAskedForThePlainBeginningOfATitle(t *testing.T) {
+	for in, want := range map[string]string{
+		"(pronounced 'lĕh-'nérd 'skin-'nérd)":   "pronounced",
+		"Pronounced 'Leh-'Nérd 'Skin-'Nérd":     "Pronounced",
+		"And the Word Was…":                     "And the Word Was",
+		"Appetite for Destruction":              "Appetite for Destruction",
+		"Led Zeppelin IV":                       "Led Zeppelin IV",
+		"Sgt. Pepper's Lonely Hearts Club Band": "Sgt",
+		"1984":                                  "1984",
+		"AC/DC Live":                            "AC/DC Live", // "AC" is too little; the title as it is
+	} {
+		if got := QueryStem(in); got != want {
+			t.Errorf("QueryStem(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

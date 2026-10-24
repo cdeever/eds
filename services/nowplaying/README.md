@@ -90,6 +90,15 @@ driver now does (ADR-0020): `play_pause`, `next`, `previous`, `volume_up` and
   change it caused, as it reports any other, and that is the acknowledgment.
 - Volume moves by 5 of 100 a press, and stops at its ends. The player is asked
   where it is first, because its own slider moves it too.
+- `play_album` (ADR-0040) names an album by its artist and its name, and the
+  driver asks the player to play it from the first track, as the phone does
+  (`cue`). iTunes for Windows will not say what its library holds (403), so
+  the driver asks what plays 1.5 s later and reports a miss as a failed
+  command. `npagent play-album ARTIST ALBUM` does the same by hand.
+- Which album "Aerosmith's first" is comes from MusicBrainz (ADR-0041):
+  the artist's studio albums, official, by first release.
+  `go run ./cmd/discography ARTIST [N]` lists them, or names the Nth (-1 is
+  the latest) in the form `play-album` takes.
 - A command that arrives with no session is refused and not kept. A "next"
   carried out a minute late is a fault of its own.
 - **A retained command is dropped**, by nowplayd and again by the agent. A
@@ -468,6 +477,7 @@ be used stops the program.
 | `NP_IDLE_AFTER_STOPPED` | `1s` | the same wait for a source that is stopped and still current: a turntable switched on with nothing playing. Short, because its driver has already waited out twenty seconds of silence. `0s` is never; at most a day |
 | `NP_NO_CONTROLS_SOURCES` | none | sources a controller is told to offer nothing for, as `no_controls` in `current` ([ADR-0025](../../docs/content/docs/architecture/decisions/0025-current-says-when-there-are-no-controls.md)). `turntable` on the workload |
 | `NP_LOG_ENDPOINT`, `NP_LOG_INGEST_TOKEN` | `LOG_ENDPOINT` and `LOG_INGEST_TOKEN`, as `kit.env` gives them | the tenant's log store and the token that writes to its workload partition: where the counts of calls to outside services go once a minute (ADR-0027). Without both, the counts are in the journal only. The token is secret |
+| `NP_ALBUM_SOURCE` | `itunes` | the source `play_album` is passed to, whatever is current ([ADR-0040](../../docs/content/docs/architecture/decisions/0040-a-request-can-name-an-album-to-play.md)). Set empty, no album is played |
 | `NP_SOURCE_POWER` | none | `source=beacon` pairs: a source whose equipment has a beacon on its switch, and so can say it is on ([ADR-0023](../../docs/content/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand.md)). `turntable=turntable-power-01` on the workload |
 
 ## The owner's collection

@@ -236,7 +236,7 @@ func TestTheCommandWireFormIsWhatTheReferencePageSays(t *testing.T) {
 }
 
 func TestEveryCommandRoundTrips(t *testing.T) {
-	for _, name := range []string{PlayPause, Next, Previous, VolumeUp, VolumeDown} {
+	for _, name := range []string{PlayPause, Next, Previous, VolumeUp, VolumeDown, Duck, Unduck} {
 		payload, err := EncodeCommand(Command{Command: name})
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
@@ -266,6 +266,42 @@ func TestDecodeRefusesWhatIsNotACommand(t *testing.T) {
 	}
 	if _, err := EncodeCommand(Command{Command: "eject"}); err == nil {
 		t.Error("an unknown command was encoded")
+	}
+}
+
+// --- play_album (ADR-0040) ----------------------------------------------------
+
+func TestPlayAlbumsWireForm(t *testing.T) {
+	got, err := EncodeCommand(Command{Command: PlayAlbum, From: "voiced", Artist: "Van Halen", Album: "Van Halen"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"v":1,"command":"play_album","from":"voiced","artist":"Van Halen","album":"Van Halen"}`
+	if string(got) != want {
+		t.Errorf("wire form changed:\n got %s\nwant %s", got, want)
+	}
+	back, err := DecodeCommand(got)
+	if err != nil || back.Artist != "Van Halen" || back.Album != "Van Halen" {
+		t.Errorf("came back as %+v, %v", back, err)
+	}
+}
+
+// An album is played by both its names, or not at all: half a name is a
+// guess, and the wrong record is worse than none.
+func TestPlayAlbumNeedsBothNames(t *testing.T) {
+	long := strings.Repeat("x", 201)
+	for name, payload := range map[string]string{
+		"no artist":          `{"v":1,"command":"play_album","album":"Van Halen"}`,
+		"no album":           `{"v":1,"command":"play_album","artist":"Van Halen"}`,
+		"a blank artist":     `{"v":1,"command":"play_album","artist":"  ","album":"Van Halen"}`,
+		"an artist too long": `{"v":1,"command":"play_album","artist":"` + long + `","album":"Van Halen"}`,
+		"an album too long":  `{"v":1,"command":"play_album","artist":"Van Halen","album":"` + long + `"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := DecodeCommand([]byte(payload)); err == nil {
+				t.Error("accepted")
+			}
+		})
 	}
 }
 
@@ -321,5 +357,30 @@ func TestTheStandSettingDefaultsToRecords(t *testing.T) {
 	}
 	if _, err := EncodeStand("everything"); err == nil {
 		t.Error("encoded a setting nobody can read")
+	}
+}
+
+// --- albums instead (ADR-0045) -------------------------------------------------
+
+func TestPlayAlbumMayNameAFewAlbumsInstead(t *testing.T) {
+	ok := Command{Command: PlayAlbum, Artist: "Genesis", Album: "From Genesis to Revelation", Instead: []string{"Trespass", "Nursery Cryme", "Foxtrot"}}
+	payload, err := EncodeCommand(ok)
+	if err != nil {
+		t.Fatal(err)
+	}
+	back, err := DecodeCommand(payload)
+	if err != nil || len(back.Instead) != 3 || back.Instead[0] != "Trespass" {
+		t.Errorf("came back as %+v, %v", back, err)
+	}
+	for name, bad := range map[string][]string{
+		"seven": {"a", "b", "c", "d", "e", "f", "g"},
+		"empty": {"Trespass", " "},
+		"long":  {strings.Repeat("x", 201)},
+	} {
+		c := ok
+		c.Instead = bad
+		if _, err := EncodeCommand(c); err == nil {
+			t.Errorf("%s: encoded", name)
+		}
 	}
 }

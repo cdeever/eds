@@ -1,0 +1,145 @@
+menu "Ears (reSpeaker Lite)"
+
+    config EA_DEVICE_ID
+        string "Device identifier"
+        default "respeaker-01"
+        help
+            The device's name in the tenant's registry. It is the client id
+            and a level in its own topics. Lowercase letters, digits and
+            hyphens.
+
+    config EA_TOPIC_PREFIX
+        string "Topic prefix"
+        default "eds"
+        help
+            Root of the topic tree: the tenant's name.
+
+    menu "Sound"
+
+        config EA_I2S_SLAVE
+            bool "The XMOS chip drives the I2S clock"
+            default y
+            help
+                The reSpeaker Lite's I2S firmware makes the XMOS chip the
+                clock's source and the XIAO its follower. The rate it sends
+                is then measured, not chosen, and printed on the console.
+                Off makes the XIAO drive the clock at EA_I2S_RATE instead.
+
+        config EA_I2S_RATE
+            int "Expected sample rate"
+            default 16000
+            help
+                What the XMOS chip is expected to send, or what the XIAO
+                sends when it drives the clock. Seeed publishes the I2S
+                firmware at 16 kHz and at 48 kHz; either works, being a
+                whole multiple of the 16 kHz scribe takes.
+
+        config EA_I2S_GPIO_BCLK
+            int "I2S bit clock GPIO"
+            default 8
+        config EA_I2S_GPIO_WS
+            int "I2S word select GPIO"
+            default 7
+        config EA_I2S_GPIO_DIN
+            int "I2S data-in GPIO"
+            default 44
+            help
+                The pins are Seeed's examples' for the reSpeaker Lite. A
+                console that says no clock arrives means these are wrong.
+
+        config EA_VOICE_CHANNEL
+            int "Channel with the voice"
+            range 0 1
+            default 0
+            help
+                0 is left, 1 is right. The XMOS chip sends its cleaned-up
+                voice on one and something else on the other; the console
+                prints the level of both, and the one that rises when
+                someone speaks is this.
+
+    endmenu
+
+    menu "Wake word"
+
+        config EA_WAKE_WORD
+            string "What it answers to"
+            default "Hey Jarvis"
+            help
+                For the console and the log. The model is
+                main/models/hey_jarvis.tflite, and the settings below are
+                its manifest's (main/models/hey_jarvis.json).
+
+        config EA_WAKE_CUTOFF
+            int "Probability that counts, of 255"
+            range 1 255
+            default 247
+            help
+                The manifest's probability_cutoff, 0.97, as ESPHome holds it.
+                Lower wakes more readily, and more often for nothing.
+
+        config EA_WAKE_WINDOW
+            int "Answers averaged"
+            range 1 20
+            default 5
+            help
+                The manifest's sliding_window_size.
+
+        config EA_WAKE_STEP_MS
+            int "Feature step, ms"
+            default 10
+            help
+                The manifest's feature_step_size.
+
+        config EA_WAKE_ARENA
+            int "Model arena, bytes"
+            default 22860
+            help
+                The manifest's tensor_arena_size. Twice this is allocated, as
+                ESPHome is prepared to; the console says how much is used.
+
+    endmenu
+
+    menu "Button and light"
+
+        config EA_BUTTON_GPIO
+            int "Talk button GPIO"
+            default 0
+            help
+                Held, what is said is sent. The default is the XIAO's own
+                BOOT button, which reads low when pressed.
+
+        config EA_LED_GPIO
+            int "Light GPIO"
+            default 21
+            help
+                The XIAO's own yellow LED, which is lit by pulling it low.
+
+    endmenu
+
+    menu "Network"
+
+        config EA_WIFI_SSID
+            string "WiFi SSID"
+            default "DVNTM-IOT"
+            help
+                The IoT segment (VLAN 30), with the other devices. There is
+                no option for the key, on purpose: `make provision` writes it.
+
+        config EA_MQTT_URI
+            string "Broker URI"
+            default "mqtts://mqtt.mobile.deevnet.net:8883"
+
+        config EA_MQTT_USERNAME
+            string "Broker username"
+            default "respeaker-01"
+
+        config EA_MQTT_USE_TLS
+            bool "Embed a fallback CA for the broker"
+            default n
+            help
+                Requires main/certs/mqtt_ca.pem. The CA is normally
+                provisioned beside the credentials.
+
+    endmenu
+
+endmenu

@@ -21,7 +21,11 @@ The topic prefix defaults to `eds` and must match on both sides — `lightd`'s
 | `eds/nowplaying/current/art` | nowplayd → subscribers | yes | its cover, as image bytes; lightd lights the stand from it |
 | `eds/nowplaying/current/art/small` | nowplayd → subscribers | yes | the same cover at 240 pixels, as a baseline JPEG; the cover screen shows it |
 | `eds/nowplaying/command` | a controller → nowplayd | **never** | a button press, for whatever is current; see [Now Playing](../now-playing/#commands) |
-| `eds/nowplaying/source/<id>/command` | nowplayd → a driver | **never** | the same press, passed to the current source |
+| `eds/nowplaying/source/<id>/command` | nowplayd → a driver | **never** | the same press, passed to the current source; `play_album` to `NP_ALBUM_SOURCE` whatever is current (ADR-0040) |
+| `eds/voice/<device>/utterance` | device → voiced | **never** | what followed the wake word: a WAV, 16 kHz 16-bit mono, at most 15 s (ADR-0042) |
+| `eds/voice/<device>/woken` | device → voiced | **never** | `{"v":1}`: the wake word was just heard, so the music is turned down (ADR-0044) |
+| `eds/voice/<device>/heard` | voiced → device, console | **never** | `{"v":1,"text","understood","artist","album","reason"}`: what was made of the request |
+| `eds/voiced/status` | voiced → broker | yes (LWT) | its presence |
 | `eds/screen/<id>/status` | device → broker | yes (LWT) | the cover screen's presence |
 | `eds/beacon/<id>/status` | device → broker | yes (LWT) | whether the switch a beacon is on has power: `online` while it does, the will's `offline` when it has not. nowplayd reads the one that speaks for the turntable ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)) |
 | `eds/nowplaying/current/look` | nowplayd → lightd | yes | whether that cover's album has a look of its own, by name; see [Now Playing](../now-playing/#looks) |

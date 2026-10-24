@@ -88,6 +88,17 @@ output "nowplayd_broker" {
   }
 }
 
+output "voiced_broker" {
+  description = "voiced's MQTT credential (ADR-0042). deploy/ writes it to the workload beside kit.env."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.voiced.username
+    password  = deevnet_iot_broker_account.voiced.password
+    publish   = deevnet_iot_broker_account.voiced.granted_publish
+    subscribe = deevnet_iot_broker_account.voiced.granted_subscribe
+  }
+}
+
 output "console_broker" {
   description = "The console's MQTT credential. deploy/ writes it to the workload beside kit.env."
   sensitive   = true
@@ -153,6 +164,17 @@ output "lp_stand_01_broker" {
     password  = deevnet_iot_broker_account.lp_stand_01.password
     publish   = deevnet_iot_broker_account.lp_stand_01.granted_publish
     subscribe = deevnet_iot_broker_account.lp_stand_01.granted_subscribe
+  }
+}
+
+output "respeaker_01_broker" {
+  description = "The reSpeaker's MQTT credential (ADR-0042), for its provisioning."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.respeaker_01.username
+    password  = deevnet_iot_broker_account.respeaker_01.password
+    publish   = deevnet_iot_broker_account.respeaker_01.granted_publish
+    subscribe = deevnet_iot_broker_account.respeaker_01.granted_subscribe
   }
 }
 

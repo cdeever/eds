@@ -200,3 +200,45 @@ func TestOnABrokerACommandReachesTheCurrentSourceAndARetainedOneDoesNot(t *testi
 	case <-time.After(300 * time.Millisecond):
 	}
 }
+
+// --- play_album (ADR-0040) ---------------------------------------------------
+
+const playAlbum = `{"v":1,"command":"play_album","from":"voiced","artist":"Van Halen","album":"Van Halen"}`
+
+// An album is asked of the source with a library, whatever plays: the
+// turntable takes no command, and nothing playing is the usual case.
+func TestAnAlbumGoesToTheSourceWithALibraryWhateverIsCurrent(t *testing.T) {
+	for _, current := range []string{"", "turntable", "itunes"} {
+		b := &fakeBus{}
+		r := router(b)
+		r.AlbumSource = "itunes"
+		r.SetCurrent(current)
+		r.Handle(command(playAlbum))
+
+		if len(b.sent) != 1 || b.sent[0].topic != "eds/nowplaying/source/itunes/command" || b.sent[0].payload != playAlbum || b.sent[0].retained {
+			t.Errorf("current %q: sent %+v", current, b.sent)
+		}
+	}
+}
+
+func TestAnAlbumWithNoSourceToPlayItIsDropped(t *testing.T) {
+	b := &fakeBus{}
+	r := router(b)
+	r.SetCurrent("itunes")
+	r.Handle(command(playAlbum))
+	if len(b.sent) != 0 {
+		t.Errorf("sent %+v", b.sent)
+	}
+}
+
+// The buttons still go to what plays, with an album source set.
+func TestAButtonStillGoesToWhatIsCurrent(t *testing.T) {
+	b := &fakeBus{}
+	r := router(b)
+	r.AlbumSource = "itunes"
+	r.SetCurrent("spotify")
+	r.Handle(command(`{"v":1,"command":"next"}`))
+	if len(b.sent) != 1 || b.sent[0].topic != "eds/nowplaying/source/spotify/command" {
+		t.Errorf("sent %+v", b.sent)
+	}
+}

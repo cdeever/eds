@@ -246,8 +246,10 @@ It publishes to `nowplaying/command`:
 | Field | |
 |---|---|
 | `v` | `1`. Another version is refused |
-| `command` | `play_pause`, `next`, `previous`, `volume_up` or `volume_down`. Anything else is refused |
+| `command` | `play_pause`, `next`, `previous`, `volume_up`, `volume_down`, `duck`, `unduck` or `play_album`. Anything else is refused |
 | `from` | optional: who sent it, for the logs. Not trusted for anything |
+| `artist`, `album` | `play_album` only, and both required: the album's names as the player's library has them, at most 200 bytes each |
+| `instead` | `play_album` only, optional: up to six more titles by the artist - the album's other release names, then the next albums - tried in order if the library has not got `album` ([ADR-0045](/docs/architecture/decisions/0045-an-nth-album-not-owned-is-the-next-one-that-is/)). A title matches by its start, with only an edition's note after |
 
 nowplayd passes the message, unchanged, to `nowplaying/source/<id>/command`
 for the source of the current track. A controller knows no source and no
@@ -265,6 +267,34 @@ player.
   nothing says so.
 - `volume_up` and `volume_down` move the player's volume five points in a
   hundred. There is no ceiling.
+
+### Turning the music down while a request is heard
+
+`duck` and `unduck` are voiced's
+([ADR-0044](/docs/architecture/decisions/0044-the-music-is-turned-down-while-a-request-is-heard/)),
+sent when a device says it woke and when its request is answered. They go
+to the current source as the buttons do. The iTunes driver turns the music
+to a quarter and keeps what it was; it comes back on `unduck`, before a
+`play_album`, or by itself after ten seconds. A volume press while ducked
+ends the duck where it is.
+
+### Playing an album
+
+`play_album` chooses what plays rather than pressing a button
+([ADR-0040](/docs/architecture/decisions/0040-a-request-can-name-an-album-to-play/)):
+
+```json
+{"v":1,"command":"play_album","from":"voiced","artist":"Van Halen","album":"Van Halen"}
+```
+
+- **It goes to `NP_ALBUM_SOURCE` (`itunes`), whatever is current**, and is
+  dropped when that is empty. Nothing need be playing.
+- **The player replaces what plays** with the album, from its first track,
+  in the album's order.
+- **The names must be the library's.** iTunes for Windows cannot be asked
+  what its library holds, so the driver asks what plays a moment later; an
+  album that did not start is logged as `driver.command_failed`, "the
+  library played no album by those names". Nothing nearer is tried.
 
 ## Rules for a driver
 

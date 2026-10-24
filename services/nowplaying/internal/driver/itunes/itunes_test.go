@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -36,6 +37,26 @@ type script struct {
 	pressed   []string // the buttons, in the order they were pressed
 	volume    int
 	volumeErr error
+
+	after *dacp.Status // what Now says once an album has been asked for
+
+	// owned, when set, is the library: an album asked for that is in it is
+	// what Now says plays after; one that is not leaves the player stopped,
+	// as iTunes was left on 2026-10-24.
+	owned map[string]bool
+}
+
+func (s *script) PlayAlbum(_ context.Context, artist, album string) error {
+	if s.owned != nil {
+		s.mu.Lock()
+		played := dacp.Status{Revision: 9}
+		if s.owned[album] {
+			played = st(9, true, false, artist, "One", album, abba, 200000)
+		}
+		s.after = &played
+		s.mu.Unlock()
+	}
+	return s.press("album=" + artist + "/" + album)
 }
 
 func (s *script) press(what string) error {
@@ -94,7 +115,15 @@ func (s *script) hand(ctx context.Context) (dacp.Status, error) {
 	return st, nil
 }
 
-func (s *script) Now(ctx context.Context) (dacp.Status, error)            { return s.hand(ctx) }
+func (s *script) Now(ctx context.Context) (dacp.Status, error) {
+	s.mu.Lock()
+	after := s.after
+	s.mu.Unlock()
+	if after != nil {
+		return *after, nil
+	}
+	return s.hand(ctx)
+}
 func (s *script) Wait(ctx context.Context, _ uint32) (dacp.Status, error) { return s.hand(ctx) }
 
 func (s *script) Artwork(context.Context, int) ([]byte, error) {
@@ -401,6 +430,9 @@ func (q *quietPlayer) Next(context.Context) error                   { return nil
 func (q *quietPlayer) Previous(context.Context) error               { return nil }
 func (q *quietPlayer) Volume(context.Context) (int, error)          { return 0, nil }
 func (q *quietPlayer) SetVolume(context.Context, int) error         { return nil }
+func (q *quietPlayer) PlayAlbum(context.Context, string, string) error {
+	return nil
+}
 
 // --- commands (ADR-0020) -----------------------------------------------------
 
@@ -529,5 +561,197 @@ func TestAnUnknownCommandPressesNothing(t *testing.T) {
 	}
 	if got := p.presses(); len(got) != 0 {
 		t.Errorf("pressed %v", got)
+	}
+}
+
+// --- play_album (ADR-0040) ---------------------------------------------------
+
+func album(artist, name string) contract.Command {
+	return contract.Command{V: contract.Version, Command: contract.PlayAlbum, From: "test", Artist: artist, Album: name}
+}
+
+// The player's answer to the request says nothing; what it then plays is
+// the proof. The library's capitals need not be the request's.
+func TestAnAlbumIsAskedForAndThenSeenPlaying(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	playing := st(2, true, false, "Van Halen", "Runnin' With The Devil", "Van Halen", abba, 215000)
+	playing.Artist, playing.Album = "VAN HALEN", "van halen"
+	p.mu.Lock()
+	p.after = &playing
+	p.mu.Unlock()
+
+	if err := d.Command(context.Background(), album("Van Halen", "Van Halen")); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.presses(); fmt.Sprint(got) != "[album=Van Halen/Van Halen]" {
+		t.Errorf("pressed %v", got)
+	}
+}
+
+// Whatever plays afterwards, if it is not the album, the album was not
+// found, and nothing nearer is tried.
+func TestAnAlbumThatDoesNotStartIsNotFound(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, true, false, "A", "One", "Album", abba, 231000)}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	still := st(2, true, false, "A", "One", "Album", abba, 230000)
+	p.mu.Lock()
+	p.after = &still
+	p.mu.Unlock()
+
+	err := d.Command(context.Background(), album("Van Halen", "Van Halen I"))
+	if !errors.Is(err, ErrAlbumNotFound) {
+		t.Errorf("err = %v", err)
+	}
+	if got := p.presses(); len(got) != 1 {
+		t.Errorf("pressed %v; only the one request", got)
+	}
+}
+
+func TestAnAlbumWithNoSessionIsRefused(t *testing.T) {
+	p := &script{}
+	d := &Driver{Source: "itunes", GUID: "X", Player: p, Sink: &sink{}, Logger: quiet}
+	if err := d.Command(context.Background(), album("Van Halen", "Van Halen")); !errors.Is(err, ErrNoSession) {
+		t.Errorf("err = %v", err)
+	}
+	if got := p.presses(); len(got) != 0 {
+		t.Errorf("pressed %v", got)
+	}
+}
+
+// --- ducking (ADR-0044) ------------------------------------------------------
+
+func playing(volume int) *script {
+	return &script{volume: volume, statuses: []dacp.Status{st(1, true, false, "A", "One", "Album", abba, 231000)}}
+}
+
+func TestADuckIsAQuarterAndUnduckBringsItBack(t *testing.T) {
+	p := playing(60)
+	d := live(t, p)
+	for _, c := range []string{contract.Duck, contract.Duck, contract.Unduck, contract.Unduck} {
+		if err := d.Command(context.Background(), command(c)); err != nil {
+			t.Fatalf("%s: %v", c, err)
+		}
+	}
+	// The second duck lowers nothing further; the second unduck restores
+	// nothing more.
+	if got := fmt.Sprint(p.presses()); got != "[volume=15 volume=60]" {
+		t.Errorf("pressed %s", got)
+	}
+}
+
+func TestAnAlbumStartsAtTheVolumeTheRoomHad(t *testing.T) {
+	p := playing(60)
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	after := st(2, true, false, "Aerosmith", "Make It", "Aerosmith", abba, 220000)
+	p.mu.Lock()
+	p.after = &after
+	p.mu.Unlock()
+
+	_ = d.Command(context.Background(), command(contract.Duck))
+	if err := d.Command(context.Background(), album("Aerosmith", "Aerosmith")); err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprint(p.presses()); got != "[volume=15 volume=60 album=Aerosmith/Aerosmith]" {
+		t.Errorf("pressed %s", got)
+	}
+}
+
+// Nobody said anything after the wake word: the music comes back by itself.
+func TestADuckEndsByItself(t *testing.T) {
+	p := playing(60)
+	d := live(t, p)
+	d.DuckFor = 20 * time.Millisecond
+	_ = d.Command(context.Background(), command(contract.Duck))
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) && fmt.Sprint(p.presses()) != "[volume=15 volume=60]" {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got := fmt.Sprint(p.presses()); got != "[volume=15 volume=60]" {
+		t.Errorf("pressed %s", got)
+	}
+}
+
+// A hand on the volume while ducked has it from there: nothing is put back
+// over it, then or later.
+func TestAVolumePressEndsADuckWhereItIs(t *testing.T) {
+	p := playing(60)
+	d := live(t, p)
+	d.DuckFor = 20 * time.Millisecond
+	_ = d.Command(context.Background(), command(contract.Duck))
+	_ = d.Command(context.Background(), command(contract.VolumeUp))
+	time.Sleep(60 * time.Millisecond)
+	_ = d.Command(context.Background(), command(contract.Unduck))
+	if got := fmt.Sprint(p.presses()); got != "[volume=15 volume=20]" {
+		t.Errorf("pressed %s", got)
+	}
+}
+
+// --- albums instead (ADR-0045) -------------------------------------------------
+
+func TestTheNextAlbumTheLibraryHasIsPlayed(t *testing.T) {
+	p := playing(60)
+	p.owned = map[string]bool{"Trespass": true, "Foxtrot": true}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	c := album("Genesis", "From Genesis to Revelation")
+	c.Instead = []string{"Trespass", "Nursery Cryme", "Foxtrot"}
+	if err := d.Command(context.Background(), c); err != nil {
+		t.Fatal(err)
+	}
+	// The first it has, and no further.
+	if got := fmt.Sprint(p.presses()); got != "[album=Genesis/From Genesis to Revelation album=Genesis/Trespass]" {
+		t.Errorf("pressed %s", got)
+	}
+}
+
+func TestNoneOfThemOwnedIsNotFound(t *testing.T) {
+	p := playing(60)
+	p.owned = map[string]bool{}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	c := album("Genesis", "From Genesis to Revelation")
+	c.Instead = []string{"Trespass"}
+	err := d.Command(context.Background(), c)
+	if !errors.Is(err, ErrAlbumNotFound) || !strings.Contains(err.Error(), "Trespass") {
+		t.Errorf("err = %v", err)
+	}
+	if n := len(p.presses()); n != 2 {
+		t.Errorf("tried %d, want both", n)
+	}
+}
+
+// A library's title is the one asked for, or it with an edition's note;
+// never another album that begins the same.
+func TestATitleIsTheOneAskedForOrItWithANote(t *testing.T) {
+	for title, asked := range map[string]string{
+		"Led Zeppelin II (Remastered)":      "Led Zeppelin II",
+		"And the Word Was...":               "And the Word Was…",
+		"Appetite For Destruction":          "Appetite for Destruction",
+		"Rocks [Deluxe Edition]":            "Rocks",
+		"Toys in the Attic - 2013 Remaster": "Toys in the Attic",
+		"Van Halen":                         "Van Halen",
+		// As the owner's library has it, and as MusicBrainz names it.
+		"Pronounced leh-nerd skin-nerd":                      "(pronounced 'lĕh-'nérd 'skin-'nérd)",
+		"Sgt. Pepper's Lonely Hearts Club Band (Remastered)": "Sgt. Pepper’s Lonely Hearts Club Band",
+	} {
+		if !begins(title, asked) {
+			t.Errorf("%q was not taken for %q", title, asked)
+		}
+	}
+	for title, asked := range map[string]string{
+		"Van Halen II":                       "Van Halen",
+		"Led Zeppelin III":                   "Led Zeppelin",
+		"Genesis Live":                       "Genesis",
+		"Abacab":                             "From Genesis to Revelation",
+		"Pronounced leh-nerd skin-nerd live": "(pronounced 'lĕh-'nérd 'skin-'nérd)",
+		"":                                   "Rocks",
+	} {
+		if begins(title, asked) {
+			t.Errorf("%q was taken for %q", title, asked)
+		}
 	}
 }

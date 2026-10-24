@@ -1,0 +1,17 @@
+# scribe - a short spoken request in, its words out (ADR-0042).
+#
+# scribe's own code, 60 KB, on scribe's base (Containerfile.base), which
+# holds the runtime, the libraries and the model. It is built where it runs:
+# deploy/ sends the sources to the workload and builds this there, from the
+# base already loaded, with no network. The self-test is what says the image
+# works - the model loaded offline, a second of tone written down as nothing
+# it is sure of - before the service is restarted onto it.
+#
+# On a machine of its own: build Containerfile.base as
+# localhost/eds-scribe-base:latest first.
+FROM localhost/eds-scribe-base:latest
+COPY src /app/src
+ENV PYTHONPATH=/app/src
+RUN python -m eds_scribe.selftest
+EXPOSE 8733
+CMD ["uvicorn", "eds_scribe.api:app", "--host", "0.0.0.0", "--port", "8733"]

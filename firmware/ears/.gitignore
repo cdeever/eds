@@ -1,0 +1,6 @@
+backup/
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+test/host/run-tests.dSYM/

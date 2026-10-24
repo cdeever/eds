@@ -30,6 +30,10 @@ type Router struct {
 	Prefix string
 	Logger *slog.Logger
 
+	// AlbumSource is where play_album goes, whatever is current: the one
+	// source with a library to play from (ADR-0040). Empty drops it.
+	AlbumSource string
+
 	mu     sync.Mutex
 	bus    Bus
 	source string
@@ -75,6 +79,15 @@ func (r *Router) Handle(msg bus.Message) {
 	if out == nil {
 		r.logger().Info("dropped a command: not connected yet", "command", c.Command, "from", c.From)
 		return
+	}
+	if c.Command == contract.PlayAlbum {
+		// Not a button on what plays: it chooses what plays, and only the
+		// source with a library can (ADR-0040). Nothing need be current.
+		source = r.AlbumSource
+		if source == "" {
+			r.logger().Info("dropped a command: no source plays albums", "command", c.Command, "from", c.From)
+			return
+		}
 	}
 	if source == "" {
 		// Not kept for when something does play: by then it is not what

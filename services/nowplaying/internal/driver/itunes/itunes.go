@@ -13,12 +13,15 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/dacp"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver"
+	"github.com/cdeever/eds/services/nowplaying/internal/library"
 )
 
 // Player is the part of the protocol client the driver uses.
@@ -34,6 +37,9 @@ type Player interface {
 	Previous(ctx context.Context) error
 	Volume(ctx context.Context) (int, error)
 	SetVolume(ctx context.Context, volume int) error
+
+	// What the remote sends to play an album (ADR-0040).
+	PlayAlbum(ctx context.Context, artist, album string) error
 }
 
 // Driver follows one player.
@@ -55,11 +61,31 @@ type Driver struct {
 
 	Now func() time.Time
 
+	// AlbumCheck is how long an album is given to start before the player
+	// is asked what plays; zero is albumCheck.
+	AlbumCheck time.Duration
+
+	// DuckFor is how long a duck lasts if nothing ends it; zero is
+	// DuckFor's default (ADR-0044).
+	DuckFor time.Duration
+
 	// Whether there is a session a command could be sent on. Commands arrive
 	// from the bus, on a goroutine that is not the one following the player.
 	mu   sync.Mutex
 	live bool
+
+	// The volume a duck took the player down from, and what ends it if
+	// nothing else does. ducking is false when the music is as it was.
+	ducking bool
+	ducked  int
+	undo    *time.Timer
 }
+
+// DuckTo is how far a duck turns the music down: to a quarter of what it was.
+const DuckTo = 4
+
+// duckFor is how long a duck lasts if nothing ends it: past any request.
+const duckFor = 10 * time.Second
 
 // VolumeStep is how far one volume command moves the player, of 100. Twenty
 // presses from silence to full: fine enough to settle on a level, coarse
@@ -93,11 +119,175 @@ func (d *Driver) Command(ctx context.Context, c contract.Command) error {
 	case contract.Previous:
 		return d.Player.Previous(ctx)
 	case contract.VolumeUp:
+		d.forgetDuck() // whoever pressed it has the volume now
 		return d.nudge(ctx, VolumeStep)
 	case contract.VolumeDown:
+		d.forgetDuck()
 		return d.nudge(ctx, -VolumeStep)
+	case contract.PlayAlbum:
+		// The album starts at the volume the room had, not the ducked one.
+		if err := d.unduck(ctx); err != nil {
+			d.logger().Warn("the volume could not be brought back before an album", "error", err)
+		}
+		return d.playFirstOwned(ctx, c.Artist, append([]string{c.Album}, c.Instead...))
+	case contract.Duck:
+		return d.duck(ctx)
+	case contract.Unduck:
+		return d.unduck(ctx)
 	}
 	return fmt.Errorf("itunes: no such command %q", c.Command)
+}
+
+// playFirstOwned plays the first of the albums the library has (ADR-0045):
+// the one asked for, then each instead, in order. A miss is only found by
+// trying, and each try empties the queue, so a miss on all of them leaves
+// the player stopped.
+func (d *Driver) playFirstOwned(ctx context.Context, artist string, albums []string) error {
+	var missed []string
+	for i, album := range albums {
+		err := d.playAlbum(ctx, artist, album)
+		if err == nil {
+			if i > 0 {
+				d.logger().Info("the library had not got what was asked for; played the next it has",
+					"artist", artist, "asked", albums[0], "played", album, "missed", missed)
+			}
+			return nil
+		}
+		if !errors.Is(err, ErrAlbumNotFound) {
+			return err
+		}
+		missed = append(missed, album)
+	}
+	return fmt.Errorf("%w: tried %q by %q", ErrAlbumNotFound, missed, artist)
+}
+
+// ErrAlbumNotFound means the player was asked for an album and is not
+// playing it: its library names it differently, or does not have it.
+var ErrAlbumNotFound = errors.New("itunes: the library played no album by those names")
+
+// albumCheck is how long the player is given to start an album before it is
+// asked what it is playing. iTunes for Windows had on 2026-10-23 within one
+// second.
+const albumCheck = 1500 * time.Millisecond
+
+// playAlbum asks for an album by name and then asks what plays, because the
+// player answers a request that matched nothing just as it answers one that
+// matched (ADR-0040). The match is the player's; nothing nearer is tried.
+func (d *Driver) playAlbum(ctx context.Context, artist, album string) error {
+	// The whole title first: with the owner's library known, it is the
+	// library's own (ADR-0046). Then its plain beginning, for a title a
+	// catalog spelt and the library may have spelt otherwise.
+	starts := []string{dacp.Stem(album)}
+	if q := dacp.QueryStem(album); q != starts[0] {
+		starts = append(starts, q)
+	}
+	var err error
+	for _, start := range starts {
+		if err = d.tryAlbum(ctx, artist, album, start); !errors.Is(err, ErrAlbumNotFound) {
+			return err
+		}
+	}
+	return err
+}
+
+// tryAlbum asks for the albums whose title begins with start, and says
+// whether what then plays is album.
+func (d *Driver) tryAlbum(ctx context.Context, artist, album, start string) error {
+	if err := d.Player.PlayAlbum(ctx, artist, start); err != nil {
+		return err
+	}
+	wait := d.AlbumCheck
+	if wait == 0 {
+		wait = albumCheck
+	}
+	// Asked as soon as it might have started, and again until the wait is
+	// out: an album that is there is known in a few tenths of a second, one
+	// that is not only when the wait is.
+	deadline := time.Now().Add(wait)
+	var now dacp.Status
+	for {
+		step := min(wait/6, time.Until(deadline))
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(max(step, 0)):
+		}
+		var err error
+		if now, err = d.Player.Now(ctx); err != nil {
+			return err
+		}
+		if strings.EqualFold(now.Artist, artist) && begins(now.Album, album) {
+			return nil
+		}
+		if !time.Now().Before(deadline) {
+			break
+		}
+	}
+	return fmt.Errorf("%w: asked for %q by %q, playing %q by %q", ErrAlbumNotFound, album, artist, now.Album, now.Artist)
+}
+
+// begins is whether a library's title is the one asked for, alone or with
+// an edition's note after it: "Led Zeppelin II (Remastered)" is "Led
+// Zeppelin II", and "And the Word Was..." is "And the Word Was…". More of a
+// name is not a note: "Van Halen II" is not "Van Halen", which the player's
+// match by the start of a title would otherwise play for it.
+//
+// Letters and digits are compared, without case or accents, so that
+// "Pronounced leh-nerd skin-nerd" is "(pronounced 'lĕh-'nérd 'skin-'nérd)".
+func begins(title, asked string) bool {
+	want := fold(dacp.Stem(asked))
+	if want == "" {
+		return false
+	}
+	// Walk the title until as many of its letters and digits as the asked
+	// title has are matched, and see what follows the last of them.
+	matched, end := 0, -1
+	for i, r := range title {
+		f := library.FoldRune(r)
+		if f == 0 {
+			continue
+		}
+		if f != rune(want[matched]) {
+			return false
+		}
+		matched++
+		if matched == len(want) {
+			end = i + utf8.RuneLen(r)
+			break
+		}
+	}
+	if end < 0 {
+		return false
+	}
+	rest := strings.TrimSpace(title[end:])
+	if rest == "" {
+		return true
+	}
+	first, _ := utf8.DecodeRuneInString(rest)
+	return strings.ContainsRune("([{-–—:…./,'\"", first) && !continues(rest)
+}
+
+// continues is whether what follows a matched title is more of a name after
+// all, behind a quote or a stop: "Sgt. Pepper's" has more letters after its
+// apostrophe, and an asked "Sgt" is not it. A note is spaced or bracketed.
+func continues(rest string) bool {
+	if len(rest) < 2 {
+		return false
+	}
+	first, size := utf8.DecodeRuneInString(rest)
+	next, _ := utf8.DecodeRuneInString(rest[size:])
+	return strings.ContainsRune("'\".", first) && library.FoldRune(next) != 0
+}
+
+// fold is a title's letters and digits, lowercased and without accents.
+func fold(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if f := library.FoldRune(r); f != 0 {
+			b.WriteRune(f)
+		}
+	}
+	return b.String()
 }
 
 // nudge moves the volume by step. The player is asked where it is first,
@@ -113,6 +303,74 @@ func (d *Driver) nudge(ctx context.Context, step int) error {
 		return nil // already as far as it goes
 	}
 	return d.Player.SetVolume(ctx, to)
+}
+
+// duck turns the music down while a request is heard (ADR-0044), and sets
+// it to come back by itself. A duck while ducked lowers nothing further: it
+// only waits again.
+func (d *Driver) duck(ctx context.Context) error {
+	d.mu.Lock()
+	already := d.ducking
+	d.mu.Unlock()
+	if !already {
+		volume, err := d.Player.Volume(ctx)
+		if err != nil {
+			return err
+		}
+		if err := d.Player.SetVolume(ctx, volume/DuckTo); err != nil {
+			return err
+		}
+		d.mu.Lock()
+		d.ducking, d.ducked = true, volume
+		d.mu.Unlock()
+	}
+
+	wait := d.DuckFor
+	if wait == 0 {
+		wait = duckFor
+	}
+	d.mu.Lock()
+	if d.undo != nil {
+		d.undo.Stop()
+	}
+	d.undo = time.AfterFunc(wait, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := d.unduck(ctx); err != nil {
+			d.logger().Warn("the volume could not be brought back after a duck", "error", err)
+		}
+	})
+	d.mu.Unlock()
+	return nil
+}
+
+// unduck brings back the volume a duck took down. Not ducked, it does
+// nothing.
+func (d *Driver) unduck(ctx context.Context) error {
+	d.mu.Lock()
+	if !d.ducking {
+		d.mu.Unlock()
+		return nil
+	}
+	to := d.ducked
+	d.ducking = false
+	if d.undo != nil {
+		d.undo.Stop()
+		d.undo = nil
+	}
+	d.mu.Unlock()
+	return d.Player.SetVolume(ctx, to)
+}
+
+// forgetDuck ends a duck without bringing anything back.
+func (d *Driver) forgetDuck() {
+	d.mu.Lock()
+	d.ducking = false
+	if d.undo != nil {
+		d.undo.Stop()
+		d.undo = nil
+	}
+	d.mu.Unlock()
 }
 
 func (d *Driver) setLive(live bool) {

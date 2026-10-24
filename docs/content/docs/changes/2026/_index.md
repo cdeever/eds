@@ -40,3 +40,11 @@ bookCollapseSection: true
 | CHG-0030 | 2026-10-19 | [The Console Switches the Stand](0030-the-console-switches-the-stand/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0031 | 2026-10-21 | [The Turntable Heard Through a UFO202](0031-the-turntable-heard-through-a-ufo202/) | Configuration | {{< status-badge "complete" "Complete" >}} |
 | CHG-0032 | 2026-10-23 | [American Idiot Has a Look](0032-american-idiot-has-a-look/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
+| CHG-0033 | 2026-10-23 | [An Album Asked For on the Bus](0033-an-album-asked-for-on-the-bus/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0034 | 2026-10-24 | [voiced and scribe on the Workload](0034-voiced-and-scribe-on-the-workload/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0035 | 2026-10-24 | [Only Words scribe Is Sure Of](0035-only-words-scribe-is-sure-of/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
+| CHG-0036 | 2026-10-24 | [The reSpeaker Wakes to "Hey Jarvis"](0036-the-respeaker-wakes-to-hey-jarvis/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
+| CHG-0037 | 2026-10-24 | [A Request Answered Sooner](0037-a-request-answered-sooner/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0038 | 2026-10-24 | [A Misheard "Play", and a Longer Pre-roll](0038-a-misheard-play-and-a-longer-pre-roll/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0039 | 2026-10-24 | [scribe in Two, and "Hey Jarvis" in Its Prompt](0039-scribe-in-two-and-hey-jarvis-in-its-prompt/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0040 | 2026-10-24 | [The Owner's Library for voiced](0040-the-owners-library-for-voiced/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
