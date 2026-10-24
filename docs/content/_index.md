@@ -51,6 +51,23 @@ does not pretend to.
   it off and the room goes back to whatever else is playing. Nobody presses
   anything.
 
+## Why build it
+
+A packaged whole-home system would play music in every room too. EdS is
+built by hand for what that would give up:
+
+- **No subscription for the system itself.** The house's sound does not
+  depend on a company's service or its pricing.
+- **Every room keeps its own stereo**, vintage ones included, rather than
+  speakers chosen by whoever sells the system.
+- **It works with what is already in use**: iTunes, Spotify, your own
+  Discogs collection, and whatever comes next, integrated the way you want
+  them rather than the way a vendor allows.
+- **It listens only when asked.** The wake word is heard on the device
+  itself, nothing is sent before it, and what you say is written down on
+  EdS's own equipment, not by someone else's service. The one sound sent out is a few
+  seconds of a record, to name it.
+
 ## Under the hood
 
 A turntable, a few small devices, and a handful of services that meet at one
