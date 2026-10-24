@@ -175,7 +175,7 @@ func (l *Listener) logger() *slog.Logger {
 
 // Scribe asks scribe to write a recording down (ADR-0042).
 type Scribe struct {
-	URL  string // http://127.0.0.1:8732
+	URL  string // http://127.0.0.1:8733; lightd has 8732, palette 8731
 	HTTP *http.Client
 }
 

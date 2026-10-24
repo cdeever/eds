@@ -11,7 +11,7 @@
 // Settings, from the environment:
 //
 //	NP_MQTT_*, NP_TOPIC_PREFIX   the broker, as for nowplayd; client id eds-voiced
-//	NP_SCRIBE_URL                scribe (default http://127.0.0.1:8732)
+//	NP_SCRIBE_URL                scribe (default http://127.0.0.1:8733)
 //	NP_CONTACT                   what MusicBrainz is told, as for nowplayd
 package main
 
@@ -56,7 +56,7 @@ func run(logger *slog.Logger) error {
 	if contact == "" {
 		return fmt.Errorf("config: NP_CONTACT must not be empty; MusicBrainz requires a way to reach the caller")
 	}
-	scribe := config.Str("NP_SCRIBE_URL", "http://127.0.0.1:8732")
+	scribe := config.Str("NP_SCRIBE_URL", "http://127.0.0.1:8733")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

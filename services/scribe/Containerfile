@@ -15,5 +15,5 @@ RUN pip install . && useradd --system --no-create-home scribe \
     && chmod -R a+rX /opt/models
 ENV HF_HUB_OFFLINE=1
 USER scribe
-EXPOSE 8732
-CMD ["uvicorn", "eds_scribe.api:app", "--host", "0.0.0.0", "--port", "8732"]
+EXPOSE 8733
+CMD ["uvicorn", "eds_scribe.api:app", "--host", "0.0.0.0", "--port", "8733"]

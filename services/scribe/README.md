@@ -10,7 +10,7 @@ infrastructure at all, as palette is against a folder of covers.
 ```bash
 make venv PYTHON=python3.12   # faster-whisper has no wheels for 3.15 yet
 make test                     # no model, no network
-make serve                    # on :8732; the model loads on the first request
+make serve                    # on :8733; the model loads on the first request
 make scribe WAVS=~/requests   # write down every WAV in a folder
 ```
 

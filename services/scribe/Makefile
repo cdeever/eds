@@ -6,7 +6,7 @@ SHELL := /bin/bash
 PYTHON ?= python3
 VENV   ?= $(CURDIR)/.venv
 PY     := $(VENV)/bin/python
-PORT   ?= 8732
+PORT   ?= 8733
 WAVS   ?= $(CURDIR)/testdata
 
 .PHONY: help venv test serve scribe clean
