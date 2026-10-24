@@ -28,8 +28,9 @@ effort:
   iTunes, Spotify and the owner's Discogs collection among them, in ways no
   packaged system offers. EdS is one of those integrations.
 - **No microphones listening to every conversation** and sending it to the
-  cloud. EdS's ears hear only what is said to them, and the words are
-  written down on EdS's own workload, not by someone else's service. The
+  cloud. EdS's ears listen for their name, "Hey Jarvis", on the device
+  itself, and send nothing until they hear it; then only the request, which
+  is written down on EdS's own workload, not by someone else's service. The
   one sound EdS sends out of the house is a few seconds of the record, to
   name it.
 
