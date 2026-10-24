@@ -117,8 +117,10 @@ Not yet shown:
 
 - [ ] What the player does when nothing matches: whether it stops, or plays
       on from where it was.
-- [ ] A name with an apostrophe (*Guns N' Roses*), and an album whose
-      tracks name guests.
+- [x] A name with an apostrophe, and a title the library capitalizes
+      differently: *Appetite for Destruction* by Guns N' Roses played as
+      the library's *Appetite For Destruction* (2026-10-24).
+- [ ] An album whose tracks name guests.
 - [x] `play_album` on the bus, carried out by the driver
       ([CHG-0033](/docs/changes/2026/0033-an-album-asked-for-on-the-bus/)):
       *Aerosmith* by Aerosmith, from "Make It", within a second.

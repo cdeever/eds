@@ -62,6 +62,7 @@ Ship and push `main` again: `git switch main`, then the two commands above.
 | 00:00:45–00:02:25 | `ship WHERE=builder` from `22889ba`: the four images built on the Builder and loaded; all four services active at 00:02:24. nowplayd at once had iTunes playing *Van Halen*, "Ain't Talkin' 'Bout Love", and listed the Discogs collection (227 records). |
 | 00:02:49 | `make -C deploy/relay push`: installed `22889ba`; `npagent` active, iTunes followed again. |
 | 00:02:57 | `play_album` for *Aerosmith* by Aerosmith, asked for by the owner, published with nowplayd's account on `eds/nowplaying/source/itunes/command`. Within a second the driver reported *Aerosmith*, "Make It", the album's first track, and nowplayd published it as `current`. At 00:02:59, after the check, the driver logged `command: play_album` as done. |
+| 00:23:00 | Asked for by the owner: Guns N' Roses' first album, named by `cmd/discography` (ADR-0041) as *Appetite for Destruction* and published the same way. At 00:23:01 the driver reported "Welcome To The Jungle", *Appetite For Destruction*, as the library capitalizes it; at 00:23:02 the command was done. |
 
 ### Departures from the plan
 

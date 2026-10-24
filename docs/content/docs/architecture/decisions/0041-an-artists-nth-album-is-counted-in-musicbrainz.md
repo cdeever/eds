@@ -93,7 +93,10 @@ Destruction*, the Beatles' latest *Let It Be*.
 
 Not yet shown:
 
-- [ ] An album named this way, played by `play_album`, for an artist whose
-      name and album differ.
+- [x] An album named this way, played by `play_album`, for an artist whose
+      name and album differ: Guns N' Roses' first, *Appetite for
+      Destruction*, which the library writes *Appetite For Destruction*,
+      played from "Welcome To The Jungle" on 2026-10-24
+      ([CHG-0033](/docs/changes/2026/0033-an-album-asked-for-on-the-bus/)).
 - [ ] How often the library's title differs from MusicBrainz's, over the
       owner's own requests.
