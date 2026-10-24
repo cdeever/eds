@@ -24,19 +24,21 @@ exactly as it did before.
 
 ## The light follows the sleeve
 
-Prop the jacket on its stand and the stand lights up from it. EdS reads the
-cover art, draws out its colors, and sets them moving behind the sleeve: a
-slow wash for one record, a chase of accents for the next. The room takes on
-the mood of the album without anyone choosing a thing.
+A record's jacket is twelve inches square of album art, and most of the
+time it sits in a crate. Prop it on the LP stand and it is on display, lit
+from behind in its own colors. EdS reads the cover art, draws out its
+colors, and sets them moving behind the sleeve: a slow wash for one record,
+a chase of accents for the next. The room takes on the look of the album
+for as long as it plays, without anyone choosing a thing.
 
 When the music stops, the light settles to a low, warm glow.
 
 ## A screen that belongs to the stereo
 
 Beside the turntable is a small touch screen with one job. It shows the
-cover of whatever is playing. Touch it and it becomes a remote: play, pause,
-skip, louder, quieter. It is always where you are standing, and it is never
-busy being anything else.
+cover of whatever is playing. Touch it and it becomes a remote for iTunes:
+play, pause, skip, louder, quieter, without reaching for a phone. It is
+always where you are standing, and it is never busy being anything else.
 
 With a record on, it is simply the sleeve. Nothing can skip a record, so it
 does not pretend to.
@@ -60,16 +62,8 @@ media server itself over Remote Desktop. EdS does not replace any of that.
 It adds ways that are more convenient, and more fun, differently for each
 room, and it stays out of the path the music takes.
 
-**Today**, in the vinyl listening room:
-
-- **The LP stand.** A record's jacket is twelve inches square of album art,
-  and most of the time it sits in a crate. On the stand, the jacket of the
-  record that is playing is on display, lit from behind in its own colors:
-  drawn from the cover itself and set slowly moving, so the room takes on
-  the look of the album for as long as it plays.
-- **The cover screen.** A small touch screen beside it shows the cover of
-  whatever is playing, and for iTunes it is a remote too: play, pause,
-  skip, louder, quieter, without reaching for a phone.
+**Today** that is the vinyl listening room: the LP stand and the screen
+beside it, above.
 
 **In development**, an album can be asked for out loud, and iTunes plays it.
 For now there is one device that listens, the ears, and it sits wherever
