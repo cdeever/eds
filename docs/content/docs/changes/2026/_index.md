@@ -41,3 +41,4 @@ bookCollapseSection: true
 | CHG-0031 | 2026-10-21 | [The Turntable Heard Through a UFO202](0031-the-turntable-heard-through-a-ufo202/) | Configuration | {{< status-badge "complete" "Complete" >}} |
 | CHG-0032 | 2026-10-23 | [American Idiot Has a Look](0032-american-idiot-has-a-look/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
 | CHG-0033 | 2026-10-23 | [An Album Asked For on the Bus](0033-an-album-asked-for-on-the-bus/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
+| CHG-0034 | 2026-10-24 | [voiced and scribe on the Workload](0034-voiced-and-scribe-on-the-workload/) | New service | {{< status-badge "in-progress" "In progress" >}} |

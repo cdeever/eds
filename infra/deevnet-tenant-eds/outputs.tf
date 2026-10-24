@@ -167,6 +167,17 @@ output "lp_stand_01_broker" {
   }
 }
 
+output "respeaker_01_broker" {
+  description = "The reSpeaker's MQTT credential (ADR-0042), for its provisioning."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.respeaker_01.username
+    password  = deevnet_iot_broker_account.respeaker_01.password
+    publish   = deevnet_iot_broker_account.respeaker_01.granted_publish
+    subscribe = deevnet_iot_broker_account.respeaker_01.granted_subscribe
+  }
+}
+
 output "cover_screen_01_broker" {
   description = "What the cover screen's firmware is provisioned with, beside the Wi-Fi key above (ADR-0020)."
   sensitive   = true

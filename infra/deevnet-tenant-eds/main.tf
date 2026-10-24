@@ -371,6 +371,38 @@ resource "deevnet_iot_broker_account" "np_relay" {
   ]
 }
 
+# --- The reSpeaker (ADR-0042) -----------------------------------------------
+#
+# A microphone array and an ESP32-S3 that listens for its wake word and sends
+# what followed it. Registered as the screen is: firmware its owner controls,
+# and an entry that lets its account publish under log/.
+resource "deevnet_iot_device" "respeaker_01" {
+  tenant      = deevnet_tenant.eds.name
+  name        = "respeaker-01"
+  trust_class = "iot"
+}
+
+# Its account. What it says is audio, which voiced writes down and reads as a
+# request; it cannot command anything itself. The worst this credential can
+# do is ask for an album by speaking, which a person in the room can do too.
+#
+# CAREFUL: replacing this resource issues a NEW password, and the device stops
+# connecting until it is reprovisioned.
+resource "deevnet_iot_broker_account" "respeaker_01" {
+  tenant = deevnet_tenant.eds.name
+  name   = "respeaker-01"
+  device = deevnet_iot_device.respeaker_01.name
+
+  publish = [
+    "voice/respeaker-01/status",    # its own presence, and its last will
+    "voice/respeaker-01/utterance", # what followed the wake word, as a WAV
+    "log/respeaker-01",             # its own events, into the tenant's log store
+  ]
+  subscribe = [
+    "voice/respeaker-01/heard", # what voiced made of it, for a light or a sound
+  ]
+}
+
 # --- The cover screen (ADR-0020) ---------------------------------------------
 #
 # A small touch screen that shows the sleeve of what is playing, and has five
