@@ -15,4 +15,4 @@ links to it.
 
 | Proposal | Date | In short |
 |---|---|---|
-| [A Music Inventory](music-inventory/) | 2026-10-24 | one local inventory of the owner's music, in every format, that EdS asks first |
+| [A Music Inventory](music-inventory/) | 2026-10-24 | one local inventory of the owner's music, in every format, that EdS asks first: [eds-inventory](https://cdeever.github.io/eds-inventory/) |
