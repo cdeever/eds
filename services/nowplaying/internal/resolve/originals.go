@@ -47,8 +47,11 @@ type Originals struct {
 	listed    map[string]bool     // album key: asked, and nothing found
 	kinds     map[string]kind     // album title: what kind of release it is
 	originals map[string]string   // track key: its original album, or "" for none
-	lastMB    time.Time
-	gapMB     time.Duration // between MusicBrainz calls; zero means its one a second
+	// artist key: its studio albums, or the zero Discography for none
+	// (ADR-0041)
+	discographies map[string]Discography
+	lastMB        time.Time
+	gapMB         time.Duration // between MusicBrainz calls; zero means its one a second
 }
 
 // kind is what MusicBrainz says an album is.

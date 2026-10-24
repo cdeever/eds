@@ -109,3 +109,4 @@ and incidents under the same names. To keep the two apart:
 | [0038](0038-the-turntable-names-the-original-album-by-what-is-on-it/) | 2026-10-19 | The turntable's album is the one the track is on, and the original one, not a time since the last | {{< adr-status "Proposed" >}} |
 | [0039](0039-the-console-can-light-the-stand-for-every-source/) | 2026-10-19 | The console can light the stand for every source, a retained setting that stays until switched back | {{< adr-status "Proposed" >}} |
 | [0040](0040-a-request-can-name-an-album-to-play/) | 2026-10-23 | A request can name an album to play, and iTunes plays it from its own library | {{< adr-status "Proposed" >}} |
+| [0041](0041-an-artists-nth-album-is-counted-in-musicbrainz/) | 2026-10-24 | An artist's first album is their first studio album, counted in MusicBrainz | {{< adr-status "Proposed" >}} |

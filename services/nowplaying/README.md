@@ -95,6 +95,10 @@ driver now does (ADR-0020): `play_pause`, `next`, `previous`, `volume_up` and
   (`cue`). iTunes for Windows will not say what its library holds (403), so
   the driver asks what plays 1.5 s later and reports a miss as a failed
   command. `npagent play-album ARTIST ALBUM` does the same by hand.
+- Which album "Aerosmith's first" is comes from MusicBrainz (ADR-0041):
+  the artist's studio albums, official, by first release.
+  `go run ./cmd/discography ARTIST [N]` lists them, or names the Nth (-1 is
+  the latest) in the form `play-album` takes.
 - A command that arrives with no session is refused and not kept. A "next"
   carried out a minute late is a fault of its own.
 - **A retained command is dropped**, by nowplayd and again by the agent. A
