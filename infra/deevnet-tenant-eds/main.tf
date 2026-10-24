@@ -265,6 +265,25 @@ resource "deevnet_iot_broker_account" "nowplayd" {
   ]
 }
 
+# voiced, on the services workload (ADR-0042). It hears every device's spoken
+# requests, as one filter granted as that filter, and asks nowplayd for the
+# album one names: play_album on the command topic, as a controller does
+# (ADR-0040). What it made of a request is said back to the device. It reads
+# nothing else, and cannot address a player directly.
+resource "deevnet_iot_broker_account" "voiced" {
+  tenant = deevnet_tenant.eds.name
+  name   = "voiced"
+
+  publish = [
+    "voiced/status",      # its own presence, and its last will
+    "nowplaying/command", # play_album, for an album asked for aloud
+    "voice/+/heard",      # what was made of a request, to the device that sent it
+  ]
+  subscribe = [
+    "voice/+/utterance", # what each device heard after its wake word, as a WAV
+  ]
+}
+
 # The console, on the services workload (ADR-0018).
 #
 # It looks: every topic it reads, and two it writes - its own presence, and

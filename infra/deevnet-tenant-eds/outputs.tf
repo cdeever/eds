@@ -88,6 +88,17 @@ output "nowplayd_broker" {
   }
 }
 
+output "voiced_broker" {
+  description = "voiced's MQTT credential (ADR-0042). deploy/ writes it to the workload beside kit.env."
+  sensitive   = true
+  value = {
+    username  = deevnet_iot_broker_account.voiced.username
+    password  = deevnet_iot_broker_account.voiced.password
+    publish   = deevnet_iot_broker_account.voiced.granted_publish
+    subscribe = deevnet_iot_broker_account.voiced.granted_subscribe
+  }
+}
+
 output "console_broker" {
   description = "The console's MQTT credential. deploy/ writes it to the workload beside kit.env."
   sensitive   = true

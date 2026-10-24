@@ -23,6 +23,7 @@ builds the monorepo as a whole; work inside one project directory at a time.
 | `services/lightd` | Go 1.25 | `make check build run` |
 | `services/nowplaying` | Go 1.25 | `make check test-integration run` |
 | `services/console` | Go 1.25 + a static page | `make check run feed` |
+| `services/scribe` | Python 3.11+ / FastAPI / faster-whisper | `make venv PYTHON=python3.12 test serve` |
 | `firmware/lp-stand` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
 | `firmware/cover-screen` | C / ESP-IDF | `make test pictures` (host), `make build flash` (device) |
 | `firmware/power-beacon` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
@@ -365,6 +366,18 @@ names an artist and an album, and `nowplayd` passes it to `NP_ALBUM_SOURCE`
 library (403 on `databases`), so the album is played by name and the driver
 asks what plays afterward; a miss is a failed command, never a nearer guess.
 
+**A request can be spoken** (ADR-0042). A device sends what followed its
+wake word as one WAV on `voice/<id>/utterance`; `voiced`
+(`services/nowplaying/cmd/voiced`, its own service and broker account) has
+`scribe` write it down, reads it with `internal/voice`'s short grammar
+("play X's first album", "play the Nth album by X", "play ALBUM by X"),
+counts the artist's studio albums in MusicBrainz when a place is named
+(ADR-0041, `resolve.Originals.Discography`), sends `play_album`, and says
+what it made of it on `voice/<id>/heard`. **scribe knows nothing about
+music**, as palette knows nothing about it: a WAV in, words out. Words that
+are not a request are said back as not understood; nothing nearer is
+guessed. `go run ./cmd/discography ARTIST [N]` checks a count by hand.
+
 **A source whose equipment is switched on holds the stand** (ADR-0023). For
 the sources `NP_SOURCE_POWER` names, `nowplayd` reads a beacon's status:
 on, that source is current before playing, paused and stopped are compared;
@@ -415,6 +428,9 @@ on the console, which is told and cannot find out.
 | `eds/nowplaying/current/art/small` | nowplayd → cover screen | yes |
 | `eds/nowplaying/command` | cover screen → nowplayd | **never** |
 | `eds/nowplaying/source/<id>/command` | nowplayd → driver | **never** |
+| `eds/voice/<id>/utterance` | device → voiced | **never** |
+| `eds/voice/<id>/heard` | voiced → device | **never** |
+| `eds/voiced/status` | voiced → broker | yes (LWT) |
 | `eds/screen/<id>/status` | device → broker | yes (LWT) |
 | `eds/beacon/<id>/status` | device → nowplayd, console | yes (LWT) |
 | `eds/console/status` | console → broker | yes (LWT) |

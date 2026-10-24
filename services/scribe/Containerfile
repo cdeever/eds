@@ -1,0 +1,19 @@
+# scribe - a short spoken request in, its words out (ADR-0042).
+#
+# The model is fetched when the image is built, not when the service starts:
+# the workload is not where things are downloaded from, and the first request
+# should not wait for it. Nothing is secret; SCRIBE_MODEL and SCRIBE_THREADS
+# are the only settings.
+FROM docker.io/library/python:3.13-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_ROOT_USER_ACTION=ignore \
+    HF_HOME=/opt/models SCRIBE_MODEL=base.en
+WORKDIR /app
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN pip install . && useradd --system --no-create-home scribe \
+    && python -c "from faster_whisper import WhisperModel; WhisperModel('base.en', device='cpu', compute_type='int8')" \
+    && chmod -R a+rX /opt/models
+ENV HF_HUB_OFFLINE=1
+USER scribe
+EXPOSE 8732
+CMD ["uvicorn", "eds_scribe.api:app", "--host", "0.0.0.0", "--port", "8732"]

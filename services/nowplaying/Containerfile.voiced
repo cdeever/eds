@@ -1,0 +1,16 @@
+# voiced - a spoken request heard, and the album it names asked for (ADR-0042).
+#
+# Built from the nowplaying module, whose resolver counts an artist's albums;
+# run as its own service, with its own broker account. A static binary on
+# distroless, like nowplayd: its CA roots are for MusicBrainz.
+FROM docker.io/library/golang:1.25 AS build
+ARG VERSION=dev
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/voiced ./cmd/voiced
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/voiced /voiced
+ENTRYPOINT ["/voiced"]

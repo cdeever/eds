@@ -1,4 +1,5 @@
-# Deploy palette, lightd, nowplayd and the console to the eds services workload.
+# Deploy palette, lightd, nowplayd, the console, scribe and voiced to the eds
+# services workload.
 #
 # The Deploy Your App pattern: build the images, copy them over SSH, and run
 # them under systemd with kit.env. No registry and no operator. A replaced
@@ -21,16 +22,16 @@ BUILDER   ?= cdeever@builder
 BUILD_DIR ?= /srv/eds-deploy-build
 VERSION   ?= $(shell git -C $(REPO) describe --always --dirty 2>/dev/null || echo dev)
 
-SERVICES := eds-palette eds-lightd eds-nowplayd eds-console
+SERVICES := eds-palette eds-lightd eds-nowplayd eds-console eds-scribe eds-voiced
 UNITS    := $(addsuffix .service,$(SERVICES))
 
 .PHONY: help images load kit-env broker-env tls-files discogs-env ship units deploy restart status logs clean
 
 help:
-	@echo "deploy - palette, lightd, nowplayd and the console onto $(HOST)"
+	@echo "deploy - palette, lightd, nowplayd, the console, scribe and voiced onto $(HOST)"
 	@echo
 	@echo "  deploy   everything: images, settings, units, start"
-	@echo "  images   build the four images for linux/amd64"
+	@echo "  images   build the six images for linux/amd64"
 	@echo "  ship     build and copy the images, then restart (a new version)"
 	@echo "  load     copy the built images to the workload"
 	@echo "  kit-env  write kit.env and each service's broker login from the tenant's Terraform outputs"
@@ -71,6 +72,8 @@ images:
 	$(BUILD) -t localhost/eds-lightd:latest $(SVC)/lightd
 	$(BUILD) --build-arg VERSION=$(VERSION) -t localhost/eds-nowplayd:latest -f $(SVC)/nowplaying/Containerfile $(SVC)/nowplaying
 	$(BUILD) --build-arg VERSION=$(VERSION) -t localhost/eds-console:latest -f $(SVC)/console/Containerfile $(SVC)/console
+	$(BUILD) -t localhost/eds-scribe:latest $(SVC)/scribe
+	$(BUILD) --build-arg VERSION=$(VERSION) -t localhost/eds-voiced:latest -f $(SVC)/nowplaying/Containerfile.voiced $(SVC)/nowplaying
 	$(CONTAINER) image prune -f --filter label=eds.deploy=1 >/dev/null
 
 # One image per archive: a multi-image `podman save` without
@@ -80,6 +83,8 @@ load:
 	$(CONTAINER) save localhost/eds-lightd:latest | ssh $(HOST) sudo podman load
 	$(CONTAINER) save localhost/eds-nowplayd:latest | ssh $(HOST) sudo podman load
 	$(CONTAINER) save localhost/eds-console:latest | ssh $(HOST) sudo podman load
+	$(CONTAINER) save localhost/eds-scribe:latest | ssh $(HOST) sudo podman load
+	$(CONTAINER) save localhost/eds-voiced:latest | ssh $(HOST) sudo podman load
 
 endif
 
@@ -106,6 +111,9 @@ broker-env:
 	@umask 077; set -a; . $(INFRA)/.backend.env; set +a; \
 		terraform -chdir=$(INFRA) output -json ota_broker | python3 -c 'import json,sys; a=json.load(sys.stdin); print("OTA_MQTT_USERNAME=%s\nOTA_MQTT_PASSWORD=%s" % (a["username"], a["password"]))' > ota-broker.env
 	@echo "wrote ota-broker.env (secret, gitignored)"
+	@umask 077; set -a; . $(INFRA)/.backend.env; set +a; \
+		terraform -chdir=$(INFRA) output -json voiced_broker | python3 -c 'import json,sys; a=json.load(sys.stdin); print("NP_MQTT_USERNAME=%s\nNP_MQTT_PASSWORD=%s" % (a["username"], a["password"]))' > voiced-broker.env
+	@echo "wrote voiced-broker.env (secret, gitignored)"
 
 # Secret: the console's key. It was made in the tenant's state and has been
 # nowhere else; the certificate beside it is public. tls/ is gitignored.
@@ -134,9 +142,9 @@ discogs-env:
 
 units: kit-env tls-files discogs-env
 	ssh $(HOST) 'sudo install -d -m 0755 /opt/eds && mkdir -p ~/eds-deploy'
-	scp kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env ota-broker.env $(INFRA)/deevnet-root-ca.pem tls/console.key tls/console.crt $(UNITS) $(HOST):eds-deploy/
+	scp kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env ota-broker.env voiced-broker.env $(INFRA)/deevnet-root-ca.pem tls/console.key tls/console.crt $(UNITS) $(HOST):eds-deploy/
 	ssh $(HOST) 'cd ~/eds-deploy && \
-		sudo install -m 0600 kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env ota-broker.env /opt/eds/ && \
+		sudo install -m 0600 kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env ota-broker.env voiced-broker.env /opt/eds/ && \
 		sudo install -m 0644 deevnet-root-ca.pem /opt/eds/ && \
 		sudo install -d -m 0700 -o 65532 -g 65532 /opt/eds/tls && \
 		sudo install -m 0400 -o 65532 -g 65532 console.key console.crt /opt/eds/tls/ && \

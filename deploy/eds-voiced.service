@@ -1,0 +1,20 @@
+[Unit]
+Description=EdS voiced (container)
+Wants=network-online.target eds-scribe.service
+After=network-online.target eds-scribe.service
+
+# kit.env names the broker and the tenant. It also carries lightd's login,
+# which voiced-broker.env overrides with voiced's own (ADR-0042).
+[Service]
+Environment=IMAGE=localhost/eds-voiced:latest
+ExecStartPre=-/usr/bin/podman rm -f eds-voiced
+ExecStart=/usr/bin/podman run --rm --name eds-voiced --network host \
+  --env-file /opt/eds/kit.env --env-file /opt/eds/voiced-broker.env \
+  -v /opt/eds/deevnet-root-ca.pem:/kit/deevnet-root-ca.pem:ro -e MQTT_CA_FILE=/kit/deevnet-root-ca.pem \
+  ${IMAGE}
+ExecStop=/usr/bin/podman stop -t 10 eds-voiced
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

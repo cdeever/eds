@@ -1,0 +1,27 @@
+[project]
+name = "eds-scribe"
+version = "0.1.0"
+description = "Speech in, words out: a short spoken request written down."
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "faster-whisper>=1.1",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "httpx>=0.27"]
+
+[project.scripts]
+eds-scribe = "eds_scribe.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/eds_scribe"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

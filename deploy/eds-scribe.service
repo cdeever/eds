@@ -1,0 +1,19 @@
+[Unit]
+Description=EdS scribe (container)
+Wants=network-online.target
+After=network-online.target
+
+# A spoken request in, its words out (ADR-0042). It reads no settings that
+# matter and holds no secrets; the model is in the image. Its memory is
+# bounded, because the workload is two gigabytes and the model a few hundred
+# megabytes of it.
+[Service]
+Environment=IMAGE=localhost/eds-scribe:latest
+ExecStartPre=-/usr/bin/podman rm -f eds-scribe
+ExecStart=/usr/bin/podman run --rm --name eds-scribe --network host --memory 900m ${IMAGE}
+ExecStop=/usr/bin/podman stop -t 10 eds-scribe
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
