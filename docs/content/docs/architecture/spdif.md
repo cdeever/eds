@@ -1,6 +1,6 @@
 ---
 title: "Background: Sound Around the House"
-weight: 3
+weight: 1
 ---
 
 # Background: Sound Around the House

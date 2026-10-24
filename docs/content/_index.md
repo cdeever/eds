@@ -54,14 +54,15 @@ does not pretend to.
 ## Under the hood
 
 A turntable, a few small devices, and a handful of services that meet at one
-message bus. The [architecture](docs/architecture/) page has the whole
-system in one picture, and every design choice is written down with what it
-was chosen over.
+message bus. [How EdS Runs](docs/architecture/how-it-runs/) has the whole
+system in one picture, the [architecture](docs/architecture/) page the
+principles it is built on, and every design choice is written down with what
+it was chosen over.
 
 <div class="section-cards">
   <a class="section-card" href="docs/architecture/">
     <h3>Architecture</h3>
-    <p>The whole system in one picture, and which layer is allowed to decide what.</p>
+    <p>The principles EdS is built on, the whole system in one picture, and which layer is allowed to decide what.</p>
   </a>
   <a class="section-card" href="docs/guide/">
     <h3>User Guide</h3>
