@@ -8,8 +8,9 @@ weight: 3
 A small touch screen that shows the cover of whatever is playing, and can
 change it
 ([ADR-0020](/docs/architecture/decisions/0020-a-touch-screen-that-can-change-what-plays/)).
-It is something a person uses on its own, and it would still be worth having
-with no stand anywhere near it.
+It is a stand-alone display and remote: for simple things, play or pause,
+back and next, it is handier than the phone app, and it is a way to enjoy
+the cover art in another room.
 
 [![Remote Display: the cover screen reads the current track and its small cover from the broker, and sends a press to nowplayd, which passes it to the current source's driver and its player.](remote-display.svg)](remote-display.svg)
 
