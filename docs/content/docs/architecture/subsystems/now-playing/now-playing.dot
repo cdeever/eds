@@ -1,0 +1,62 @@
+// Now Playing: what is playing, decided once for everyone.
+// Drawn by GraphViz: `make -C docs diagrams` writes the .svg beside this
+// file, and both are committed. Styles are the whole-system picture's
+// (../system.dot); keep them alike. Change this when a component of the
+// subsystem is added, moved or retired.
+digraph now_playing {
+    graph [rankdir=LR, bgcolor="white", pad=0.3, nodesep=0.3, ranksep=0.6,
+           fontname="Helvetica,Arial,sans-serif", fontsize=13, newrank=true];
+    node  [shape=box, style="rounded,filled", fillcolor="white", color="#5b6470",
+           fontname="Helvetica,Arial,sans-serif", fontsize=11, margin="0.14,0.08"];
+    edge  [color="#5b6470", fontname="Helvetica,Arial,sans-serif", fontsize=9,
+           fontcolor="#3a4048", arrowsize=0.7];
+    broker [label="MQTT broker\nmqtt01", shape=cylinder, fillcolor="#cfe9d8", margin="0.2,0.15"];
+
+    subgraph cluster_sources {
+        label="Sources"; labeljust=l; style="rounded,filled"; fillcolor="#fdf3e3"; color="#d9b77a";
+        turntable [label="Turntable\nheard through a sound card", fillcolor="#fbe2b6"];
+        itunes    [label="iTunes\non the house computer", fillcolor="#e6d9f5"];
+        spotify   [label="Spotify\nthe account\n(turned off)", style="rounded,dashed,filled", fillcolor="#f4f4f4", fontcolor="#7a828c", color="#9aa1aa"];
+        beacon    [label="Power beacon\nESP32 on the turntable's strip", fillcolor="#dcedd8"];
+    }
+
+    subgraph cluster_pi {
+        label="Agent Pi · npagent"; labeljust=l; style="rounded,filled"; fillcolor="#dbe7f5"; color="#7d9cc2";
+        drv_tt      [label="turntable driver"];
+        drv_itunes  [label="iTunes driver"];
+        drv_spotify [label="Spotify driver", style="rounded,dashed,filled", fontcolor="#7a828c", color="#9aa1aa"];
+        recognizer  [label="eds-recognize\na WAV in, a name out"];
+    }
+
+    subgraph cluster_workload {
+        label="Services workload"; labeljust=l; style="rounded,filled"; fillcolor="#fff8e1"; color="#d6c06a";
+        nowplayd [label="nowplayd\npicks what is current, completes it,\npasses commands on", fillcolor="#fdecb0"];
+    }
+
+    shazam     [label="Shazam", fillcolor="#f4f4f4", color="#9aa1aa"];
+    discogs    [label="Discogs\nthe owner's collection", fillcolor="#f4f4f4", color="#9aa1aa"];
+    catalogues [label="Catalogs\nDeezer · iTunes · MusicBrainz", fillcolor="#f4f4f4", color="#9aa1aa"];
+    others     [label="Every other subsystem\ncurrent · cover · look\ncommands back", style="rounded,dashed", color="#9aa1aa"];
+
+    { rank=same; drv_tt; drv_itunes; drv_spotify; }
+    { rank=same; shazam; recognizer; }
+
+    edge [style=bold, color="#2f5d8f", fontcolor="#24476d", penwidth=1.8];
+    turntable -> drv_tt [label="S/PDIF, USB audio"];
+
+    edge [style=solid, color="#5b6470", fontcolor="#3a4048", penwidth=1];
+    itunes  -> drv_itunes  [label="remote pairing", dir=both];
+    spotify -> drv_spotify [label="Web API", style=dashed, color="#9aa1aa"];
+    drv_tt  -> recognizer  [label="a 12 s clip"];
+    recognizer -> shazam;
+
+    drv_tt      -> broker [label="what it hears"];
+    drv_itunes  -> broker [label="what plays\ncommands back", dir=both];
+    drv_spotify -> broker [style=dashed, color="#9aa1aa"];
+    beacon      -> broker [label="online, or its last will", color="#3d8b53", fontcolor="#2c6a3e", penwidth=1.4];
+
+    broker   -> nowplayd   [label="sources, beacon, commands in\ncurrent, cover, look out", dir=both];
+    nowplayd -> discogs    [label="which record?"];
+    nowplayd -> catalogues [label="album and cover"];
+    broker   -> others     [dir=both];
+}

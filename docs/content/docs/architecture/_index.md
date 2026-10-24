@@ -14,7 +14,7 @@ turned down.
 ## A system of subsystems
 
 EdS is one system made of subsystems, each named for something a person in
-the room experiences: the Light Show, the Remote Display, Voice Request, and
+the room experiences: the LP Light Show, the Remote Display, Voice Request, and
 Now Playing beneath them all. Each subsystem is made of components, a
 program or a device apiece, and every component belongs to exactly one of
 them or to the foundation they share.
@@ -122,11 +122,11 @@ old one is left as it was.
 
 - [Background: Sound Around the House](spdif/): the whole-house audio
   system that was here first, and what EdS borrows from it.
-- [Subsystems and Components](subsystems/): what each subsystem is for,
-  which components make it up, and how they meet.
-- [How EdS Runs](how-it-runs/): the whole system in one picture, and a
-  record followed from power on to the lights.
-- [The First Vertical](overview/): why the broker is not in the tenant, why
-  the stand is never sent frames, why the scene is retained.
+- [Subsystems and Components](subsystems/): the whole system in one
+  picture, the foundation beneath it, and a page for each subsystem:
+  [Now Playing](subsystems/now-playing/),
+  [LP Light Show](subsystems/lp-light-show/),
+  [Remote Display](subsystems/remote-display/) and
+  [Voice Request](subsystems/voice-request/).
 - [Layer Boundaries](boundaries/): which layer owns which color decision.
 - [Decisions](decisions/): every choice, argued.
