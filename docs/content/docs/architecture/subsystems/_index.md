@@ -42,21 +42,16 @@ how a piece of music moves through them.
 
 ## The system, as it is running
 
-[![Every component of EdS and what each talks to: the turntable, its power strip, converter and beacon upstairs; the selector, sound card and agent Pi in the basement; iTunes and Spotify; the broker; the services; the stand, the cover screen and the ears.](system.svg)](system.svg)
+[![EdS by subsystem: the turntable, iTunes and Spotify feed Now Playing, which publishes to the broker; the LP Light Show, Remote Display and Voice Request meet it there, beside the console, updates and logs; Now Playing and Voice Request ask outside services.](system.svg)](system.svg)
 
-Read it left to right: where the music comes from, what hears it, the broker
-where everything meets, and what acts on it. Select the picture to see it at
-full size.
+One box for each subsystem, naming its components. Read it left to right:
+where the music comes from, Now Playing deciding what it is, the broker
+where everything meets, and the subsystems that act on it. Each subsystem's
+page has the detailed picture. Select this one to see it at full size.
 
-| Line | What it carries |
-|---|---|
-| Heavy blue | Sound: the record, from the amplifier's tape output, then as S/PDIF, then as USB audio |
-| Dashed amber | AC power, from the strip's switched outlets |
-| Green | The beacon's one message: that it has power |
-| Gray | Everything else, almost all of it MQTT through the broker |
-| Dotted | Device events, on their way to the log store |
-
-Gray boxes are someone else's service. A dashed box is turned off.
+The heavy blue line is sound; a dotted one is events, on their way to the
+log store; the dashed one is a call to an outside service. Gray boxes are
+someone else's service.
 
 ## The foundation
 

@@ -1,133 +1,58 @@
-// The EdS system, as it is deployed. Drawn by GraphViz:
+// EdS as a system of subsystems. Drawn by GraphViz:
 //
 //   make -C docs diagrams
 //
 // writes system.svg beside this file, and both are committed: the site is
 // built by Hugo alone, which does not run dot.
 //
-// Change this when a component is added, moved or retired. The picture is a
-// claim about what is running, and a wrong one is worse than none.
-//
-// It reads left to right: where music comes from, what hears it, the broker
-// where everything meets, and what acts on it. Every MQTT line is drawn to
-// the broker, because that is where it goes; nothing here talks to anything
-// else on the bus directly.
+// One box per subsystem, naming its components; each subsystem's own page
+// has the detailed picture. Change this when a subsystem is added or a
+// component moves between them. Every MQTT line is drawn to the broker,
+// because that is where it goes: no subsystem talks to another directly.
 digraph eds {
-    graph [rankdir=LR, bgcolor="white", pad=0.3, nodesep=0.3, ranksep=0.75,
-           fontname="Helvetica,Arial,sans-serif", fontsize=13, newrank=true, compound=true];
+    graph [rankdir=LR, bgcolor="white", pad=0.3, nodesep=0.35, ranksep=0.8,
+           fontname="Helvetica,Arial,sans-serif", fontsize=13, newrank=true];
     node  [shape=box, style="rounded,filled", fillcolor="white", color="#5b6470",
-           fontname="Helvetica,Arial,sans-serif", fontsize=11, margin="0.14,0.08"];
+           fontname="Helvetica,Arial,sans-serif", fontsize=11, margin="0.16,0.1"];
     edge  [color="#5b6470", fontname="Helvetica,Arial,sans-serif", fontsize=9,
            fontcolor="#3a4048", arrowsize=0.7];
 
     // ---- where the music comes from --------------------------------------
-
-    subgraph cluster_upstairs {
-        label="Upstairs"; labeljust=l; style="rounded,filled"; fillcolor="#fdf3e3"; color="#d9b77a";
-        turntable [label="Turntable\non the strip's master outlet", fillcolor="#fbe2b6"];
-        strip     [label="Smart power strip\npowers its other outlets\nwhile the turntable draws power", style="filled"];
-        adc       [label="ADC\nline in, S/PDIF out"];
-        beacon    [label="Power beacon\nESP32 · turntable-power-01\nsays only that it has power", fillcolor="#dcedd8"];
+    subgraph cluster_music {
+        label="The music"; labeljust=l; style="rounded,filled"; fillcolor="#fdf3e3"; color="#d9b77a";
+        turntable [label="Turntable\nheard from the house's S/PDIF,\nits power seen by a beacon", fillcolor="#fbe2b6"];
+        players   [label="iTunes · Spotify\nasked, by pairing and Web API", fillcolor="#e6d9f5"];
     }
 
-    itunes  [label="iTunes\non the house computer", fillcolor="#e6d9f5"];
-    spotify [label="Spotify\nthe account, by its Web API\n(turned off)", style="rounded,dashed,filled", fillcolor="#f4f4f4", fontcolor="#7a828c", color="#9aa1aa"];
+    // ---- the subsystems ---------------------------------------------------
+    nowplaying [label=<<b>Now Playing</b><br/><font point-size="10">drivers · recognizer · power beacon · nowplayd</font><br/><br/><i>what is playing, decided once</i>>, fillcolor="#fdecb0"];
+    lightshow  [label=<<b>LP Light Show</b><br/><font point-size="10">lightd · palette · LP stand</font><br/><br/><i>the jacket lit in its own colors</i>>, fillcolor="#f8d2d2"];
+    display    [label=<<b>Remote Display</b><br/><font point-size="10">cover screen</font><br/><br/><i>the cover, and five buttons</i>>, fillcolor="#f8d2d2"];
+    voice      [label=<<b>Voice Request</b><br/><font point-size="10">ears · voiced · scribe · library index</font><br/><br/><i>an album asked for out loud</i>>, fillcolor="#f8d2d2"];
 
-    subgraph cluster_basement {
-        label="Basement"; labeljust=l; style="rounded,filled"; fillcolor="#eef3f9"; color="#9db4cf";
-        mediaserver [label="Media server\ndigital out"];
-        selector    [label="S/PDIF selector\nturntable or media server"];
-        soundcard   [label="Behringer UFO202\nUSB sound card"];
-        subgraph cluster_pi {
-            label="Agent Pi · np-relay"; labeljust=l; style="rounded,filled"; fillcolor="#dbe7f5"; color="#7d9cc2";
-            drv_tt      [label="turntable driver\nhears a clip, asks its name"];
-            drv_itunes  [label="iTunes driver\nreports; carries out commands"];
-            drv_spotify [label="Spotify driver\n(turned off)", style="rounded,dashed,filled", fontcolor="#7a828c", color="#9aa1aa"];
-        }
+    // ---- the foundation ---------------------------------------------------
+    subgraph cluster_foundation {
+        label="Foundation"; labeljust=l; style="rounded,filled"; fillcolor="#eef7f1"; color="#8fbf9f";
+        broker  [label="MQTT broker\nmqtt01 · Deevnet IoTaaS\n\neverything meets here", shape=cylinder, fillcolor="#cfe9d8", margin="0.25,0.2", fontsize=12];
+        console [label="console\nshows it all; switches\nthe stand for every source"];
+        ops     [label="eds-ota · log store · counts\nupdates, events, outside calls"];
     }
 
-    shazam [label="Shazam\nnames a clip", fillcolor="#f4f4f4", color="#9aa1aa"];
+    outside [label="Outside services\nShazam · Discogs · Deezer\niTunes · MusicBrainz · Spotify", fillcolor="#f4f4f4", color="#9aa1aa"];
 
-    // ---- the middle -------------------------------------------------------
+    { rank=same; lightshow; display; voice; }
+    { rank=same; console; ops; }
 
-    subgraph cluster_substrate {
-        label="Deevnet IoTaaS"; labeljust=l; style="rounded,filled"; fillcolor="#eef7f1"; color="#8fbf9f";
-        broker   [label="MQTT broker\nmqtt01 · IoT Backend, VLAN 35\n\neverything meets here", shape=cylinder, fillcolor="#cfe9d8", margin="0.25,0.2", fontsize=12];
-        logstore [label="Log store and Grafana\nwhat each device reported"];
-    }
+    turntable  -> nowplaying [label="sound, power", style=bold, color="#2f5d8f", fontcolor="#24476d", penwidth=1.6];
+    players    -> nowplaying [label="what plays\ncommands", dir=both];
+    nowplaying -> outside    [label="names, records, covers"];
+    nowplaying -> broker     [label="current · cover · look\ncommands in", dir=both, penwidth=1.6];
 
-    // ---- what acts on it --------------------------------------------------
+    broker -> lightshow [label="cover · look"];
+    broker -> display   [label="current · small cover\ncommands back", dir=both];
+    voice  -> broker    [label="play_album · duck"];
+    voice  -> outside   [label="an artist's albums", constraint=false, style=dashed];
 
-    subgraph cluster_workload {
-        label="EdS tenant · services workload"; labeljust=l; style="rounded,filled"; fillcolor="#fff8e1"; color="#d6c06a";
-        nowplayd [label="nowplayd\npicks what is current, completes it,\npasses commands on", fillcolor="#fdecb0"];
-        lightd   [label="lightd\na cover becomes a scene", fillcolor="#fdecb0"];
-        palette  [label="palette\nan image becomes colors", fillcolor="#fdecb0"];
-        console  [label="console\none page; it looks,\nand switches one thing", fillcolor="#fdecb0"];
-        voiced   [label="voiced\nwords become play_album", fillcolor="#fdecb0"];
-        scribe   [label="scribe\na WAV becomes words", fillcolor="#fdecb0"];
-    }
-
-    subgraph cluster_room {
-        label="In the house · IoT, VLAN 30"; labeljust=l; style="rounded,filled"; fillcolor="#fdeeee"; color="#d9a3a3";
-        stand  [label="LP stand\nESP32 · 18 LEDs\nrenders the scene itself", fillcolor="#f8d2d2"];
-        screen [label="Cover screen\nESP32 · touch\nthe sleeve, and five buttons", fillcolor="#f8d2d2"];
-        ears   [label="Ears · reSpeaker Lite\nXIAO ESP32-S3\nwakes to its word", fillcolor="#f8d2d2"];
-    }
-
-    discogs    [label="Discogs\nthe owner's record collection", fillcolor="#f4f4f4", color="#9aa1aa"];
-    catalogues [label="Catalogs\nDeezer · iTunes · MusicBrainz", fillcolor="#f4f4f4", color="#9aa1aa"];
-    browser    [label="A browser\non the site", fillcolor="#f4f4f4", color="#9aa1aa"];
-
-    // ---- columns ----------------------------------------------------------
-    { rank=same; turntable; mediaserver; }
-    { rank=same; adc; strip; }
-    { rank=same; selector; beacon; }
-    { rank=same; soundcard; itunes; spotify; }
-    { rank=same; drv_tt; drv_itunes; drv_spotify; }
-    { rank=same; broker; shazam; }
-    { rank=same; nowplayd; lightd; console; voiced; stand; screen; ears; logstore; }
-    { rank=same; discogs; catalogues; palette; scribe; browser; }
-
-    // ---- power: dashed amber ---------------------------------------------
-    edge [style=dashed, color="#b07a1e", fontcolor="#8a5d12"];
-    turntable -> strip  [label="draws power"];
-    strip     -> adc    [label="switched"];
-    strip     -> beacon [label="switched"];
-
-    // ---- sound: heavy blue -----------------------------------------------
-    edge [style=bold, color="#2f5d8f", fontcolor="#24476d", penwidth=1.8];
-    turntable   -> adc      [label="the amplifier's\ntape output"];
-    adc         -> selector [label="S/PDIF, down the house"];
-    mediaserver -> selector [label="S/PDIF"];
-    selector    -> soundcard [label="whichever is selected"];
-    soundcard   -> drv_tt   [label="USB audio"];
-
-    // ---- everything else --------------------------------------------------
-    edge [style=solid, color="#5b6470", fontcolor="#3a4048", penwidth=1];
-
-    itunes  -> drv_itunes  [label="remote pairing", dir=both];
-    spotify -> drv_spotify [style=dashed, color="#9aa1aa"];
-    drv_tt  -> shazam      [label="a 12 s clip"];
-
-    drv_tt      -> broker [label="what it hears"];
-    drv_itunes  -> broker [label="what plays; commands back", dir=both];
-    drv_spotify -> broker [style=dashed, color="#9aa1aa"];
-    beacon      -> broker [label="online, or its last will", color="#3d8b53", fontcolor="#2c6a3e", penwidth=1.4];
-
-    broker -> nowplayd [label="sources, beacon, commands in\ncurrent track and cover out", dir=both];
-    broker -> lightd   [label="cover in · scene out", dir=both];
-    broker -> console  [label="reads it all"];
-    broker -> stand    [label="scene"];
-    broker -> screen   [label="track and small cover\ncommands back", dir=both];
-    broker -> voiced   [label="requests in\nplay_album, heard out", dir=both];
-    broker -> ears     [label="a request, as a WAV\nwhat was heard, back", dir=both];
-    broker -> logstore [label="device events", style=dotted];
-
-    nowplayd -> discogs    [label="which record?"];
-    nowplayd -> catalogues [label="album and cover"];
-    lightd   -> palette    [label="HTTP", dir=both];
-    console  -> browser    [label="HTTPS"];
-    voiced   -> scribe     [label="HTTP", dir=both];
-    voiced   -> catalogues [label="an artist's albums"];
+    broker -> console;
+    broker -> ops [style=dotted];
 }
