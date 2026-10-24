@@ -27,7 +27,7 @@ digraph eds {
         turntable [label="Turntable\non the strip's master outlet", fillcolor="#fbe2b6"];
         strip     [label="Smart power strip\npowers its other outlets\nwhile the turntable draws power", style="filled"];
         adc       [label="ADC\nline in, S/PDIF out"];
-        beacon    [label="Power beacon\nESP32-S2 · turntable-power-01\nsays only that it has power", fillcolor="#dcedd8"];
+        beacon    [label="Power beacon\nESP32 · turntable-power-01\nsays only that it has power", fillcolor="#dcedd8"];
     }
 
     itunes  [label="iTunes\non the house computer", fillcolor="#e6d9f5"];
@@ -63,13 +63,16 @@ digraph eds {
         nowplayd [label="nowplayd\npicks what is current, completes it,\npasses commands on", fillcolor="#fdecb0"];
         lightd   [label="lightd\na cover becomes a scene", fillcolor="#fdecb0"];
         palette  [label="palette\nan image becomes colors", fillcolor="#fdecb0"];
-        console  [label="console\none page; it only looks", fillcolor="#fdecb0"];
+        console  [label="console\none page; it looks,\nand switches one thing", fillcolor="#fdecb0"];
+        voiced   [label="voiced\nwords become play_album", fillcolor="#fdecb0"];
+        scribe   [label="scribe\na WAV becomes words", fillcolor="#fdecb0"];
     }
 
     subgraph cluster_room {
-        label="The listening room · IoT, VLAN 30"; labeljust=l; style="rounded,filled"; fillcolor="#fdeeee"; color="#d9a3a3";
+        label="In the house · IoT, VLAN 30"; labeljust=l; style="rounded,filled"; fillcolor="#fdeeee"; color="#d9a3a3";
         stand  [label="LP stand\nESP32 · 18 LEDs\nrenders the scene itself", fillcolor="#f8d2d2"];
         screen [label="Cover screen\nESP32 · touch\nthe sleeve, and five buttons", fillcolor="#f8d2d2"];
+        ears   [label="Ears · reSpeaker Lite\nXIAO ESP32-S3\nwakes to its word", fillcolor="#f8d2d2"];
     }
 
     discogs    [label="Discogs\nthe owner's record collection", fillcolor="#f4f4f4", color="#9aa1aa"];
@@ -83,8 +86,8 @@ digraph eds {
     { rank=same; soundcard; itunes; spotify; }
     { rank=same; drv_tt; drv_itunes; drv_spotify; }
     { rank=same; broker; shazam; }
-    { rank=same; nowplayd; lightd; console; stand; screen; logstore; }
-    { rank=same; discogs; catalogues; palette; browser; }
+    { rank=same; nowplayd; lightd; console; voiced; stand; screen; ears; logstore; }
+    { rank=same; discogs; catalogues; palette; scribe; browser; }
 
     // ---- power: dashed amber ---------------------------------------------
     edge [style=dashed, color="#b07a1e", fontcolor="#8a5d12"];
@@ -117,10 +120,14 @@ digraph eds {
     broker -> console  [label="reads it all"];
     broker -> stand    [label="scene"];
     broker -> screen   [label="track and small cover\ncommands back", dir=both];
+    broker -> voiced   [label="requests in\nplay_album, heard out", dir=both];
+    broker -> ears     [label="a request, as a WAV\nwhat was heard, back", dir=both];
     broker -> logstore [label="device events", style=dotted];
 
     nowplayd -> discogs    [label="which record?"];
     nowplayd -> catalogues [label="album and cover"];
     lightd   -> palette    [label="HTTP", dir=both];
     console  -> browser    [label="HTTPS"];
+    voiced   -> scribe     [label="HTTP", dir=both];
+    voiced   -> catalogues [label="an artist's albums"];
 }

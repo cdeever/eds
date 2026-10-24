@@ -106,10 +106,10 @@ built by hand for what that would give up:
 ## Under the hood
 
 A turntable, a few small devices, and a handful of services that meet at one
-message bus. [How EdS Runs](docs/architecture/how-it-runs/) has the whole
-system in one picture, the [architecture](docs/architecture/) page the
-principles it is built on, and every design choice is written down with what
-it was chosen over.
+message bus. [Subsystems and Components](docs/architecture/subsystems/) has
+the whole system in one picture and a page for each part of it, the
+[architecture](docs/architecture/) page the principles it is built on, and
+every design choice is written down with what it was chosen over.
 
 <div class="section-cards">
   <a class="section-card" href="docs/architecture/">

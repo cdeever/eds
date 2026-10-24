@@ -71,4 +71,4 @@ record. Turn it off, and the media server has the house back.
   turntable on?" long before EdS asked; EdS reads the same strip
   ([ADR-0023](/docs/architecture/decisions/0023-a-source-that-is-switched-on-holds-the-stand/)).
 
-How EdS hears the feed and the strip is in [How EdS Runs](../how-it-runs/).
+How EdS hears the feed and the strip is in [Now Playing](../subsystems/now-playing/).
