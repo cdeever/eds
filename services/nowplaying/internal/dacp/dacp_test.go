@@ -561,3 +561,20 @@ func TestAnAlbumIsMatchedByTheStartOfItsTitle(t *testing.T) {
 		}
 	}
 }
+
+func TestAPlayerIsAskedForThePlainBeginningOfATitle(t *testing.T) {
+	for in, want := range map[string]string{
+		"(pronounced 'lĕh-'nérd 'skin-'nérd)":   "pronounced",
+		"Pronounced 'Leh-'Nérd 'Skin-'Nérd":     "Pronounced",
+		"And the Word Was…":                     "And the Word Was",
+		"Appetite for Destruction":              "Appetite for Destruction",
+		"Led Zeppelin IV":                       "Led Zeppelin IV",
+		"Sgt. Pepper's Lonely Hearts Club Band": "Sgt",
+		"1984":                                  "1984",
+		"AC/DC Live":                            "AC/DC Live", // "AC" is too little; the title as it is
+	} {
+		if got := QueryStem(in); got != want {
+			t.Errorf("QueryStem(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

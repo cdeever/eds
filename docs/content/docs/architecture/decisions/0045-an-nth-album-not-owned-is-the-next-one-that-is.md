@@ -56,10 +56,16 @@ them the library has.**
   Never one that is the artist's name, or that begins another of their
   albums or is begun by one, since the player matches by the start of a
   title: a reissue called "Genesis" would play the 1983 *Genesis*.
-- **A title is matched by its start** (ADR-0040 amended): the library's
-  "Led Zeppelin II (Remastered)" is "Led Zeppelin II". The driver takes what
-  plays for the album only if nothing but an edition's note follows the
-  title - "(…", "[…", "- …", "…" - so "Van Halen II" is never "Van Halen".
+- **A title is matched by its start** (ADR-0040 amended): the player is
+  asked for the plain words a title begins with - from its first letter, up
+  to the first that is not a plain letter, digit or space - because it
+  matches characters as they are, and only at the start ("contains" it does
+  not do). MusicBrainz's "(pronounced 'lĕh-'nérd 'skin-'nérd)" is asked for
+  as "pronounced" and is the owner's "Pronounced leh-nerd skin-nerd". The
+  driver then takes what plays for the album only if its letters and
+  digits, without case or accents, are the title's, with nothing but an
+  edition's note after - "(…", "[…", "- …", "…" - so "Van Halen II" is never
+  "Van Halen", and "Led Zeppelin II (Remastered)" is "Led Zeppelin II".
 
 ## Consequences
 

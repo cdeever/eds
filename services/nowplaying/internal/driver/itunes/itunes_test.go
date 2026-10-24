@@ -734,17 +734,21 @@ func TestATitleIsTheOneAskedForOrItWithANote(t *testing.T) {
 		"Rocks [Deluxe Edition]":            "Rocks",
 		"Toys in the Attic - 2013 Remaster": "Toys in the Attic",
 		"Van Halen":                         "Van Halen",
+		// As the owner's library has it, and as MusicBrainz names it.
+		"Pronounced leh-nerd skin-nerd":                      "(pronounced 'lĕh-'nérd 'skin-'nérd)",
+		"Sgt. Pepper's Lonely Hearts Club Band (Remastered)": "Sgt. Pepper’s Lonely Hearts Club Band",
 	} {
 		if !begins(title, asked) {
 			t.Errorf("%q was not taken for %q", title, asked)
 		}
 	}
 	for title, asked := range map[string]string{
-		"Van Halen II":     "Van Halen",
-		"Led Zeppelin III": "Led Zeppelin",
-		"Genesis Live":     "Genesis",
-		"Abacab":           "From Genesis to Revelation",
-		"":                 "Rocks",
+		"Van Halen II":                       "Van Halen",
+		"Led Zeppelin III":                   "Led Zeppelin",
+		"Genesis Live":                       "Genesis",
+		"Abacab":                             "From Genesis to Revelation",
+		"Pronounced leh-nerd skin-nerd live": "(pronounced 'lĕh-'nérd 'skin-'nérd)",
+		"":                                   "Rocks",
 	} {
 		if begins(title, asked) {
 			t.Errorf("%q was taken for %q", title, asked)

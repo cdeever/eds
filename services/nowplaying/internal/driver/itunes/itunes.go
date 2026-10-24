@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
@@ -211,25 +212,93 @@ func (d *Driver) playAlbum(ctx context.Context, artist, album string) error {
 // Zeppelin II", and "And the Word Was..." is "And the Word Was…". More of a
 // name is not a note: "Van Halen II" is not "Van Halen", which the player's
 // match by the start of a title would otherwise play for it.
+//
+// Letters and digits are compared, without case or accents, so that
+// "Pronounced leh-nerd skin-nerd" is "(pronounced 'lĕh-'nérd 'skin-'nérd)".
 func begins(title, asked string) bool {
-	t, a := plain(title), plain(dacp.Stem(asked))
-	if a == "" || !strings.HasPrefix(t, a) {
+	want := fold(dacp.Stem(asked))
+	if want == "" {
 		return false
 	}
-	rest := strings.TrimSpace(t[len(a):])
+	// Walk the title until as many of its letters and digits as the asked
+	// title has are matched, and see what follows the last of them.
+	matched, end := 0, -1
+	for i, r := range title {
+		f := foldRune(r)
+		if f == 0 {
+			continue
+		}
+		if f != rune(want[matched]) {
+			return false
+		}
+		matched++
+		if matched == len(want) {
+			end = i + utf8.RuneLen(r)
+			break
+		}
+	}
+	if end < 0 {
+		return false
+	}
+	rest := strings.TrimSpace(title[end:])
 	if rest == "" {
 		return true
 	}
-	r, _ := utf8.DecodeRuneInString(rest)
-	return strings.ContainsRune("([{-–—:…./,", r)
+	first, _ := utf8.DecodeRuneInString(rest)
+	return strings.ContainsRune("([{-–—:…./,'\"", first) && !continues(rest)
 }
 
-// plain is a title as titles are compared: without case, with straight
-// quotes and single spaces.
-func plain(s string) string {
-	s = strings.NewReplacer("’", "'", "‘", "'", "“", `"`, "”", `"`).Replace(strings.ToLower(s))
-	return strings.Join(strings.Fields(s), " ")
+// continues is whether what follows a matched title is more of a name after
+// all, behind a quote or a stop: "Sgt. Pepper's" has more letters after its
+// apostrophe, and an asked "Sgt" is not it. A note is spaced or bracketed.
+func continues(rest string) bool {
+	if len(rest) < 2 {
+		return false
+	}
+	first, size := utf8.DecodeRuneInString(rest)
+	next, _ := utf8.DecodeRuneInString(rest[size:])
+	return strings.ContainsRune("'\".", first) && foldRune(next) != 0
 }
+
+// fold is a title's letters and digits, lowercased and without accents.
+func fold(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if f := foldRune(r); f != 0 {
+			b.WriteRune(f)
+		}
+	}
+	return b.String()
+}
+
+// foldRune is a letter or digit as it is compared, or 0 for anything else.
+func foldRune(r rune) rune {
+	r = unicode.ToLower(r)
+	if f, ok := unaccented[r]; ok {
+		return f
+	}
+	if r < 128 && (unicode.IsLetter(r) || unicode.IsDigit(r)) {
+		return r
+	}
+	if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		return r
+	}
+	return 0
+}
+
+// unaccented are the accented letters album titles use, as their plain ones.
+var unaccented = func() map[rune]rune {
+	m := map[rune]rune{}
+	for plain, accented := range map[rune]string{
+		'a': "áàâäãåāăą", 'c': "çćč", 'e': "éèêëēĕėęě", 'i': "íìîïīĭį", 'n': "ñńň",
+		'o': "óòôöõøōŏő", 'u': "úùûüūŭůű", 'y': "ýÿ", 's': "śšş", 'z': "źżž",
+	} {
+		for _, r := range accented {
+			m[r] = plain
+		}
+	}
+	return m
+}()
 
 // nudge moves the volume by step. The player is asked where it is first,
 // because it is the only one that knows: the slider in its own window moves

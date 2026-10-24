@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode"
 )
 
 // DefaultPort is where iTunes and the Music app serve DACP.
@@ -305,7 +306,7 @@ func (c *Client) PlayAlbum(ctx context.Context, artist, album string) error {
 	if _, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=clear&session-id=%d", c.session.Load()), 1<<20); err != nil {
 		return err
 	}
-	query := "'daap.songartist:" + quote(artist) + "'+'daap.songalbum:" + quote(Stem(album)) + "*'"
+	query := "'daap.songartist:" + quote(artist) + "'+'daap.songalbum:" + quote(QueryStem(album)) + "*'"
 	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=play&query=%s&index=0&sort=album&session-id=%d",
 		query, c.session.Load()), 1<<20)
 	return err
@@ -315,6 +316,34 @@ func (c *Client) PlayAlbum(ctx context.Context, artist, album string) error {
 // full stops or spaces, which libraries write three ways.
 func Stem(album string) string {
 	return strings.TrimRight(strings.TrimSpace(album), ".… ")
+}
+
+// QueryStem is the beginning of a title that a player is asked for: the
+// plain words at its start, from its first letter or digit up to the first
+// character that is not a plain letter, digit or space. Libraries write
+// the rest of a title as they please - MusicBrainz's "(pronounced 'lĕh-'nérd
+// 'skin-'nérd)" is one owner's "Pronounced leh-nerd skin-nerd" (2026-10-24)
+// - and the player matches the start of a title only, character for
+// character. What plays is checked against the whole title afterwards.
+func QueryStem(album string) string {
+	s := Stem(album)
+	start := strings.IndexFunc(s, func(r rune) bool { return r < 128 && (unicode.IsLetter(r) || unicode.IsDigit(r)) })
+	if start < 0 {
+		return s
+	}
+	end := start
+	for end < len(s) {
+		c := s[end]
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == ' ') {
+			break
+		}
+		end++
+	}
+	stem := strings.TrimSpace(s[start:end])
+	if len(stem) < 3 {
+		return s // too little to ask for: the title as it is
+	}
+	return stem
 }
 
 // quote makes a name safe inside a query's single quotes, and in a URL. The
