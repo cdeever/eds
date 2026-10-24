@@ -89,8 +89,11 @@ func (o *Originals) Discography(ctx context.Context, artist string) (Discography
 func (o *Originals) artistID(ctx context.Context, artist string) (id, name string, err error) {
 	var found struct {
 		Artists []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
+			ID      string `json:"id"`
+			Name    string `json:"name"`
+			Aliases []struct {
+				Name string `json:"name"`
+			} `json:"aliases"`
 		} `json:"artists"`
 	}
 	// An alias too: "acdc", as speech is written down, is an alias of AC/DC
@@ -99,9 +102,20 @@ func (o *Originals) artistID(ctx context.Context, artist string) (id, name strin
 	if err := o.askMB(ctx, o.MusicBrainz+"/ws/2/artist/?fmt=json&limit=10&query="+url.QueryEscape(term), &found); err != nil {
 		return "", "", err
 	}
-	// In MusicBrainz's order, which is by score.
+	// In MusicBrainz's order, which is by score. The name heard may be an
+	// alias: MusicBrainz keeps the misspellings people make, and speech
+	// written down makes the same ones - "Leonard Skinner" is Lynyrd
+	// Skynyrd's (2026-10-24). The name sent on is the artist's own.
+	want := simplify(artist)
 	for _, a := range found.Artists {
-		if a.ID != "" && simplify(a.Name) == simplify(artist) {
+		if a.ID == "" {
+			continue
+		}
+		named := simplify(a.Name) == want
+		for _, alias := range a.Aliases {
+			named = named || simplify(alias.Name) == want
+		}
+		if named {
 			return a.ID, typographic.Replace(a.Name), nil
 		}
 	}

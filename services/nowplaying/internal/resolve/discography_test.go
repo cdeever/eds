@@ -38,18 +38,29 @@ func (m *musicbrainz) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/ws/2/artist/":
-		type artist struct {
-			ID   string `json:"id"`
+		type alias struct {
 			Name string `json:"name"`
+		}
+		type artist struct {
+			ID      string  `json:"id"`
+			Name    string  `json:"name"`
+			Aliases []alias `json:"aliases,omitempty"`
 		}
 		var found []artist
 		switch r.URL.Query().Get("query") {
 		case `artist:"Van Halen" OR alias:"Van Halen"`, `artist:"van halen" OR alias:"van halen"`:
-			found = []artist{{"b665b768", "Van Halen"}, {"2a66baa5", "Edward Van Halen"}, {"e90678bc", "Alex Van Halen"}}
+			found = []artist{{ID: "b665b768", Name: "Van Halen"}, {ID: "2a66baa5", Name: "Edward Van Halen"}, {ID: "e90678bc", Name: "Alex Van Halen"}}
 		case `artist:"Aerosmith" OR alias:"Aerosmith"`:
-			found = []artist{{"e7ec8c9c", "Aerosmith Rocks!"}} // only a tribute
+			found = []artist{{ID: "e7ec8c9c", Name: "Aerosmith Rocks!"}} // only a tribute
+		case `artist:"Leonard Skinner" OR alias:"Leonard Skinner"`:
+			// As MusicBrainz answered on 2026-10-24: Leonard Bernstein
+			// before the band, which has the name as an alias.
+			found = []artist{
+				{ID: "b1", Name: "Leonard Bernstein"},
+				{ID: "ae2b1b7c", Name: "Lynyrd Skynyrd", Aliases: []alias{{"Leonard Skinner"}, {"Lynyrd Skynard"}}},
+			}
 		case `artist:"acdc" OR alias:"acdc"`:
-			found = []artist{{"66c662b6", "AC/DC"}, {"0d6d8a2e", "DJ AC-DC"}}
+			found = []artist{{ID: "66c662b6", Name: "AC/DC"}, {ID: "0d6d8a2e", Name: "DJ AC-DC"}}
 		}
 		reply(map[string]any{"artists": found})
 
@@ -175,6 +186,18 @@ func TestNamesAreWrittenAsALibraryWritesThem(t *testing.T) {
 		if got := libraryName(in); got != want {
 			t.Errorf("libraryName(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// A name speech made of the band, kept by MusicBrainz as its alias, is the
+// band - named as the band names itself, which is what a library has. The
+// stand-in lists no albums for it; that it was found by its alias, and not
+// taken for Leonard Bernstein, is what is checked.
+func TestAnArtistHeardAsAnAliasIsTheArtist(t *testing.T) {
+	o, _ := discographer(t)
+	_, err := o.Discography(context.Background(), "Leonard Skinner")
+	if !errors.Is(err, ErrNotFound) || err.Error() != "resolve: no catalog has this: MusicBrainz lists no studio album by Lynyrd Skynyrd" {
+		t.Errorf("err = %v", err)
 	}
 }
 
