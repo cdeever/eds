@@ -5,22 +5,25 @@ type: docs
 
 # EdS
 
-<p class="subtitle"><em>Vinyl the way it was cut, in a room that listens along.</em></p>
+<p class="subtitle"><em>A house that knows what is playing, and does something about it.</em></p>
 
-EdS is where the old analog world meets the convenience of the new one.
+EdS builds on the music already playing around the house. It works out what
+is on, from a record on the turntable to a stream on the media server, and
+adds to it: displays that show it, controls that change it from wherever
+you are, and automations that set the room without anyone asking.
 
-Put a record on and nothing about the sound changes. The signal runs from
-the stylus to the speakers without ever becoming a number. Everything EdS
-adds happens beside that path, never in it.
-
-What it adds is a room that knows what is playing.
+Everything EdS adds happens beside the music, never in it.
 
 ## The sound is left alone
 
-For the purist, this is the whole point. The path from stylus to speakers is
-analog from end to end, and EdS is not in it. It listens from a tap off to
-the side, the way a tape deck would. Switch EdS off and the stereo plays
-exactly as it did before.
+*Vinyl the way it was cut, in a room that listens along.*
+
+For the purist, this is the whole point. Put a record on and nothing about
+the sound changes: in the listening room, the path from stylus to speakers
+is analog from end to end, and the signal never becomes a number on its
+way. EdS is not in that
+path. It listens from a tap off to the side, the way a tape deck would.
+Switch EdS off and the stereo plays exactly as it did before.
 
 ## The light follows the sleeve
 
