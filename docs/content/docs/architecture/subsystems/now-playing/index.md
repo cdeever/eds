@@ -28,6 +28,19 @@ told, and publishes one answer for everyone else.
   to the source that should carry it out
   ([ADR-0008](/docs/architecture/decisions/0008-nowplayd-arbitrates-and-enriches/)).
 
+## Outside services
+
+Now Playing depends on services EdS does not run. Every call to one is counted, a minute at a time, on the Outside Services dashboard ([ADR-0027](/docs/architecture/decisions/0027-what-is-asked-of-outside-services-is-counted/)).
+
+| Service | Asked by | For |
+|---|---|---|
+| **Shazam** | the turntable driver, through `eds-recognize` | naming a clip of a record; an endpoint nobody promised, which may stop working any day |
+| **Discogs** | `nowplayd` | the owner's collection: which record is on the platter, and its sleeve |
+| **Deezer** | `nowplayd` | finding the album a track is on, and its cover |
+| **iTunes Search** (Apple) | `nowplayd` | an album and its cover, when Deezer has none |
+| **MusicBrainz**, with the **Cover Art Archive** | `nowplayd` | what each album is, the original among reissues and compilations, and a cover |
+| **Spotify Web API** | the Spotify driver | what the account is playing, and commands (turned off) |
+
 ## What it offers
 
 The rest of EdS reads Now Playing from these topics, all retained and

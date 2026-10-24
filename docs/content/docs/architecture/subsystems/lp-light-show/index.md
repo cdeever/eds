@@ -27,6 +27,11 @@ the LP.
 How the three divide the color decisions is in
 [Layer Boundaries](/docs/architecture/boundaries/).
 
+## Outside services
+
+None. Everything it needs comes from Now Playing, and `palette` and
+`lightd` run on EdS's own workload.
+
 ## A cover, to the lights
 
 ### The cover is taken apart

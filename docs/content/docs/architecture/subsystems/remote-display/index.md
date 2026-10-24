@@ -25,6 +25,11 @@ It is one component today. A second screen, or a remote of another kind,
 would join it here; so would a portable screen with ears built in, which is
 meant for later.
 
+## Outside services
+
+None of its own. A press for Spotify reaches Spotify's servers through Now
+Playing's Spotify driver, not from the screen.
+
 ## What it shows
 
 The screen reads two of Now Playing's topics, `current` and the cover at

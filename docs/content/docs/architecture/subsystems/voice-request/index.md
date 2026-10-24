@@ -30,6 +30,15 @@ house, or on one carried from room to room.
   album, year, tracks), made from its XML and never committed
   ([ADR-0046](/docs/architecture/decisions/0046-requests-are-matched-against-the-owners-library/)).
 
+## Outside services
+
+Speech is written down on EdS's own workload, not by an outside service.
+One is asked. Every call to one is counted, a minute at a time, on the Outside Services dashboard ([ADR-0027](/docs/architecture/decisions/0027-what-is-asked-of-outside-services-is-counted/)).
+
+| Service | Asked by | For |
+|---|---|---|
+| **MusicBrainz** | `voiced` | counting an artist's studio albums, when an album is asked for by its place |
+
 ## A request, from the word to the music
 
 ### The ears wake
