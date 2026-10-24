@@ -16,7 +16,8 @@ the project's own page has the whole of it:
 A media server in the basement sends one digital feed (S/PDIF) to every
 room, and each room's own stereo plays it.
 
-It is built by hand, and that is worth the effort:
+**My music, my control.** It is built by hand, and that is worth the
+effort:
 
 - **No monthly subscription fees.** Nothing in the house's sound depends on
   a company's service or its pricing; the music plays whether or not anyone
@@ -26,6 +27,11 @@ It is built by hand, and that is worth the effort:
 - **Custom integrations are possible** with the providers already in use,
   iTunes, Spotify and the owner's Discogs collection among them, in ways no
   packaged system offers. EdS is one of those integrations.
+- **No microphones listening to every conversation** and sending it to the
+  cloud. EdS's ears hear only what is said to them, and the words are
+  written down on EdS's own workload, not by someone else's service. The
+  one sound EdS sends out of the house is a few seconds of the record, to
+  name it.
 
 ### Switching between the turntable and the house music
 
