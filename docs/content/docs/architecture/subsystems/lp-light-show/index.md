@@ -7,8 +7,8 @@ aliases:
 
 # LP Light Show
 
-The first vertical, and the reason EdS exists: a record's cover becomes the
-light on its stand. Prop the jacket on the LP stand and it is illuminated in
+The first subsystem, and EdS's first idea of many: a record's cover becomes
+the light on its stand. Prop the jacket on the LP stand and it is illuminated in
 its own colors, set slowly moving, for as long as the record plays. It is
 the first of what may be several light shows, which is why it is named for
 the LP.
