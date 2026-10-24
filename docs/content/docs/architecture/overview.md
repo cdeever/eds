@@ -1,6 +1,6 @@
 ---
 title: "The First Vertical"
-weight: 1
+weight: 4
 ---
 
 # The First Vertical
