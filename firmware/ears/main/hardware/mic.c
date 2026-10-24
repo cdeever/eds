@@ -1,5 +1,6 @@
 #include "mic.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -132,6 +133,11 @@ static void report(uint32_t measured, uint32_t frames, uint32_t elapsed_ms, uint
 // the console also at a second Enter.
 typedef enum { IDLE, WOKEN, ASKED, HELD } hearing_t;
 
+static bool was_endpointed(hearing_t h)
+{
+    return h == WOKEN || h == ASKED;
+}
+
 static const char *hearing_name(hearing_t h)
 {
     return h == WOKEN ? "woken" : h == ASKED ? "asked" : "held";
@@ -153,6 +159,7 @@ static void listen_task(void *arg)
 
     hearing_t hearing = IDLE;
     size_t heard = 0;
+    size_t lead = 0; // of what is heard, the pre-roll before the request
     int64_t carry = 0, idle_carry = 0;
     uint32_t carried = 0, idle_carried = 0;
 
@@ -210,7 +217,7 @@ static void listen_task(void *arg)
             }
             if (start != IDLE) {
                 hearing = start;
-                heard = start == WOKEN ? replay(samples) : 0;
+                lead = heard = start == WOKEN ? replay(samples) : 0;
                 carry = 0;
                 carried = 0;
                 ea_endpoint_start(&endpoint);
@@ -248,6 +255,16 @@ static void listen_task(void *arg)
         }
         if (ended == EA_ENDPOINT_LISTENING) {
             continue;
+        }
+
+        // The quiet that ended it is not sent: a quarter of a second after the
+        // last speech is kept, and the rest is time on a weak link and in
+        // scribe for nothing.
+        if (was_endpointed(hearing) && ended == EA_ENDPOINT_DONE) {
+            size_t keep_to = lead + (size_t)EA_PCM_RATE * (endpoint.last_speech_ms + 250) / 1000;
+            if (keep_to < heard) {
+                heard = keep_to;
+            }
         }
 
         hearing_t was = hearing;

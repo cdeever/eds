@@ -147,6 +147,7 @@ units: kit-env tls-files discogs-env
 		sudo install -m 0600 kit.env lightd.env nowplayd.env nowplayd-broker.env discogs.env console.env console-broker.env ota-broker.env voiced-broker.env /opt/eds/ && \
 		sudo install -m 0644 deevnet-root-ca.pem /opt/eds/ && \
 		sudo install -d -m 0700 -o 65532 -g 65532 /opt/eds/tls && \
+		sudo install -d -m 0700 -o 65532 -g 65532 /var/lib/eds-voiced && \
 		sudo install -m 0400 -o 65532 -g 65532 console.key console.crt /opt/eds/tls/ && \
 		sudo install -m 0644 $(UNITS) /etc/systemd/system/ && \
 		cd && rm -rf ~/eds-deploy && \

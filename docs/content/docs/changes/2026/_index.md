@@ -44,3 +44,4 @@ bookCollapseSection: true
 | CHG-0034 | 2026-10-24 | [voiced and scribe on the Workload](0034-voiced-and-scribe-on-the-workload/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0035 | 2026-10-24 | [Only Words scribe Is Sure Of](0035-only-words-scribe-is-sure-of/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
 | CHG-0036 | 2026-10-24 | [The reSpeaker Wakes to "Hey Jarvis"](0036-the-respeaker-wakes-to-hey-jarvis/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
+| CHG-0037 | 2026-10-24 | [A Request Answered Sooner](0037-a-request-answered-sooner/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |

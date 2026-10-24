@@ -27,3 +27,11 @@ CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=y
 # the bootloader's, and the bootloader goes on only by cable: so from the
 # first flash, before the updates that need it exist.
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# A request is a few hundred kilobytes over a weak link (-80 dBm where the
+# reSpeaker sits). lwIP's default send buffer, under 6 KB, held a 200 KB
+# request to about 38 KB/s (CHG-0037); these let more be in flight.
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=32768
+CONFIG_LWIP_TCP_WND_DEFAULT=32768
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=32
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=64

@@ -224,6 +224,36 @@ static void test_a_request_in_a_loud_room_ends_at_six_seconds(void)
     CHECK(e.heard_ms >= 6000 && e.heard_ms < 6100, "ended at %u ms", e.heard_ms);
 }
 
+// The room learned while idle was its quietest moment; with talk or music in
+// it during the request, quiet is judged against the speaker instead, and the
+// request ends when they stop - not at six seconds, as it did on 2026-10-24.
+static void test_a_request_in_a_room_with_sound_in_it_ends_when_the_speaker_stops(void)
+{
+    ea_endpoint_t e;
+    ea_endpoint_init(&e);
+    for (int i = 0; i < 100; i++) {
+        ea_endpoint_idle(&e, -48.0f);
+    }
+    ea_endpoint_start(&e);
+    CHECK(feed(&e, -15.0f, 2000) == EA_ENDPOINT_LISTENING, "speaking");
+    CHECK(feed(&e, -36.0f, 400) == EA_ENDPOINT_LISTENING, "the room, briefly");
+    CHECK(feed(&e, -36.0f, 400) == EA_ENDPOINT_DONE, "the room, long enough");
+    CHECK(e.heard_ms < 3000, "ended at %u ms", e.heard_ms);
+    CHECK(e.last_speech_ms >= 2000 && e.last_speech_ms < 2200, "last speech at %u ms", e.last_speech_ms);
+}
+
+// A click in the quiet is not speech starting again.
+static void test_a_click_does_not_keep_a_request_going(void)
+{
+    ea_endpoint_t e = quiet_room();
+    ea_endpoint_start(&e);
+    CHECK(feed(&e, -18.0f, 1500) == EA_ENDPOINT_LISTENING, "speaking");
+    CHECK(feed(&e, -45.0f, 256) == EA_ENDPOINT_LISTENING, "quiet");
+    CHECK(ea_endpoint_feed(&e, -30.0f, BLOCK) == EA_ENDPOINT_LISTENING, "a click");
+    CHECK(feed(&e, -45.0f, 600) == EA_ENDPOINT_DONE, "quiet again: done");
+    CHECK(e.heard_ms < 2500, "ended at %u ms", e.heard_ms);
+}
+
 // Music that keeps playing raises the floor, so speech is what stands above
 // it, not the music; a shout does not.
 static void test_the_floor_follows_the_room_up_slowly_and_down_at_once(void)
@@ -278,6 +308,8 @@ int main(void)
     test_a_request_ends_when_the_speaker_stops();
     test_nobody_speaking_after_the_wake_word_is_nothing();
     test_a_request_in_a_loud_room_ends_at_six_seconds();
+    test_a_request_in_a_room_with_sound_in_it_ends_when_the_speaker_stops();
+    test_a_click_does_not_keep_a_request_going();
     test_the_floor_follows_the_room_up_slowly_and_down_at_once();
     test_the_floor_has_limits();
     test_an_event_is_one_json_line();

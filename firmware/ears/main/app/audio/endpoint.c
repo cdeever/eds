@@ -1,5 +1,7 @@
 #include "endpoint.h"
 
+#include <stdbool.h>
+
 // A quiet room through the XMOS chip, measured: -45 dB or so.
 #define START_FLOOR_DB -50.0f
 // The floor is never taken lower or higher than these: below, a burst of
@@ -16,10 +18,14 @@ static float clampf(float v, float lo, float hi)
     return v < lo ? lo : v > hi ? hi : v;
 }
 
+// How much of each new block goes into the smoothed level: about a tenth of
+// a second of 32 ms blocks.
+#define SMOOTHING 0.4f
+
 void ea_endpoint_init(ea_endpoint_t *e)
 {
     e->floor_db = START_FLOOR_DB;
-    e->heard_ms = e->speech_ms = e->quiet_ms = 0;
+    ea_endpoint_start(e);
 }
 
 void ea_endpoint_idle(ea_endpoint_t *e, float level_db)
@@ -34,15 +40,30 @@ void ea_endpoint_idle(ea_endpoint_t *e, float level_db)
 
 void ea_endpoint_start(ea_endpoint_t *e)
 {
-    e->heard_ms = e->speech_ms = e->quiet_ms = 0;
+    e->heard_ms = e->speech_ms = e->quiet_ms = e->last_speech_ms = 0;
+    e->smooth_db = e->floor_db;
+    e->loud_db = e->floor_db;
 }
 
 ea_endpoint_result_t ea_endpoint_feed(ea_endpoint_t *e, float level_db, uint32_t ms)
 {
     e->heard_ms += ms;
-    if (level_db >= e->floor_db + EA_ENDPOINT_MARGIN_DB) {
+    e->smooth_db += (level_db - e->smooth_db) * SMOOTHING;
+
+    float speech_from = e->floor_db + EA_ENDPOINT_MARGIN_DB;
+    float quiet_below = speech_from;
+    if (e->speech_ms > 0 && e->loud_db - EA_ENDPOINT_BELOW_SPEECH_DB > quiet_below) {
+        quiet_below = e->loud_db - EA_ENDPOINT_BELOW_SPEECH_DB;
+    }
+
+    bool speaking = e->speech_ms == 0 ? e->smooth_db >= speech_from : e->smooth_db >= quiet_below;
+    if (speaking) {
         e->speech_ms += ms;
         e->quiet_ms = 0;
+        e->last_speech_ms = e->heard_ms;
+        if (e->smooth_db > e->loud_db) {
+            e->loud_db = e->smooth_db;
+        }
     } else if (e->speech_ms > 0) {
         e->quiet_ms += ms;
     }

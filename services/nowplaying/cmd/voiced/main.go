@@ -13,6 +13,8 @@
 //	NP_MQTT_*, NP_TOPIC_PREFIX   the broker, as for nowplayd; client id eds-voiced
 //	NP_SCRIBE_URL                scribe (default http://127.0.0.1:8733)
 //	NP_CONTACT                   what MusicBrainz is told, as for nowplayd
+//	NP_STATE_DIR                 where discographies are kept across restarts
+//	                             (default: none; they are asked for again)
 package main
 
 import (
@@ -23,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -57,6 +60,7 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("config: NP_CONTACT must not be empty; MusicBrainz requires a way to reach the caller")
 	}
 	scribe := config.Str("NP_SCRIBE_URL", "http://127.0.0.1:8733")
+	stateDir := config.Str("NP_STATE_DIR", "")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -85,12 +89,12 @@ func run(logger *slog.Logger) error {
 		// Writing down a few seconds of speech on two cores takes about
 		// one; the model's first load, several.
 		Scribe: voice.Scribe{URL: scribe, HTTP: &http.Client{Timeout: 60 * time.Second}},
-		Albums: &resolve.Originals{
+		Albums: albums(stateDir, &resolve.Originals{
 			MusicBrainz: "https://musicbrainz.org",
 			HTTP:        asked.Client(10 * time.Second),
 			UserAgent:   fmt.Sprintf("eds-voiced/%s ( %s )", version, contact),
 			Logger:      logger,
-		},
+		}, logger),
 		Logger:  logger,
 		Timeout: 90 * time.Second,
 	}
@@ -102,10 +106,20 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 	connected.Store(client)
-	logger.Info("voiced listening", "version", version, "broker", b.URL, "prefix", common.Prefix, "scribe", scribe)
+	logger.Info("voiced listening", "version", version, "broker", b.URL, "prefix", common.Prefix, "scribe", scribe,
+		"state", stateDir)
 
 	<-ctx.Done()
 	client.Close()
 	<-done
 	return nil
+}
+
+// albums counts in MusicBrainz, keeping what it finds in dir when there is
+// one, so that a restart does not forget it (CHG-0037).
+func albums(dir string, musicbrainz *resolve.Originals, logger *slog.Logger) voice.Counter {
+	if dir == "" {
+		return musicbrainz
+	}
+	return &voice.Remembered{Next: musicbrainz, Path: filepath.Join(dir, "discographies.json"), Logger: logger}
 }

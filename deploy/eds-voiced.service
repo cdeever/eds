@@ -5,11 +5,16 @@ After=network-online.target eds-scribe.service
 
 # kit.env names the broker and the tenant. It also carries lightd's login,
 # which voiced-broker.env overrides with voiced's own (ADR-0042).
+#
+# /var/lib/eds-voiced keeps the discographies it has counted, so that a
+# restart does not send the next request to MusicBrainz again (CHG-0037).
+# The image's user is distroless's nonroot, 65532, which owns it.
 [Service]
 Environment=IMAGE=localhost/eds-voiced:latest
 ExecStartPre=-/usr/bin/podman rm -f eds-voiced
 ExecStart=/usr/bin/podman run --rm --name eds-voiced --network host \
   --env-file /opt/eds/kit.env --env-file /opt/eds/voiced-broker.env \
+  -v /var/lib/eds-voiced:/state:Z -e NP_STATE_DIR=/state \
   -v /opt/eds/deevnet-root-ca.pem:/kit/deevnet-root-ca.pem:ro -e MQTT_CA_FILE=/kit/deevnet-root-ca.pem \
   ${IMAGE}
 ExecStop=/usr/bin/podman stop -t 10 eds-voiced
