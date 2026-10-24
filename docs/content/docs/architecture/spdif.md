@@ -58,6 +58,9 @@ the house, or on one that is carried from room to room.
   lights and looks are its own and not the vinyl room's.
 - **Where there is no screen at all**, outside, a request is still heard
   and answered.
+- **Wherever it is carried**, a portable cover screen with ears built in:
+  plugged in in any room, it shows what is playing and hears what is asked
+  for.
 
 ## Why this matters to EdS
 
