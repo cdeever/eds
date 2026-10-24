@@ -234,12 +234,16 @@ static void listen_task(void *arg)
                                  &carry, &carried);
         }
         ea_endpoint_result_t ended = EA_ENDPOINT_LISTENING;
+        const char *why = "";
         if (hearing == HELD) {
             ended = pressed && heard < MAX_SAMPLES ? EA_ENDPOINT_LISTENING : EA_ENDPOINT_DONE;
+            why = "the button let go";
         } else {
             ended = block_ms > 0 ? ea_endpoint_feed(&endpoint, voice, block_ms) : EA_ENDPOINT_LISTENING;
+            why = endpoint.heard_ms >= EA_ENDPOINT_MAX_MS ? "the six-second limit" : "the quiet";
             if ((hearing == ASKED && asked) || heard >= MAX_SAMPLES) {
                 ended = EA_ENDPOINT_DONE;
+                why = asked ? "Enter" : "the fifteen-second limit";
             }
         }
         if (ended == EA_ENDPOINT_LISTENING) {
@@ -262,7 +266,10 @@ static void listen_task(void *arg)
             continue;
         }
         ea_wav_header(request, (uint32_t)heard);
-        ESP_LOGI(TAG, "%s, heard %u ms; sending", hearing_name(was), ms);
+        // How it ended, and how much of it was speech: what the endpoint is
+        // tuned from.
+        ESP_LOGI(TAG, "%s, heard %u ms (%u of it speech, over a floor of %.1f dB), ended by %s; sending",
+                 hearing_name(was), ms, (unsigned)endpoint.speech_ms, (double)endpoint.floor_db, why);
         deliver(request, 44 + heard * 2);
         // Whatever the XMOS chip sent meanwhile is stale: start the
         // measurement again rather than count a gap as a slow clock.

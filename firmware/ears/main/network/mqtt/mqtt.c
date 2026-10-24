@@ -178,12 +178,12 @@ esp_err_t ea_mqtt_start(void)
             .retain = 1,
         },
         .network.reconnect_timeout_ms = 5000,
-        // A request is written in one go, half a megabyte at most; on a
-        // slow moment the default would give up part-way.
-        .network.timeout_ms = 20000,
-        // And in pieces of this: with the default 1 KB, a five-second
-        // request was 160 writes, each waiting on the one before's
-        // acknowledgment, and took 16 to 22 seconds (CHG-0036).
+        // A request is written in pieces of this: with the default 1 KB, a
+        // five-second request was 160 writes, each waiting on the one
+        // before's acknowledgment, and took 16 to 22 seconds (CHG-0036).
+        // The network timeout is left as it is: it is also how long a
+        // connection is waited for, and at twenty seconds a first attempt
+        // that hung kept a fresh device off the broker for thirty.
         .buffer.out_size = 16384,
     };
 

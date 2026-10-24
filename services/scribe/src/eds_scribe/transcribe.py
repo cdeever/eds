@@ -84,6 +84,11 @@ class Whisper:
                 samples,
                 language="en",
                 beam_size=1,
+                # Once. By default an unsure decode is tried again, warmer, up
+                # to five more times: speech scribe cannot make out took ten
+                # seconds to come back not confident (CHG-0036), and words
+                # it is not sure of are not acted on anyway.
+                temperature=0.0,
                 initial_prompt=PROMPT,
                 condition_on_previous_text=False,
                 vad_filter=False,  # the device sends what it heard, silence and all
