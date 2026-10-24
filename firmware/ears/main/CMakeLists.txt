@@ -32,5 +32,5 @@ idf_component_register(
     INCLUDE_DIRS ${includes}
     EMBED_TXTFILES ${embeds}
     REQUIRES nvs_flash esp_wifi esp_event esp_timer esp_app_format app_update
-             esp_driver_i2s esp_driver_gpio mqtt
+             esp_driver_i2s esp_driver_gpio esp_driver_usb_serial_jtag mqtt
 )

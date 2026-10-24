@@ -11,18 +11,45 @@ from __future__ import annotations
 
 import os
 import threading
+from dataclasses import dataclass
 from typing import Protocol
 
 import numpy as np
 
-# Requests are short and said to a music system. A prompt in the same voice
-# makes the model likelier to write "Van Halen's" than "van Halen's", and
-# "play" than "pray".
-PROMPT = "Play Van Halen's first album. Play Abbey Road by the Beatles."
+# Names, as they are spelled, so that the model is likelier to write
+# "Van Halen's" than "van Halen's" and "AC/DC" than "ACDC".
+#
+# Never a sentence a request could be. Given what it cannot make out, the
+# model can write its prompt back instead; when the prompt was "Play Abbey
+# Road by the Beatles", that was a request, and on 2026-10-24 the Beatles
+# played for a request nobody made (INC-0001). A list of names is not one.
+PROMPT = "Aerosmith, Van Halen, AC/DC, Led Zeppelin, Guns N' Roses, the Beatles, Pink Floyd."
+
+# Whisper's own thresholds, as its reference implementation uses them to
+# decide that a stretch of audio held no speech: a segment the model thinks
+# more likely silent than not, or whose words it is not sure of, is not
+# taken for words.
+NO_SPEECH_ABOVE = 0.6
+UNSURE_BELOW = -1.0
+
+
+@dataclass
+class Heard:
+    text: str
+    # The likelihood the model gives that there was no speech at all, the
+    # least of any segment's, and its mean log probability for the words.
+    no_speech_prob: float
+    avg_logprob: float
+
+    @property
+    def confident(self) -> bool:
+        """Whether the words are worth acting on: something was said, and the
+        model is sure enough of what."""
+        return bool(self.text) and self.no_speech_prob < NO_SPEECH_ABOVE and self.avg_logprob > UNSURE_BELOW
 
 
 class Transcriber(Protocol):
-    def __call__(self, samples: np.ndarray) -> str: ...
+    def __call__(self, samples: np.ndarray) -> Heard: ...
 
 
 class Whisper:
@@ -49,7 +76,7 @@ class Whisper:
             )
         return self._model
 
-    def __call__(self, samples: np.ndarray) -> str:
+    def __call__(self, samples: np.ndarray) -> Heard:
         # One at a time: two at once on a two-core workload are each slower
         # than both in turn.
         with self._lock:
@@ -59,6 +86,13 @@ class Whisper:
                 beam_size=1,
                 initial_prompt=PROMPT,
                 condition_on_previous_text=False,
-                vad_filter=False,  # the device has already cut the silence
+                vad_filter=False,  # the device sends what it heard, silence and all
             )
-            return " ".join(s.text.strip() for s in segments).strip()
+            segments = list(segments)  # transcribed as it is read
+        if not segments:
+            return Heard(text="", no_speech_prob=1.0, avg_logprob=-10.0)
+        return Heard(
+            text=" ".join(s.text.strip() for s in segments).strip(),
+            no_speech_prob=min(s.no_speech_prob for s in segments),
+            avg_logprob=sum(s.avg_logprob for s in segments) / len(segments),
+        )

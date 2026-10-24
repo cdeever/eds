@@ -8,11 +8,20 @@ suppressed, beam steered. Its firmware is Seeed's I2S build, 1.0.8, and is
 left alone. A **XIAO ESP32-S3** (8 MB PSRAM, 8 MB flash, MAC
 `68:ee:8f:50:45:b0`) runs this.
 
-While the XIAO's button is held, what is said is kept as 16 kHz mono, up to
-fifteen seconds. On release it goes as one WAV to
+Asked, it keeps what is said as 16 kHz mono and sends it as one WAV to
 `eds/voice/respeaker-01/utterance`, where voiced makes it a request for an
 album ([ADR-0042](../../docs/content/docs/architecture/decisions/0042-a-request-is-heard-on-the-workload.md)).
-What voiced made of it comes back on `…/heard`. A wake word comes next.
+What voiced made of it comes back on `…/heard`. A wake word comes next;
+until then it is asked in one of two ways:
+
+- **Enter on its USB console** (`make monitor`): it hears five seconds, or
+  until Enter again.
+- **The XIAO's BOOT button, held** (GPIO0), on a XIAO that is not inside the
+  voice kit. In the kit the XIAO is under the board and its buttons cannot be
+  reached, and **the reSpeaker's own USR and MUTE buttons are the XMOS
+  chip's**: on 2026-10-24 neither moved any XIAO pin. MUTE silences the
+  microphones in the XMOS chip, which the console shows as -90 dB on both
+  channels.
 
 ```bash
 make test                      # host tests for the sound and the events, gcc only
@@ -36,21 +45,24 @@ The XIAO's yellow LED:
 | three short flashes | not understood, not sent, or no broker |
 | five fast flashes | the button was pressed with no usable sound to listen to |
 
-## Bringing it up
+## What the XMOS chip sends
 
-The pins (BCLK 8, WS 7, DIN 44), the rate and the voice's channel are
-Seeed's examples' and Kconfig's defaults, not yet measured. The console
-prints, every two seconds, the rate the XMOS chip sends and the level of
-each channel:
+Measured on 2026-10-24: **16 kHz on BCLK 8, WS 7, DIN 44**, the voice the
+same on both channels. The console prints the rate and both levels every two
+seconds:
 
 ```
-mic: 16000 Hz; left -48.2 dB, right -71.9 dB; the voice is taken from the left
+mic: 16000 Hz; left -43.5 dB, right -43.5 dB; the voice is taken from the left
 ```
 
-- **"no clock on BCLK GPIO8"**: the pins are wrong, or the XMOS chip has its
-  USB firmware rather than its I2S one.
-- **A rate**: 16 or 48 kHz both work.
-- **Speak, and watch which channel rises**: that is `EA_VOICE_CHANNEL`.
+- **"no clock on BCLK GPIO8"** is no frames at all: the pins are wrong, or
+  the XMOS chip has its USB firmware rather than its I2S one.
+- **"not kept up with"** is this device: sending a request holds the reading
+  for a few seconds, and the rate is measured again after.
+
+**Leave GPIO 1 to 6 and 9 alone.** Making them pulled-up inputs, to find the
+buttons, stopped the XMOS chip's clock until they were let go: one of them is
+a line the XMOS chip depends on.
 
 The rate and the levels also go to the log store when first known, and in
 each five-minute health report.

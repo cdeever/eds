@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from eds_scribe import api
+from eds_scribe.transcribe import Heard
 
 
 @pytest.fixture
@@ -12,7 +13,7 @@ def client(monkeypatch):
 
     def fake(samples):
         heard.append(samples.size)
-        return "Play Van Halen's first album."
+        return Heard("Play Van Halen's first album.", no_speech_prob=0.02, avg_logprob=-0.2)
 
     monkeypatch.setattr(api, "transcriber", fake)
     c = TestClient(api.app)
@@ -26,6 +27,8 @@ def test_a_recording_is_written_down(client, make_recording):
     body = r.json()
     assert body["v"] == 1
     assert body["text"] == "Play Van Halen's first album."
+    assert body["confident"] is True
+    assert body["no_speech_prob"] == 0.02
     assert body["seconds"] == 2.5
     assert body["took_ms"] >= 0
     assert client.heard == [40_000]
@@ -58,7 +61,7 @@ class Loading:
         self.loaded.set()
 
     def __call__(self, samples):
-        return "Play Rocks by Aerosmith."
+        return Heard("Play Rocks by Aerosmith.", no_speech_prob=0.02, avg_logprob=-0.2)
 
 
 def test_the_model_is_loaded_as_the_service_starts(monkeypatch):
@@ -74,3 +77,25 @@ def test_preloading_can_be_left_to_the_first_request(monkeypatch):
     monkeypatch.setenv("SCRIBE_PRELOAD", "0")
     with TestClient(api.app):
         assert not fake.loaded.wait(0.2)
+
+
+@pytest.mark.parametrize(
+    "heard",
+    [
+        Heard("Play Abbey Road by the Beatles.", no_speech_prob=0.81, avg_logprob=-0.4),  # likely silence
+        Heard("Play Abbey Road by the Beatles.", no_speech_prob=0.1, avg_logprob=-1.6),  # unsure of the words
+        Heard("", no_speech_prob=0.1, avg_logprob=-0.2),  # nothing written
+    ],
+    ids=["no speech", "unsure", "empty"],
+)
+def test_words_the_model_is_not_sure_of_are_said_to_be(monkeypatch, make_recording, heard):
+    monkeypatch.setattr(api, "transcriber", lambda samples: heard)
+    r = TestClient(api.app).post("/v1/transcribe", content=make_recording(2.0))
+    assert r.status_code == 200
+    assert r.json()["confident"] is False
+
+
+def test_the_prompt_is_not_a_request():
+    from eds_scribe.transcribe import PROMPT
+
+    assert "play" not in PROMPT.lower() and " by " not in PROMPT.lower()

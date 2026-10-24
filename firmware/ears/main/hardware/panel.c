@@ -1,6 +1,7 @@
 #include "panel.h"
 
 #include "driver/gpio.h"
+#include "driver/usb_serial_jtag.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -65,6 +66,13 @@ esp_err_t ea_panel_init(void)
     }
     drive(false);
 
+    // The console's driver, so that what is typed can be read: the log
+    // carries on through it as before.
+    usb_serial_jtag_driver_config_t console = USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
+    if (usb_serial_jtag_driver_install(&console) != ESP_OK) {
+        ESP_LOGW(TAG, "the console cannot be read; only the button asks");
+    }
+
     flashes = xQueueCreate(4, sizeof(flash_t));
     if (flashes == NULL || xTaskCreate(light_task, "light", 2048, NULL, 2, NULL) != pdPASS) {
         ESP_LOGW(TAG, "no light task; the light will not flash");
@@ -75,6 +83,18 @@ esp_err_t ea_panel_init(void)
 bool ea_panel_pressed(void)
 {
     return gpio_get_level(CONFIG_EA_BUTTON_GPIO) == PRESSED;
+}
+
+bool ea_panel_asked(void)
+{
+    uint8_t c;
+    bool asked = false;
+    // Everything typed is read, and only Enter counts: a stray key is not a
+    // request, and nothing is left to count twice.
+    while (usb_serial_jtag_read_bytes(&c, 1, 0) > 0) {
+        asked |= c == '\r' || c == '\n';
+    }
+    return asked;
 }
 
 void ea_panel_light(bool on)

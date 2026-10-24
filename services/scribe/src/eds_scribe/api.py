@@ -60,6 +60,12 @@ app = FastAPI(
 class Transcript(BaseModel):
     v: int = CONTRACT_VERSION
     text: str = Field(description="What was said, as the model wrote it. Empty when nothing was.")
+    confident: bool = Field(
+        description="Whether the words are worth acting on. False when the model thinks nothing was "
+        "said, or is not sure of what: the text may then be its prompt, or nothing anyone said."
+    )
+    no_speech_prob: float = Field(description="How likely the model thinks it is that there was no speech.")
+    avg_logprob: float = Field(description="The model's mean log probability for the words.")
     seconds: float = Field(description="How long the recording is.")
     took_ms: int = Field(description="How long writing it down took.")
 
@@ -86,6 +92,13 @@ async def transcribe(request: Request) -> Transcript:
     started = time.monotonic()
     # On a thread of its own: writing down takes seconds, and the event loop
     # has /healthz to answer meanwhile.
-    text = await run_in_threadpool(transcriber, samples)
+    heard = await run_in_threadpool(transcriber, samples)
     took = int((time.monotonic() - started) * 1000)
-    return Transcript(text=text, seconds=round(wav.seconds(samples), 2), took_ms=took)
+    return Transcript(
+        text=heard.text,
+        confident=heard.confident,
+        no_speech_prob=round(heard.no_speech_prob, 3),
+        avg_logprob=round(heard.avg_logprob, 3),
+        seconds=round(wav.seconds(samples), 2),
+        took_ms=took,
+    )

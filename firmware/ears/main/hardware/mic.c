@@ -20,6 +20,9 @@ static const char *TAG = "mic";
 #define BLOCK_FRAMES 512
 
 #define MAX_SAMPLES ((size_t)EA_PCM_RATE * EA_REQUEST_MAX_MS / 1000)
+// What the console asks for: no button is held, so it is heard for this long,
+// or until Enter again.
+#define ASKED_SAMPLES ((size_t)EA_PCM_RATE * 5)
 #define MIN_SAMPLES ((size_t)EA_PCM_RATE * EA_REQUEST_MIN_MS / 1000)
 
 static i2s_chan_handle_t rx;
@@ -67,8 +70,17 @@ static esp_err_t open_i2s(void)
 // The rate and levels, said on the console every couple of seconds, and to
 // the store when the rate is first known or changes: it is the one thing
 // about the XMOS chip the device can find out for itself.
-static void report(uint32_t measured, uint32_t *said)
+// A window with no frames at all is no clock: the pins, or the XMOS chip's
+// firmware. One with frames at no rate a source sends is this device not
+// keeping up - a request being written to the broker holds the reading for
+// seconds - and says nothing about the XMOS chip.
+static void report(uint32_t measured, uint32_t frames, uint32_t elapsed_ms, uint32_t *said)
 {
+    if (measured == 0 && frames > 0) {
+        ESP_LOGI(TAG, "%u frames in %u ms: not kept up with; measuring again",
+                 (unsigned)frames, (unsigned)elapsed_ms);
+        return;
+    }
     if (measured == 0) {
         ESP_LOGW(TAG, "no clock on BCLK GPIO%d", CONFIG_EA_I2S_GPIO_BCLK);
     } else {
@@ -101,6 +113,7 @@ static void listen_task(void *arg)
     uint32_t said = UINT32_MAX;
 
     bool hearing = false;
+    bool timed = false; // asked on the console, not held
     size_t heard = 0;
     int64_t carry = 0;
     uint32_t carried = 0;
@@ -118,17 +131,23 @@ static void listen_task(void *arg)
 
         int64_t now = esp_timer_get_time();
         if (now - window_start >= (int64_t)EA_LEVEL_INTERVAL_MS * 1000) {
-            rate = ea_pcm_rate(window_frames, (uint32_t)(now - window_start));
+            uint32_t measured = ea_pcm_rate(window_frames, (uint32_t)(now - window_start));
             if (window_frames == 0) {
                 level[0] = level[1] = -90.0f;
             }
-            report(rate, &said);
+            // A rate this device failed to measure is not a new one: the
+            // last one stands until a window says otherwise.
+            if (measured != 0 || window_frames == 0) {
+                rate = measured;
+            }
+            report(measured, window_frames, (uint32_t)((now - window_start) / 1000), &said);
             window_start = now;
             window_frames = 0;
         }
 
         bool pressed = ea_panel_pressed();
-        if (pressed && !hearing) {
+        bool asked = ea_panel_asked();
+        if ((pressed || asked) && !hearing) {
             if (rate == 0 || rate % EA_PCM_RATE != 0) {
                 // Said once per press: nothing heard is better than a
                 // request at the wrong speed.
@@ -140,11 +159,13 @@ static void listen_task(void *arg)
                 continue;
             }
             hearing = true;
+            timed = !pressed;
+            asked = false; // the Enter that started it does not also stop it
             heard = 0;
             carry = 0;
             carried = 0;
             ea_panel_light(true);
-            ESP_LOGI(TAG, "listening");
+            ESP_LOGI(TAG, "listening%s", timed ? " for five seconds (Enter stops)" : "");
         }
 
         if (hearing && n > 0) {
@@ -152,7 +173,8 @@ static void listen_task(void *arg)
                                  MAX_SAMPLES - heard, &carry, &carried);
         }
 
-        if (hearing && (!pressed || heard >= MAX_SAMPLES)) {
+        bool done = timed ? (asked || heard >= ASKED_SAMPLES) : (!pressed || heard >= MAX_SAMPLES);
+        if (hearing && done) {
             hearing = false;
             ea_panel_light(false);
             if (heard < MIN_SAMPLES) {

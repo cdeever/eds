@@ -38,9 +38,21 @@ type Heard struct {
 	Reason     string `json:"reason,omitempty"`
 }
 
+// Words are what a recording was written down as, and whether scribe is
+// sure of them.
+type Words struct {
+	Text string
+	// Confident is false when scribe's model thinks nothing was said, or is
+	// not sure of what. Words it is not sure of are never acted on: given
+	// what it cannot make out, the model can write its prompt back, and a
+	// prompt that was a request once played the Beatles for nobody
+	// (INC-0001).
+	Confident bool
+}
+
 // Transcriber writes a recording down.
 type Transcriber interface {
-	Transcribe(ctx context.Context, wav []byte) (string, error)
+	Transcribe(ctx context.Context, wav []byte) (Words, error)
 }
 
 // Counter knows an artist's albums in order (ADR-0041).
@@ -88,13 +100,19 @@ func (l *Listener) Handle(msg bus.Message) {
 
 func (l *Listener) hear(ctx context.Context, device string, wav []byte) Heard {
 	started := time.Now()
-	text, err := l.Scribe.Transcribe(ctx, wav)
+	words, err := l.Scribe.Transcribe(ctx, wav)
 	if err != nil {
 		l.logger().Warn("a request could not be written down", "device", device, "bytes", len(wav), "error", err)
 		return Heard{V: contract.Version, Reason: "it could not be written down"}
 	}
+	text := words.Text
 	heard := Heard{V: contract.Version, Text: text}
 	log := l.logger().With("device", device, "text", text, "written_ms", time.Since(started).Milliseconds())
+	if !words.Confident {
+		log.Info("not heard clearly")
+		heard.Reason = "not heard clearly"
+		return heard
+	}
 
 	r, err := Parse(text)
 	if err != nil {
@@ -179,11 +197,13 @@ type Scribe struct {
 	HTTP *http.Client
 }
 
-// Transcribe sends a WAV and returns its words.
-func (s Scribe) Transcribe(ctx context.Context, wav []byte) (string, error) {
+// Transcribe sends a WAV and returns its words. Words scribe does not say
+// it is sure of are not confident, so a scribe from before it said so plays
+// nothing.
+func (s Scribe) Transcribe(ctx context.Context, wav []byte) (Words, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(s.URL, "/")+"/v1/transcribe", bytes.NewReader(wav))
 	if err != nil {
-		return "", err
+		return Words{}, err
 	}
 	req.Header.Set("Content-Type", "audio/wav")
 	client := s.HTTP
@@ -192,25 +212,26 @@ func (s Scribe) Transcribe(ctx context.Context, wav []byte) (string, error) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return Words{}, err
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	if err != nil {
-		return "", err
+		return Words{}, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("scribe answered %s: %s", resp.Status, strings.TrimSpace(string(body)))
+		return Words{}, fmt.Errorf("scribe answered %s: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
 	var t struct {
-		V    int    `json:"v"`
-		Text string `json:"text"`
+		V         int    `json:"v"`
+		Text      string `json:"text"`
+		Confident *bool  `json:"confident"`
 	}
 	if err := json.Unmarshal(body, &t); err != nil {
-		return "", fmt.Errorf("scribe: %w", err)
+		return Words{}, fmt.Errorf("scribe: %w", err)
 	}
 	if t.V != 1 {
-		return "", fmt.Errorf("scribe speaks version %d, this program 1", t.V)
+		return Words{}, fmt.Errorf("scribe speaks version %d, this program 1", t.V)
 	}
-	return t.Text, nil
+	return Words{Text: t.Text, Confident: t.Confident != nil && *t.Confident}, nil
 }

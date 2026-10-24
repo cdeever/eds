@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
@@ -21,11 +22,15 @@ var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 type words string
 
-func (w words) Transcribe(context.Context, []byte) (string, error) {
+// A transcript that begins with "?" is one scribe is not sure of.
+func (w words) Transcribe(context.Context, []byte) (Words, error) {
 	if w == "!" {
-		return "", errors.New("scribe is down")
+		return Words{}, errors.New("scribe is down")
 	}
-	return string(w), nil
+	if text, unsure := strings.CutPrefix(string(w), "?"); unsure {
+		return Words{Text: text}, nil
+	}
+	return Words{Text: string(w), Confident: true}, nil
 }
 
 // discographies are MusicBrainz's as ADR-0041 counts them, cut down.
@@ -141,6 +146,9 @@ func TestWhatIsNotARequestIsSaidBackAndNothingIsAskedFor(t *testing.T) {
 		"Play Arrowsmith's first album.": `no such album: MusicBrainz knows no artist "Arrowsmith"`,
 		"Play Van Halen's fifth album.":  "no such album: Van Halen has 2 studio albums, not a 5",
 		"!":                              "it could not be written down",
+		// The prompt, written back for what could not be made out: a
+		// request in words, and nothing anyone said.
+		"?Play Abbey Road by the Beatles.": "not heard clearly",
 	} {
 		l, out, _ := listen(t, said)
 		l.Handle(utterance("respeaker-01"))
@@ -174,13 +182,30 @@ func TestScribeIsAskedAsItsContractSays(t *testing.T) {
 			return
 		}
 		got, _ = io.ReadAll(r.Body)
-		_, _ = w.Write([]byte(`{"v":1,"text":"Play Rocks by Aerosmith.","seconds":1.8,"took_ms":400}`))
+		_, _ = w.Write([]byte(`{"v":1,"text":"Play Rocks by Aerosmith.","confident":true,"seconds":1.8,"took_ms":400}`))
 	}))
 	defer srv.Close()
 
-	text, err := Scribe{URL: srv.URL + "/"}.Transcribe(context.Background(), []byte("RIFF-wav"))
-	if err != nil || text != "Play Rocks by Aerosmith." || string(got) != "RIFF-wav" {
-		t.Errorf("text %q, %v; sent %q", text, err, got)
+	heard, err := Scribe{URL: srv.URL + "/"}.Transcribe(context.Background(), []byte("RIFF-wav"))
+	if err != nil || heard.Text != "Play Rocks by Aerosmith." || !heard.Confident || string(got) != "RIFF-wav" {
+		t.Errorf("heard %+v, %v; sent %q", heard, err, got)
+	}
+}
+
+// A scribe that does not say it is sure, or says it is not, is not.
+func TestWordsScribeIsNotSureOfAreNotConfident(t *testing.T) {
+	for _, answer := range []string{
+		`{"v":1,"text":"Play Abbey Road by the Beatles.","confident":false}`,
+		`{"v":1,"text":"Play Abbey Road by the Beatles."}`,
+	} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(answer))
+		}))
+		heard, err := Scribe{URL: srv.URL}.Transcribe(context.Background(), []byte("x"))
+		srv.Close()
+		if err != nil || heard.Confident {
+			t.Errorf("%s: heard %+v, %v", answer, heard, err)
+		}
 	}
 }
 

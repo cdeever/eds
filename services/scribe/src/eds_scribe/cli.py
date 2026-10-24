@@ -22,8 +22,10 @@ def main() -> int:
             print(f"{name}: {e}", file=sys.stderr)
             continue
         started = time.monotonic()
-        text = whisper(samples)
-        print(f"{name}\t{time.monotonic() - started:.2f}s\t{text}")
+        heard = whisper(samples)
+        sure = "sure" if heard.confident else "NOT SURE"
+        print(f"{name}\t{time.monotonic() - started:.2f}s\t{sure} (no speech {heard.no_speech_prob:.2f}, "
+              f"logprob {heard.avg_logprob:.2f})\t{heard.text}")
     return 0
 
 
