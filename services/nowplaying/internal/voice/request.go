@@ -40,7 +40,8 @@ var (
 	// covers it, and "the Beatles' latest album" with it.
 	possessive = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|’|'|,)?\s+(\S+(?:\s+recent)?)\s+(?:album|record|lp)$`)
 	// "play Abbey Road by the Beatles"
-	named = regexp.MustCompile(`(?i)^play\s+(?:the\s+album\s+)?(.+?)\s+by\s+(.+)$`)
+	// "play album The Wall by Pink Floyd" too (2026-10-24).
+	named = regexp.MustCompile(`(?i)^play\s+(?:(?:the\s+)?album\s+)?(.+?)\s+by\s+(.+)$`)
 )
 
 // pronoun ends a phrase that names nobody.
@@ -88,6 +89,26 @@ func Parse(words string) (Request, error) {
 	return Request{}, ErrNotARequest
 }
 
+// ParseOwned reads what Parse does not take for a request, but would be
+// one if its album is in the owner's library: "ALBUM by ARTIST" after a
+// misheard "play" ("Clay Revolver by the Beatles", "played Sticky Fingers by
+// the Rolling Stones", 2026-10-24). Ordinary talk names an album the owner
+// has by its artist seldom, and only after the wake word; the caller must
+// play it only if the library has it (ADR-0046).
+func ParseOwned(words string) (Request, error) {
+	text, ok := farPlay(clean(words))
+	if !ok {
+		return Request{}, ErrNotARequest
+	}
+	if _, err := byPlace(text); err == nil {
+		return Request{}, ErrNotARequest // by place, Parse's rules hold
+	}
+	if m := named.FindStringSubmatch(text); m != nil {
+		return request(m[2], m[1], 0)
+	}
+	return Request{}, ErrNotARequest
+}
+
 // byPlace reads "play the Nth album by X" and "play X's Nth album".
 func byPlace(text string) (Request, error) {
 	if m := nthBy.FindStringSubmatch(text); m != nil {
@@ -120,7 +141,7 @@ func strictlyByPlace(text string) bool {
 // device keeps 600 ms from before the wake word was decided on, and scribe
 // has written the end of "Hey Jarvis" in it as "And each of us" (2026-10-24).
 // Only an album by its place, strictly said, is read this far in.
-var far = regexp.MustCompile(`(?i)^((?:\S+\s+){0,5}?)(?:play|playing|tae|tay|they|clay|lay|pay|pray|plate|flay|slay|blay|pla|ple|played|plays)[,.]?\s+(.+)$`)
+var far = regexp.MustCompile(`(?i)^((?:\S+\s+){0,5}?)(?:play|playing|tae|tay|they|clay|lay|pay|pray|plate|flay|slay|blay|pla|ple|played|plays|placed|place)[,.]?\s+(.+)$`)
 
 // farPlay is the words from "play", or its mishearing, made "play", never
 // after a negation.

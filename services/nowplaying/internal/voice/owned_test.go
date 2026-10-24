@@ -90,12 +90,8 @@ func TestWhatTheLibraryLacksIsNotOwned(t *testing.T) {
 	}
 }
 
-type noIndex struct{}
-
-func (noIndex) Index() (*library.Index, error) { return nil, nil }
-
 func TestWithoutAnIndexAlbumsAreGuessedAsBefore(t *testing.T) {
-	_, album, _, err := Choose(context.Background(), catalog{}, noIndex{}, Request{Artist: "Genesis", Nth: 2})
+	_, album, _, err := Choose(context.Background(), catalog{}, nil, Request{Artist: "Genesis", Nth: 2})
 	if err != nil || album != "Trespass" {
 		t.Errorf("%q, %v; want the catalog's Trespass", album, err)
 	}

@@ -63,6 +63,10 @@ from it, by the library's own names; without one, as before.**
   has - the first by its other release names too - and the next ones owned
   in `instead`. Where MusicBrainz cannot count them, the library's own by
   year, without compilations or greatest hits and live albums.
+- **With the library to check it, a misheard "play" is taken before an
+  album by name**: "Clay Revolver by the Beatles" is a request if the owner
+  has *Revolver* by the Beatles, and nothing otherwise. Without an index,
+  "ALBUM by ARTIST" still needs "play" itself (ADR-0042).
 - **What voiced sends is the library's**, character for character; the
   driver's start-of-title query and its check of what plays stay.
 

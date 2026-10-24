@@ -35,4 +35,5 @@ EdS record that links to Deevnet IoTaaS's.
 | ID | Date | Incident | Root cause | Status | Substatus |
 |---|---|---|---|---|---|
 | [INC-0002](2026/0002-deploys-hung-the-core-router/) | 2026-10-24 | Deploys hung the core router | every image sent on every deploy, a gigabyte unthrottled between segments, which the router does not survive | Open | {{< inc-status "Hardening" >}} |
+| [INC-0003](2026/0003-the-library-index-was-unreadable-to-voiced/) | 2026-10-24 | The library index was unreadable to voiced | a file copied into a `:Z` volume keeps its own SELinux label, and an unreadable index was taken silently for none | Open | {{< inc-status "Hardening" >}} |
 | [INC-0001](2026/0001-the-beatles-played-for-a-request-nobody-made/) | 2026-10-24 | The Beatles played for a request nobody made | scribe's prompt was a request, which it wrote back for audio it could not make out, and voiced acted on any words | Open | {{< inc-status "Hardening" >}} |

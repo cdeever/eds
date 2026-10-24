@@ -20,14 +20,12 @@ type Library interface {
 // artist like the one heard, or no album like the one named.
 var ErrNotOwned = errors.New("not in the library")
 
-// Choose names the album a request asks for. With the owner's library known
-// it is chosen from the library, by the library's own names (Owned); without
-// one, as Album guesses it.
-func Choose(ctx context.Context, albums Counter, lib Library, r Request) (artist, album string, instead []string, err error) {
-	if lib != nil {
-		if ix, _ := lib.Index(); ix != nil {
-			return Owned(ctx, albums, ix, r)
-		}
+// Choose names the album a request asks for. With the owner's library
+// indexed it is chosen from the library, by the library's own names (Owned);
+// without one, as Album guesses it.
+func Choose(ctx context.Context, albums Counter, ix *library.Index, r Request) (artist, album string, instead []string, err error) {
+	if ix != nil {
+		return Owned(ctx, albums, ix, r)
 	}
 	return Album(ctx, albums, r)
 }

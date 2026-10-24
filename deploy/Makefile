@@ -188,13 +188,15 @@ units: kit-env tls-files discogs-env
 # The owner's library, as voiced matches requests against it (ADR-0046):
 # indexed here, from the XML iTunes writes, and only the index sent - a few
 # hundred KB of artists, albums and years, no paths or play counts. voiced
-# reads it again at its next request. Neither file is committed.
+# reads it again at its next request. Neither file is committed. It takes
+# the directory's SELinux label, which podman's :Z gave voiced's container:
+# installed, it would be var_lib_t, and unreadable there (2026-10-24).
 library:
 	@if [[ ! -s "$(XML)" ]]; then echo 'usage: make library XML="/path/to/iTunes Library.xml"' >&2; exit 2; fi
 	@umask 077; cd $(SVC)/nowplaying && go run ./cmd/library index "$(XML)" > $(CURDIR)/library.json
 	@ls -l library.json | awk '{print "  " $$5 " bytes"}'
 	scp -l 40000 library.json $(HOST):library.json
-	ssh $(HOST) 'sudo install -m 0400 -o 65532 -g 65532 library.json /var/lib/eds-voiced/ && rm -f library.json'
+	ssh $(HOST) 'sudo install -m 0400 -o 65532 -g 65532 library.json /var/lib/eds-voiced/ && sudo chcon --reference=/var/lib/eds-voiced /var/lib/eds-voiced/library.json && rm -f library.json'
 	@rm -f library.json
 
 deploy: images

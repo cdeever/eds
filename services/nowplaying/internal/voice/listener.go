@@ -14,6 +14,7 @@ import (
 
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
+	"github.com/cdeever/eds/services/nowplaying/internal/library"
 	"github.com/cdeever/eds/services/nowplaying/internal/resolve"
 )
 
@@ -152,13 +153,17 @@ func (l *Listener) hear(ctx context.Context, device string, wav []byte) Heard {
 		return heard
 	}
 
+	ix := l.index(log)
 	r, err := Parse(text)
+	if err != nil && ix != nil {
+		r, err = ParseOwned(text)
+	}
 	if err != nil {
 		log.Info("not a request")
 		heard.Reason = "not a request for an album"
 		return heard
 	}
-	artist, album, instead, err := Choose(ctx, l.Albums, l.Library, r)
+	artist, album, instead, err := Choose(ctx, l.Albums, ix, r)
 	if err != nil {
 		log.Info("no album for the request", "artist", r.Artist, "nth", r.Nth, "error", err)
 		heard.Reason = "no such album: " + reason(err)
@@ -333,4 +338,19 @@ func (s Scribe) Transcribe(ctx context.Context, wav []byte) (Words, error) {
 		return Words{}, fmt.Errorf("scribe speaks version %d, this program 1", t.V)
 	}
 	return Words{Text: t.Text, Confident: t.Confident != nil && *t.Confident}, nil
+}
+
+// index is the owner's library as an index, or nil: none configured, none
+// copied yet, or one that cannot be read, which is said, since the requests
+// are then guessed at (ADR-0046). The first index copied was unreadable to
+// voiced's container, and nothing said so (2026-10-24).
+func (l *Listener) index(log *slog.Logger) *library.Index {
+	if l.Library == nil {
+		return nil
+	}
+	ix, err := l.Library.Index()
+	if err != nil {
+		log.Warn("the library index cannot be read; albums are guessed at", "error", err)
+	}
+	return ix
 }

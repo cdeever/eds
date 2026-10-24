@@ -92,3 +92,36 @@ func TestWhatIsNotARequestIsNotRead(t *testing.T) {
 		}
 	}
 }
+
+func TestAnAlbumByNameAfterAMisheardPlayIsOneIfOwned(t *testing.T) {
+	// As scribe wrote them, 2026-10-24.
+	for words, want := range map[string]Request{
+		"Jarvis, Clay Revolver by the Beatles.":                {Artist: "the Beatles", Album: "Revolver"},
+		"Jarvis, placed sticky fingers by the Rolling Stones.": {Artist: "the Rolling Stones", Album: "sticky fingers"},
+		"Jarvis played sticky fingers by the Rolling Stones.":  {Artist: "the Rolling Stones", Album: "sticky fingers"},
+	} {
+		if _, err := Parse(words); err == nil {
+			t.Errorf("Parse(%q) took it without the library", words)
+		}
+		if r, err := ParseOwned(words); err != nil || r != want {
+			t.Errorf("ParseOwned(%q) = %+v, %v; want %+v", words, r, err, want)
+		}
+	}
+	for _, words := range []string{
+		"don't play Revolver by the Beatles",
+		"they saw it, first album", // by place, Parse's rules
+		"Revolver by the Beatles",  // no play at all
+	} { // "I played it by ear" is read, as "it" by "ear", and the library has no such album
+
+		if r, err := ParseOwned(words); err == nil {
+			t.Errorf("ParseOwned(%q) = %+v; want not a request", words, r)
+		}
+	}
+}
+
+func TestTheWordAlbumIsNotTheAlbumsName(t *testing.T) {
+	r, err := Parse("Play album The Wall by Pink Floyd.")
+	if err != nil || r != (Request{Artist: "Pink Floyd", Album: "The Wall"}) {
+		t.Errorf("%+v, %v", r, err)
+	}
+}
