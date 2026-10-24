@@ -54,38 +54,48 @@ func owned() *library.Index {
 	}}
 }
 
+// owners are the owner's music both ways voiced can ask it: the library
+// index, and eds-inventory over HTTP, answering from the same albums.
+func owners(t *testing.T) map[string]Owner {
+	return map[string]Owner{"index": IndexOwner(owned()), "inventory": inventory(t, owned())}
+}
+
 func TestTheAlbumIsTheLibrarysOwn(t *testing.T) {
-	for _, c := range []struct {
-		r             Request
-		artist, album string
-		instead       []string
-	}{
-		// The library has the reissue, under its own name.
-		{Request{Artist: "Genesis", Nth: 1}, "Genesis", "And The Word Was", []string{"Trespass"}},
-		// Heard as an alias MusicBrainz keeps; spelled as the library does.
-		{Request{Artist: "Leonard Skinner", Nth: 1}, "Lynyrd Skynyrd", "Pronounced leh-nerd skin-nerd", []string{"Second Helping"}},
-		{Request{Artist: "Van Halen", Nth: 1}, "Van Halen", "Van Halen", []string{"Van Halen II", "Women And Children First"}},
-		{Request{Artist: "Van Halen", Nth: -1}, "Van Halen", "Women And Children First", []string{"Van Halen II", "Van Halen"}},
-		// Misheard, and unknown to the catalog: the library by year, with no
-		// greatest hits.
-		{Request{Artist: "Arrowsmith", Nth: 1}, "Aerosmith", "Aerosmith", []string{"Toys In The Attic"}},
-		{Request{Artist: "the Beatles", Album: "Abby Road"}, "The Beatles", "Abbey Road", nil},
-	} {
-		artist, album, instead, err := Owned(context.Background(), catalog{}, owned(), c.r)
-		if err != nil || artist != c.artist || album != c.album || !slices.Equal(instead, c.instead) {
-			t.Errorf("%+v: %q %q %q, %v; want %q %q %q", c.r, artist, album, instead, err, c.artist, c.album, c.instead)
+	for name, owner := range owners(t) {
+		for _, c := range []struct {
+			r             Request
+			artist, album string
+			instead       []string
+		}{
+			// The library has the reissue, under its own name.
+			{Request{Artist: "Genesis", Nth: 1}, "Genesis", "And The Word Was", []string{"Trespass"}},
+			// Heard as an alias MusicBrainz keeps; spelled as the library does.
+			{Request{Artist: "Leonard Skinner", Nth: 1}, "Lynyrd Skynyrd", "Pronounced leh-nerd skin-nerd", []string{"Second Helping"}},
+			{Request{Artist: "Van Halen", Nth: 1}, "Van Halen", "Van Halen", []string{"Van Halen II", "Women And Children First"}},
+			{Request{Artist: "Van Halen", Nth: -1}, "Van Halen", "Women And Children First", []string{"Van Halen II", "Van Halen"}},
+			// Misheard, and unknown to the catalog: the library by year, with no
+			// greatest hits.
+			{Request{Artist: "Arrowsmith", Nth: 1}, "Aerosmith", "Aerosmith", []string{"Toys In The Attic"}},
+			{Request{Artist: "the Beatles", Album: "Abby Road"}, "The Beatles", "Abbey Road", nil},
+		} {
+			artist, album, instead, err := Owned(context.Background(), catalog{}, owner, c.r)
+			if err != nil || artist != c.artist || album != c.album || !slices.Equal(instead, c.instead) {
+				t.Errorf("%s, %+v: %q %q %q, %v; want %q %q %q", name, c.r, artist, album, instead, err, c.artist, c.album, c.instead)
+			}
 		}
 	}
 }
 
 func TestWhatTheLibraryLacksIsNotOwned(t *testing.T) {
-	for _, r := range []Request{
-		{Artist: "Ruth", Nth: 1},
-		{Artist: "The Beatles", Album: "Revolver"},
-		{Artist: "Genesis", Nth: 4}, // the catalog has three
-	} {
-		if _, album, _, err := Owned(context.Background(), catalog{}, owned(), r); !errors.Is(err, ErrNotOwned) {
-			t.Errorf("%+v: %q, %v; want ErrNotOwned", r, album, err)
+	for name, owner := range owners(t) {
+		for _, r := range []Request{
+			{Artist: "Ruth", Nth: 1},
+			{Artist: "The Beatles", Album: "Revolver"},
+			{Artist: "Genesis", Nth: 4}, // the catalog has three
+		} {
+			if _, album, _, err := Owned(context.Background(), catalog{}, owner, r); !errors.Is(err, ErrNotOwned) {
+				t.Errorf("%s, %+v: %q, %v; want ErrNotOwned", name, r, album, err)
+			}
 		}
 	}
 }

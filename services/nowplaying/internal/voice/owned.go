@@ -6,73 +6,82 @@ import (
 	"fmt"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
-	"github.com/cdeever/eds/services/nowplaying/internal/library"
 	"github.com/cdeever/eds/services/nowplaying/internal/resolve"
 )
-
-// Library is the owner's library as an index, or nil when there is none
-// (ADR-0046).
-type Library interface {
-	Index() (*library.Index, error)
-}
 
 // ErrNotOwned means the library has nothing that answers the request: no
 // artist like the one heard, or no album like the one named.
 var ErrNotOwned = errors.New("not in the library")
 
-// Choose names the album a request asks for. With the owner's library
-// indexed it is chosen from the library, by the library's own names (Owned);
-// without one, as Album guesses it.
-func Choose(ctx context.Context, albums Counter, ix *library.Index, r Request) (artist, album string, instead []string, err error) {
-	if ix != nil {
-		return Owned(ctx, albums, ix, r)
+// Choose names the album a request asks for. With the owner's music to ask
+// it is chosen from what the owner has, by the owner's own names (Owned);
+// without, as Album guesses it.
+func Choose(ctx context.Context, albums Counter, owner Owner, r Request) (artist, album string, instead []string, err error) {
+	if owner != nil {
+		return Owned(ctx, albums, owner, r)
 	}
 	return Album(ctx, albums, r)
 }
 
-// Owned chooses the album from the owner's library (ADR-0046): the artist
-// nearest the one heard, then the album nearest the one named, or the first
-// of the artist's albums in the catalog's order that the library has. What it
-// names is the library's, character for character, so the player is asked
-// for what it has.
-func Owned(ctx context.Context, albums Counter, ix *library.Index, r Request) (artist, album string, instead []string, err error) {
-	owned, counted := ownedArtist(ctx, albums, ix, r.Artist)
+// Owned chooses the album from what the owner has (ADR-0046, ADR-0047): the
+// artist nearest the one heard, then the album nearest the one named, or the
+// first of the artist's albums in the catalog's order that the owner has.
+// What it names is the owner's, character for character, so the player is
+// asked for what it has. An error that is not ErrNotOwned is the owner not
+// answering.
+func Owned(ctx context.Context, albums Counter, owner Owner, r Request) (artist, album string, instead []string, err error) {
+	owned, counted, err := ownedArtist(ctx, albums, owner, r.Artist)
+	if err != nil {
+		return "", "", nil, err
+	}
 	if owned == nil {
 		return "", "", nil, fmt.Errorf("%w: nothing by %s", ErrNotOwned, r.Artist)
 	}
 
 	if r.Album != "" {
-		a, _ := owned.FindAlbum(r.Album)
-		if a == nil {
+		title, err := owner.FindAlbum(ctx, owned, r.Album)
+		if err != nil {
+			return "", "", nil, err
+		}
+		if title == "" {
 			return "", "", nil, fmt.Errorf("%w: no %s by %s", ErrNotOwned, r.Album, owned.Name)
 		}
-		return owned.Name, a.Title, nil, nil
+		return owned.Name, title, nil, nil
 	}
 
-	// The catalog's order, as the library has it. The album asked for may be
-	// in the library under one of its other names (a reissue's); those are
-	// asked for only if its own is not there.
+	// The catalog's order, as the owner has it. The album asked for may be
+	// held under one of its other names (a reissue's); those are asked for
+	// only if its own is not there.
 	var picked []string
 	if counted.Artist == "" {
 		counted, _ = albums.Discography(ctx, owned.Name)
 	}
 	for _, mb := range inOrder(counted, r.Nth) {
-		a := owned.Owned(mb.Title)
-		if a == nil && len(picked) == 0 {
-			a = owned.Owned(allTitles(ctx, albums, mb)...)
+		title, err := owner.Owned(ctx, owned, mb.Title)
+		if err != nil {
+			return "", "", nil, err
 		}
-		if a != nil && !contains(picked, a.Title) {
-			picked = append(picked, a.Title)
+		if title == "" && len(picked) == 0 {
+			if title, err = owner.Owned(ctx, owned, allTitles(ctx, albums, mb)...); err != nil {
+				return "", "", nil, err
+			}
+		}
+		if title != "" && !contains(picked, title) {
+			picked = append(picked, title)
 		}
 		if len(picked) > contract.MaxInstead {
 			break
 		}
 	}
 	// No catalog that knows the artist, or none of its albums owned: the
-	// library's own, by year.
+	// owner's own, by year.
 	if len(picked) == 0 {
-		for _, a := range inOrderByYear(owned.ByYear(), r.Nth) {
-			picked = append(picked, a.Title)
+		byYear, err := owner.ByYear(ctx, owned)
+		if err != nil {
+			return "", "", nil, err
+		}
+		for _, title := range inOrderByYear(byYear, r.Nth) {
+			picked = append(picked, title)
 			if len(picked) > contract.MaxInstead {
 				break
 			}
@@ -84,22 +93,28 @@ func Owned(ctx context.Context, albums Counter, ix *library.Index, r Request) (a
 	return owned.Name, picked[0], picked[1:], nil
 }
 
-// ownedArtist is the library's artist for the name heard: the nearest by
+// ownedArtist is the owner's artist for the name heard: the nearest by
 // spelling and sound, or else the catalog's artist the name is an alias of
 // ("Leonard Skinner" is Lynyrd Skynyrd's). When the catalog was asked, its
 // count is handed back too.
-func ownedArtist(ctx context.Context, albums Counter, ix *library.Index, heard string) (*library.Artist, resolve.Discography) {
-	if a, score := ix.FindArtist(heard); a != nil && score == 1 {
-		return a, resolve.Discography{}
+func ownedArtist(ctx context.Context, albums Counter, owner Owner, heard string) (*OwnedArtist, resolve.Discography, error) {
+	a, score, err := owner.FindArtist(ctx, heard)
+	if err != nil {
+		return nil, resolve.Discography{}, err
 	}
-	d, err := albums.Discography(ctx, heard)
-	if err == nil {
-		if a, _ := ix.FindArtist(d.Artist); a != nil {
-			return a, d
+	if a != nil && score == 1 {
+		return a, resolve.Discography{}, nil
+	}
+	if d, err := albums.Discography(ctx, heard); err == nil {
+		alias, _, err := owner.FindArtist(ctx, d.Artist)
+		if err != nil {
+			return nil, resolve.Discography{}, err
+		}
+		if alias != nil {
+			return alias, d, nil
 		}
 	}
-	a, _ := ix.FindArtist(heard)
-	return a, resolve.Discography{}
+	return a, resolve.Discography{}, nil
 }
 
 // inOrder are the counted albums from the Nth on: later ones for the first or
@@ -117,14 +132,14 @@ func inOrder(d resolve.Discography, nth int) []resolve.StudioAlbum {
 	return out
 }
 
-func inOrderByYear(albums []library.Album, nth int) []library.Album {
-	var out []library.Album
+func inOrderByYear(titles []string, nth int) []string {
+	var out []string
 	switch {
-	case nth > 0 && nth <= len(albums):
-		out = append(out, albums[nth-1:]...)
-	case nth < 0 && -nth <= len(albums):
-		for i := len(albums) + nth; i >= 0; i-- {
-			out = append(out, albums[i])
+	case nth > 0 && nth <= len(titles):
+		out = append(out, titles[nth-1:]...)
+	case nth < 0 && -nth <= len(titles):
+		for i := len(titles) + nth; i >= 0; i-- {
+			out = append(out, titles[i])
 		}
 	}
 	return out

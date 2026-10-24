@@ -1,7 +1,7 @@
 [Unit]
 Description=EdS voiced (container)
-Wants=network-online.target eds-scribe.service
-After=network-online.target eds-scribe.service
+Wants=network-online.target eds-scribe.service eds-inventory.service
+After=network-online.target eds-scribe.service eds-inventory.service
 
 # kit.env names the broker and the tenant. It also carries lightd's login,
 # which voiced-broker.env overrides with voiced's own (ADR-0042).
@@ -11,12 +11,18 @@ After=network-online.target eds-scribe.service
 # The image's user is distroless's nonroot, 65532, which owns it. It holds
 # library.json too, the owner's library as an index (ADR-0046), copied there
 # by `make library`; until it is, albums are asked for by the catalog's names.
+#
+# NP_INVENTORY_URL is eds-inventory, on this host (ADR-0047): with it set,
+# the inventory is asked and library.json is not read. eds-inventory.service
+# is installed from eds-inventory's own deploy; until it is, or while it does
+# not answer, albums are guessed at as they are with no library.
 [Service]
 Environment=IMAGE=localhost/eds-voiced:latest
 ExecStartPre=-/usr/bin/podman rm -f eds-voiced
 ExecStart=/usr/bin/podman run --rm --name eds-voiced --network host \
   --env-file /opt/eds/kit.env --env-file /opt/eds/voiced-broker.env \
   -v /var/lib/eds-voiced:/state:Z -e NP_STATE_DIR=/state -e NP_LIBRARY=/state/library.json \
+  -e NP_INVENTORY_URL=http://127.0.0.1:8740 \
   -v /opt/eds/deevnet-root-ca.pem:/kit/deevnet-root-ca.pem:ro -e MQTT_CA_FILE=/kit/deevnet-root-ca.pem \
   ${IMAGE}
 ExecStop=/usr/bin/podman stop -t 10 eds-voiced

@@ -14,7 +14,6 @@ import (
 
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
-	"github.com/cdeever/eds/services/nowplaying/internal/library"
 	"github.com/cdeever/eds/services/nowplaying/internal/resolve"
 )
 
@@ -80,8 +79,9 @@ type Listener struct {
 	Prefix string
 	Scribe Transcriber
 	Albums Counter
-	// Library is the owner's library (ADR-0046); nil, or an index not yet
-	// made, and albums are guessed as they were (ADR-0045).
+	// Library is the owner's music: eds-inventory (ADR-0047) or the library
+	// index (ADR-0046). Nil, or nothing there yet, and albums are guessed as
+	// they were (ADR-0045).
 	Library Library
 	Publish func(topic string, payload []byte, retained bool) error
 	Logger  *slog.Logger
@@ -153,9 +153,9 @@ func (l *Listener) hear(ctx context.Context, device string, wav []byte) Heard {
 		return heard
 	}
 
-	ix := l.index(log)
+	owner := l.owner(log)
 	r, err := Parse(text)
-	if err != nil && ix != nil {
+	if err != nil && owner != nil {
 		r, err = ParseOwned(text)
 	}
 	if err != nil {
@@ -163,7 +163,13 @@ func (l *Listener) hear(ctx context.Context, device string, wav []byte) Heard {
 		heard.Reason = "not a request for an album"
 		return heard
 	}
-	artist, album, instead, err := Choose(ctx, l.Albums, ix, r)
+	artist, album, instead, err := Choose(ctx, l.Albums, owner, r)
+	if err != nil && owner != nil && !errors.Is(err, ErrNotOwned) && ctx.Err() == nil {
+		// Asked, and not answered: the album is guessed at, as it is with no
+		// library at all, and that is said.
+		log.Warn("the owner's music could not be asked; the album is guessed at", "error", err)
+		artist, album, instead, err = Album(ctx, l.Albums, r)
+	}
 	if err != nil {
 		log.Info("no album for the request", "artist", r.Artist, "nth", r.Nth, "error", err)
 		heard.Reason = "no such album: " + reason(err)
@@ -340,17 +346,17 @@ func (s Scribe) Transcribe(ctx context.Context, wav []byte) (Words, error) {
 	return Words{Text: t.Text, Confident: t.Confident != nil && *t.Confident}, nil
 }
 
-// index is the owner's library as an index, or nil: none configured, none
-// copied yet, or one that cannot be read, which is said, since the requests
-// are then guessed at (ADR-0046). The first index copied was unreadable to
-// voiced's container, and nothing said so (2026-10-24).
-func (l *Listener) index(log *slog.Logger) *library.Index {
+// owner is the owner's music, or nil: none configured, none copied yet, or
+// an index that cannot be read, which is said, since the requests are then
+// guessed at (ADR-0046). The first index copied was unreadable to voiced's
+// container, and nothing said so (2026-10-24).
+func (l *Listener) owner(log *slog.Logger) Owner {
 	if l.Library == nil {
 		return nil
 	}
-	ix, err := l.Library.Index()
+	o, err := l.Library.Owner()
 	if err != nil {
 		log.Warn("the library index cannot be read; albums are guessed at", "error", err)
 	}
-	return ix
+	return o
 }

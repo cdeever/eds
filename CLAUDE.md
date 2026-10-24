@@ -408,6 +408,13 @@ copies it to `/var/lib/eds-voiced`, and `internal/library` finds the
 nearest artist and album, so `play_album` names titles the library has.
 **Neither the XML nor the index is ever committed**; without one, voiced
 guesses as above.
+**voiced now asks eds-inventory instead** (ADR-0047, `Proposed`):
+`NP_INVENTORY_URL` (`http://127.0.0.1:8740` on the workload) names it, and
+then `library.json` is not read. eds-inventory is its own repository
+(`../eds-inventory`), deployed onto this workload by its own `deploy/`, with
+the same matching carried over. voiced asks through `voice.Owner`; an
+inventory that does not answer is warned about and the album guessed at,
+never a lost request. `NP_TEST_INVENTORY` runs a test against a real one.
 
 **A request can be spoken** (ADR-0042). A device sends what followed its
 wake word as one WAV on `voice/<id>/utterance`; `voiced`
