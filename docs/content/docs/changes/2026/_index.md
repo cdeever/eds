@@ -47,4 +47,4 @@ bookCollapseSection: true
 | CHG-0037 | 2026-10-24 | [A Request Answered Sooner](0037-a-request-answered-sooner/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0038 | 2026-10-24 | [A Misheard "Play", and a Longer Pre-roll](0038-a-misheard-play-and-a-longer-pre-roll/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0039 | 2026-10-24 | [scribe in Two, and "Hey Jarvis" in Its Prompt](0039-scribe-in-two-and-hey-jarvis-in-its-prompt/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
-| CHG-0040 | 2026-10-24 | [The Owner's Library for voiced](0040-the-owners-library-for-voiced/) | Upgrade | {{< status-badge "planned" "Planned" >}} |
+| CHG-0040 | 2026-10-24 | [The Owner's Library for voiced](0040-the-owners-library-for-voiced/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |

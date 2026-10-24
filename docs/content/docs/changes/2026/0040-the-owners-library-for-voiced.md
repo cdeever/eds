@@ -9,7 +9,7 @@ weight: 40
 |---|---|
 | **Date** | 2026-10-24 |
 | **Change type** | Upgrade |
-| **Status** | {{< status-badge "planned" "Planned" >}} |
+| **Status** | {{< status-badge "in-progress" "In progress" >}} |
 | **Systems** | The services workload: voiced sent and its unit replaced; `library.json` copied to `/var/lib/eds-voiced`. The relay Pi: npagent, for the driver's title matching |
 | **How** | `make -C deploy ship WHERE=builder`, `make -C deploy units`, `make -C deploy library XML=…`; the relay's push |
 | **Risk** | Low. Most likely to go wrong: a near but wrong artist or album chosen; without the index, voiced is as it was |
@@ -47,3 +47,4 @@ next request. Or `git revert` this change's commit, and ship.
 
 | When (UTC) | What happened |
 |---|---|
+| 05:15–05:19 | `ship WHERE=builder` from `72fb607`: nowplayd and voiced sent, 4 MB each; nothing else built or sent. `units` for `NP_LIBRARY`; `library` indexed 1,912 artists and 3,665 albums, 311 KB sent. The relay's npagent pushed and active, the iTunes driver online. The turntable driver could not open its capture device on the borrowed relay Pi, which has none. |
