@@ -11,16 +11,20 @@ on exactly as it did. EdS listens in on it. This page is the short version;
 the project's own page has the whole of it:
 [S/PDIF Audio Distribution](https://chrisdeever.com/electronics/spdif-audio-distribution/).
 
-## What was already there
+## Whole-house digital sound distribution
 
 A media server in the basement sends one digital feed (S/PDIF) to every
-room, and each room's own stereo plays it. Put a record on the turntable and
-it takes over the feed, so the record plays in every room with no button
-pressed anywhere. A smart power strip on the turntable is how the system
-knows a record has taken over: switch the turntable on and the house is the
-record's; switch it off and the media server has it back.
+room, and each room's own stereo plays it.
 
-The rooms with music:
+### Switching between the turntable and the house music
+
+Put a record on the turntable and it takes over the feed, so the record
+plays in every room with no button pressed anywhere. A smart power strip on
+the turntable is how the system knows a record has taken over: switch the
+turntable on and the house is the record's; switch it off and the media
+server has it back.
+
+### Listening areas
 
 - **Home office and vinyl listening room**: the primary listening room, and
   home of the turntable and the record collection.
