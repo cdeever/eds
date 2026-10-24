@@ -40,3 +40,4 @@ bookCollapseSection: true
 | CHG-0030 | 2026-10-19 | [The Console Switches the Stand](0030-the-console-switches-the-stand/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0031 | 2026-10-21 | [The Turntable Heard Through a UFO202](0031-the-turntable-heard-through-a-ufo202/) | Configuration | {{< status-badge "complete" "Complete" >}} |
 | CHG-0032 | 2026-10-23 | [American Idiot Has a Look](0032-american-idiot-has-a-look/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
+| CHG-0033 | 2026-10-23 | [An Album Asked For on the Bus](0033-an-album-asked-for-on-the-bus/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
