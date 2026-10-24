@@ -8,9 +8,14 @@ against a folder of covers.
 
 from __future__ import annotations
 
+import logging
+import os
+import threading
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from . import __version__, wav
@@ -18,14 +23,38 @@ from .transcribe import Transcriber, Whisper
 
 CONTRACT_VERSION = 1
 
+log = logging.getLogger("uvicorn.error")
+
+# Replaced in tests; the real one loads its model as the service starts.
+transcriber: Transcriber = Whisper()
+
+
+def _preload() -> None:
+    started = time.monotonic()
+    try:
+        transcriber.load()
+    except Exception:  # loaded again on the first request, and said there
+        log.exception("the model could not be loaded")
+        return
+    log.info("model loaded in %.1f s", time.monotonic() - started)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # In the background, so that the service answers /healthz while the model
+    # loads, and a request that arrives meanwhile waits for it.
+    # SCRIBE_PRELOAD=0 leaves it to the first request.
+    if hasattr(transcriber, "load") and os.environ.get("SCRIBE_PRELOAD", "1") != "0":
+        threading.Thread(target=_preload, name="preload", daemon=True).start()
+    yield
+
+
 app = FastAPI(
     title="EdS scribe",
     version=__version__,
     summary="A short spoken request in, its words out.",
+    lifespan=lifespan,
 )
-
-# Replaced in tests; the real one loads its model on first use.
-transcriber: Transcriber = Whisper()
 
 
 class Transcript(BaseModel):
@@ -55,6 +84,8 @@ async def transcribe(request: Request) -> Transcript:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
     started = time.monotonic()
-    text = transcriber(samples)
+    # On a thread of its own: writing down takes seconds, and the event loop
+    # has /healthz to answer meanwhile.
+    text = await run_in_threadpool(transcriber, samples)
     took = int((time.monotonic() - started) * 1000)
     return Transcript(text=text, seconds=round(wav.seconds(samples), 2), took_ms=took)

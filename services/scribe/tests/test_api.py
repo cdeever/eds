@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -44,3 +46,31 @@ def test_more_than_any_recording_is_refused(client):
 
 def test_health(client):
     assert client.get("/healthz").json()["status"] == "ok"
+
+
+class Loading:
+    """A transcriber that says when it was loaded."""
+
+    def __init__(self):
+        self.loaded = threading.Event()
+
+    def load(self):
+        self.loaded.set()
+
+    def __call__(self, samples):
+        return "Play Rocks by Aerosmith."
+
+
+def test_the_model_is_loaded_as_the_service_starts(monkeypatch):
+    fake = Loading()
+    monkeypatch.setattr(api, "transcriber", fake)
+    with TestClient(api.app):
+        assert fake.loaded.wait(2), "the model was not loaded at startup"
+
+
+def test_preloading_can_be_left_to_the_first_request(monkeypatch):
+    fake = Loading()
+    monkeypatch.setattr(api, "transcriber", fake)
+    monkeypatch.setenv("SCRIBE_PRELOAD", "0")
+    with TestClient(api.app):
+        assert not fake.loaded.wait(0.2)

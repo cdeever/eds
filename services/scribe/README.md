@@ -32,7 +32,10 @@ make scribe WAVS=~/requests   # write down every WAV in a folder
 faster-whisper, `base.en`, int8, on the CPU (`SCRIBE_MODEL`,
 `SCRIBE_THREADS`, default 2). The workload has two cores and two gigabytes;
 `base.en` uses a few hundred megabytes of it. The image fetches the model
-when it is built and runs offline. Requests are written down one at a time,
+when it is built and runs offline, and the service loads it as it starts, in
+the background: `/healthz` answers at once, and a request that arrives before
+the model is ready waits for it (`SCRIBE_PRELOAD=0` leaves it to the first
+request). Writing down runs off the event loop. Requests are written down one at a time,
 because two at once on two cores are each slower than both in turn.
 
 The model is prompted with a sentence like the requests it will hear, which
