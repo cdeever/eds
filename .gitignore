@@ -90,3 +90,8 @@ deploy/backend/*.img.xz.sha256
 deploy/backend/stage/
 deploy/backend/devices.json
 deploy/backend/deevnet-kit-ca.pem
+
+# The owner's iTunes library and the index made from it: personal, and never
+# committed (ADR-0046).
+iTunes Library.xml
+library.json

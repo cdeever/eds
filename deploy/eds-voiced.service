@@ -8,13 +8,15 @@ After=network-online.target eds-scribe.service
 #
 # /var/lib/eds-voiced keeps the discographies it has counted, so that a
 # restart does not send the next request to MusicBrainz again (CHG-0037).
-# The image's user is distroless's nonroot, 65532, which owns it.
+# The image's user is distroless's nonroot, 65532, which owns it. It holds
+# library.json too, the owner's library as an index (ADR-0046), copied there
+# by `make library`; until it is, albums are asked for by the catalog's names.
 [Service]
 Environment=IMAGE=localhost/eds-voiced:latest
 ExecStartPre=-/usr/bin/podman rm -f eds-voiced
 ExecStart=/usr/bin/podman run --rm --name eds-voiced --network host \
   --env-file /opt/eds/kit.env --env-file /opt/eds/voiced-broker.env \
-  -v /var/lib/eds-voiced:/state:Z -e NP_STATE_DIR=/state \
+  -v /var/lib/eds-voiced:/state:Z -e NP_STATE_DIR=/state -e NP_LIBRARY=/state/library.json \
   -v /opt/eds/deevnet-root-ca.pem:/kit/deevnet-root-ca.pem:ro -e MQTT_CA_FILE=/kit/deevnet-root-ca.pem \
   ${IMAGE}
 ExecStop=/usr/bin/podman stop -t 10 eds-voiced

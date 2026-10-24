@@ -16,12 +16,12 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
 	"github.com/cdeever/eds/services/nowplaying/internal/dacp"
 	"github.com/cdeever/eds/services/nowplaying/internal/driver"
+	"github.com/cdeever/eds/services/nowplaying/internal/library"
 )
 
 // Player is the part of the protocol client the driver uses.
@@ -174,7 +174,26 @@ const albumCheck = 1500 * time.Millisecond
 // player answers a request that matched nothing just as it answers one that
 // matched (ADR-0040). The match is the player's; nothing nearer is tried.
 func (d *Driver) playAlbum(ctx context.Context, artist, album string) error {
-	if err := d.Player.PlayAlbum(ctx, artist, album); err != nil {
+	// The whole title first: with the owner's library known, it is the
+	// library's own (ADR-0046). Then its plain beginning, for a title a
+	// catalog spelt and the library may have spelt otherwise.
+	starts := []string{dacp.Stem(album)}
+	if q := dacp.QueryStem(album); q != starts[0] {
+		starts = append(starts, q)
+	}
+	var err error
+	for _, start := range starts {
+		if err = d.tryAlbum(ctx, artist, album, start); !errors.Is(err, ErrAlbumNotFound) {
+			return err
+		}
+	}
+	return err
+}
+
+// tryAlbum asks for the albums whose title begins with start, and says
+// whether what then plays is album.
+func (d *Driver) tryAlbum(ctx context.Context, artist, album, start string) error {
+	if err := d.Player.PlayAlbum(ctx, artist, start); err != nil {
 		return err
 	}
 	wait := d.AlbumCheck
@@ -224,7 +243,7 @@ func begins(title, asked string) bool {
 	// title has are matched, and see what follows the last of them.
 	matched, end := 0, -1
 	for i, r := range title {
-		f := foldRune(r)
+		f := library.FoldRune(r)
 		if f == 0 {
 			continue
 		}
@@ -257,48 +276,19 @@ func continues(rest string) bool {
 	}
 	first, size := utf8.DecodeRuneInString(rest)
 	next, _ := utf8.DecodeRuneInString(rest[size:])
-	return strings.ContainsRune("'\".", first) && foldRune(next) != 0
+	return strings.ContainsRune("'\".", first) && library.FoldRune(next) != 0
 }
 
 // fold is a title's letters and digits, lowercased and without accents.
 func fold(s string) string {
 	var b strings.Builder
 	for _, r := range s {
-		if f := foldRune(r); f != 0 {
+		if f := library.FoldRune(r); f != 0 {
 			b.WriteRune(f)
 		}
 	}
 	return b.String()
 }
-
-// foldRune is a letter or digit as it is compared, or 0 for anything else.
-func foldRune(r rune) rune {
-	r = unicode.ToLower(r)
-	if f, ok := unaccented[r]; ok {
-		return f
-	}
-	if r < 128 && (unicode.IsLetter(r) || unicode.IsDigit(r)) {
-		return r
-	}
-	if unicode.IsLetter(r) || unicode.IsDigit(r) {
-		return r
-	}
-	return 0
-}
-
-// unaccented are the accented letters album titles use, as their plain ones.
-var unaccented = func() map[rune]rune {
-	m := map[rune]rune{}
-	for plain, accented := range map[rune]string{
-		'a': "áàâäãåāăą", 'c': "çćč", 'e': "éèêëēĕėęě", 'i': "íìîïīĭį", 'n': "ñńň",
-		'o': "óòôöõøōŏő", 'u': "úùûüūŭůű", 'y': "ýÿ", 's': "śšş", 'z': "źżž",
-	} {
-		for _, r := range accented {
-			m[r] = plain
-		}
-	}
-	return m
-}()
 
 // nudge moves the volume by step. The player is asked where it is first,
 // because it is the only one that knows: the slider in its own window moves

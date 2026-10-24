@@ -299,14 +299,17 @@ func (c *Client) Volume(ctx context.Context) (int, error) {
 // anything matched, and with nothing matched it plays the artist's songs
 // instead, from the album first by name (2026-10-24, "Abacab" for "From
 // Genesis to Revelation"); ask Now afterwards.
-func (c *Client) PlayAlbum(ctx context.Context, artist, album string) error {
-	if strings.TrimSpace(artist) == "" || strings.TrimSpace(album) == "" {
+//
+// start is the beginning of the title to ask for: the whole of it (Stem), or
+// its plain words (QueryStem) when the library may spell the rest otherwise.
+func (c *Client) PlayAlbum(ctx context.Context, artist, start string) error {
+	if strings.TrimSpace(artist) == "" || strings.TrimSpace(start) == "" {
 		return fmt.Errorf("dacp: an album is played by its artist and its name")
 	}
 	if _, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=clear&session-id=%d", c.session.Load()), 1<<20); err != nil {
 		return err
 	}
-	query := "'daap.songartist:" + quote(artist) + "'+'daap.songalbum:" + quote(QueryStem(album)) + "*'"
+	query := "'daap.songartist:" + quote(artist) + "'+'daap.songalbum:" + quote(start) + "*'"
 	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=play&query=%s&index=0&sort=album&session-id=%d",
 		query, c.session.Load()), 1<<20)
 	return err

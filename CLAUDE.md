@@ -399,6 +399,13 @@ For an album asked for by its place, voiced names up to three of the
 artist's next albums in `instead`, and the driver plays the first the
 library has (ADR-0045): "Genesis' first album" is the first of theirs the
 owner has. A miss empties iTunes' queue, so missing them all stops the music.
+**With the owner's library indexed, voiced chooses from it** (ADR-0046):
+`cmd/library index` makes `library.json` from iTunes' XML (artist, album,
+year, tracks, compilation; nothing else), `make -C deploy library XML=…`
+copies it to `/var/lib/eds-voiced`, and `internal/library` finds the
+nearest artist and album, so `play_album` names titles the library has.
+**Neither the XML nor the index is ever committed**; without one, voiced
+guesses as above.
 
 **A request can be spoken** (ADR-0042). A device sends what followed its
 wake word as one WAV on `voice/<id>/utterance`; `voiced`

@@ -25,7 +25,7 @@ VERSION   ?= $(shell git -C $(REPO) describe --always --dirty 2>/dev/null || ech
 SERVICES := eds-palette eds-lightd eds-nowplayd eds-console eds-scribe eds-voiced
 UNITS    := $(addsuffix .service,$(SERVICES))
 
-.PHONY: help images load kit-env broker-env tls-files discogs-env ship units deploy restart prune status logs clean
+.PHONY: help images load kit-env broker-env tls-files discogs-env ship units library deploy restart prune status logs clean
 
 help:
 	@echo "deploy - palette, lightd, nowplayd, the console, scribe and voiced onto $(HOST)"
@@ -37,6 +37,7 @@ help:
 	@echo "  kit-env  write kit.env and each service's broker login from the tenant's Terraform outputs"
 	@echo "  tls-files  write the console's key and certificate from the tenant's Terraform outputs"
 	@echo "  units    copy the settings, deevnet-root-ca.pem and the units; start"
+	@echo "  library  index XML=\"…/iTunes Library.xml\" and copy the index to voiced"
 	@echo "  restart  restart the services"
 	@echo "  status   systemd status of each"
 	@echo "  logs     follow the services' logs"
@@ -183,6 +184,18 @@ units: kit-env tls-files discogs-env
 		sudo firewall-cmd --quiet --permanent --add-service=http --add-service=https && sudo firewall-cmd --quiet --reload && \
 		sudo systemctl daemon-reload && sudo systemctl enable $(SERVICES) && \
 		sudo systemctl restart $(SERVICES)'
+
+# The owner's library, as voiced matches requests against it (ADR-0046):
+# indexed here, from the XML iTunes writes, and only the index sent - a few
+# hundred KB of artists, albums and years, no paths or play counts. voiced
+# reads it again at its next request. Neither file is committed.
+library:
+	@if [[ ! -s "$(XML)" ]]; then echo 'usage: make library XML="/path/to/iTunes Library.xml"' >&2; exit 2; fi
+	@umask 077; cd $(SVC)/nowplaying && go run ./cmd/library index "$(XML)" > $(CURDIR)/library.json
+	@ls -l library.json | awk '{print "  " $$5 " bytes"}'
+	scp -l 40000 library.json $(HOST):library.json
+	ssh $(HOST) 'sudo install -m 0400 -o 65532 -g 65532 library.json /var/lib/eds-voiced/ && rm -f library.json'
+	@rm -f library.json
 
 deploy: images
 	$(MAKE) load

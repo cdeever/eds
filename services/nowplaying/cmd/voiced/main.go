@@ -15,6 +15,9 @@
 //	NP_CONTACT                   what MusicBrainz is told, as for nowplayd
 //	NP_STATE_DIR                 where discographies are kept across restarts
 //	                             (default: none; they are asked for again)
+//	NP_LIBRARY                   the owner's library index, from cmd/library
+//	                             (ADR-0046; default: none, and albums are
+//	                             asked for by the catalog's names)
 package main
 
 import (
@@ -33,6 +36,7 @@ import (
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
 	"github.com/cdeever/eds/services/nowplaying/internal/calls"
 	"github.com/cdeever/eds/services/nowplaying/internal/config"
+	"github.com/cdeever/eds/services/nowplaying/internal/library"
 	"github.com/cdeever/eds/services/nowplaying/internal/resolve"
 	"github.com/cdeever/eds/services/nowplaying/internal/voice"
 )
@@ -61,6 +65,7 @@ func run(logger *slog.Logger) error {
 	}
 	scribe := config.Str("NP_SCRIBE_URL", "http://127.0.0.1:8733")
 	stateDir := config.Str("NP_STATE_DIR", "")
+	libraryPath := config.Str("NP_LIBRARY", "")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -97,6 +102,10 @@ func run(logger *slog.Logger) error {
 		}, logger),
 		Logger:  logger,
 		Timeout: 90 * time.Second,
+	}
+	// A nil *library.File is not a nil Library.
+	if libraryPath != "" {
+		listener.Library = &library.File{Path: libraryPath}
 	}
 
 	b := common.Broker

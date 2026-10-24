@@ -76,9 +76,12 @@ const maxOtherTitles = 3
 
 // Listener makes each request heard into a command.
 type Listener struct {
-	Prefix  string
-	Scribe  Transcriber
-	Albums  Counter
+	Prefix string
+	Scribe Transcriber
+	Albums Counter
+	// Library is the owner's library (ADR-0046); nil, or an index not yet
+	// made, and albums are guessed as they were (ADR-0045).
+	Library Library
 	Publish func(topic string, payload []byte, retained bool) error
 	Logger  *slog.Logger
 
@@ -155,7 +158,7 @@ func (l *Listener) hear(ctx context.Context, device string, wav []byte) Heard {
 		heard.Reason = "not a request for an album"
 		return heard
 	}
-	artist, album, instead, err := Album(ctx, l.Albums, r)
+	artist, album, instead, err := Choose(ctx, l.Albums, l.Library, r)
 	if err != nil {
 		log.Info("no album for the request", "artist", r.Artist, "nth", r.Nth, "error", err)
 		heard.Reason = "no such album: " + reason(err)
