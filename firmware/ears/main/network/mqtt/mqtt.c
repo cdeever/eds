@@ -200,6 +200,13 @@ esp_err_t ea_mqtt_start(void)
     return esp_mqtt_client_start(client);
 }
 
+void ea_mqtt_send_woken(void)
+{
+    if (client != NULL && connected) {
+        esp_mqtt_client_publish(client, EA_TOPIC_WOKEN, "{\"v\":1}", 0, 0, 0);
+    }
+}
+
 bool ea_mqtt_send_request(const uint8_t *wav, size_t len)
 {
     if (client == NULL || !connected) {

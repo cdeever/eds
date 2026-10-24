@@ -236,7 +236,7 @@ func TestTheCommandWireFormIsWhatTheReferencePageSays(t *testing.T) {
 }
 
 func TestEveryCommandRoundTrips(t *testing.T) {
-	for _, name := range []string{PlayPause, Next, Previous, VolumeUp, VolumeDown} {
+	for _, name := range []string{PlayPause, Next, Previous, VolumeUp, VolumeDown, Duck, Unduck} {
 		payload, err := EncodeCommand(Command{Command: name})
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)

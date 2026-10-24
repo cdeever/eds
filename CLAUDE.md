@@ -377,6 +377,11 @@ Spotify's Web API, only for playback on a device that counts (ADR-0032). The com
 **A command is never retained and a retained one is ignored**; the screen
 sends at QoS 0 and never queues one. The turntable takes none. A controller never
 names a source, and the console sends no command.
+**`duck` and `unduck` turn the music down while a request is heard**
+(ADR-0044): the device publishes `voice/<id>/woken`, voiced sends `duck` to
+whatever is current, and `unduck` once it has answered; the iTunes driver
+goes to a quarter and comes back on `unduck`, before a `play_album`, or by
+itself after ten seconds. A volume press while ducked ends it where it is.
 **The one command that is not a button is `play_album`** (ADR-0040): it
 names an artist and an album, and `nowplayd` passes it to `NP_ALBUM_SOURCE`
 (`itunes`) whatever is current. iTunes for Windows refuses this remote its
@@ -446,6 +451,7 @@ on the console, which is told and cannot find out.
 | `eds/nowplaying/command` | cover screen → nowplayd | **never** |
 | `eds/nowplaying/source/<id>/command` | nowplayd → driver | **never** |
 | `eds/voice/<id>/utterance` | device → voiced | **never** |
+| `eds/voice/<id>/woken` | device → voiced | **never** |
 | `eds/voice/<id>/heard` | voiced → device | **never** |
 | `eds/voiced/status` | voiced → broker | yes (LWT) |
 | `eds/screen/<id>/status` | device → broker | yes (LWT) |

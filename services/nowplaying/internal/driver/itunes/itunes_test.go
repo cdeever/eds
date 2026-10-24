@@ -605,3 +605,72 @@ func TestAnAlbumWithNoSessionIsRefused(t *testing.T) {
 		t.Errorf("pressed %v", got)
 	}
 }
+
+// --- ducking (ADR-0044) ------------------------------------------------------
+
+func playing(volume int) *script {
+	return &script{volume: volume, statuses: []dacp.Status{st(1, true, false, "A", "One", "Album", abba, 231000)}}
+}
+
+func TestADuckIsAQuarterAndUnduckBringsItBack(t *testing.T) {
+	p := playing(60)
+	d := live(t, p)
+	for _, c := range []string{contract.Duck, contract.Duck, contract.Unduck, contract.Unduck} {
+		if err := d.Command(context.Background(), command(c)); err != nil {
+			t.Fatalf("%s: %v", c, err)
+		}
+	}
+	// The second duck lowers nothing further; the second unduck restores
+	// nothing more.
+	if got := fmt.Sprint(p.presses()); got != "[volume=15 volume=60]" {
+		t.Errorf("pressed %s", got)
+	}
+}
+
+func TestAnAlbumStartsAtTheVolumeTheRoomHad(t *testing.T) {
+	p := playing(60)
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	after := st(2, true, false, "Aerosmith", "Make It", "Aerosmith", abba, 220000)
+	p.mu.Lock()
+	p.after = &after
+	p.mu.Unlock()
+
+	_ = d.Command(context.Background(), command(contract.Duck))
+	if err := d.Command(context.Background(), album("Aerosmith", "Aerosmith")); err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprint(p.presses()); got != "[volume=15 volume=60 album=Aerosmith/Aerosmith]" {
+		t.Errorf("pressed %s", got)
+	}
+}
+
+// Nobody said anything after the wake word: the music comes back by itself.
+func TestADuckEndsByItself(t *testing.T) {
+	p := playing(60)
+	d := live(t, p)
+	d.DuckFor = 20 * time.Millisecond
+	_ = d.Command(context.Background(), command(contract.Duck))
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) && fmt.Sprint(p.presses()) != "[volume=15 volume=60]" {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got := fmt.Sprint(p.presses()); got != "[volume=15 volume=60]" {
+		t.Errorf("pressed %s", got)
+	}
+}
+
+// A hand on the volume while ducked has it from there: nothing is put back
+// over it, then or later.
+func TestAVolumePressEndsADuckWhereItIs(t *testing.T) {
+	p := playing(60)
+	d := live(t, p)
+	d.DuckFor = 20 * time.Millisecond
+	_ = d.Command(context.Background(), command(contract.Duck))
+	_ = d.Command(context.Background(), command(contract.VolumeUp))
+	time.Sleep(60 * time.Millisecond)
+	_ = d.Command(context.Background(), command(contract.Unduck))
+	if got := fmt.Sprint(p.presses()); got != "[volume=15 volume=20]" {
+		t.Errorf("pressed %s", got)
+	}
+}

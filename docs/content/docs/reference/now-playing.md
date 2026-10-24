@@ -246,7 +246,7 @@ It publishes to `nowplaying/command`:
 | Field | |
 |---|---|
 | `v` | `1`. Another version is refused |
-| `command` | `play_pause`, `next`, `previous`, `volume_up`, `volume_down` or `play_album`. Anything else is refused |
+| `command` | `play_pause`, `next`, `previous`, `volume_up`, `volume_down`, `duck`, `unduck` or `play_album`. Anything else is refused |
 | `from` | optional: who sent it, for the logs. Not trusted for anything |
 | `artist`, `album` | `play_album` only, and both required: the album's names as the player's library has them, at most 200 bytes each |
 
@@ -266,6 +266,16 @@ player.
   nothing says so.
 - `volume_up` and `volume_down` move the player's volume five points in a
   hundred. There is no ceiling.
+
+### Turning the music down while a request is heard
+
+`duck` and `unduck` are voiced's
+([ADR-0044](/docs/architecture/decisions/0044-the-music-is-turned-down-while-a-request-is-heard/)),
+sent when a device says it woke and when its request is answered. They go
+to the current source as the buttons do. The iTunes driver turns the music
+to a quarter and keeps what it was; it comes back on `unduck`, before a
+`play_album`, or by itself after ten seconds. A volume press while ducked
+ends the duck where it is.
 
 ### Playing an album
 

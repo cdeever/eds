@@ -63,11 +63,27 @@ type Driver struct {
 	// is asked what plays; zero is albumCheck.
 	AlbumCheck time.Duration
 
+	// DuckFor is how long a duck lasts if nothing ends it; zero is
+	// DuckFor's default (ADR-0044).
+	DuckFor time.Duration
+
 	// Whether there is a session a command could be sent on. Commands arrive
 	// from the bus, on a goroutine that is not the one following the player.
 	mu   sync.Mutex
 	live bool
+
+	// The volume a duck took the player down from, and what ends it if
+	// nothing else does. ducking is false when the music is as it was.
+	ducking bool
+	ducked  int
+	undo    *time.Timer
 }
+
+// DuckTo is how far a duck turns the music down: to a quarter of what it was.
+const DuckTo = 4
+
+// duckFor is how long a duck lasts if nothing ends it: past any request.
+const duckFor = 10 * time.Second
 
 // VolumeStep is how far one volume command moves the player, of 100. Twenty
 // presses from silence to full: fine enough to settle on a level, coarse
@@ -101,11 +117,21 @@ func (d *Driver) Command(ctx context.Context, c contract.Command) error {
 	case contract.Previous:
 		return d.Player.Previous(ctx)
 	case contract.VolumeUp:
+		d.forgetDuck() // whoever pressed it has the volume now
 		return d.nudge(ctx, VolumeStep)
 	case contract.VolumeDown:
+		d.forgetDuck()
 		return d.nudge(ctx, -VolumeStep)
 	case contract.PlayAlbum:
+		// The album starts at the volume the room had, not the ducked one.
+		if err := d.unduck(ctx); err != nil {
+			d.logger().Warn("the volume could not be brought back before an album", "error", err)
+		}
 		return d.playAlbum(ctx, c.Artist, c.Album)
+	case contract.Duck:
+		return d.duck(ctx)
+	case contract.Unduck:
+		return d.unduck(ctx)
 	}
 	return fmt.Errorf("itunes: no such command %q", c.Command)
 }
@@ -158,6 +184,74 @@ func (d *Driver) nudge(ctx context.Context, step int) error {
 		return nil // already as far as it goes
 	}
 	return d.Player.SetVolume(ctx, to)
+}
+
+// duck turns the music down while a request is heard (ADR-0044), and sets
+// it to come back by itself. A duck while ducked lowers nothing further: it
+// only waits again.
+func (d *Driver) duck(ctx context.Context) error {
+	d.mu.Lock()
+	already := d.ducking
+	d.mu.Unlock()
+	if !already {
+		volume, err := d.Player.Volume(ctx)
+		if err != nil {
+			return err
+		}
+		if err := d.Player.SetVolume(ctx, volume/DuckTo); err != nil {
+			return err
+		}
+		d.mu.Lock()
+		d.ducking, d.ducked = true, volume
+		d.mu.Unlock()
+	}
+
+	wait := d.DuckFor
+	if wait == 0 {
+		wait = duckFor
+	}
+	d.mu.Lock()
+	if d.undo != nil {
+		d.undo.Stop()
+	}
+	d.undo = time.AfterFunc(wait, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := d.unduck(ctx); err != nil {
+			d.logger().Warn("the volume could not be brought back after a duck", "error", err)
+		}
+	})
+	d.mu.Unlock()
+	return nil
+}
+
+// unduck brings back the volume a duck took down. Not ducked, it does
+// nothing.
+func (d *Driver) unduck(ctx context.Context) error {
+	d.mu.Lock()
+	if !d.ducking {
+		d.mu.Unlock()
+		return nil
+	}
+	to := d.ducked
+	d.ducking = false
+	if d.undo != nil {
+		d.undo.Stop()
+		d.undo = nil
+	}
+	d.mu.Unlock()
+	return d.Player.SetVolume(ctx, to)
+}
+
+// forgetDuck ends a duck without bringing anything back.
+func (d *Driver) forgetDuck() {
+	d.mu.Lock()
+	d.ducking = false
+	if d.undo != nil {
+		d.undo.Stop()
+		d.undo = nil
+	}
+	d.mu.Unlock()
 }
 
 func (d *Driver) setLive(live bool) {

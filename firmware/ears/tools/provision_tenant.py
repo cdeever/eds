@@ -100,6 +100,7 @@ def check_topics(account, device, prefix):
     wanted = {
         'publish': [f'{prefix}/voice/{device}/status',
                     f'{prefix}/voice/{device}/utterance',
+                    f'{prefix}/voice/{device}/woken',
                     f'{prefix}/log/{device}'],
         'subscribe': [f'{prefix}/voice/{device}/heard'],
     }

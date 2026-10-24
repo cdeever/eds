@@ -53,6 +53,7 @@ static size_t replay(int16_t *out)
 
 static i2s_chan_handle_t rx;
 static ea_request_fn deliver;
+static ea_woken_fn woke;
 
 static volatile uint32_t rate;
 static volatile float level[EA_PCM_CHANNELS] = {-90.0f, -90.0f};
@@ -223,6 +224,7 @@ static void listen_task(void *arg)
                 ea_endpoint_start(&endpoint);
                 ea_panel_light(true);
                 if (start == WOKEN) {
+                    woke(); // the music down, first
                     ESP_LOGI(TAG, "woken by \"%s\"; listening until you stop", CONFIG_EA_WAKE_WORD);
                     ea_event_log(EA_EVENT_INFO, "voice.woken", "Heard \"%s\"", CONFIG_EA_WAKE_WORD);
                 } else {
@@ -298,9 +300,10 @@ static void listen_task(void *arg)
     }
 }
 
-esp_err_t ea_mic_start(ea_request_fn on_request)
+esp_err_t ea_mic_start(ea_request_fn on_request, ea_woken_fn on_woken)
 {
     deliver = on_request;
+    woke = on_woken;
     request = heap_caps_malloc(44 + MAX_SAMPLES * sizeof(int16_t), MALLOC_CAP_SPIRAM);
     if (request == NULL) {
         return ESP_ERR_NO_MEM;

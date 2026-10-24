@@ -23,6 +23,7 @@ The topic prefix defaults to `eds` and must match on both sides — `lightd`'s
 | `eds/nowplaying/command` | a controller → nowplayd | **never** | a button press, for whatever is current; see [Now Playing](../now-playing/#commands) |
 | `eds/nowplaying/source/<id>/command` | nowplayd → a driver | **never** | the same press, passed to the current source; `play_album` to `NP_ALBUM_SOURCE` whatever is current (ADR-0040) |
 | `eds/voice/<device>/utterance` | device → voiced | **never** | what followed the wake word: a WAV, 16 kHz 16-bit mono, at most 15 s (ADR-0042) |
+| `eds/voice/<device>/woken` | device → voiced | **never** | `{"v":1}`: the wake word was just heard, so the music is turned down (ADR-0044) |
 | `eds/voice/<device>/heard` | voiced → device, console | **never** | `{"v":1,"text","understood","artist","album","reason"}`: what was made of the request |
 | `eds/voiced/status` | voiced → broker | yes (LWT) | its presence |
 | `eds/screen/<id>/status` | device → broker | yes (LWT) | the cover screen's presence |

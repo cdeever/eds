@@ -80,7 +80,7 @@ void app_main(void)
 
     // The microphones first: what they are given is printed on the console
     // whether or not there is a network, which is what a bench needs.
-    if (ea_mic_start(send_request) != ESP_OK) {
+    if (ea_mic_start(send_request, ea_mqtt_send_woken) != ESP_OK) {
         ea_event_log(EA_EVENT_ERROR, "audio.failed", "The microphones could not be started");
     }
 

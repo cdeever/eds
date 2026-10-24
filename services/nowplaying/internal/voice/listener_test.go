@@ -86,7 +86,7 @@ func TestARequestBecomesACommandAndIsSaidBack(t *testing.T) {
 	l, out, _ := listen(t, "Play Van Halen's first album.")
 	l.Handle(utterance("respeaker-01"))
 
-	if len(*out) != 2 {
+	if len(*out) != 3 {
 		t.Fatalf("published %+v", *out)
 	}
 	cmd := (*out)[0]
@@ -152,7 +152,7 @@ func TestWhatIsNotARequestIsSaidBackAndNothingIsAskedFor(t *testing.T) {
 	} {
 		l, out, _ := listen(t, said)
 		l.Handle(utterance("respeaker-01"))
-		if len(*out) != 1 || (*out)[0].topic != "eds/voice/respeaker-01/heard" {
+		if len(*out) != 2 || (*out)[0].topic != "eds/voice/respeaker-01/heard" || !strings.Contains((*out)[1].payload, `"unduck"`) {
 			t.Errorf("%q: published %+v", said, *out)
 			continue
 		}
@@ -216,5 +216,35 @@ func TestScribeRefusingIsAnError(t *testing.T) {
 	defer srv.Close()
 	if _, err := (Scribe{URL: srv.URL}).Transcribe(context.Background(), []byte("x")); err == nil {
 		t.Error("a refusal was taken for words")
+	}
+}
+
+// --- ducking (ADR-0044) --------------------------------------------------------
+
+func TestAWakeTurnsTheMusicDownAndTheAnswerBringsItBack(t *testing.T) {
+	l, out, _ := listen(t, "Play Van Halen's first album.")
+	l.Handle(bus.Message{Topic: "eds/voice/respeaker-01/woken", Payload: []byte(`{"v":1}`)})
+	l.Handle(utterance("respeaker-01"))
+
+	var commands []string
+	for _, p := range *out {
+		if p.topic == "eds/nowplaying/command" {
+			c, err := contract.DecodeCommand([]byte(p.payload))
+			if err != nil || c.From != "voiced" || p.retained {
+				t.Errorf("command %s: %v", p.payload, err)
+			}
+			commands = append(commands, c.Command)
+		}
+	}
+	if fmt.Sprint(commands) != "[duck play_album unduck]" {
+		t.Errorf("commands %v", commands)
+	}
+}
+
+func TestARetainedWakeDucksNothing(t *testing.T) {
+	l, out, _ := listen(t, "")
+	l.Handle(bus.Message{Topic: "eds/voice/respeaker-01/woken", Payload: []byte(`{"v":1}`), Retained: true})
+	if len(*out) != 0 {
+		t.Errorf("published %+v", *out)
 	}
 }

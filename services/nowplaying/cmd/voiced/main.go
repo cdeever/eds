@@ -101,6 +101,13 @@ func run(logger *slog.Logger) error {
 
 	b := common.Broker
 	b.StatusTopics = []string{voice.StatusTopic(common.Prefix)}
+	// The woken filter is optional: an account not yet granted it hears
+	// requests as before, and the music is not turned down for them.
+	b.OptionalTopics = []string{voice.WokenFilter(common.Prefix)}
+	b.OnRefused = func(topic string, err error) {
+		logger.Warn("the music will not be turned down for a request until the broker account is granted the topic",
+			"topic", topic, "error", err)
+	}
 	client, err := bus.Connect(b, []string{voice.UtteranceFilter(common.Prefix)}, listener.Handle)
 	if err != nil {
 		return err

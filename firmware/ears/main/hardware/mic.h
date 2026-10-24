@@ -16,7 +16,10 @@
 // A request, ready to send: a WAV, valid until the callback returns.
 typedef void (*ea_request_fn)(const uint8_t *wav, size_t len);
 
-esp_err_t ea_mic_start(ea_request_fn on_request);
+// The wake word, just heard: called before the request is.
+typedef void (*ea_woken_fn)(void);
+
+esp_err_t ea_mic_start(ea_request_fn on_request, ea_woken_fn on_woken);
 
 // What was last measured: the rate in Hz (0 when nothing arrives), and each
 // channel's level in dB below full scale.

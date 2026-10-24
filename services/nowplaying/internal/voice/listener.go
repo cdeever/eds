@@ -21,6 +21,10 @@ import (
 // (ADR-0042).
 func UtteranceFilter(prefix string) string { return prefix + "/voice/+/utterance" }
 
+// WokenFilter is every device saying it has just heard its wake word
+// (ADR-0044): the music is turned down while it listens.
+func WokenFilter(prefix string) string { return prefix + "/voice/+/woken" }
+
 // HeardTopic is where a device is told what was made of its request.
 func HeardTopic(prefix, device string) string { return prefix + "/voice/" + device + "/heard" }
 
@@ -73,8 +77,14 @@ type Listener struct {
 	Timeout time.Duration
 }
 
-// Handle takes one message from the utterance filter.
+// Handle takes one message from the utterance and woken filters.
 func (l *Listener) Handle(msg bus.Message) {
+	if device, ok := deviceSaid(l.Prefix, msg.Topic, "/woken"); ok {
+		if !msg.Retained {
+			l.command(contract.Duck, device)
+		}
+		return
+	}
 	device, ok := deviceOf(l.Prefix, msg.Topic)
 	if !ok {
 		return
@@ -95,6 +105,21 @@ func (l *Listener) Handle(msg bus.Message) {
 	payload, _ := json.Marshal(heard)
 	if err := l.Publish(HeardTopic(l.Prefix, device), payload, false); err != nil {
 		l.logger().Warn("could not say what was heard", "device", device, "error", err)
+	}
+	// The request is answered: the music comes back, whatever was made of
+	// it. After an album asked for, the driver has already brought it back.
+	l.command(contract.Unduck, device)
+}
+
+// command sends one of the commands that are not a request's: the duck and
+// its end (ADR-0044).
+func (l *Listener) command(name, device string) {
+	c, err := contract.EncodeCommand(contract.Command{Command: name, From: "voiced"})
+	if err == nil {
+		err = l.Publish(contract.CommandTopic(l.Prefix), c, false)
+	}
+	if err != nil {
+		l.logger().Warn("could not send "+name, "device", device, "error", err)
 	}
 }
 
@@ -173,11 +198,16 @@ func reason(err error) string {
 }
 
 func deviceOf(prefix, topic string) (string, bool) {
+	return deviceSaid(prefix, topic, "/utterance")
+}
+
+// deviceSaid is the device a voice/<device><suffix> topic is from.
+func deviceSaid(prefix, topic, suffix string) (string, bool) {
 	rest, ok := strings.CutPrefix(topic, prefix+"/voice/")
 	if !ok {
 		return "", false
 	}
-	device, ok := strings.CutSuffix(rest, "/utterance")
+	device, ok := strings.CutSuffix(rest, suffix)
 	if !ok || device == "" || strings.Contains(device, "/") {
 		return "", false
 	}

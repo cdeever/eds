@@ -14,6 +14,10 @@
 // by the broker would be asked again by every reconnect.
 #define EA_TOPIC_UTTERANCE EA_TOPIC_PREFIX "/voice/" EA_DEVICE_ID "/utterance"
 
+// That the wake word was just heard, so the music is turned down while the
+// request is (ADR-0044). Never retained, and commands nothing itself.
+#define EA_TOPIC_WOKEN EA_TOPIC_PREFIX "/voice/" EA_DEVICE_ID "/woken"
+
 // What voiced made of it, for a light.
 #define EA_TOPIC_HEARD EA_TOPIC_PREFIX "/voice/" EA_DEVICE_ID "/heard"
 

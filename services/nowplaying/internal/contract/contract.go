@@ -250,6 +250,14 @@ const (
 	VolumeDown = "volume_down"
 )
 
+// Duck and Unduck lower what is playing while a request is heard, and bring
+// it back (ADR-0044). They go to the current source, as the buttons do; the
+// driver brings the music back by itself if Unduck never comes.
+const (
+	Duck   = "duck"
+	Unduck = "unduck"
+)
+
 // PlayAlbum is not a button: it chooses what plays, by naming an album, and
 // goes to the source that has a library rather than to the current one
 // (ADR-0040).
@@ -285,7 +293,7 @@ func (c Command) Validate() error {
 		return fmt.Errorf("contract: version %d, this program speaks %d", c.V, Version)
 	}
 	switch c.Command {
-	case PlayPause, Next, Previous, VolumeUp, VolumeDown:
+	case PlayPause, Next, Previous, VolumeUp, VolumeDown, Duck, Unduck:
 		return nil
 	case PlayAlbum:
 		for _, f := range [...]struct{ field, name string }{{"artist", c.Artist}, {"album", c.Album}} {

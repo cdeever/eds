@@ -23,3 +23,7 @@ bool ea_mqtt_connected(void);
 // play an album minutes after it was asked for. It blocks while the WAV is
 // written, a second or so for a few seconds of speech.
 bool ea_mqtt_send_request(const uint8_t *wav, size_t len);
+
+// ea_mqtt_send_woken says the wake word was just heard (ADR-0044). It does
+// not wait: a moment lost here is a request heard over louder music.
+void ea_mqtt_send_woken(void);

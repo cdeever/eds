@@ -281,6 +281,7 @@ resource "deevnet_iot_broker_account" "voiced" {
   ]
   subscribe = [
     "voice/+/utterance", # what each device heard after its wake word, as a WAV
+    "voice/+/woken",     # that one just woke: the music is turned down (ADR-0044)
   ]
 }
 
@@ -396,6 +397,7 @@ resource "deevnet_iot_broker_account" "respeaker_01" {
   publish = [
     "voice/respeaker-01/status",    # its own presence, and its last will
     "voice/respeaker-01/utterance", # what followed the wake word, as a WAV
+    "voice/respeaker-01/woken",     # that the wake word was just heard (ADR-0044)
     "log/respeaker-01",             # its own events, into the tenant's log store
   ]
   subscribe = [
