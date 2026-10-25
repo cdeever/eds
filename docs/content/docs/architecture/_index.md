@@ -130,5 +130,6 @@ old one is left as it was.
   [Voice Request](subsystems/voice-request/).
 - [Layer Boundaries](boundaries/): which layer owns which color decision.
 - [Proposals](proposals/): ideas EdS expects to build on but has not
-  decided, starting with [a music inventory](proposals/music-inventory/).
+  decided: [a music inventory](proposals/music-inventory/) and
+  [capturing vinyl](proposals/capturing-vinyl/).
 - [Decisions](decisions/): every choice, argued.

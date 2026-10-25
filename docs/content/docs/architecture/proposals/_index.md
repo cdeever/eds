@@ -16,3 +16,4 @@ links to it.
 | Proposal | Date | In short |
 |---|---|---|
 | [A Music Inventory](music-inventory/) | 2026-10-24 | one local inventory of the owner's music, in every format, that EdS asks first: [eds-inventory](https://cdeever.github.io/eds-inventory/) |
+| [Capturing Vinyl](capturing-vinyl/) | 2026-10-25 | every record played kept as FLAC, by itself, track by track, so vinyl-only records join the digital collection and the turntable is named locally |
