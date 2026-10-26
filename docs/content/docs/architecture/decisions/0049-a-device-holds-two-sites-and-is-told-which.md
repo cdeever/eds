@@ -27,11 +27,13 @@ in `creds` (ADR-0004) hold one site, and only `provision_tenant.py` over USB
 writes them. A build sent over the air (ADR-0035) writes an app slot, never
 `creds`. Four devices, moved twice, is eight visits.
 
-**Since the home Pi's Deevnet certificate, most of a site is the same at
-both.** The broker is `mqtt.eds.deevnet.net` at each, answered by each site's
-DNS, and its certificate chains to the Deevnet Root at each. What differs is
-the Wi-Fi network and its key, and the broker passwords: the mobile site's are
-issued by Deevnet IoTaaS, and the home Pi makes its own.
+**Since the home Pi's Deevnet certificate, both sites' brokers chain to
+the Deevnet Root.** Everything else differs: the Wi-Fi network and its key;
+the broker, which at home is the Pi's own (`mqtt.eds.deevnet.net`, answered
+by the home network's DNS) and at the mobile site is Deevnet IoTaaS's
+(`mqtt.mobile.deevnet.net`, the tenant's `broker_host`); and the broker
+passwords, which the mobile site's API issues and the home Pi makes for
+itself.
 
 **Both networks can be in range at once**, while the mobile site is set up at
 home, so which one a device uses cannot be decided by which it sees.
