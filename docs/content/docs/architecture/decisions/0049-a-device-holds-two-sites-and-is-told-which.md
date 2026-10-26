@@ -128,9 +128,9 @@ Under the device's own namespace (`lp-stand`, `cover-screen`,
 ### Provisioning
 
 `provision_tenant.py` takes a second site beside the first:
-`--site home --also mobile=tenant`. The first is what it reads today (the
+`--site home --also mobile=terraform`. The first is what it reads today (the
 tenant's outputs, or `--outputs-json` and `--ca`), named; the second names
-its own source: `tenant` for the tenant's Terraform, or a file of outputs,
+its own source: `terraform` for the tenant's Terraform, or a file of outputs,
 with its CA after a comma. The first is the site in use. Without `--site`,
 it writes the six keys alone, as it always has.
 
