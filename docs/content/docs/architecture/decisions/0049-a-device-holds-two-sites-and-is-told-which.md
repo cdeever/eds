@@ -28,12 +28,15 @@ writes them. A build sent over the air (ADR-0035) writes an app slot, never
 `creds`. Four devices, moved twice, is eight visits.
 
 **Since the home Pi's Deevnet certificate, both sites' brokers chain to
-the Deevnet Root.** Everything else differs: the Wi-Fi network and its key;
-the broker, which at home is the Pi's own (`mqtt.eds.deevnet.net`, answered
-by the home network's DNS) and at the mobile site is Deevnet IoTaaS's
-(`mqtt.mobile.deevnet.net`, the tenant's `broker_host`); and the broker
-passwords, which the mobile site's API issues and the home Pi makes for
-itself.
+the Deevnet Root.** The broker's name differs by design. A tenant's
+site-less names resolve only where it runs in production, and the mobile
+site, which builds tenants, answers only site names (Deevnet ADR-0040 §1).
+So at home, production, a device dials the Pi's own broker by eds's
+site-less name, `mqtt.eds.deevnet.net`; at the mobile site it dials Deevnet
+IoTaaS's broker by its site name, `mqtt.mobile.deevnet.net` (the tenant's
+`broker_host`), since eds has no broker of its own there. The Wi-Fi network
+and its key differ too, and so do the broker passwords, which the mobile
+site's API issues and the home Pi makes for itself.
 
 **Both networks can be in range at once**, while the mobile site is set up at
 home, so which one a device uses cannot be decided by which it sees.
