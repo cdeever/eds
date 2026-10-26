@@ -137,10 +137,14 @@
           # 0.12.0: extra names on the certificate, so a card can carry the
           # names and address of the site it is going to (Deevnet CHG-0050).
           - "'deevnet-kit names' in pi_eds_backend_kit_help.stdout"
+          # 0.15.0: a certificate from the Tenant Service CA, so the card
+          # answers to the tenant's Deevnet names (Deevnet CHG-0056).
+          - "'deevnet-kit cert install' in pi_eds_backend_kit_help.stdout"
         fail_msg: >-
           The published pi-backend image carries a deevnet-kit older than
-          0.12.0: it cannot keep a password from a file, take a hostname from
-          the card, or put extra names on the certificate. Deevnet IoTaaS has
+          0.15.0: it cannot keep a password from a file, take a hostname from
+          the card, put extra names on the certificate, or install one from
+          the Tenant Service CA. Deevnet IoTaaS has
           to restage the kit and rebuild the image first (make stage-pi; make
           pi-backend pi-backend-publish). See ADR-0033.
 

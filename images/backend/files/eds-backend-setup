@@ -44,6 +44,19 @@ kit_value() { deevnet-kit env | grep -m1 -E "^$1=" | cut -d= -f2-; }
 tenant="$(kit_value DEEVNET_TENANT)"
 [[ -n "$tenant" ]] || { echo "deevnet-kit names no tenant" >&2; exit 1; }
 
+# What the services here dial. On the card's own CA, localhost, which its
+# certificate names. On a Deevnet Pi (deevnet-kit cert install, Deevnet
+# ADR-0041 §2) the certificate is the Tenant Service CA's and names the
+# tenant's Deevnet names, never localhost: the kit maps them to loopback, and
+# the devices are given the broker's, which the network's DNS answers.
+if [[ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("pki", ""))' "$KIT/kit.json")" == deevnet ]]; then
+    mqtt_host="mqtt.$tenant.deevnet.net"
+    logs_host="logs.$tenant.deevnet.net"
+else
+    mqtt_host=localhost
+    logs_host=localhost
+fi
+
 # The accounts, one a line, comments and blank lines dropped.
 accounts() { sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$LIST"; }
 
@@ -53,7 +66,11 @@ accounts() { sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$LIST"; }
 # Wi-Fi network is not this Pi's to say and is added where this is read
 # (deploy/backend, `make devices`).
 if [[ "${1:-}" == "devices" ]]; then
-    address="$(hostname -I | awk '{print $1}')"
+    if [[ "$mqtt_host" == localhost ]]; then
+        address="$(hostname -I | awk '{print $1}')"
+    else
+        address="$mqtt_host"
+    fi
     accounts | TENANT="$tenant" ADDRESS="$address" PASSWORDS="$PASSWORDS" python3 -c '
 import json, os, sys
 tenant, out = os.environ["TENANT"], {}
@@ -163,8 +180,8 @@ fi
 rmdir "$DROP" 2>/dev/null || true
 
 # --------------------------------------------------------------- settings --
-# Every service dials the broker on this Pi, as localhost, which the card's
-# certificate names.
+# Every service dials the broker on this Pi, by the name its certificate
+# carries ($mqtt_host, above).
 restart=()
 
 # settings FILE GROUP MODE UNIT - install standard input as FILE if it differs.
@@ -187,7 +204,7 @@ settings() {
 broker() {
     cat <<SETTINGS
 DEEVNET_TENANT=$tenant
-MQTT_HOST=localhost
+MQTT_HOST=$mqtt_host
 MQTT_PORT=8883
 MQTT_CA_FILE=$CA
 MQTT_USERNAME=$tenant-$1
@@ -200,7 +217,7 @@ settings "$ETC/lightd.env" root 0600 eds-lightd.service < <(broker lightd)
 nowplayd_settings() {
     broker nowplayd
     # Its counts of what it asks of outside services (ADR-0027).
-    echo "LOG_ENDPOINT=https://localhost:8427"
+    echo "LOG_ENDPOINT=https://$logs_host:8427"
     echo "LOG_INGEST_TOKEN=$(kit_value LOG_INGEST_TOKEN)"
     # With no collection to ask, no source is said to play the owner's
     # records: nowplayd refuses to start on one without the other.
@@ -214,7 +231,7 @@ settings "$ETC/console.env" root 0600 eds-console.service < <(broker console)
 # card), so those two lines are kept as they are.
 agent_settings() {
     cat <<SETTINGS
-NP_MQTT_URL=tls://localhost:8883
+NP_MQTT_URL=tls://$mqtt_host:8883
 NP_MQTT_USERNAME=$tenant-np-relay
 NP_MQTT_PASSWORD=$(password np-relay)
 NP_MQTT_CA_FILE=$CA
