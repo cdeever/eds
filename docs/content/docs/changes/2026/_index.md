@@ -49,3 +49,4 @@ bookCollapseSection: true
 | CHG-0039 | 2026-10-24 | [scribe in Two, and "Hey Jarvis" in Its Prompt](0039-scribe-in-two-and-hey-jarvis-in-its-prompt/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0040 | 2026-10-24 | [The Owner's Library for voiced](0040-the-owners-library-for-voiced/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0041 | 2026-10-24 | [voiced Asks eds-inventory](0041-voiced-asks-eds-inventory/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
+| CHG-0042 | 2026-10-26 | [The Home Pi Becomes a Deevnet Pi](0042-the-home-pi-becomes-a-deevnet-pi/) | Migration | {{< status-badge "planned" "Planned" >}} |
