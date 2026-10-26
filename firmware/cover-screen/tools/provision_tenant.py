@@ -227,7 +227,7 @@ def main():
     parser.add_argument('--site', default=None, metavar='NAME',
                         help='Name the site the outputs above are for, and write it as the one in use of two (ADR-0049)')
     parser.add_argument('--also', default=None, metavar='NAME=SOURCE[,CA]',
-                        help="The second site: SOURCE is 'tenant' for the tenant's Terraform, or a file of outputs")
+                        help="The second site: SOURCE is 'terraform' for the tenant's Terraform, or a file of outputs")
     parser.add_argument('--dry-run', action='store_true',
                         help='Build the image and stop, without touching the screen')
     args = parser.parse_args()
@@ -250,7 +250,7 @@ def main():
                     raise RuntimeError(f"site name {site_name!r}: a lowercase letter, then up to 14 of a-z, 0-9 and -")
             if name == args.site:
                 raise RuntimeError(f"both sites are named {name}")
-            also = build_settings(read_outputs(args.tenant_dir, None if source == 'tenant' else source),
+            also = build_settings(read_outputs(args.tenant_dir, None if source == 'terraform' else source),
                                   args.tenant_dir, screen, prefix, also_ca or None)
             sites = [(args.site, settings), (name, also)]
         offset, size = creds_partition()

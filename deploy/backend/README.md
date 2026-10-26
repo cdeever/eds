@@ -152,7 +152,7 @@ Terraform, so the tenant's state has to be reachable from this computer:
 python3 tools/provision_tenant.py -p <port> \
     --outputs-json ../../deploy/backend/devices.json \
     --ca ../../deploy/backend/deevnet-kit-ca.pem \
-    --site home --also mobile=tenant
+    --site home --also mobile=terraform
 ```
 
 Today's firmware uses the first site alone; a build that knows both reads
