@@ -80,6 +80,36 @@ devices are given that address, and the card's certificate names it.
 On the Pi, `sudo deevnet-kit status` and `sudo deevnet-kit selftest` are the
 thorough look at the broker, the log store and Grafana.
 
+## A Deevnet Pi
+
+**A card can carry a certificate from Deevnet's Tenant Service CA in place
+of its own CA's** (Deevnet ADR-0041 §2, CHG-0056). It then answers to the
+tenant's Deevnet names, `mqtt`, `logs`, `grafana` and `console` under
+`eds.deevnet.net` and at each site the certificate names, and everything on
+it trusts the Deevnet Root. A browser that trusts the Root needs no card CA,
+and a card flashed again keeps its names.
+
+After the first boot, on the Pi:
+
+```bash
+sudo deevnet-kit cert request    # a new key here, and a request for the CA
+```
+
+The request is signed by the tenant's Terraform (`deevnet_certificate`,
+with name `mqtt`, names `logs`, `grafana` and `console`, and the sites the
+Pi will answer at). Copy the full chain and the Deevnet Root to the Pi, then:
+
+```bash
+sudo deevnet-kit cert install fullchain.pem deevnet-root-ca.pem
+sudo systemctl restart eds-backend-setup
+```
+
+The second line rewrites every service's settings to dial the broker and
+the log store by those names, which the kit maps to loopback here, and
+restarts what changed. `make devices` then gives the devices the broker's
+name and the Root, so the network's DNS has to answer the name with this
+Pi's address before a device is moved over.
+
 ## The console
 
 `https://<hostname>.local/`. It presents the card's own certificate, so a
