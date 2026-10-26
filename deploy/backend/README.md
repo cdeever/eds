@@ -142,6 +142,22 @@ python3 tools/provision_tenant.py -p <port> \
     --ca ../../deploy/backend/deevnet-kit-ca.pem
 ```
 
+**Or with both sites**, so the device can later be moved between this Pi and
+the tenant by a message rather than a cable
+([ADR-0049](../../docs/content/docs/architecture/decisions/0049-a-device-holds-two-sites-and-is-told-which.md)).
+The device starts on the first; the second is read from the tenant's
+Terraform, so the tenant's state has to be reachable from this computer:
+
+```bash
+python3 tools/provision_tenant.py -p <port> \
+    --outputs-json ../../deploy/backend/devices.json \
+    --ca ../../deploy/backend/deevnet-kit-ca.pem \
+    --site home --also mobile=tenant
+```
+
+Today's firmware uses the first site alone; a build that knows both reads
+them where this writes them.
+
 The beacon first: nothing is attached to it. The firmware is not rebuilt; the
 topics and the account names are the tenant's.
 
