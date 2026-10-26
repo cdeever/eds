@@ -8,7 +8,7 @@ weight: 4
 | | |
 |---|---|
 | **Date** | 2026-10-26 |
-| **Systems** | `npagent`'s turntable driver and `nowplayd` on the backend Pi; the UFO202 sound card; the receiver's Tape 1 output; `lp-stand-01` |
+| **Systems** | `npagent`'s turntable driver and `nowplayd` on the backend Pi; the UFO202 sound card; the Tape 1 output of the amplifier, an Onkyo A-8170 integrated amplifier from the mid-1980s; `lp-stand-01` |
 | **Severity** | The stand dropped to standby for the rest of a side, and stayed there through a reboot. Nothing else was lost; every other source and device worked |
 | **Status** | Open · {{< inc-status "Mitigated" >}} |
 | **Times** | UTC |
@@ -17,16 +17,17 @@ weight: 4
 
 ## Summary
 
-The turntable reaches the sound card through the receiver's Tape 1 output,
-whose left channel has an intermittent contact. Partway through a side, the
+The turntable reaches the sound card through the Tape 1 output of an Onkyo
+A-8170, an integrated amplifier from the mid-1980s, whose aged tape selector
+contacts can drop a channel. Partway through a side, the
 left channel went silent. `npagent` records one channel, and what it records
 is the left, so it heard twenty seconds of silence, decided the record had
 stopped, and the stand went to standby while the record played on.
 
 Nothing reported a fault, because by every rule in place there was none: the
 capture ran, the recognizer answered, and silence on the channel listened to
-is what a stopped record sounds like. Reseating the receiver's plugs brought
-the channel back.
+is what a stopped record sounds like. Turning the amplifier's Tape 1
+selector back and forth brought the channel back.
 
 ## Impact
 
@@ -59,7 +60,7 @@ is heard, not that music is on both of its channels.
 | 02:23:52 | The owner switches the stand's sources to records only; still nothing |
 | 02:28:32 | `turntable.capture_lost`: the sound card unplugged, to be tried on another computer, where the record is heard. Back at 02:28:39 |
 | later | `arecord -c 2 -V stereo` on the Pi reads `+00%\|76%`: left silent, right playing |
-| later | The receiver's plugs are reseated; the meter reads `29%\|26%` |
+| later | The amplifier's Tape 1 selector is turned through its positions several times and set back to phono; the meter reads `29%\|26%` |
 
 ## Symptoms
 
@@ -86,16 +87,18 @@ is heard, not that music is on both of its channels.
   card has no capture control to mute.
 - **The level, per channel**, which settled it: two channels in, one silent.
   The record played on another computer because a system playing both
-  channels plays the right one too. In the other room the receiver feeds a
+  channels plays the right one too. In the other room the amplifier feeds a
   5.1 system, where one channel missing is not obvious.
 
 ## Root cause
 
 Two faults combined:
 
-1. **The receiver's Tape 1 output has an intermittent contact on its left
-   channel.** It is known to need a wiggle, and is never heard: listening is
-   from phono, and Tape 1 out feeds only the sound card.
+1. **The amplifier's Tape 1 path dropped its left channel.** The Onkyo
+   A-8170 is from the mid-1980s, and its tape selector contacts and tape
+   jacks have aged: the Tape 1 selector is known to need working to carry
+   both channels. It is never heard: listening is from phono, and Tape 1
+   out feeds only the sound card.
 2. **The turntable driver listens to one channel.** It records mono through
    ALSA's plug conversion (`arecord -c 1`,
    `services/nowplaying/internal/driver/turntable/capture.go:25–26`), and the
@@ -106,9 +109,10 @@ Two faults combined:
 
 ## Recovery
 
-The receiver's plugs were reseated, and both channels read again on the Pi
-(`29%|26%`). `npagent` was restarted with them. The contact is unchanged, and
-can fail again.
+The amplifier's Tape 1 selector was turned through its positions several
+times and set back to phono, which restored both channels' contacts; the Pi
+read both again (`29%|26%`), and `npagent` was restarted with them. The
+contacts are only worked, not cleaned, and can fail again.
 
 ## Contributing factors
 
@@ -123,7 +127,7 @@ can fail again.
 
 | # | Action | Where | Status |
 |---|---|---|---|
-| 1 | Clean the receiver's Tape 1 output jacks and the plugs in them, or move the sound card to Tape 2 out | The receiver | {{< action-status "Open" >}} |
+| 1 | Clean and treat both tape selector controls (Tape 1 and Tape 2, whose contacts have aged the same way) and the tape audio jacks | The amplifier | {{< action-status "Open" >}} |
 
 ## Preventive actions
 

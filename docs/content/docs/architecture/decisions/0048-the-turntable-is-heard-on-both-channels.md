@@ -29,12 +29,12 @@ sound card was there and sending audio. The recognizer was well: the
 minute's counts for the Shazam endpoint said `limited=0 failed=0`
 ([ADR-0027](/docs/architecture/decisions/0027-what-is-asked-of-outside-services-is-counted/)).
 
-**The input had lost its left channel.** The driver hears the receiver's
-tape output, Tape 1 out on an old Onkyo A-8170, whose jack is a known
-intermittent contact. A stereo meter on the same card,
+**The input had lost its left channel.** The driver hears the
+amplifier's tape output, Tape 1 out on an Onkyo A-8170 integrated amplifier
+from the mid-1980s, whose aged tape selector contacts can drop a channel. A stereo meter on the same card,
 `arecord -c 2 -V stereo`, read `+00%|76%`: the left side silent and the
-right side carrying the record. After the plug was reseated it read
-`29%|26%`.
+right side carrying the record. After the Tape 1 selector was worked
+back and forth and set back to phono it read `29%|26%`.
 
 **The driver listens to one channel, and it was the silent one.** It asks
 `arecord` for one channel (`-c 1`) from `plughw:CODEC`, so that ALSA's plug
@@ -180,7 +180,7 @@ console.**
 - **A stereo capture is twice the bytes from the card**, 64 KB a second
   instead of 32. On the agent Pi that is nothing.
 - **A dead channel is still a dead channel.** EdS says which one; the
-  contact is still cleaned or the cable replaced by a person.
+  contact is still cleaned by a person.
 - **What the plug layer does with `-c 1` stops mattering here**: the driver
   no longer asks it to choose.
 
