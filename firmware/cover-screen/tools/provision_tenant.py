@@ -166,7 +166,7 @@ def creds_partition():
     raise RuntimeError(f"partitions.csv has no {PARTITION} partition")
 
 
-def write_nvs_csv(settings, path):
+def write_nvs_csv(settings, path, sites=()):
     rows = [
         ('key', 'type', 'encoding', 'value'),
         (NAMESPACE, 'namespace', '', ''),
@@ -177,6 +177,21 @@ def write_nvs_csv(settings, path):
         ('mqtt_pass', 'data', 'string', settings['broker password']),
         ('mqtt_ca', 'file', 'string', settings['ca path']),
     ]
+    # Two sites, each in a slot of its own, and the name of the one in use
+    # (ADR-0049). The six keys above are a copy of that one, for a build that
+    # knows no slots.
+    if sites:
+        rows.append(('site', 'data', 'string', sites[0][0]))
+        for slot, (name, site) in enumerate(sites, 1):
+            rows += [
+                (f's{slot}_name', 'data', 'string', name),
+                (f's{slot}_ssid', 'data', 'string', site['wifi ssid']),
+                (f's{slot}_wpass', 'data', 'string', site['wifi key']),
+                (f's{slot}_uri', 'data', 'string', site['broker uri']),
+                (f's{slot}_user', 'data', 'string', site['broker username']),
+                (f's{slot}_mpass', 'data', 'string', site['broker password']),
+                (f's{slot}_ca', 'file', 'string', site['ca path']),
+            ]
     with open(path, 'w', newline='') as f:
         csv.writer(f).writerows(rows)
 
@@ -209,6 +224,10 @@ def main():
                         help="Read `terraform output -json` from FILE ('-' for stdin) instead of running terraform")
     parser.add_argument('--ca', default=None,
                         help="Broker CA in PEM (default: the file the tenant's broker output names)")
+    parser.add_argument('--site', default=None, metavar='NAME',
+                        help='Name the site the outputs above are for, and write it as the one in use of two (ADR-0049)')
+    parser.add_argument('--also', default=None, metavar='NAME=SOURCE[,CA]',
+                        help="The second site: SOURCE is 'tenant' for the tenant's Terraform, or a file of outputs")
     parser.add_argument('--dry-run', action='store_true',
                         help='Build the image and stop, without touching the screen')
     args = parser.parse_args()
@@ -218,6 +237,22 @@ def main():
         screen = args.screen or screen
         settings = build_settings(read_outputs(args.tenant_dir, args.outputs_json),
                                   args.tenant_dir, screen, prefix, args.ca)
+        sites = []
+        if args.site or args.also:
+            if not (args.site and args.also):
+                raise RuntimeError("--site and --also go together: two sites, or neither")
+            name, sep, source = args.also.partition('=')
+            source, _, also_ca = source.partition(',')
+            if not sep or not source:
+                raise RuntimeError("--also is NAME=SOURCE[,CA]")
+            for site_name in (args.site, name):
+                if not re.fullmatch(r'[a-z][a-z0-9-]{0,14}', site_name):
+                    raise RuntimeError(f"site name {site_name!r}: a lowercase letter, then up to 14 of a-z, 0-9 and -")
+            if name == args.site:
+                raise RuntimeError(f"both sites are named {name}")
+            also = build_settings(read_outputs(args.tenant_dir, None if source == 'tenant' else source),
+                                  args.tenant_dir, screen, prefix, also_ca or None)
+            sites = [(args.site, settings), (name, also)]
         offset, size = creds_partition()
     except (RuntimeError, OSError, KeyError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -229,6 +264,12 @@ def main():
     print(f"  Account:    {settings['broker username']}")
     print(f"  Broker CA:  {settings['ca path']}")
     print(f"  Events on:  {settings['log topic']}")
+    for name, site in sites:
+        print(f"  Site {name}{' (in use)' if site is settings else ''}:")
+        print(f"    WiFi SSID:  {site['wifi ssid']}")
+        print(f"    Broker:     {site['broker uri']}")
+        print(f"    Account:    {site['broker username']}")
+        print(f"    Broker CA:  {site['ca path']}")
 
     # The CSV holds the WiFi key and the broker password: private, outside the
     # repository, and gone as soon as the image is built.
@@ -237,7 +278,7 @@ def main():
         bin_path = os.path.join(tmp, 'creds.bin')
 
         try:
-            write_nvs_csv(settings, csv_path)
+            write_nvs_csv(settings, csv_path, sites)
             generate_nvs_image(csv_path, bin_path, size)
         except (RuntimeError, OSError) as e:
             print(f"Error: {e}", file=sys.stderr)
