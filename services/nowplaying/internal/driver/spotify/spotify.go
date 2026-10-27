@@ -116,6 +116,9 @@ func (d *Driver) Command(ctx context.Context, c contract.Command) error {
 	if !now.track {
 		return ErrNotHere
 	}
+	if c.Command == contract.PlayAlbum {
+		return d.playAlbum(ctx, c)
+	}
 
 	method, path := http.MethodPost, ""
 	after := now
