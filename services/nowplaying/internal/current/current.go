@@ -127,7 +127,7 @@ type Publisher struct {
 	// while running.
 	AllSources bool
 	Prefix     string
-	Timeout    time.Duration // for one catalog lookup
+	Timeout    time.Duration // for naming a record, and again for its cover's lookup
 	Logger     *slog.Logger
 	Now        func() time.Time
 
@@ -372,10 +372,12 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 		}
 	}
 
-	lookup, cancel := context.WithTimeout(ctx, p.timeout())
-	defer cancel()
-
 	if p.Owned[winner.Source] && cover == nil {
+		// Naming the record has its own time, and the cover's lookup below
+		// its own: MusicBrainz, one call a second, can spend all of one, and
+		// a track it did not name still has a cover to be found.
+		lookup, cancel := context.WithTimeout(ctx, p.timeout())
+		defer cancel()
 		named := false
 		if p.Collection != nil {
 			owned, err := p.Collection.Find(lookup, track.Artist, track.Title, track.Album)
@@ -411,6 +413,8 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 		return out, cover
 	}
 
+	lookup, cancel := context.WithTimeout(ctx, p.timeout())
+	defer cancel()
 	found, err := p.Resolver.Resolve(lookup, track)
 	if err != nil {
 		if !errors.Is(err, resolve.ErrNotFound) {
