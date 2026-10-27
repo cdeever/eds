@@ -172,7 +172,8 @@ and the collection's `collection.listed` and `collection.tracklists`
 (ADR-0050), queued and never waited on; its log stays in the journal. A new client for an outside service is
 made the same way, and its host named in `calls.Name`. The counter limits
 nothing; do not make it. The dashboards are **Outside Services** and **Covers**,
-beside the stand's. The ingest token is in `kit.env` and is never logged.
+beside the stand's; the backend Pi's Grafana gets the same files
+(`eds-backend-dashboards`). The ingest token is in `kit.env` and is never logged.
 
 Integration tests are gated on `NP_TEST_BROKER`. This Makefile runs on macOS
 (make 3.81, `/bin/bash`); the lightd and palette ones hardcode `/usr/bin/bash`

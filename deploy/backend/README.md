@@ -80,6 +80,20 @@ devices are given that address, and the card's certificate names it.
 On the Pi, `sudo deevnet-kit status` and `sudo deevnet-kit selftest` are the
 thorough look at the broker, the log store and Grafana.
 
+## The dashboards
+
+The tenant's, from `infra/deevnet-tenant-eds/dashboards/`: LP Stand, Outside
+Services and Covers, in an EdS folder in this Pi's Grafana, at
+`https://<hostname>.local:3000/` (on a Deevnet Pi,
+`https://grafana.eds.deevnet.net:3000/`), with the login `deevnet-kit status`
+names. deevnet-kit gives this Grafana Deevnet's data sources, by the same
+UIDs, so they are the same files Terraform applies there.
+
+`eds-backend-dashboards` writes them on every boot, after deevnet-kit has set
+Grafana up, and `make push` writes them again. A dashboard is written only
+when its file has changed, and then over any edit made here: change the file
+and push. The console's "Events in Grafana" opens LP Stand.
+
 ## A Deevnet Pi
 
 **A card can carry a certificate from Deevnet's Tenant Service CA in place
@@ -192,12 +206,11 @@ the new address.
 | `/etc/eds/*.env` | each service's broker login; written by `eds-backend-setup` |
 | `/etc/eds/settings/` | the settings that are not secret: `deploy/*.env`, as built |
 | `/etc/deevnet-kit/` | the card's CA, certificate and tokens; `deevnet-kit`'s |
+| `/usr/local/share/eds-dashboards/` | the dashboards, as built; `eds-backend-dashboards` writes them to Grafana |
 | `/etc/eds-backend-release` | what this image is, and each push since |
 
 ## Not done yet
 
-- **Dashboards.** They are in the tenant's Terraform root and are not applied
-  to this Pi's Grafana. The console's link to one is left off.
 - **One script for both Pis.** `spotify.sh` here is a copy of the relay's with
   the hop through the Builder removed, and the backend's playbook has its own
   copy of the agent's tasks. They are folded together once this is proven.

@@ -52,9 +52,12 @@ tenant="$(kit_value DEEVNET_TENANT)"
 if [[ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("pki", ""))' "$KIT/kit.json")" == deevnet ]]; then
     mqtt_host="mqtt.$tenant.deevnet.net"
     logs_host="logs.$tenant.deevnet.net"
+    # What a browser elsewhere is sent to, which the certificate names too.
+    grafana_host="grafana.$tenant.deevnet.net"
 else
     mqtt_host=localhost
     logs_host=localhost
+    grafana_host="$(hostname).local"
 fi
 
 # The accounts, one a line, comments and blank lines dropped.
@@ -225,7 +228,13 @@ nowplayd_settings() {
 }
 settings "$ETC/nowplayd.env" root 0600 eds-nowplayd.service < <(nowplayd_settings)
 
-settings "$ETC/console.env" root 0600 eds-console.service < <(broker console)
+console_settings() {
+    broker console
+    # "Events in Grafana": the stand's dashboard, which eds-backend-dashboards
+    # puts in this Pi's Grafana.
+    echo "CONSOLE_DASHBOARD_URL=https://$grafana_host:3000/d/eds-lp-stand/lp-stand"
+}
+settings "$ETC/console.env" root 0600 eds-console.service < <(console_settings)
 
 # The agent's file is also edited from the desk (which drivers, which sound
 # card), so those two lines are kept as they are.
