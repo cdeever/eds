@@ -1221,6 +1221,48 @@ func TestTheRecordIsNamedByWhatIsOnIt(t *testing.T) {
 	}
 }
 
+// The evening of 2026-10-26: naming the record spent the whole lookup time,
+// and the cover's lookup was then given none. Each has its own.
+func TestNamingTheRecordLeavesTheCoverItsOwnTime(t *testing.T) {
+	res := &deadlineResolver{}
+	p := owned(&fakeBus{}, res, &fakeCollection{err: resolve.ErrNotFound}, "turntable")
+	p.Timeout = 50 * time.Millisecond
+	p.Albums = slowAlbums{}
+	out, _, err := p.Publish(context.Background(), onTurntable("Dogs", "Animals (Remastered)"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.err != nil {
+		t.Fatalf("the cover's lookup was given no time: %v", res.err)
+	}
+	if out.Art == nil {
+		t.Error("published without the cover the lookup found")
+	}
+}
+
+// slowAlbums takes all the time it is given, and names nothing.
+type slowAlbums struct{}
+
+func (slowAlbums) Has(ctx context.Context, _, _, _ string) (bool, error) {
+	<-ctx.Done()
+	return false, ctx.Err()
+}
+
+func (slowAlbums) Original(ctx context.Context, _, _, _ string) (string, error) {
+	<-ctx.Done()
+	return "", ctx.Err()
+}
+
+// deadlineResolver finds a cover if it is asked with time left.
+type deadlineResolver struct{ err error }
+
+func (d *deadlineResolver) Resolve(ctx context.Context, _ contract.Track) (resolve.Result, error) {
+	if d.err = ctx.Err(); d.err != nil {
+		return resolve.Result{}, d.err
+	}
+	return resolve.Result{Cover: &resolve.Cover{Image: pngA, From: "deezer"}}, nil
+}
+
 // Nothing to be had about a track: the album as the source named it.
 func TestWithNoAnswerTheHeardAlbumStands(t *testing.T) {
 	p := owned(&fakeBus{}, &fakeResolver{err: resolve.ErrNotFound}, &fakeCollection{err: resolve.ErrNotFound}, "turntable")
