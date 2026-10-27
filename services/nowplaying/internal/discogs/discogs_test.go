@@ -410,3 +410,34 @@ func TestArtistName(t *testing.T) {
 		}
 	}
 }
+
+// The collection says when it has been listed and when an artist's
+// tracklists are in (ADR-0050).
+func TestReadingTheCollectionIsReported(t *testing.T) {
+	s := newShelf(t)
+	s.add(10, "Phil Collins", "No Jacket Required", 1985, "", "Sussudio", "Take Me Home")
+	s.add(11, "Phil Collins", "Face Value", 1981, "", "In the Air Tonight")
+	c := s.collection()
+	var mu sync.Mutex
+	said := map[string]map[string]any{}
+	c.Report = func(_ string, attrs ...any) {
+		fields := map[string]any{}
+		for i := 0; i+1 < len(attrs); i += 2 {
+			fields[attrs[i].(string)] = attrs[i+1]
+		}
+		mu.Lock()
+		said[fields["event"].(string)] = fields
+		mu.Unlock()
+	}
+
+	find(t, c, "Phil Collins", "Take Me Home")
+	mu.Lock()
+	defer mu.Unlock()
+	if got := said[ListedEvent]; got == nil || got["records"] != 2 {
+		t.Errorf("listed: %v", got)
+	}
+	got := said[TracklistsEvent]
+	if got == nil || got["artist"] != "Phil Collins" || got["records"] != 2 || got["read"] != 2 || got["failed"] != 0 {
+		t.Errorf("tracklists: %v", got)
+	}
+}

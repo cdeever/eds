@@ -377,9 +377,35 @@ once a minute each service that was asked anything gets one line, the event
 `npagent` reports the line as an event, like any other, and it arrives in
 the tenant's device partition. `nowplayd` is not a device: it posts the line
 to the tenant's log store itself (`internal/logstore`), to the workload
-partition, when it has `LOG_ENDPOINT` and `LOG_INGEST_TOKEN`. That is the
-only thing it sends there. The dashboard is **Outside Services**
+partition, when it has `LOG_ENDPOINT` and `LOG_INGEST_TOKEN`. The
+dashboard is **Outside Services**
 (`infra/deevnet-tenant-eds/dashboards/outside-services.json`).
+
+## How each track was completed
+
+Each track is one line, the event `cover.lookup`
+([ADR-0050](../../docs/content/docs/architecture/decisions/0050-how-each-track-was-completed-is-written-down.md)),
+once for a track and again only if it comes out differently:
+
+```json
+{"event":"cover.lookup","source":"turntable","artist":"Led Zeppelin","title":"Over the Hills and Far Away","heard_album":"Houses of the Holy (Remastered)","album":"Houses of the Holy (Remastered)","named_by":"source","cover_from":"none","name_ms":10002,"cover_ms":3,"name_error":"timeout","cover_error":""}
+```
+
+- `named_by`: `collection`, `record` (the one already playing has the
+  track), `original`, `catalog` (for a track that came with no album) or
+  `source`.
+- `cover_from`: `player`, `discogs`, a catalog, or `none`.
+- `name_ms`, `cover_ms`: each step's time, each with its own
+  `NP_LOOKUP_TIMEOUT`. `name_error`, `cover_error`: `timeout` or `failed`
+  when a step gave up.
+
+The collection says when it has been read: `collection.listed` (records,
+ms) and `collection.tracklists` (artist, records, read, failed, ms).
+
+These three events and `api.calls` are all `nowplayd` sends to the store;
+its log stays in the journal. They are queued and never waited on
+(`cmd/nowplayd/lines.go`). The dashboard is **Covers**
+(`infra/deevnet-tenant-eds/dashboards/covers.json`).
 
 ## Albums with a look of their own
 

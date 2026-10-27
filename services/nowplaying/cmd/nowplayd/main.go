@@ -84,10 +84,12 @@ func run(logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	counted, err := reportCalls(ctx, asked, cfg, logger)
+	store, err := openStore(cfg)
 	if err != nil {
 		return err
 	}
+	said := newLines(ctx, store, logger)
+	counted := reportCalls(ctx, asked, store, cfg, logger)
 	// After stop, so that the last minute's counts are sent on the way out.
 	defer func() {
 		stop()
@@ -274,6 +276,11 @@ func run(logger *slog.Logger) error {
 		Prefix:     cfg.Prefix,
 		Timeout:    cfg.LookupTimeout,
 		Logger:     logger,
+		// How each track was completed (ADR-0050).
+		Report: func(l current.Lookup) {
+			said.say(fmt.Sprintf("%q: cover from %s, album named by %s", l.Title, l.CoverFrom, l.NamedBy),
+				append([]any{"event", current.LookupEvent}, l.Attrs()...)...)
+		},
 	}
 	// The owner's records, for the sources that play them (ADR-0022). The
 	// token is never logged; whether there is one is.
@@ -288,6 +295,7 @@ func run(logger *slog.Logger) error {
 			HTTP:      asked.Client(cfg.LookupTimeout),
 			UserAgent: cfg.UserAgent,
 			Logger:    logger,
+			Report:    said.say,
 		}
 		publisher.Collection = collection
 		// For a track the collection does not have: the record already
@@ -385,13 +393,8 @@ func logCurrent(logger *slog.Logger, st contract.State) {
 // the journal, and in the tenant's log store when the service has been given
 // the way there, which is where a dashboard can add it up (ADR-0027). The
 // channel it returns closes when the last minute has been said.
-func reportCalls(ctx context.Context, asked *calls.Meter, cfg config.Nowplayd, logger *slog.Logger) (<-chan struct{}, error) {
-	var store *logstore.Writer
-	if cfg.LogEndpoint != "" && cfg.LogToken != "" {
-		var err error
-		if store, err = logstore.New(cfg.LogEndpoint, cfg.LogToken, "nowplayd", cfg.Broker.CAFile); err != nil {
-			return nil, err
-		}
+func reportCalls(ctx context.Context, asked *calls.Meter, store *logstore.Writer, cfg config.Nowplayd, logger *slog.Logger) <-chan struct{} {
+	if store != nil {
 		logger.Info("counting what is asked of outside services, for the log store", "endpoint", cfg.LogEndpoint, "every", calls.Every)
 	} else {
 		logger.Info("counting what is asked of outside services, in this log only: no log store was named", "every", calls.Every)
@@ -427,5 +430,5 @@ func reportCalls(ctx context.Context, asked *calls.Meter, cfg config.Nowplayd, l
 			}
 		})
 	}()
-	return done, nil
+	return done
 }

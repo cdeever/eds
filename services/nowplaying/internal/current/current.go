@@ -130,6 +130,10 @@ type Publisher struct {
 	Timeout    time.Duration // for naming a record, and again for its cover's lookup
 	Logger     *slog.Logger
 	Now        func() time.Time
+	// Report is told how each track was completed (ADR-0050): once for a
+	// track, and again only if it comes out differently. It is called while
+	// publishing, and must not keep the caller waiting. Nil reports nothing.
+	Report func(Lookup)
 
 	// What was last put on the bus, so nothing is published twice. Retained
 	// messages mean a subscriber that reconnects gets the same cover again
@@ -147,6 +151,50 @@ type Publisher struct {
 	lookSent              bool
 	// Whether the cover topics were last emptied, for idle (ADR-0024).
 	emptied bool
+	// The track and outcome last reported, so a track is reported once.
+	lastReported string
+}
+
+// Lookup is how one track was completed: who named its album, where its
+// cover came from, and what each took (ADR-0050).
+type Lookup struct {
+	Source, Artist, Title string
+	// Heard is the album the source named; Album is the one published.
+	Heard, Album string
+	// NamedBy is who named the album: "collection", the owner's record;
+	// "record", the one already playing, which has the track; "original",
+	// the original album the track is on; "catalog", a catalog, for a track
+	// that came with none; "source", left as the source named it.
+	NamedBy string
+	// CoverFrom is where the cover came from: "player", or the name of the
+	// collection or catalog that had it, or "none".
+	CoverFrom string
+	// The time spent naming the record, and looking up the cover. Zero is a
+	// step not taken.
+	NameMS, CoverMS int64
+	// Why a step gave up, when it did: "timeout" or "failed". Not finding
+	// anything is not giving up.
+	NameError, CoverError string
+}
+
+// Attrs is the lookup as the fields of a log line.
+func (l Lookup) Attrs() []any {
+	return []any{
+		"source", l.Source, "artist", l.Artist, "title", l.Title,
+		"heard_album", l.Heard, "album", l.Album, "named_by", l.NamedBy,
+		"cover_from", l.CoverFrom, "name_ms", l.NameMS, "cover_ms", l.CoverMS,
+		"name_error", l.NameError, "cover_error", l.CoverError,
+	}
+}
+
+// LookupEvent is the name the lookups are reported under.
+const LookupEvent = "cover.lookup"
+
+func giveUp(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "timeout"
+	}
+	return "failed"
 }
 
 // Publish puts the current track on the bus. winner is the arbiter's choice,
@@ -161,7 +209,9 @@ type Publisher struct {
 // It returns the state as published - with the album and the cover it was
 // completed with - and whether anything went out at all.
 func (p *Publisher) Publish(ctx context.Context, winner *contract.State, fromSource *Image) (contract.State, bool, error) {
-	out, cover := p.complete(ctx, winner, fromSource)
+	var lookup Lookup
+	out, cover := p.complete(ctx, winner, fromSource, &lookup)
+	p.report(lookup, out)
 	sent := false
 
 	// The look before the cover it belongs to. Whoever lights a room from the
@@ -338,7 +388,10 @@ func (p *Publisher) PublishIdle(ctx context.Context, winner *contract.State, on 
 
 // complete fills in what the winning source lacked, and returns the state to
 // publish with the cover it names, if it names one.
-func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSource *Image) (contract.State, *Image) {
+//
+// What it did is written into lk, which is left empty when there was no
+// track to complete.
+func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSource *Image, lk *Lookup) (contract.State, *Image) {
 	if winner == nil {
 		// Nothing is reporting at all. Say so, rather than leave the last
 		// track standing on a retained topic as if it were still playing.
@@ -358,6 +411,7 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 	if p.Coverless[winner.Source] {
 		return out, nil
 	}
+	*lk = Lookup{Source: winner.Source, Artist: track.Artist, Title: track.Title, Heard: track.Album, NamedBy: "source"}
 
 	// The player's own cover is the right cover, and nothing is looked up
 	// when it is there. It counts only if it is the one this state names: a
@@ -378,6 +432,7 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 		// a track it did not name still has a cover to be found.
 		lookup, cancel := context.WithTimeout(ctx, p.timeout())
 		defer cancel()
+		started := time.Now()
 		named := false
 		if p.Collection != nil {
 			owned, err := p.Collection.Find(lookup, track.Artist, track.Title, track.Album)
@@ -389,24 +444,33 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 				out.Track.Album = owned.Album
 				track.Album = owned.Album
 				named = true
+				lk.NamedBy = "collection"
 				p.playing(winner.Source, track)
 				if owned.Cover != nil {
 					if image := NewImage(owned.Cover.Image); image != nil {
 						out.Art = &contract.Art{SHA256: image.SHA256, MIME: image.MIME, From: owned.Cover.From}
+						lk.NameMS = time.Since(started).Milliseconds()
 						return out, image
 					}
 				}
 			case !errors.Is(err, resolve.ErrNotFound):
+				lk.NameError = giveUp(err)
 				p.logger().Warn("the collection could not be asked", "artist", track.Artist, "title", track.Title, "error", err)
 			}
 		}
 		if !named && p.Albums != nil {
-			if album := p.recordFor(lookup, winner.Source, track); album != "" {
+			album, by, err := p.recordFor(lookup, winner.Source, track)
+			if album != "" {
 				out.Track.Album = album
 				track.Album = album
+				lk.NamedBy = by
+			}
+			if err != nil {
+				lk.NameError = giveUp(err)
 			}
 			p.playing(winner.Source, track)
 		}
+		lk.NameMS = time.Since(started).Milliseconds()
 	}
 
 	if p.Resolver == nil {
@@ -415,9 +479,12 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 
 	lookup, cancel := context.WithTimeout(ctx, p.timeout())
 	defer cancel()
+	started := time.Now()
 	found, err := p.Resolver.Resolve(lookup, track)
+	lk.CoverMS = time.Since(started).Milliseconds()
 	if err != nil {
 		if !errors.Is(err, resolve.ErrNotFound) {
+			lk.CoverError = giveUp(err)
 			p.logger().Warn("lookup failed", "artist", track.Artist, "album", track.Album, "title", track.Title, "error", err)
 		}
 		// Published incomplete rather than withheld: a track with no cover
@@ -427,6 +494,7 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 
 	if track.Album == "" && found.Album != "" {
 		out.Track.Album = found.Album
+		lk.NamedBy = "catalog"
 	}
 	if out.Art == nil && found.Cover != nil {
 		if image := NewImage(found.Cover.Image); image != nil {
@@ -442,13 +510,17 @@ func (p *Publisher) complete(ctx context.Context, winner *contract.State, fromSo
 // track: a side turned over, or a track the source filed under a box set. A
 // track that is not on it is another record, however soon it came, and is
 // named by the original album it is on. "" leaves the source's album.
-func (p *Publisher) recordFor(ctx context.Context, source string, track contract.Track) string {
+//
+// by says which named it: "record" or "original". err is the last failure
+// to ask, already logged; it is nil when the answer was that nothing is known.
+func (p *Publisher) recordFor(ctx context.Context, source string, track contract.Track) (album, by string, failed error) {
 	if held, ok := p.playingRecord[source]; ok && held[1] != "" && resolve.Simplify(held[0]) == resolve.Simplify(track.Artist) {
 		has, err := p.Albums.Has(ctx, track.Artist, held[1], track.Title)
 		switch {
 		case err == nil && has:
-			return held[1]
+			return held[1], "record", nil
 		case err != nil && !errors.Is(err, resolve.ErrNotFound):
+			failed = err
 			p.logger().Warn("an album's tracks could not be asked", "artist", track.Artist, "album", held[1], "error", err)
 		}
 	}
@@ -459,11 +531,37 @@ func (p *Publisher) recordFor(ctx context.Context, source string, track contract
 			p.logger().Info("named the original album the track is on", "artist", track.Artist, "title", track.Title,
 				"heard_as", track.Album, "album", album)
 		}
-		return album
+		return album, "original", nil
 	case !errors.Is(err, resolve.ErrNotFound):
+		failed = err
 		p.logger().Warn("the original album could not be asked", "artist", track.Artist, "title", track.Title, "error", err)
 	}
-	return ""
+	return "", "", failed
+}
+
+// report hands Report how a track was completed, unless that track was last
+// reported coming out the same way: a pause and its resume are not news, a
+// cover found the second time is.
+func (p *Publisher) report(lk Lookup, out contract.State) {
+	if p.Report == nil || lk.Source == "" {
+		return
+	}
+	if out.Track != nil {
+		lk.Album = out.Track.Album
+	}
+	lk.CoverFrom = "none"
+	if out.Art != nil {
+		lk.CoverFrom = out.Art.From
+		if lk.CoverFrom == "" {
+			lk.CoverFrom = "player"
+		}
+	}
+	key := strings.Join([]string{lk.Source, lk.Artist, lk.Title, lk.Heard, lk.Album, lk.CoverFrom}, "\x00")
+	if key == p.lastReported {
+		return
+	}
+	p.lastReported = key
+	p.Report(lk)
 }
 
 // playing remembers the record an owned source is playing.

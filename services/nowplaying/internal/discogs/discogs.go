@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cdeever/eds/services/nowplaying/internal/resolve"
@@ -68,6 +69,11 @@ type Collection struct {
 
 	Now func() time.Time
 
+	// Report is told when the collection has been listed and when an
+	// artist's tracklists have been read (ADR-0050), with an "event" among
+	// its attributes. Nil reports nothing.
+	Report func(msg string, attrs ...any)
+
 	mu      sync.Mutex
 	records []record
 	listed  time.Time
@@ -109,7 +115,7 @@ func (c *Collection) Find(ctx context.Context, artist, title, album string) (res
 	if len(by) == 0 {
 		return resolve.Result{}, resolve.ErrNotFound
 	}
-	if err := c.load(ctx, wantArtist, by); err != nil {
+	if err := c.load(ctx, wantArtist, artist, by); err != nil {
 		return resolve.Result{}, err
 	}
 
@@ -135,6 +141,7 @@ func (c *Collection) list(ctx context.Context) error {
 		return nil
 	}
 
+	started := time.Now()
 	var records []record
 	for page := 1; page <= maxPages; page++ {
 		var listing struct {
@@ -195,7 +202,11 @@ func (c *Collection) list(ctx context.Context) error {
 	c.mu.Lock()
 	c.records, c.listed = records, c.now()
 	c.mu.Unlock()
-	c.logger().Info("the collection was listed", "records", len(records))
+	if c.Report != nil {
+		c.Report("the collection was listed", "event", ListedEvent, "records", len(records), "ms", time.Since(started).Milliseconds())
+	} else {
+		c.logger().Info("the collection was listed", "records", len(records))
+	}
 	return nil
 }
 
@@ -221,7 +232,9 @@ func (c *Collection) by(artist string) []record {
 // artist with thirty records takes longer than that the first time: the
 // caller is told it is not ready, and the next track by that artist finds it
 // done.
-func (c *Collection) load(ctx context.Context, artist string, records []record) error {
+//
+// heard is the artist as the track named them, for saying so.
+func (c *Collection) load(ctx context.Context, artist, heard string, records []record) error {
 	c.mu.Lock()
 	var missing []int
 	for _, r := range records {
@@ -236,7 +249,7 @@ func (c *Collection) load(ctx context.Context, artist string, records []record) 
 			c.loading = map[string]chan struct{}{}
 		}
 		c.loading[artist] = done
-		go c.fetch(artist, missing, done)
+		go c.fetch(artist, heard, missing, done)
 		running = true
 	}
 	c.mu.Unlock()
@@ -252,9 +265,11 @@ func (c *Collection) load(ctx context.Context, artist string, records []record) 
 	}
 }
 
-func (c *Collection) fetch(artist string, ids []int, done chan struct{}) {
+func (c *Collection) fetch(artist, heard string, ids []int, done chan struct{}) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
+	started := time.Now()
+	var read atomic.Int64
 	defer func() {
 		c.mu.Lock()
 		delete(c.loading, artist)
@@ -272,7 +287,9 @@ func (c *Collection) fetch(artist string, ids []int, done chan struct{}) {
 		go func() {
 			defer workers.Done()
 			for id := range queue {
-				c.read(ctx, id)
+				if c.read(ctx, id) {
+					read.Add(1)
+				}
 			}
 		}()
 	}
@@ -281,10 +298,21 @@ func (c *Collection) fetch(artist string, ids []int, done chan struct{}) {
 	}
 	close(queue)
 	workers.Wait()
+	if c.Report != nil {
+		n := int(read.Load())
+		c.Report(fmt.Sprintf("read %d of %d tracklists by %s", n, len(ids), heard), "event", TracklistsEvent,
+			"artist", heard, "records", len(ids), "read", n, "failed", len(ids)-n, "ms", time.Since(started).Milliseconds())
+	}
 }
 
-// read fetches one record's tracklist and keeps it.
-func (c *Collection) read(ctx context.Context, id int) {
+// The events Report is told about.
+const (
+	ListedEvent     = "collection.listed"
+	TracklistsEvent = "collection.tracklists"
+)
+
+// read fetches one record's tracklist and keeps it, and says whether it did.
+func (c *Collection) read(ctx context.Context, id int) bool {
 	var release struct {
 		Tracklist []track `json:"tracklist"`
 	}
@@ -296,7 +324,7 @@ func (c *Collection) read(ctx context.Context, id int) {
 		// any more who cannot wait a little longer.
 		select {
 		case <-ctx.Done():
-			return
+			return false
 		case <-time.After(limited.wait):
 		}
 		err = c.getJSON(ctx, endpoint, &release)
@@ -305,7 +333,7 @@ func (c *Collection) read(ctx context.Context, id int) {
 		// Not remembered as a record with no tracks: it is asked for again
 		// the next time its artist is heard.
 		c.logger().Warn("a record's tracklist could not be read", "release", id, "error", err)
-		return
+		return false
 	}
 	var titles []string
 	for _, t := range release.Tracklist {
@@ -317,6 +345,7 @@ func (c *Collection) read(ctx context.Context, id int) {
 	}
 	c.tracks[id] = titles
 	c.mu.Unlock()
+	return true
 }
 
 // track is one line of a tracklist. A medley or a suite is a line with lines
