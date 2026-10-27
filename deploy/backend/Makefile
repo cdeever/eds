@@ -79,7 +79,7 @@ check:
 # that are not secret, which are the workload's own.
 stage: check
 	rm -rf $(STAGE)
-	mkdir -p $(STAGE)/palette $(STAGE)/settings
+	mkdir -p $(STAGE)/palette $(STAGE)/settings $(STAGE)/dashboards
 	$(MAKE) -C $(NP) build-arm64
 	cp $(NP)/bin/npagent-linux-arm64 $(STAGE)/npagent
 	cd $(NP) && $(ARM64) -ldflags "-s -w -X main.version=$(VERSION)" -o $(STAGE)/nowplayd ./cmd/nowplayd
@@ -87,6 +87,7 @@ stage: check
 	cd $(CONSOLE) && $(ARM64) -ldflags "-s -w -X main.version=$(VERSION)" -o $(STAGE)/consoled ./cmd/consoled
 	python3 -m pip wheel --quiet --disable-pip-version-check --no-deps --wheel-dir $(STAGE)/palette $(PALETTE)
 	cp $(REPO)/deploy/lightd.env $(REPO)/deploy/nowplayd.env $(REPO)/deploy/console.env $(STAGE)/settings/
+	cp $(REPO)/infra/deevnet-tenant-eds/dashboards/*.json $(STAGE)/dashboards/
 
 # The image definition goes to the Builder as it is here, uncommitted changes
 # and all, and is recorded in the image by commit. It has a build directory of

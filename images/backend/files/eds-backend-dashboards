@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""eds-backend-dashboards - put EdS's dashboards in this Pi's Grafana.
+
+The same dashboards the tenant's Terraform applies to Deevnet's Grafana
+(infra/deevnet-tenant-eds/dashboards/), in the same folder, under the
+tenant's own login. deevnet-kit gives this Pi's Grafana Deevnet's contract:
+an organization for the tenant and the log data sources with their fixed
+UIDs, so the dashboards apply unchanged.
+
+It runs on every boot, after deevnet-kit has set Grafana up, and by
+`make push`. Each is written with the checksum of its file, and one that
+already carries it is left alone, so Grafana's history is not filled with
+copies of it. One edited here keeps the edit until the file it came from
+changes, and is then written over.
+"""
+import base64
+import glob
+import hashlib
+import json
+import os
+import ssl
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+
+DASHBOARDS = "/usr/local/share/eds-dashboards"
+KIT_JSON = "/etc/deevnet-kit/kit.json"
+CA = "/etc/deevnet-kit/tls/ca.pem"
+PORT = 3000
+FOLDER = {"uid": "eds", "title": "EdS"}
+
+
+def kit_env():
+    out = subprocess.run(["deevnet-kit", "env"], check=True, capture_output=True, text=True).stdout
+    env = {}
+    for line in out.splitlines():
+        if "=" in line and not line.startswith("#"):
+            k, v = line.split("=", 1)
+            env[k] = v
+    return env
+
+
+def main():
+    env = kit_env()
+    tenant, auth, org = env.get("DEEVNET_TENANT"), env.get("GRAFANA_AUTH"), env.get("GRAFANA_ORG_ID")
+    if not (tenant and auth and org):
+        sys.exit("Grafana is not set up yet: systemctl status deevnet-kit-dashboards")
+    # The name the certificate holds that this Pi resolves itself, as
+    # deevnet-kit dials it: localhost on the card's own CA, the tenant's
+    # Deevnet name, mapped to loopback, on a Deevnet Pi.
+    with open(KIT_JSON) as f:
+        deevnet = json.load(f).get("pki") == "deevnet"
+    host = f"grafana.{tenant}.deevnet.net" if deevnet else "localhost"
+    base = f"https://{host}:{PORT}"
+    context = ssl.create_default_context(cafile=CA)
+    headers = {
+        "Authorization": "Basic " + base64.b64encode(auth.encode()).decode(),
+        "X-Grafana-Org-Id": org,
+        "Content-Type": "application/json",
+    }
+
+    def call(method, path, body=None):
+        data = json.dumps(body).encode() if body is not None else None
+        req = urllib.request.Request(base + path, data=data, method=method, headers=headers)
+        try:
+            with urllib.request.urlopen(req, context=context, timeout=30) as resp:
+                return resp.status, json.load(resp)
+        except urllib.error.HTTPError as e:
+            return e.code, None
+        except (urllib.error.URLError, OSError) as e:
+            sys.exit(f"Grafana could not be reached at {base}: {getattr(e, 'reason', e)}")
+
+    # Made, or there already. Grafana answers an Editor 403 for a folder that
+    # does not exist yet, so it is not asked about first.
+    status, _ = call("POST", "/api/folders", FOLDER)
+    if status == 200:
+        print(f"eds-backend-dashboards: made the {FOLDER['title']} folder")
+    elif status not in (409, 412):
+        sys.exit(f"the {FOLDER['title']} folder could not be made: HTTP {status}")
+
+    paths = sorted(glob.glob(os.path.join(DASHBOARDS, "*.json")))
+    if not paths:
+        sys.exit(f"no dashboards in {DASHBOARDS}")
+    for path in paths:
+        with open(path, "rb") as f:
+            raw = f.read()
+        want = json.loads(raw)
+        want["eds_source"] = hashlib.sha256(raw).hexdigest()
+        uid = want["uid"]
+        status, have = call("GET", f"/api/dashboards/uid/{uid}")
+        if (status == 200 and have["dashboard"].get("eds_source") == want["eds_source"]
+                and have.get("meta", {}).get("folderUid") == FOLDER["uid"]):
+            continue
+        status, _ = call("POST", "/api/dashboards/db",
+                         {"dashboard": want, "folderUid": FOLDER["uid"], "overwrite": True,
+                          "message": "eds-backend-dashboards"})
+        if status != 200:
+            sys.exit(f"{want['title']} could not be written: HTTP {status}")
+        print(f"eds-backend-dashboards: wrote {want['title']}")
+    print(f"eds-backend-dashboards: {len(paths)} dashboards in the {FOLDER['title']} folder, organization {org}")
+
+
+if __name__ == "__main__":
+    if os.geteuid() != 0:
+        os.execvp("sudo", ["sudo", sys.argv[0]] + sys.argv[1:])
+    main()

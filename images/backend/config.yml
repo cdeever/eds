@@ -66,6 +66,7 @@
 
     pi_eds_backend_units:
       - eds-backend-setup.service
+      - eds-backend-dashboards.service
       - eds-palette.service
       - eds-lightd.service
       - eds-nowplayd.service
@@ -241,6 +242,16 @@
         - nowplayd
         - console
 
+    # The tenant's dashboards, as its Terraform applies them to Deevnet's
+    # Grafana; eds-backend-dashboards puts them in this Pi's.
+    - name: Install the dashboards
+      ansible.builtin.copy:
+        src: "{{ pi_eds_backend_inputs }}/dashboards/"
+        dest: "{{ chroot_root }}/usr/local/share/eds-dashboards/"
+        owner: root
+        group: root
+        mode: "0644"
+
     - name: Install what this Pi's console does differently, and the accounts
       ansible.builtin.copy:
         src: "files/{{ item.src }}"
@@ -263,6 +274,7 @@
         - {src: eds-backend-setup, dest: /usr/local/sbin/eds-backend-setup}
         - {src: eds-backend-status, dest: /usr/local/bin/eds-backend-status}
         - {src: eds-backend-palette-install, dest: /usr/local/sbin/eds-backend-palette-install}
+        - {src: eds-backend-dashboards, dest: /usr/local/sbin/eds-backend-dashboards}
 
     - name: Install the agent's tools
       ansible.builtin.copy:
@@ -327,6 +339,7 @@
         mode: "0644"
       loop:
         - {src: eds-backend-setup.service, dest: /etc/systemd/system/eds-backend-setup.service}
+        - {src: eds-backend-dashboards.service, dest: /etc/systemd/system/eds-backend-dashboards.service}
         - {src: eds-palette.service, dest: /etc/systemd/system/eds-palette.service}
         - {src: eds-lightd.service, dest: /etc/systemd/system/eds-lightd.service}
         - {src: eds-nowplayd.service, dest: /etc/systemd/system/eds-nowplayd.service}

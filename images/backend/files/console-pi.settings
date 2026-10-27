@@ -6,5 +6,5 @@
 # <hostname>.local. The kit issues no other (ADR-0033).
 CONSOLE_TLS_CERT_FILE=/etc/deevnet-kit/tls/server.pem
 CONSOLE_TLS_KEY_FILE=/etc/deevnet-kit/tls/server-key.pem
-# No dashboard to link to until the tenant's are applied to this Pi's Grafana.
-CONSOLE_DASHBOARD_URL=
+# The link to the stand's dashboard names this Pi, and is written by
+# eds-backend-setup into /etc/eds/console.env.

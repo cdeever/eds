@@ -23,13 +23,14 @@ AGENT_FILES="$REPO/images/agent/files"
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
 
-mkdir -p "$stage/settings" "$stage/palette"
+mkdir -p "$stage/settings" "$stage/palette" "$stage/dashboards"
 cp "$STAGE"/{npagent,lightd,nowplayd,consoled} "$stage/"
 cp "$STAGE"/palette/eds_palette-*.whl "$stage/palette/"
+cp "$STAGE"/dashboards/*.json "$stage/dashboards/"
 cp "$STAGE"/settings/{lightd,nowplayd,console}.env "$stage/settings/"
 cp "$FILES/console-pi.settings" "$stage/settings/console-pi.env"
-cp "$FILES"/{accounts.conf,eds-backend-setup,eds-backend-status,eds-backend-palette-install} "$stage/"
-cp "$FILES"/{eds-backend-setup,eds-palette,eds-lightd,eds-nowplayd,eds-console}.service "$FILES/npagent-backend.conf" "$stage/"
+cp "$FILES"/{accounts.conf,eds-backend-setup,eds-backend-status,eds-backend-palette-install,eds-backend-dashboards} "$stage/"
+cp "$FILES"/{eds-backend-setup,eds-backend-dashboards,eds-palette,eds-lightd,eds-nowplayd,eds-console}.service "$FILES/npagent-backend.conf" "$stage/"
 cp "$AGENT_FILES"/{npagent.service,eds-agent-pair,eds-agent-spotify} "$stage/"
 cp "$AGENT_FILES"/{eds-recognize,eds-recognize-requirements.txt,eds-agent-turntable-install} "$stage/"
 printf '%s\n' "$VERSION" > "$stage/source"
@@ -41,7 +42,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 install -o root -g root -m 0755 npagent lightd nowplayd consoled /usr/local/bin/
 install -o root -g root -m 0755 eds-backend-status eds-agent-pair eds-agent-spotify /usr/local/bin/
-install -o root -g root -m 0755 eds-backend-setup eds-backend-palette-install eds-agent-turntable-install /usr/local/sbin/
+install -o root -g root -m 0755 eds-backend-setup eds-backend-palette-install eds-backend-dashboards eds-agent-turntable-install /usr/local/sbin/
+install -d -o root -g root -m 0755 /usr/local/share/eds-dashboards
+install -o root -g root -m 0644 dashboards/*.json /usr/local/share/eds-dashboards/
 install -o root -g root -m 0644 settings/*.env /etc/eds/settings/
 install -o root -g root -m 0644 accounts.conf /etc/eds/accounts.conf
 install -o root -g root -m 0644 ./*.service /etc/systemd/system/
@@ -53,6 +56,9 @@ printf 'pushed: %s on %s\n' "$(cat source)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> 
 systemctl daemon-reload
 /usr/local/sbin/eds-backend-setup
 systemctl restart eds-palette.service eds-lightd.service eds-nowplayd.service eds-console.service
+# A Pi from an image before the dashboards had none of this.
+systemctl enable eds-backend-dashboards.service
+systemctl restart eds-backend-dashboards.service || echo "  the dashboards were not written: journalctl -u eds-backend-dashboards"
 # 78 is "no driver is set up", which is a fair state for a Pi to be in.
 systemctl restart npagent.service || true
 echo "installed $(cat source)"

@@ -27,6 +27,7 @@ if sudo test -f /etc/deevnet-kit/kit.json; then
     for unit in mosquitto vmauth victorialogs deevnet-log-bridge; do active "$unit"; done
     # Grafana is the one part the lights do not need, and the heaviest.
     if systemctl is-active --quiet grafana; then ok "grafana is running"; else note "grafana is $(systemctl is-active grafana): no dashboards, and nothing else is affected"; fi
+    if systemctl is-active --quiet eds-backend-dashboards; then ok "EdS's dashboards are in Grafana"; else note "EdS's dashboards are not in Grafana: journalctl -u eds-backend-dashboards"; fi
     listening 8883 "the broker"
     listening 8427 "the log store"
 else
