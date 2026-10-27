@@ -1,0 +1,507 @@
+{
+  "uid": "eds-covers",
+  "title": "Covers",
+  "tags": [
+    "eds"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "refresh": "1m",
+  "description": "How each track's album and cover were found (ADR-0050). Read from nowplayd's lines in the workload partition.",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Tracks",
+      "description": "Tracks completed in the selected period: one line for a track, and another only if it came out differently, such as a cover found the second time.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"cover.lookup\" | stats count() tracks"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Without a cover",
+      "description": "Tracks published with no cover, so the stand did not follow them. One that found its cover later is counted here and again under its cover.",
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"cover.lookup\" cover_from:=\"none\" | stats count() tracks"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "A step gave up",
+      "description": "Tracks where naming the record or looking up the cover ran out of time or could not ask. Not finding anything is not giving up.",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"cover.lookup\" (name_error:* OR cover_error:*) | stats count() tracks"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Records in the collection",
+      "description": "The most records the collection listed in the selected period. Discogs is listed when nowplayd starts and every six hours after.",
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "stats",
+          "expr": "event:=\"collection.listed\" | stats max(records) records"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Where covers came from",
+      "description": "player is the source's own picture; discogs is the owner's record; the catalogs are deezer, itunes and musicbrainz; none is no cover.",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"cover.lookup\" | stats by (cover_from) count() tracks",
+          "legendFormat": "{{cover_from}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Who named the album",
+      "description": "collection: the owner's record. record: the record already playing has the track. original: the original album the track is on. catalog: a catalog, for a track that came with none. source: left as the source named it (ADR-0038).",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"cover.lookup\" | stats by (named_by) count() tracks",
+          "legendFormat": "{{named_by}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Time taken, the longest in each stretch",
+      "description": "Naming the record and looking up the cover each have NP_LOOKUP_TIMEOUT (10 s unless set). A step at the timeout gave up.",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 6
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"cover.lookup\" | stats max(name_ms) naming",
+          "legendFormat": "naming the record"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"cover.lookup\" | stats max(cover_ms) cover",
+          "legendFormat": "looking up the cover"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Gave up, by step",
+      "description": "Each point is tracks in that stretch where the step ran out of time (timeout) or could not ask (failed).",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"cover.lookup\" name_error:* | stats by (name_error) count() tracks",
+          "legendFormat": "naming: {{name_error}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"cover.lookup\" cover_error:* | stats by (cover_error) count() tracks",
+          "legendFormat": "cover: {{cover_error}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "The collection's tracklists read",
+      "description": "Read the first time an artist is played. A track by an artist still being read waits for it, and can run out of time.",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"collection.tracklists\" | stats sum(read) read",
+          "legendFormat": "read"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "statsRange",
+          "expr": "event:=\"collection.tracklists\" | stats sum(failed) failed",
+          "legendFormat": "failed"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Tracks without a cover",
+      "description": "Each with what named its album and why a step gave up, if one did; the line's fields have the times.",
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "instant",
+          "expr": "event:=\"cover.lookup\" cover_from:=\"none\""
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Every track",
+      "description": "Every lookup, newest first.",
+      "gridPos": {
+        "x": 12,
+        "y": 36,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "instant",
+          "expr": "event:=\"cover.lookup\""
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "The collection being read",
+      "description": "Listings and each artist's tracklists.",
+      "gridPos": {
+        "x": 0,
+        "y": 45,
+        "w": 24,
+        "h": 9
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "deevnet-logs-workloads"
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "deevnet-logs-workloads"
+          },
+          "queryType": "instant",
+          "expr": "event:in(\"collection.listed\", \"collection.tracklists\")"
+        }
+      ]
+    }
+  ]
+}

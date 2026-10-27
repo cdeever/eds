@@ -42,3 +42,11 @@ resource "grafana_dashboard" "outside_services" {
   folder      = grafana_folder.eds.uid
   config_json = file("${path.module}/dashboards/outside-services.json")
 }
+
+# How each track's album and cover were found, and the owner's collection
+# being read (ADR-0050). nowplayd writes these to the workload partition.
+resource "grafana_dashboard" "covers" {
+  org_id      = deevnet_tenant.eds.dashboard_org_id
+  folder      = grafana_folder.eds.uid
+  config_json = file("${path.module}/dashboards/covers.json")
+}

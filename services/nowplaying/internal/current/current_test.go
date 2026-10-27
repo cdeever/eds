@@ -1303,3 +1303,86 @@ func TestOnlyOwnedSourcesAreRenamed(t *testing.T) {
 		t.Errorf("named %q", got)
 	}
 }
+
+// --- how each track was completed (ADR-0050) ---------------------------------
+
+func reporting(p *Publisher) *[]Lookup {
+	var got []Lookup
+	p.Report = func(l Lookup) { got = append(got, l) }
+	return &got
+}
+
+// The record the owner has: named by the collection, with its sleeve.
+func TestALookupIsReportedOncePerTrack(t *testing.T) {
+	col := &fakeCollection{result: resolve.Result{Album: "No Jacket Required", Cover: &resolve.Cover{Image: jpeg, From: "discogs"}}}
+	p := owned(&fakeBus{}, &fakeResolver{err: resolve.ErrNotFound}, col, "turntable")
+	got := reporting(p)
+
+	st := from("turntable", "Take Me Home", "The Singles")
+	for range 3 { // playing, paused, playing again: one track
+		if _, _, err := p.Publish(context.Background(), st, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(*got) != 1 {
+		t.Fatalf("reported %d times: %+v", len(*got), *got)
+	}
+	l := (*got)[0]
+	if l.Source != "turntable" || l.Title != "Take Me Home" || l.Heard != "The Singles" || l.Album != "No Jacket Required" ||
+		l.NamedBy != "collection" || l.CoverFrom != "discogs" || l.NameError != "" || l.CoverError != "" {
+		t.Errorf("%+v", l)
+	}
+}
+
+// The evening of 2026-10-26, as it now reads: the original album could not
+// be named in time, and the cover was found anyway.
+func TestALookupThatGaveUpSaysWhere(t *testing.T) {
+	res := &deadlineResolver{}
+	p := owned(&fakeBus{}, res, &fakeCollection{err: resolve.ErrNotFound}, "turntable")
+	p.Timeout = 20 * time.Millisecond
+	p.Albums = slowAlbums{}
+	got := reporting(p)
+	if _, _, err := p.Publish(context.Background(), onTurntable("Dogs", "Animals (Remastered)"), nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(*got) != 1 {
+		t.Fatalf("reported %+v", *got)
+	}
+	l := (*got)[0]
+	if l.NamedBy != "source" || l.Album != "Animals (Remastered)" || l.NameError != "timeout" ||
+		l.CoverFrom != "deezer" || l.CoverError != "" || l.NameMS < 20 {
+		t.Errorf("%+v", l)
+	}
+}
+
+// A track that went without a cover is reported again when one is found.
+func TestACoverFoundLaterIsReported(t *testing.T) {
+	res := &fakeResolver{err: errors.New("deezer: 503")}
+	p := publisher(&fakeBus{}, res)
+	got := reporting(p)
+	st := playing("Money", "")
+	p.Publish(context.Background(), st, nil)
+	res.err, res.result = nil, resolve.Result{Album: "The Dark Side of the Moon", Cover: &resolve.Cover{Image: pngA, From: "itunes"}}
+	p.Publish(context.Background(), st, nil)
+	if len(*got) != 2 {
+		t.Fatalf("reported %+v", *got)
+	}
+	if first := (*got)[0]; first.CoverFrom != "none" || first.CoverError != "failed" {
+		t.Errorf("first: %+v", first)
+	}
+	if second := (*got)[1]; second.CoverFrom != "itunes" || second.NamedBy != "catalog" || second.Album != "The Dark Side of the Moon" {
+		t.Errorf("second: %+v", second)
+	}
+}
+
+// The record already playing names the next track on it.
+func TestTheRecordPlayingIsReportedAsWhatNamedIt(t *testing.T) {
+	p := owned(&fakeBus{}, &fakeResolver{err: resolve.ErrNotFound}, &fakeCollection{err: resolve.ErrNotFound}, "turntable")
+	p.Albums = pinkFloyd()
+	got := reporting(p)
+	albumOf(t, p, onTurntable("Time", ""))
+	albumOf(t, p, onTurntable("Money", "Discovery (Box Set)"))
+	if len(*got) != 2 || (*got)[0].NamedBy != "original" || (*got)[1].NamedBy != "record" || (*got)[1].CoverFrom != "none" {
+		t.Errorf("%+v", *got)
+	}
+}

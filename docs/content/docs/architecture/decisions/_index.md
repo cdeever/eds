@@ -118,3 +118,4 @@ and incidents under the same names. To keep the two apart:
 | [0047](0047-voiced-asks-eds-inventory/) | 2026-10-24 | voiced asks eds-inventory for the owner's albums, in place of its own index | {{< adr-status "Accepted" >}} |
 | [0048](0048-the-turntable-is-heard-on-both-channels/) | 2026-10-25 | The turntable is heard on both channels, and one gone silent is said on the console | {{< adr-status "Proposed" >}} |
 | [0049](0049-a-device-holds-two-sites-and-is-told-which/) | 2026-10-26 | A device holds two sites' settings, and is told which to use by a message | {{< adr-status "Proposed" >}} |
+| [0050](0050-how-each-track-was-completed-is-written-down/) | 2026-10-27 | How each track's album and cover were found is written down, one line a track, and sent to the log store | {{< adr-status "Proposed" >}} |
