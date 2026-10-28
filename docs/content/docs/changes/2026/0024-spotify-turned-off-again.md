@@ -57,7 +57,19 @@ turns it back on.
 | 17:02 | `drivers DRIVERS=itunes,turntable`. `npagent` stopped, flushed its last count (`6 calls to spotify`), and came back active at 17:02:43 with `NP_DRIVERS=itunes,turntable`. The turntable driver was online within a second. |
 | 17:04 | No further `api.calls` for `spotify`. The console's `/api/state`: `spotify` offline, `turntable` online. `itunes` offline, as its own driver reported at 17:02:46: it did not find iTunes, which this change did not touch. |
 
+### Later: on again, and off again (2026-10-27)
+
+Spotify was turned on again on the relay Pi in a later session, with no
+record of it. On 2026-10-27 it was found running `itunes,spotify,turntable`
+and turned off again the same way:
+`make -C deploy/relay drivers DRIVERS=itunes,turntable`. `npagent` came back
+active with `NP_DRIVERS=itunes,turntable`.
+
 ## Follow-ups
 
 - [ ] Come back to Spotify: what it should cost to ask, and whether the
   poll can be slower when nothing is playing.
+- [ ] A way to switch Spotify on and off without a person editing the Pi's
+  settings. Turning it on and off by hand three times, once with no record,
+  is the case for one. Adding a control is a decision to record first
+  (ADR-0039).
