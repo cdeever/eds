@@ -95,7 +95,7 @@ func (d *Driver) openDevice(ctx context.Context) (string, error) {
 // by that artist and name.
 func (d *Driver) findAlbum(ctx context.Context, artist, album string) (string, error) {
 	q := url.Values{
-		"q":     {fmt.Sprintf("album:%s artist:%s", album, artist)},
+		"q":     {fmt.Sprintf("album:%q artist:%q", album, artist)},
 		"type":  {"album"},
 		"limit": {"10"},
 	}
@@ -130,6 +130,17 @@ func (d *Driver) findAlbum(ctx context.Context, artist, album string) (string, e
 		case near == "" && suffixed(name, strings.ToLower(album)):
 			near = a.URI
 		}
+	}
+	if near == "" {
+		var seen []string
+		for _, a := range found.Albums.Items {
+			by := ""
+			if len(a.Artists) > 0 {
+				by = a.Artists[0].Name
+			}
+			seen = append(seen, a.Name+" / "+by)
+		}
+		d.logger().Info("not on Spotify by that name", "artist", artist, "album", album, "seen", seen)
 	}
 	return near, nil
 }
