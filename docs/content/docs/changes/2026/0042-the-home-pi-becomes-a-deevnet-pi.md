@@ -144,11 +144,17 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 
 | When | Step | What happened |
 |---|---|---|
-| | | |
+| 2026-10-27 | 1–3 | The image built, the card written and booted; `make status` answered |
+| 2026-10-27 | 4 | `cert request` on the Pi; `deevnet_certificate.backend` applied with provider 0.8.0, serial `55:c1:0d:cb:…:9d:0a`, valid to 2027-10-28, for `mqtt`, `logs`, `grafana`, `console` at `eds`, `eds.home` and `eds.mobile`. It chains to the Deevnet Root and is for the request's key |
 
 ### Departures from the plan
 
--
+- The tenant's provider pin went from `~> 0.7` to `~> 0.8`: a certificate's
+  `sites` first came in 0.8.0.
+- The same day's applies also created `grafana_dashboard.covers`, waiting
+  since ADR-0050 was merged without one.
+- Before the certificate, the Pi warned that its card certificate did not
+  name its IPv6 address. A Deevnet certificate names no address.
 
 ## Follow-ups
 
