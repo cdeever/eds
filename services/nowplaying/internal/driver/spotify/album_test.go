@@ -47,12 +47,24 @@ func TestAnAlbumSpotifyHasNotIsAMiss(t *testing.T) {
 	}
 }
 
-func TestAnAlbumIsNotPlayedWhereNothingCounts(t *testing.T) {
-	d, s, _ := commanded(t, here{})
+func TestWithNothingHereAnAlbumIsPlayedOnAnOpenDeviceThatCounts(t *testing.T) {
+	d, s, _ := commanded(t, here{}, http.StatusOK, http.StatusOK, http.StatusNoContent)
+	s.body = `{"devices":[{"id":"car","name":"Car","is_active":true},{"id":"pc","name":"study pc"}],` + searched[1:]
+	if err := d.Command(context.Background(), albumCommand("Van Halen")); err != nil {
+		t.Fatal(err)
+	}
+	if len(s.asked) != 3 || s.asked[0] != "GET /v1/me/player/devices" || s.asked[2] != "PUT /v1/me/player/play?device_id=pc" {
+		t.Fatalf("asked %v", s.asked)
+	}
+}
+
+func TestWithNothingHereAndNoDeviceThatCountsNoAlbumIsPlayed(t *testing.T) {
+	d, s, _ := commanded(t, here{}, http.StatusOK)
+	s.body = `{"devices":[{"id":"car","name":"Car","is_active":true}]}`
 	if err := d.Command(context.Background(), albumCommand("Van Halen")); !errors.Is(err, ErrNotHere) {
 		t.Fatalf("err %v", err)
 	}
-	if len(s.asked) != 0 {
+	if len(s.asked) != 1 {
 		t.Errorf("asked %v", s.asked)
 	}
 }

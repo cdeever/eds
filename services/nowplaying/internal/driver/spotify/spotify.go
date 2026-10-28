@@ -113,11 +113,11 @@ func (d *Driver) Command(ctx context.Context, c contract.Command) error {
 	d.mu.Lock()
 	now := d.here
 	d.mu.Unlock()
+	if c.Command == contract.PlayAlbum {
+		return d.playAlbum(ctx, c, now.track)
+	}
 	if !now.track {
 		return ErrNotHere
-	}
-	if c.Command == contract.PlayAlbum {
-		return d.playAlbum(ctx, c)
 	}
 
 	method, path := http.MethodPost, ""
@@ -681,6 +681,7 @@ func refusal(resp *http.Response) error {
 
 // Device is one of the account's devices, as Spotify names it.
 type Device struct {
+	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Type   string `json:"type"`
 	Active bool   `json:"is_active"`

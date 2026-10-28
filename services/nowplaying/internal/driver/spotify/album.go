@@ -25,8 +25,19 @@ import (
 var ErrNoAlbum = errors.New("spotify: has none of the albums asked for")
 
 // playAlbum plays the first of the command's album and its alternatives
-// (ADR-0045) that Spotify has.
-func (d *Driver) playAlbum(ctx context.Context, c contract.Command) error {
+// (ADR-0045) that Spotify has. With a track here it plays where that is;
+// with none, on a device that counts and is open, since asking for an album
+// is how music is started and not only changed. A device elsewhere is still
+// never chosen.
+func (d *Driver) playAlbum(ctx context.Context, c contract.Command, here bool) error {
+	play := "/v1/me/player/play"
+	if !here {
+		id, err := d.openDevice(ctx)
+		if err != nil {
+			return err
+		}
+		play += "?" + url.Values{"device_id": {id}}.Encode()
+	}
 	for _, album := range append([]string{c.Album}, c.Instead...) {
 		uri, err := d.findAlbum(ctx, c.Artist, album)
 		if err != nil {
@@ -36,7 +47,7 @@ func (d *Driver) playAlbum(ctx context.Context, c contract.Command) error {
 			continue
 		}
 		body, _ := json.Marshal(map[string]string{"context_uri": uri})
-		if _, err := d.send(ctx, http.MethodPut, "/v1/me/player/play", body); err != nil {
+		if _, err := d.send(ctx, http.MethodPut, play, body); err != nil {
 			return err
 		}
 		d.logger().Info("playing an album on Spotify", "artist", c.Artist, "album", album, "uri", uri)
@@ -47,6 +58,37 @@ func (d *Driver) playAlbum(ctx context.Context, c contract.Command) error {
 		return nil
 	}
 	return ErrNoAlbum
+}
+
+// openDevice is the id of a device that counts and has Spotify open, the
+// active one first.
+func (d *Driver) openDevice(ctx context.Context) (string, error) {
+	answer, err := d.send(ctx, http.MethodGet, "/v1/me/player/devices", nil)
+	if err != nil {
+		return "", err
+	}
+	var open struct {
+		Devices []Device `json:"devices"`
+	}
+	if err := json.Unmarshal(answer, &open); err != nil {
+		return "", fmt.Errorf("spotify: a devices answer that does not read: %w", err)
+	}
+	id := ""
+	for _, dev := range open.Devices {
+		if dev.ID == "" || !d.counts(dev.Name) {
+			continue
+		}
+		if dev.Active {
+			return dev.ID, nil
+		}
+		if id == "" {
+			id = dev.ID
+		}
+	}
+	if id == "" {
+		return "", ErrNotHere
+	}
+	return id, nil
 }
 
 // findAlbum is the album's URI in Spotify's catalog, or "" when it has none
