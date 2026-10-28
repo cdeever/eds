@@ -1,6 +1,6 @@
 // The console's page. It is handed the picture - once, then again whenever
-// it changes - and draws it. The one thing it sends is the stand's setting,
-// which sources light it (ADR-0039).
+// it changes - and draws it. What it sends is two settings: which sources
+// light the stand (ADR-0039), and whether Spotify is followed (ADR-0051).
 //
 // Every word that came from a player or a catalog is put on the page as
 // text, never as markup.
@@ -329,61 +329,114 @@ function drawRecent(page) {
   $("recent").replaceChildren(...(rows.length ? rows : [el("li", "empty", "Nothing has started playing since the console did.")]));
 }
 
-// --- which sources light the stand (ADR-0039) ----------------------------------
+// --- the two settings (ADR-0039, ADR-0051) -------------------------------------
 
-// The setting asked for and not yet heard back, and when it was asked.
-let wanted = null;
-let wantedAt = 0;
+// How long a switch waits to hear its setting come back from the broker.
 const ECHO_MS = 5000;
 
-function drawStandSources(page) {
-  const all = page.stand_sources === "all";
-  $("stand-sources").classList.toggle("all", all);
-  $("stand-word").textContent = all ? "lit for every source" : "lit for records";
-  const button = $("stand-switch");
-  button.hidden = false;
-  button.textContent = all ? "Records only" : "Every source";
-  button.title = all
-    ? "Light the stand for records only, as it is by default"
-    : "Light the stand for iTunes and Spotify too, until it is switched back";
-  if (wanted && page.stand_sources === wanted) {
-    wanted = null;
-    $("stand-note").textContent = "";
+// A setting the page can switch: shown as the bus last said it, switched by
+// a POST to the console. What is shown is what comes back on the bus, not
+// what was asked: the setting reaches whoever obeys it the same way, so
+// hearing it is the proof.
+function settingSwitch({ section, word, button, note, path, field, words, describe }) {
+  let shown = null; // the word in force, as last heard
+  let wanted = null; // the word asked for and not yet heard back
+  let wantedAt = 0;
+
+  async function flip() {
+    wanted = shown === words[1] ? words[0] : words[1];
+    wantedAt = performance.now();
+    $(button).disabled = true;
+    $(note).textContent = "switching…";
+    try {
+      const resp = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: wanted }),
+      });
+      if (!resp.ok) throw new Error(`${resp.status} ${(await resp.text()).trim()}`);
+    } catch (problem) {
+      wanted = null;
+      $(button).disabled = false;
+      $(note).textContent = `Not switched: ${problem.message}`;
+    }
   }
-  button.disabled = wanted !== null;
+  $(button).addEventListener("click", flip);
+
+  setInterval(() => {
+    if (wanted && performance.now() - wantedAt > ECHO_MS) {
+      wanted = null;
+      $(button).disabled = false;
+      $(note).textContent =
+        "Sent, and not heard back from the broker. The console's account may not be allowed to change the setting.";
+    }
+  }, 1000);
+
+  // draw shows the word in force. aside is a note of the page's own, shown
+  // when nothing is being switched.
+  return function draw(value, aside = "") {
+    shown = value;
+    const d = describe(value);
+    $(section).classList.toggle("marked", d.marked);
+    $(word).textContent = d.word;
+    const b = $(button);
+    b.hidden = false;
+    b.textContent = d.button;
+    b.title = d.title;
+    if (wanted && value === wanted) wanted = null;
+    if (!wanted) $(note).textContent = aside;
+    b.disabled = wanted !== null;
+  };
 }
 
-// What is shown is what comes back on the bus, not what was asked: the
-// setting reaches nowplayd the same way, so hearing it is the proof.
-async function switchStand() {
-  const now = $("stand-sources").classList.contains("all") ? "all" : "records";
-  wanted = now === "all" ? "records" : "all";
-  wantedAt = performance.now();
-  $("stand-switch").disabled = true;
-  $("stand-note").textContent = "switching…";
-  try {
-    const resp = await fetch("api/stand", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sources: wanted }),
-    });
-    if (!resp.ok) throw new Error(`${resp.status} ${(await resp.text()).trim()}`);
-  } catch (problem) {
-    wanted = null;
-    $("stand-switch").disabled = false;
-    $("stand-note").textContent = `Not switched: ${problem.message}`;
-  }
-}
-$("stand-switch").addEventListener("click", switchStand);
+// Which sources light the stand (ADR-0039). Every source is the setting
+// someone left on, and is marked so it is not missed.
+const drawStandSetting = settingSwitch({
+  section: "stand-sources", word: "stand-word", button: "stand-switch", note: "stand-note",
+  path: "api/stand", field: "sources", words: ["records", "all"],
+  describe: (v) => v === "all"
+    ? { marked: true, word: "lit for every source", button: "Records only",
+        title: "Light the stand for records only, as it is by default" }
+    : { marked: false, word: "lit for records", button: "Every source",
+        title: "Light the stand for iTunes and Spotify too, until it is switched back" },
+});
 
-setInterval(() => {
-  if (wanted && performance.now() - wantedAt > ECHO_MS) {
-    wanted = null;
-    $("stand-switch").disabled = false;
-    $("stand-note").textContent =
-      "Sent, and not heard back from the broker. The console's account may not be allowed to change the setting.";
+// Whether Spotify's driver runs (ADR-0051). Off is plain, not a fault: it is
+// the default, and asks Spotify nothing.
+const drawSpotifySetting = settingSwitch({
+  section: "spotify-switch", word: "spotify-word", button: "spotify-flip", note: "spotify-note",
+  path: "api/spotify", field: "driver", words: ["off", "on"],
+  describe: (v) => v === "on"
+    ? { marked: false, word: "followed", button: "Turn off",
+        title: "Stop asking Spotify what is playing" }
+    : { marked: false, word: "off: Spotify is asked nothing", button: "Turn on",
+        title: "Follow Spotify until it is turned off; it is asked what is playing every few seconds" },
+});
+
+// Switched on and still not online after this long is a driver that could
+// not start: the agent's own presence is believed for ninety seconds.
+const SPOTIFY_START_MS = 90000;
+let spotifyOnSince = null;
+
+function drawSettings(page) {
+  drawStandSetting(page.stand_sources === "all" ? "all" : "records");
+
+  const on = page.spotify_driver === "on";
+  const source = page.sources.find((s) => s.id === "spotify");
+  let aside = "";
+  if (!on) {
+    spotifyOnSince = null;
+  } else if (source && source.presence === "online") {
+    spotifyOnSince = null;
+  } else {
+    spotifyOnSince ??= performance.now();
+    if (performance.now() - spotifyOnSince > SPOTIFY_START_MS) {
+      aside = "Switched on, and Spotify's driver has not come online. It may not be in the agent's NP_DRIVERS, " +
+        "or may need its authorization renewed: the agent's log says which.";
+    }
   }
-}, 1000);
+  drawSpotifySetting(on ? "on" : "off", aside);
+}
 
 // What a beacon switches, from its name: turntable-power-01 is the
 // turntable's. The console is not told which source a beacon speaks for.
@@ -430,7 +483,7 @@ function drawFrame(page) {
 function draw(page) {
   if (Number.isInteger(page.strip_leds) && page.strip_leds > 0 && page.strip_leds <= 300) leds = page.strip_leds;
   drawNow(page);
-  drawStandSources(page);
+  drawSettings(page);
   drawStands(page);
   drawSources(page);
   drawRecent(page);

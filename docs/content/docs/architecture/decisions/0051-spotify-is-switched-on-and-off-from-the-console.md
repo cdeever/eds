@@ -128,6 +128,16 @@ counts); on starting it again; the other drivers untouched across both; a
 command while off failed and not kept. Tests in the console: the setting
 read and defaulting to `off`; the route refusing as `/api/stand` does.
 
+Written 2026-10-28, and passing under `-race`. The first run of them found
+a switch turned off and on again faster than the agent woke merged into one
+change, so a driver that had given up was never started again. The switch
+now counts its moves. The connection's routing is tested by itself, and
+the console's route was tried on the development broker: off before
+anything was set, `on` published retained and read back, another origin
+refused, and `off` again.
+
+Not tried yet: the page itself in a browser.
+
 Then, on the relay Pi, with `NP_DRIVERS=itunes,spotify,turntable`:
 
 - [ ] Deployed with no setting: Spotify offline, and no `api.calls` line

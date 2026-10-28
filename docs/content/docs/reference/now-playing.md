@@ -29,6 +29,7 @@ All under the tenant's prefix, `eds/`.
 | `nowplaying/stand` | the console | yes | which sources the stand is lit for: `records` or `all` |
 | `nowplaying/command` | a controller | **never** | a button press, for whatever is current |
 | `nowplaying/source/<id>/command` | nowplayd | **never** | that press, passed to the current source |
+| `nowplaying/source/spotify/switch` | the console | yes | whether the Spotify driver runs: `on` or `off`, and nothing is `off` (ADR-0051) |
 | `nowplaying/status` | nowplayd | yes (last will) | `online` / `offline` |
 
 `<id>` names one driver deployment, such as `itunes-den`. It is lowercase

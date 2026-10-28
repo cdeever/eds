@@ -6,7 +6,8 @@
 // reads only the fields it shows, so a field added to either does not break
 // it. It makes no network calls and decides nothing: what is current is
 // nowplayd's decision, and what a cover becomes is lightd's. Which sources
-// the stand is lit for is the setting on the bus, as last heard (ADR-0039).
+// the stand is lit for is the setting on the bus, as last heard (ADR-0039),
+// and so is whether Spotify's driver is switched on (ADR-0051).
 package view
 
 import (
@@ -198,6 +199,28 @@ func EncodeStand(sources string) ([]byte, error) {
 	}{ContractVersion, sources})
 }
 
+// Whether Spotify's driver runs (ADR-0051). Off is the default, and what
+// nothing on the broker means.
+const (
+	DriverOn  = "on"
+	DriverOff = "off"
+)
+
+// SpotifySwitchTopic is the setting's topic.
+func SpotifySwitchTopic(prefix string) string { return prefix + "/nowplaying/source/spotify/switch" }
+
+// EncodeSwitch is the setting as it goes on the bus, or an error for a word
+// that is not one of the two.
+func EncodeSwitch(driver string) ([]byte, error) {
+	if driver != DriverOn && driver != DriverOff {
+		return nil, fmt.Errorf("view: a driver is switched %q or %q, not %q", DriverOn, DriverOff, driver)
+	}
+	return json.Marshal(struct {
+		V      int    `json:"v"`
+		Driver string `json:"driver"`
+	}{ContractVersion, driver})
+}
+
 // Play is one entry in what was recently played.
 type Play struct {
 	At     time.Time `json:"at"`
@@ -223,6 +246,9 @@ type Snapshot struct {
 	// StandSources is which sources the stand is lit for: StandRecords or
 	// StandAll (ADR-0039).
 	StandSources string `json:"stand_sources"`
+	// SpotifyDriver is whether Spotify's driver is switched on: DriverOn or
+	// DriverOff (ADR-0051).
+	SpotifyDriver string `json:"spotify_driver"`
 }
 
 type cover struct {
@@ -236,17 +262,18 @@ type View struct {
 	prefix string
 	now    func() time.Time
 
-	mu       sync.RWMutex
-	current  *Playing
-	cover    *cover
-	sources  map[string]*Source
-	stands   map[string]*Stand
-	beacons  map[string]*Beacon
-	screens  map[string]*Screen
-	services map[string]*Presence
-	recent   []Play
-	lastKey  string
-	standAll bool
+	mu        sync.RWMutex
+	current   *Playing
+	cover     *cover
+	sources   map[string]*Source
+	stands    map[string]*Stand
+	beacons   map[string]*Beacon
+	screens   map[string]*Screen
+	services  map[string]*Presence
+	recent    []Play
+	lastKey   string
+	standAll  bool
+	spotifyOn bool
 }
 
 // New makes an empty View for topics under prefix.
@@ -280,6 +307,7 @@ func Topics(prefix string) []string {
 		prefix + "/beacon/+/status",
 		prefix + "/screen/+/status",
 		StandTopic(prefix),
+		SpotifySwitchTopic(prefix),
 	}
 }
 
@@ -332,6 +360,21 @@ func (v *View) apply(topic string, payload []byte, retained bool) bool {
 		}
 		changed := all != v.standAll
 		v.standAll = all
+		return changed
+
+	case rest == "nowplaying/source/spotify/switch":
+		// Empty is no setting, which is off, and so is anything the agent
+		// could not read: it would be off there too.
+		on := false
+		if len(payload) > 0 {
+			var m struct {
+				V      int    `json:"v"`
+				Driver string `json:"driver"`
+			}
+			on = json.Unmarshal(payload, &m) == nil && m.V == ContractVersion && m.Driver == DriverOn
+		}
+		changed := on != v.spotifyOn
+		v.spotifyOn = on
 		return changed
 
 	case rest == "nowplaying/status":
@@ -527,16 +570,20 @@ func (v *View) Snapshot() Snapshot {
 	defer v.mu.RUnlock()
 
 	out := Snapshot{
-		Sources:      make([]Source, 0, len(v.sources)),
-		Stands:       make([]Stand, 0, len(v.stands)),
-		Beacons:      make([]Beacon, 0, len(v.beacons)),
-		Screens:      make([]Screen, 0, len(v.screens)),
-		Services:     make(map[string]string, len(v.services)),
-		Recent:       append([]Play{}, v.recent...),
-		StandSources: StandRecords,
+		Sources:       make([]Source, 0, len(v.sources)),
+		Stands:        make([]Stand, 0, len(v.stands)),
+		Beacons:       make([]Beacon, 0, len(v.beacons)),
+		Screens:       make([]Screen, 0, len(v.screens)),
+		Services:      make(map[string]string, len(v.services)),
+		Recent:        append([]Play{}, v.recent...),
+		StandSources:  StandRecords,
+		SpotifyDriver: DriverOff,
 	}
 	if v.standAll {
 		out.StandSources = StandAll
+	}
+	if v.spotifyOn {
+		out.SpotifyDriver = DriverOn
 	}
 	if v.current != nil {
 		c := *v.current

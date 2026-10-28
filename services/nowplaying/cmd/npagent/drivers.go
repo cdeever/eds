@@ -48,6 +48,9 @@ type job struct {
 	// (ADR-0020). Nil for a driver that takes no commands, which then
 	// subscribes to nothing at all.
 	command func(ctx context.Context, c contract.Command) error
+	// switched, when set, is the driver's switch (ADR-0051): it runs only
+	// while that is on. Nil for a driver that runs whenever it can.
+	switched *driverSwitch
 }
 
 // drivers reads NP_DRIVERS and sets each one up as far as it will go. A
@@ -186,7 +189,9 @@ func (c *countedRecognizer) Recognize(ctx context.Context, clip []int16) (turnta
 // before that decision only reads: Spotify refuses each command, the refusal
 // is logged, and reading goes on as it did.
 func spotifyJob(logger *slog.Logger) (job, error) {
-	j := job{name: "spotify", source: "spotify"}
+	// Switched (ADR-0051): it asks Spotify every few seconds, all day, and
+	// runs only while someone wants that.
+	j := job{name: "spotify", source: "spotify", switched: newSwitch()}
 
 	// Spotify publishes no limit, only that there is one. Five seconds is as
 	// often as this will ask whatever it is told.
@@ -305,6 +310,13 @@ func supervise(ctx context.Context, logger *slog.Logger, jobs []job, sinks map[s
 			continue
 		}
 		wg.Add(1)
+		if j.switched != nil {
+			go func(j job) {
+				defer wg.Done()
+				runSwitched(ctx, logger, j, sink)
+			}(j)
+			continue
+		}
 		go func(j job) {
 			defer wg.Done()
 			err := j.run(ctx, sink)
@@ -414,19 +426,8 @@ func run(ctx context.Context) error {
 		// (ADR-0034): a stored online is believed only for ninety.
 		cfg.OnRepeat = sink.announce
 
-		// A driver that takes commands listens for its own, and for nothing
-		// else. Optional, because reporting what is playing must not wait on
-		// a grant that is made somewhere else, at some other time.
 		var handle func(bus.Message)
-		if j.command != nil {
-			topic := contract.SourceCommandTopic(common.Prefix, j.source)
-			cfg.OptionalTopics = []string{topic}
-			cfg.OnRefused = func(topic string, err error) {
-				logger.Warn("driver will not hear commands until the broker account is granted the topic",
-					events.Key, "driver.commands_refused", "driver", j.name, "topic", topic, "reason", err)
-			}
-			handle = commander(ctx, logger.With("driver", j.name), j.source, j.command)
-		}
+		cfg.OptionalTopics, cfg.OnRefused, handle = listens(ctx, logger, common.Prefix, j)
 
 		client, err := bus.Connect(cfg, nil, handle)
 		if err != nil {
@@ -459,6 +460,53 @@ func run(ctx context.Context) error {
 		logger.Info("shutting down", events.Key, "agent.stopping")
 	}
 	return err
+}
+
+// listens is what a driver's connection subscribes to, and what it does with
+// what arrives. A driver that takes commands listens for its own, and a
+// driver with a switch for its switch (ADR-0051), and for nothing else. Both
+// are optional: reporting what is playing must not wait on a grant that is
+// made somewhere else, at some other time.
+func listens(ctx context.Context, logger *slog.Logger, prefix string, j job) ([]string, func(string, error), func(bus.Message)) {
+	commands := contract.SourceCommandTopic(prefix, j.source)
+	switchTopic := contract.SwitchTopic(prefix, j.source)
+
+	var topics []string
+	var command func(bus.Message)
+	if j.command != nil {
+		do := j.command
+		if j.switched != nil {
+			do = j.switched.gate(do)
+		}
+		command = commander(ctx, logger.With("driver", j.name), j.source, do)
+		topics = append(topics, commands)
+	}
+	if j.switched != nil {
+		topics = append(topics, switchTopic)
+	}
+	if len(topics) == 0 {
+		return nil, nil, nil
+	}
+
+	refused := func(topic string, err error) {
+		if topic == switchTopic {
+			// Off is the default, so a switch it cannot hear is off for good.
+			logger.Warn("driver stays off until the broker account is granted its switch",
+				events.Key, "driver.switch_refused", "driver", j.name, "topic", topic, "reason", err)
+			return
+		}
+		logger.Warn("driver will not hear commands until the broker account is granted the topic",
+			events.Key, "driver.commands_refused", "driver", j.name, "topic", topic, "reason", err)
+	}
+	handle := func(msg bus.Message) {
+		switch {
+		case msg.Topic == switchTopic && j.switched != nil:
+			j.switched.hear(logger.With("driver", j.name), j.source, msg)
+		case msg.Topic == commands && command != nil:
+			command(msg)
+		}
+	}
+	return topics, refused, handle
 }
 
 // commandTimeout is how long a command may take. A press that has not
@@ -548,6 +596,9 @@ func watch(ctx context.Context) error {
 		if jobs[i].name == "itunes" && jobs[i].run != nil {
 			jobs[i].run = func(ctx context.Context, _ driver.Sink) error { return watchITunes(ctx) }
 		}
+		// Watching is asked for by a person at a terminal, with no broker to
+		// hear a switch from: it runs what NP_DRIVERS names.
+		jobs[i].switched = nil
 	}
 	fmt.Println("Watching. Nothing is published. Ctrl-C to stop.")
 	fmt.Println()

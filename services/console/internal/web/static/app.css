@@ -175,17 +175,17 @@ h1 {
 
 /* --- stands -------------------------------------------------------------- */
 
-.stand-sources {
+.setting {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 14px;
-  margin: 0 0 14px;
+  margin: 0 0 10px;
 }
-.stand-sources .word { color: var(--muted); }
-/* Every source is the setting someone left on: it is marked so it is not missed. */
-.stand-sources.all .word { color: var(--accent); font-weight: 600; }
-.stand-sources button {
+.setting .word { color: var(--muted); }
+/* A setting someone left on that changes the room is marked so it is not missed. */
+.setting.marked .word { color: var(--accent); font-weight: 600; }
+.setting button {
   font: inherit;
   font-size: 0.85rem;
   color: var(--text);
@@ -195,9 +195,9 @@ h1 {
   padding: 4px 14px;
   cursor: pointer;
 }
-.stand-sources button:hover { border-color: var(--accent); }
-.stand-sources button:disabled { opacity: 0.5; cursor: progress; }
-.stand-sources .fine { margin: 0; flex-basis: 100%; }
+.setting button:hover { border-color: var(--accent); }
+.setting button:disabled { opacity: 0.5; cursor: progress; }
+.setting .fine { margin: 0; flex-basis: 100%; }
 
 #stands { display: grid; gap: 18px; }
 
