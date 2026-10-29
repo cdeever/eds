@@ -40,6 +40,7 @@ func (c *catalogs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Album  album  `json:"album"`
 	}
 	pf := artist{"Pink Floyd"}
+	journey := artist{"Journey"}
 	switch {
 	case r.URL.Path == "/search/track":
 		var data []track
@@ -76,6 +77,15 @@ func (c *catalogs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				{"Speak to Me", pf, album{Title: "The Dark Side Of The Moon (50th Anniversary) [2023 Remaster]"}},
 				{"Speak to Me", pf, album{Title: "The Dark Side of the Moon"}},
 			}
+		case "Journey Wheel In the Sky":
+			// As on 2026-10-29: live albums, a best-of, and the 2008
+			// re-recording, and never Infinity, the record it is from.
+			data = []track{
+				{"Wheel in the Sky (2024 Remaster)", journey, album{Title: "Greatest Hits (2024 Remaster)"}},
+				{"Wheel in the Sky", journey, album{Title: "Revelation"}},
+				{"Wheel in the Sky (Live at Cobo Hall in Detroit, Michigan, August 1980)", journey, album{Title: "Captured"}},
+				{"Wheel in the Sky", journey, album{Title: "Alive in America"}},
+			}
 		case "Pink Floyd See Emily Play":
 			data = []track{{"See Emily Play", pf, album{Title: "Relics"}}}
 		}
@@ -93,12 +103,20 @@ func (c *catalogs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			data = []hit{{1, "The Dark Side Of The Moon (50th Anniversary) [2023 Remaster]", pf}, {2, "The Dark Side of the Moon", pf}}
 		case strings.Contains(q, `album:"Animals"`):
 			data = []hit{{3, "Animals", pf}}
+		case strings.Contains(q, `album:"Infinity"`):
+			data = []hit{{4, "Infinity", journey}}
+		case strings.Contains(q, `album:"Departure"`):
+			data = []hit{{5, "Departure", journey}}
 		}
 		reply(map[string]any{"data": data})
 	case r.URL.Path == "/album/2/tracks":
 		reply(map[string]any{"data": []album{{Title: "Speak to Me"}, {Title: "Breathe (In the Air)"}, {Title: "On the Run"}, {Title: "Time"}, {Title: "The Great Gig in the Sky"}, {Title: "Money"}}})
 	case r.URL.Path == "/album/3/tracks":
 		reply(map[string]any{"data": []album{{Title: "Pigs on the Wing 1"}, {Title: "Dogs"}, {Title: "Pigs (Three Different Ones)"}, {Title: "Sheep"}, {Title: "Pigs on the Wing 2"}}})
+	case r.URL.Path == "/album/4/tracks":
+		reply(map[string]any{"data": []album{{Title: "Lights"}, {Title: "Feeling That Way"}, {Title: "Anytime"}, {Title: "Wheel in the Sky"}}})
+	case r.URL.Path == "/album/5/tracks":
+		reply(map[string]any{"data": []album{{Title: "Any Way You Want It"}, {Title: "Walks Like a Lady"}}})
 	case r.URL.Path == "/ws/2/release-group/":
 		if broken {
 			http.Error(w, "busy", http.StatusServiceUnavailable)
@@ -121,6 +139,14 @@ func (c *catalogs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		case strings.Contains(query, `releasegroup:"The Dark Side of the Moon"`), strings.Contains(query, `releasegroup:"The Dark Side Of The Moon"`):
 			groups = []group{{"The Dark Side of the Moon", "Album", nil, "1973-03-01", []artist{pf}}}
+		case strings.Contains(query, `releasegroup:"Infinity"`):
+			groups = []group{{"Infinity", "Album", nil, "1978-01-20", []artist{journey}}}
+		case strings.Contains(query, `releasegroup:"Departure"`):
+			groups = []group{{"Departure", "Album", nil, "1980-03", []artist{journey}}}
+		case strings.Contains(query, `releasegroup:"Revelation"`):
+			groups = []group{{"Revelation", "Album", nil, "2008-06-03", []artist{journey}}}
+		case strings.Contains(query, `releasegroup:"Captured"`):
+			groups = []group{{"Captured", "Album", []string{"Live"}, "1981-01-30", []artist{journey}}}
 		case strings.Contains(query, `releasegroup:"Relics"`):
 			groups = []group{{"Relics", "Album", []string{"Compilation"}, "1971-05-14", []artist{pf}}}
 		}
@@ -247,5 +273,26 @@ func TestACarriedOverAlbumIsNotTaken(t *testing.T) {
 	// Nor is another whose track list lacks it.
 	if got, err := o.Original(context.Background(), "Pink Floyd", "Have a Cigar", "Animals"); err == nil {
 		t.Errorf("Animals does not have it either, got %q", got)
+	}
+}
+
+// The catalog can leave out the record itself. The album the recognizer
+// named is asked about beside the catalog's, and an original it names wins
+// by its date: Infinity (1978), not the 2008 re-recording, and not Alive in
+// America, a live album MusicBrainz does not know.
+func TestTheRecognizersOriginalIsWeighedBesideTheCatalogs(t *testing.T) {
+	o, _ := originals(t)
+	if got, err := o.Original(context.Background(), "Journey", "Wheel In the Sky", "Infinity"); err != nil || got != "Infinity" {
+		t.Errorf("got %q, %v; want Infinity", got, err)
+	}
+}
+
+// Beside the catalog's albums, the recognizer's counts only if its track list
+// has the track: an album carried over from the record before does not win
+// by being older.
+func TestTheRecognizersAlbumWithoutTheTrackIsNotWeighed(t *testing.T) {
+	o, _ := originals(t)
+	if got, err := o.Original(context.Background(), "Journey", "Wheel In the Sky", "Departure"); err != nil || got != "Revelation" {
+		t.Errorf("got %q, %v; want Revelation, the catalog's only original", got, err)
 	}
 }

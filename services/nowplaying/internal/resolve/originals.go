@@ -78,9 +78,11 @@ func (o *Originals) Has(ctx context.Context, artist, album, title string) (bool,
 }
 
 // Original names the original album a track is on. hint is the album the
-// recognizer named. It is asked about only when the catalog has no album for
-// the track, and counts only if it is an original: an album the catalog does
-// not say has the track must not outrank one it does, however old it is.
+// recognizer named. When the catalog has no album for the track, it is the
+// one asked about. When the catalog has others, it is asked about too, and
+// counts only if it is an original: then it is ranked by its release date
+// with the rest. Either way, an album whose own track list lacks the track
+// is the record before, carried over, and is not taken.
 // ErrNotFound means no album could be named.
 func (o *Originals) Original(ctx context.Context, artist, title, hint string) (string, error) {
 	key := simplify(artist) + "\x00" + trackWords(title)
@@ -98,6 +100,7 @@ func (o *Originals) Original(ctx context.Context, artist, title, hint string) (s
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return "", err
 	}
+	fromCatalog := len(candidates) > 0
 	if len(candidates) == 0 && strings.TrimSpace(hint) != "" {
 		// The catalog has no album for the track. The source's is asked
 		// about, unless its own track list says the track is not on it: that
@@ -143,6 +146,25 @@ func (o *Originals) Original(ctx context.Context, artist, title, hint string) (s
 			unknown = append(unknown, kind{title: c})
 		}
 	}
+	// The catalog can leave out the record itself: Deezer lists Journey's
+	// "Wheel in the Sky" on its live albums, its best-ofs and a 2008
+	// re-recording, and never on Infinity, which the recognizer named. So the
+	// recognizer's album is asked about beside the catalog's, but only as an
+	// original. As anything else it would outrank nothing.
+	if h := strings.TrimSpace(hint); fromCatalog && h != "" && !edition(h) && !containsAlbum(candidates, h) {
+		if has, err := o.Has(ctx, artist, h, title); err == nil && has {
+			k, err := o.kind(ctx, artist, h)
+			switch {
+			case err == nil && k.original:
+				originals = append(originals, k)
+			case err != nil && ctx.Err() != nil:
+				return "", ctx.Err()
+			case err != nil:
+				o.logger().Warn("musicbrainz could not be asked what an album is", "artist", artist, "album", h, "error", err)
+			}
+		}
+	}
+
 	// An album named after one of the tracks is a single, likely as not:
 	// taken only when nothing else is left.
 	plain := unknown[:0]
