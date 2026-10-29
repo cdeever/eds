@@ -150,6 +150,10 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 | 2026-10-29 02:22 UTC | 4 | `deevnet-kit selftest`: 13 of 15. Grafana was still starting, and its log data sources still dialed `https://localhost:8427`, which the new certificate does not name. `systemctl restart deevnet-kit-dashboards` rewrote them as `logs.eds.deevnet.net`; then all 15 passed |
 | 2026-10-29 02:25 UTC | 5 | `make status`: every check ok but iTunes, whose PC at `192.168.2.104` did not answer (asleep or not running; the pairing is on file) |
 | 2026-10-29 02:27 UTC | 6 | Home DNS already answered `mqtt`, `logs`, `grafana` and `console` under `eds.deevnet.net` and `eds.home.deevnet.net` with `192.168.2.40`. `https://console.eds.deevnet.net/`, `https://console.eds.home.deevnet.net/` and Grafana answered 200 verified against the Deevnet Root alone, and the Mac's keychain trusts it |
+| 2026-10-29 02:28 UTC | 5 | With iTunes playing *Jack & Diane*, the console showed it with the player's cover, and lightd sent the stand `dark` at brightness 0. Fourteen seconds later the turntable driver heard the same song through the amplifier and became current: the beacon was still the tenant's, so this Pi had never heard from it. A `play_pause` sent as the cover screen went to the turntable, which takes none |
+| 2026-10-29 02:39 UTC | 7 | The beacon (MAC `70:4b:ca:27:06:14`): its tenant `creds` partition read and kept aside, the old card's CA set aside, `make devices` (DVNT-CORE), a dry run, then `provision_tenant.py` with `devices.json` and the Deevnet Root. Online on this Pi's broker at 02:39:35, six seconds after the write: an ESP32 verified a broker through the Tenant Service CA to the Root, with no firmware change |
+| 2026-10-29 02:41 UTC | 7 | Back on its outlet with the turntable off: `on=false`, and iTunes current at once |
+| 2026-10-29 02:43 UTC | 5 | `play_pause` again, iTunes playing: nowplayd to the iTunes driver to iTunes in 7 ms, and iTunes paused. The turntable heard the song again at 02:42:19 and was not made current |
 
 ### Departures from the plan
 
@@ -164,6 +168,9 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 - `cert install` restarted the services but not `deevnet-kit-dashboards`,
   so Grafana's log data sources kept the card's `localhost` until that was
   restarted by hand.
+- The beacon was provisioned without `--site home --also mobile=terraform`:
+  the tenant's state is reachable only from dvntm. Its tenant settings were
+  read from its `creds` partition first, to write back as the undo.
 - The Pi has two addresses on the home network, `192.168.2.40` (wired) and
   `192.168.2.228`.
 
@@ -175,7 +182,9 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
       certificate names none of the Pi's addresses and suggest
       `regen-certs`, which then refuses. A Deevnet certificate names no
       address by design; the check should not run in that mode.
-- [ ] Step 7, the devices, the beacon first.
+- [ ] Step 7, the rest: the screen, the stand and the reSpeaker. The
+      beacon is done, provisioned for this Pi alone; `--also mobile`
+      waits for a day on dvntm.
 
 - [ ] The switching firmware (ADR-0049), over the air to the stand, the
       screen and the beacon; by cable to the reSpeaker.
