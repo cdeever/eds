@@ -63,9 +63,11 @@ What every subsystem stands on, and that no subsystem owns.
   ([ADR-0018](/docs/architecture/decisions/0018-a-console-of-eds-own/)). It
   subscribes to all of it and serves one page: the track, the sleeve, the
   sources, the devices, and the strip drawn as the stand is drawing it. It
-  switches one thing: whether the stand is lit for records only or for
+  switches two settings: whether the stand is lit for records only or for
   every source
-  ([ADR-0039](/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source/)).
+  ([ADR-0039](/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source/)),
+  and whether Spotify is followed at all
+  ([ADR-0051](/docs/architecture/decisions/0051-spotify-is-switched-on-and-off-from-the-console/)).
 - **Updates** (`eds-ota`): new firmware for every device, through the
   broker; a build that cannot reach the broker is undone
   ([ADR-0035](/docs/architecture/decisions/0035-firmware-is-updated-through-the-broker/)).

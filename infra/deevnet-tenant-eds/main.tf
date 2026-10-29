@@ -304,9 +304,10 @@ resource "deevnet_iot_broker_account" "voiced" {
 
 # The console, on the services workload (ADR-0018).
 #
-# It looks: every topic it reads, and two it writes - its own presence, and
-# which sources the stand is lit for (ADR-0039). Another control is a change
-# to this list and a decision first.
+# It looks: every topic it reads, and three it writes - its own presence,
+# which sources the stand is lit for (ADR-0039), and whether Spotify's driver
+# runs (ADR-0051). Another control is a change to this list and a decision
+# first.
 #
 # Each subscription is granted as the filter the console uses, to the
 # character (services/console/internal/view, Topics).
@@ -316,7 +317,8 @@ resource "deevnet_iot_broker_account" "console" {
 
   publish = [
     "console/status",
-    "nowplaying/stand", # the stand's setting, retained (ADR-0039)
+    "nowplaying/stand",                 # the stand's setting, retained (ADR-0039)
+    "nowplaying/source/spotify/switch", # Spotify's switch, retained (ADR-0051)
   ]
   subscribe = [
     "nowplaying/current",
@@ -328,9 +330,10 @@ resource "deevnet_iot_broker_account" "console" {
     "lightstand/+/state",
     "lightstand/+/status",
     "lightd/status",
-    "beacon/+/status",  # whether each switch with a beacon on it is on (ADR-0023)
-    "screen/+/status",  # whether each cover screen is there (ADR-0020)
-    "nowplaying/stand", # the setting in force, heard back (ADR-0039)
+    "beacon/+/status",                  # whether each switch with a beacon on it is on (ADR-0023)
+    "screen/+/status",                  # whether each cover screen is there (ADR-0020)
+    "nowplaying/stand",                 # the setting in force, heard back (ADR-0039)
+    "nowplaying/source/spotify/switch", # and Spotify's (ADR-0051)
   ]
 }
 
@@ -383,9 +386,13 @@ resource "deevnet_iot_broker_account" "np_relay" {
   # account may publish here.
   #
   # The turntable has none because there is nothing on it for one to reach.
+  #
+  # And whether the Spotify driver runs at all (ADR-0051): a setting the
+  # console writes. Without it the driver stays off.
   subscribe = [
     "nowplaying/source/itunes/command",
     "nowplaying/source/spotify/command",
+    "nowplaying/source/spotify/switch",
   ]
 }
 

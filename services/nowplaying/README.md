@@ -218,13 +218,24 @@ driver's presence is its own. A driver that is missing what it needs - a
 pairing, an authorization - is reported offline and the other runs. With
 nothing able to run the agent exits 78, which its unit does not restart.
 
+**Spotify runs only while it is switched on**
+([ADR-0051](../../docs/content/docs/architecture/decisions/0051-spotify-is-switched-on-and-off-from-the-console.md)).
+`NP_DRIVERS` says it may run; the retained setting
+`nowplaying/source/spotify/switch`, `{"v":1,"driver":"on"|"off"}`, which the
+console writes, says whether it does. Off, its run has ended and it asks
+Spotify nothing; it says `offline`, and a command sent to it fails. On, it
+starts without the agent restarting, and the other drivers are not touched
+either way. Nothing on the broker, or anything unreadable, is off. A driver
+that gives up while on waits to be switched off and on again. `watch` has
+no broker to hear the switch from, and runs what `NP_DRIVERS` names.
+
 ## What the agent reports about itself
 
 With `NP_LOG_DEVICE` set to the name the Pi is registered under, the agent
 publishes a few events to `<tenant>/log/<device>`, which Deevnet IoTaaS carries
 into the tenant's log store, the same way the stand's go
 ([ADR-0017](../../docs/content/docs/architecture/decisions/0017-an-agent-pi-is-a-registered-device.md)):
-`agent.started`, `driver.online` and `driver.offline`, `track.playing`,
+`agent.started`, `driver.online` and `driver.offline`, `driver.switched`, `track.playing`,
 `track.paused` and `track.stopped` with the artist, album and title,
 Spotify's refusals, and the turntable losing its input or its recognizer. They are on the tenant's dashboard under *What played*
 and *Device events*.

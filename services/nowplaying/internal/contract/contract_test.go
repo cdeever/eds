@@ -360,6 +360,47 @@ func TestTheStandSettingDefaultsToRecords(t *testing.T) {
 	}
 }
 
+// ADR-0051: nothing, or anything unreadable, is off.
+func TestADriversSwitchDefaultsToOff(t *testing.T) {
+	for _, tc := range []struct {
+		payload string
+		want    string
+		err     bool
+	}{
+		{``, SwitchOff, false},
+		{`{"v":1,"driver":"on"}`, SwitchOn, false},
+		{`{"v":1,"driver":"off"}`, SwitchOff, false},
+		{`{"v":1,"driver":"yes"}`, SwitchOff, true},
+		{`{"v":2,"driver":"on"}`, SwitchOff, true},
+		{`on`, SwitchOff, true},
+	} {
+		got, err := DecodeSwitch([]byte(tc.payload))
+		if got != tc.want || (err != nil) != tc.err {
+			t.Errorf("DecodeSwitch(%q) = %q, %v; want %q, error %v", tc.payload, got, err, tc.want, tc.err)
+		}
+	}
+	for _, driver := range []string{SwitchOn, SwitchOff} {
+		payload, err := EncodeSwitch(driver)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, err := DecodeSwitch(payload); err != nil || got != driver {
+			t.Errorf("%s did not survive the wire: %q, %v", driver, got, err)
+		}
+	}
+	if _, err := EncodeSwitch("yes"); err == nil {
+		t.Error("encoded a setting nobody can read")
+	}
+	if got := SwitchTopic("eds", "spotify"); got != "eds/nowplaying/source/spotify/switch" {
+		t.Errorf("SwitchTopic = %q", got)
+	}
+	// A source's reader learns nothing from its switch: the console reads it
+	// on its own topic, and nowplayd not at all.
+	if _, _, ok := ParseSourceTopic("eds", SwitchTopic("eds", "spotify")); ok {
+		t.Error("the switch was read as one of a source's reports")
+	}
+}
+
 // --- albums instead (ADR-0045) -------------------------------------------------
 
 func TestPlayAlbumMayNameAFewAlbumsInstead(t *testing.T) {

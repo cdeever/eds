@@ -194,6 +194,7 @@ const (
 //	<prefix>/nowplaying/status               nowplayd's own presence
 //	<prefix>/nowplaying/command              what a controller wants, never retained
 //	<prefix>/nowplaying/source/<id>/command  the same, for one driver, never retained
+//	<prefix>/nowplaying/source/<id>/switch   whether its driver runs, retained (ADR-0051)
 func SourceStateTopic(prefix, id string) string {
 	return prefix + "/nowplaying/source/" + id + "/state"
 }
@@ -438,6 +439,55 @@ func DecodeStand(payload []byte) (string, error) {
 		return StandRecords, fmt.Errorf("contract: the stand cannot be lit for %q", st.Sources)
 	}
 	return st.Sources, nil
+}
+
+// SwitchTopic holds whether a source's driver runs (ADR-0051). It is a
+// setting, retained, like the stand's: the agent obeys it, and the console
+// reads it back. Only Spotify has one.
+func SwitchTopic(prefix, id string) string {
+	return prefix + "/nowplaying/source/" + id + "/switch"
+}
+
+// Whether a switched driver runs. Off is the default: a driver with a switch
+// costs something to run, and nothing on the broker asks nothing of anyone.
+const (
+	SwitchOn  = "on"
+	SwitchOff = "off"
+)
+
+// Switch is the setting on SwitchTopic.
+type Switch struct {
+	V      int    `json:"v"`
+	Driver string `json:"driver"`
+}
+
+// EncodeSwitch is a setting as it goes on the bus.
+func EncodeSwitch(driver string) ([]byte, error) {
+	if driver != SwitchOn && driver != SwitchOff {
+		return nil, fmt.Errorf("contract: a driver is switched %q or %q, not %q", SwitchOn, SwitchOff, driver)
+	}
+	return json.Marshal(Switch{V: Version, Driver: driver})
+}
+
+// DecodeSwitch reads the setting. An empty payload is no setting, and is
+// SwitchOff with no error. Anything it cannot read is SwitchOff too, and the
+// error says why: a setting gone wrong stops the asking rather than starting
+// it.
+func DecodeSwitch(payload []byte) (string, error) {
+	if len(payload) == 0 {
+		return SwitchOff, nil
+	}
+	var sw Switch
+	if err := json.Unmarshal(payload, &sw); err != nil {
+		return SwitchOff, fmt.Errorf("contract: not a driver's switch: %w", err)
+	}
+	if sw.V != Version {
+		return SwitchOff, fmt.Errorf("contract: version %d, this program speaks %d", sw.V, Version)
+	}
+	if sw.Driver != SwitchOn && sw.Driver != SwitchOff {
+		return SwitchOff, fmt.Errorf("contract: a driver is switched %q or %q, not %q", SwitchOn, SwitchOff, sw.Driver)
+	}
+	return sw.Driver, nil
 }
 
 // ParseSourceTopic splits a source topic into the source's id and which of

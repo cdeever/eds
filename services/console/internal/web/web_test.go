@@ -436,3 +436,77 @@ func TestWithoutASwitchTheStandCannotBeSwitched(t *testing.T) {
 		t.Errorf("%d", resp.StatusCode)
 	}
 }
+
+// ADR-0051: Spotify's switch is the second thing the page can change, refused
+// as the stand's setting is.
+func TestSpotifyIsSwitchedOnlyFromThePage(t *testing.T) {
+	s, ts := site(t)
+	var switched []string
+	s.SwitchSpotify = func(driver string) error { switched = append(switched, driver); return nil }
+
+	post := func(origin, contentType, body string) int {
+		t.Helper()
+		req, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/spotify", strings.NewReader(body))
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+
+	if code := post(ts.URL, "application/json", `{"driver":"on"}`); code != http.StatusAccepted {
+		t.Fatalf("from the page: %d", code)
+	}
+	for _, tc := range []struct {
+		name, origin, contentType, body string
+		want                            int
+	}{
+		{"another site", "https://elsewhere.example", "application/json", `{"driver":"on"}`, http.StatusForbidden},
+		{"no origin", "", "application/json", `{"driver":"on"}`, http.StatusForbidden},
+		{"a form", ts.URL, "application/x-www-form-urlencoded", `driver=on`, http.StatusUnsupportedMediaType},
+		{"a word nobody reads", ts.URL, "application/json", `{"driver":"yes"}`, http.StatusBadRequest},
+		{"the stand's word", ts.URL, "application/json", `{"sources":"all"}`, http.StatusBadRequest},
+		{"not JSON", ts.URL, "application/json", `on`, http.StatusBadRequest},
+	} {
+		if code := post(tc.origin, tc.contentType, tc.body); code != tc.want {
+			t.Errorf("%s: %d, want %d", tc.name, code, tc.want)
+		}
+	}
+	if len(switched) != 1 || switched[0] != "on" {
+		t.Errorf("switched %v", switched)
+	}
+
+	resp, err := http.Get(ts.URL + "/api/spotify")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("GET: %d", resp.StatusCode)
+	}
+}
+
+// Each switch is served only with its own way to the bus: one does not
+// bring the other.
+func TestEachSwitchNeedsItsOwnWayToTheBus(t *testing.T) {
+	s, ts := site(t)
+	s.Switch = func(string) error { return nil }
+	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/spotify", strings.NewReader(`{"driver":"on"}`))
+	req.Header.Set("Origin", ts.URL)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("%d", resp.StatusCode)
+	}
+}
