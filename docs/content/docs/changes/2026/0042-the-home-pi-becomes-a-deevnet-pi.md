@@ -9,7 +9,7 @@ weight: 42
 |---|---|
 | **Date** | 2026-10-26 |
 | **Change type** | Migration |
-| **Status** | {{< status-badge "planned" "Planned" >}} |
+| **Status** | {{< status-badge "in-progress" "In progress" >}} |
 | **Systems** | The home backend Pi, `192.168.2.40` on DVNT-CORE, with a new card named `dv01rpi001p01` (the card in it now calls itself `dv02rpi003p01`); `turntable-power-01`, `cover-screen-01`, `lp-stand-01`, `respeaker-01`; the tenant's Terraform (one `deevnet_certificate`); the home network's DNS |
 | **How** | `make -C deploy/backend image fetch card`; `deevnet-kit cert request` and `cert install`; `terraform apply` in `infra/deevnet-tenant-eds`; `make pair spotify turntable drivers status devices`; `provision_tenant.py --site home --also mobile=terraform` on each device |
 | **Risk** | Medium. Most likely to go wrong: a device refusing the broker's new certificate. No ESP32 has yet verified a server through Deevnet's Tenant Service CA to the Root |
@@ -146,6 +146,10 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 |---|---|---|
 | 2026-10-27 | 1–3 | The image built, the card written and booted; `make status` answered |
 | 2026-10-27 | 4 | `cert request` on the Pi; `deevnet_certificate.backend` applied with provider 0.8.0, serial `55:c1:0d:cb:…:9d:0a`, valid to 2027-10-28, for `mqtt`, `logs`, `grafana`, `console` at `eds`, `eds.home` and `eds.mobile`. It chains to the Deevnet Root and is for the request's key |
+| 2026-10-29 02:20 UTC | 4 | The pending request's key checked against the certificate's, then `cert install` and `restart eds-backend-setup`. `deevnet-kit status`: "trusts the Deevnet Root (a Deevnet Pi)", broker `mqtts://mqtt.eds.deevnet.net:8883`; `lightd.env` and `nowplayd.env` have `MQTT_HOST=mqtt.eds.deevnet.net` |
+| 2026-10-29 02:22 UTC | 4 | `deevnet-kit selftest`: 13 of 15. Grafana was still starting, and its log data sources still dialed `https://localhost:8427`, which the new certificate does not name. `systemctl restart deevnet-kit-dashboards` rewrote them as `logs.eds.deevnet.net`; then all 15 passed |
+| 2026-10-29 02:25 UTC | 5 | `make status`: every check ok but iTunes, whose PC at `192.168.2.104` did not answer (asleep or not running; the pairing is on file) |
+| 2026-10-29 02:27 UTC | 6 | Home DNS already answered `mqtt`, `logs`, `grafana` and `console` under `eds.deevnet.net` and `eds.home.deevnet.net` with `192.168.2.40`. `https://console.eds.deevnet.net/`, `https://console.eds.home.deevnet.net/` and Grafana answered 200 verified against the Deevnet Root alone, and the Mac's keychain trusts it |
 
 ### Departures from the plan
 
@@ -155,8 +159,23 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
   since ADR-0050 was merged without one.
 - Before the certificate, the Pi warned that its card certificate did not
   name its IPv6 address. A Deevnet certificate names no address.
+- The card is named `eds-backend`, not `dv01rpi001p01`: it was written
+  with `make card`'s default `PI_HOSTNAME`.
+- `cert install` restarted the services but not `deevnet-kit-dashboards`,
+  so Grafana's log data sources kept the card's `localhost` until that was
+  restarted by hand.
+- The Pi has two addresses on the home network, `192.168.2.40` (wired) and
+  `192.168.2.228`.
 
 ## Follow-ups
+
+- [ ] Deevnet: `deevnet-kit cert install` should rerun the dashboards step,
+      so Grafana's data sources dial the new names.
+- [ ] Deevnet: on a Deevnet Pi, `status` and `selftest` warn that the
+      certificate names none of the Pi's addresses and suggest
+      `regen-certs`, which then refuses. A Deevnet certificate names no
+      address by design; the check should not run in that mode.
+- [ ] Step 7, the devices, the beacon first.
 
 - [ ] The switching firmware (ADR-0049), over the air to the stand, the
       screen and the beacon; by cable to the reSpeaker.
