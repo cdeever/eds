@@ -9,7 +9,7 @@ weight: 42
 |---|---|
 | **Date** | 2026-10-26 |
 | **Change type** | Migration |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} |
 | **Systems** | The home backend Pi, `192.168.2.40` on DVNT-CORE, with a new card named `dv01rpi001p01` (the card in it now calls itself `dv02rpi003p01`); `turntable-power-01`, `cover-screen-01`, `lp-stand-01`, `respeaker-01`; the tenant's Terraform (one `deevnet_certificate`); the home network's DNS |
 | **How** | `make -C deploy/backend image fetch card`; `deevnet-kit cert request` and `cert install`; `terraform apply` in `infra/deevnet-tenant-eds`; `make pair spotify turntable drivers status devices`; `provision_tenant.py --site home --also mobile=terraform` on each device |
 | **Risk** | Medium. Most likely to go wrong: a device refusing the broker's new certificate. No ESP32 has yet verified a server through Deevnet's Tenant Service CA to the Root |
@@ -159,6 +159,7 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 | 2026-10-29 02:55 UTC | 7 | The stand (MAC `70:4b:ca:26:b1:a0`, on the port the beacon had used): tenant `creds` kept aside, a dry run, then written. Online within twenty seconds, and it reported applying the retained scene: `solid`, brightness 0, dark for iTunes |
 | 2026-10-29 02:56 UTC | 7 | The console's stand switch set to `all`: the stand applied `chase`, four colors from *American Fool*'s cover, brightness 0.8. Set back to `records`: `solid`, brightness 0 again |
 | 2026-10-29 03:00 UTC | 7 | `respeaker-01` left on the tenant, by decision: what it sends is heard by `voiced` and written down by `scribe`, and neither runs on this Pi. It goes on working as before, through the tenant's workload |
+| 2026-10-29 02:58 UTC | Goal | The turntable switched on and a record played: the beacon online, the turntable current, and the stand lit from the cover (`chase`, four colors, 0.8). Between tracks, `standby` at 0.15. Every goal met but the reSpeaker's, which was left on the tenant by decision |
 
 ### Departures from the plan
 
@@ -193,6 +194,12 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 - [ ] Find out why the cover screen's first start after provisioning sent no
       presses while showing covers. Test each device's controls straight
       after it is written, before anything restarts it.
+- [ ] The resolver named Journey's *Wheel In the Sky*, heard on *Infinity*,
+      as from *Alive in America*, a live album, and lit the stand from its
+      cover (`named_by=original`, ADR-0038). The record is not in the
+      Discogs collection, so nothing named it first. The original album
+      step should not choose a live album or a reissue over a studio
+      original.
 - [ ] The reSpeaker, once this Pi runs `voiced` and `scribe`: until then
       it stays on the tenant. Its account is already in `accounts.conf`.
 - [ ] `--also mobile=terraform` for the beacon, the screen and the stand,
