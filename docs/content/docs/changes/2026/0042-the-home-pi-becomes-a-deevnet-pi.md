@@ -154,6 +154,8 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 | 2026-10-29 02:39 UTC | 7 | The beacon (MAC `70:4b:ca:27:06:14`): its tenant `creds` partition read and kept aside, the old card's CA set aside, `make devices` (DVNT-CORE), a dry run, then `provision_tenant.py` with `devices.json` and the Deevnet Root. Online on this Pi's broker at 02:39:35, six seconds after the write: an ESP32 verified a broker through the Tenant Service CA to the Root, with no firmware change |
 | 2026-10-29 02:41 UTC | 7 | Back on its outlet with the turntable off: `on=false`, and iTunes current at once |
 | 2026-10-29 02:43 UTC | 5 | `play_pause` again, iTunes playing: nowplayd to the iTunes driver to iTunes in 7 ms, and iTunes paused. The turntable heard the song again at 02:42:19 and was not made current |
+| 2026-10-29 02:46 UTC | 7 | The cover screen (MAC `a0:a3:b3:ab:61:8c` on `/dev/cu.usbserial-2130`): tenant `creds` kept aside, a dry run, then written. Online on this Pi's broker within twenty seconds, and showed the cover when iTunes played. **Its buttons did nothing**: from 02:46:26 to 02:48:50 no press reached nowplayd |
+| 2026-10-29 02:48 UTC | 7 | Opening its serial port to watch restarted it. In that second start every touch registered and every press was carried out: pause, next, previous, previous, play, from `cover-screen-01` to iTunes. Why the first start after provisioning sent nothing is not known: no log covers it |
 
 ### Departures from the plan
 
@@ -182,7 +184,10 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
       certificate names none of the Pi's addresses and suggest
       `regen-certs`, which then refuses. A Deevnet certificate names no
       address by design; the check should not run in that mode.
-- [ ] Step 7, the rest: the screen, the stand and the reSpeaker. The
+- [ ] Find out why the cover screen's first start after provisioning sent no
+      presses while showing covers. Test each device's controls straight
+      after it is written, before anything restarts it.
+- [ ] Step 7, the rest: the stand and the reSpeaker. The
       beacon is done, provisioned for this Pi alone; `--also mobile`
       waits for a day on dvntm.
 
