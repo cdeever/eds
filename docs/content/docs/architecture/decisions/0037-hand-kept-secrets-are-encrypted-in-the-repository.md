@@ -117,8 +117,9 @@ not moved.**
 
 ## What would settle it
 
-- [ ] `sops` and `age` installed; an age key made, its private half in the
-      Keychain and on paper.
+- [x] `sops` and `age` installed; an age key made, its private half in the
+      Keychain and on paper. 2026-10-29, for ADR-0052's pairings, the first
+      secrets in `secrets/`.
 - [ ] `discogs.env` and `spotify.conf` moved to `secrets/`, the plain files
       deleted, and the services deployed from them unchanged.
 - [ ] `make card` from a worktree puts Discogs on a card; `make discogs`

@@ -7,7 +7,7 @@ weight: 52
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}}: until a card written again has started paired with nobody at iTunes; see [What would settle it](#what-would-settle-it) |
+| **Status** | {{< adr-status "Accepted" >}}: a pairing kept, put on a card's boot partition and taken by the first boot's setup, with nobody at iTunes, 2026-10-29 ([CHG-0045](/docs/changes/2026/0045-the-backend-pis-itunes-pairing-is-kept/)); see [What would settle it](#what-would-settle-it) |
 | **Date** | 2026-10-28 |
 | **Scope** | Where an agent's iTunes pairing is kept between cards, how it reaches a new card, and one pairing per Pi. Not Spotify's authorization, and not the other hand-kept secrets. |
 | **Extends** | [ADR-0037](/docs/architecture/decisions/0037-hand-kept-secrets-are-encrypted-in-the-repository/): its `secrets/`, its age key and `sops` are built here, for this first secret. A pairing is "made where it is used", which that record leaves where it is made; this record says why a pairing is kept anyway. [ADR-0011](/docs/architecture/decisions/0011-itunes-by-remote-pairing/), whose consequence "lose it and pairing is repeated" this ends. |
@@ -130,14 +130,28 @@ onto the next card for that Pi.**
 
 ## What would settle it
 
-- [ ] `sops` and `age` installed on the Mac, an age key made, its private
-      half in the Keychain and on paper, its public half in `.sops.yaml`.
-- [ ] `make pair` on the backend Pi at home: the code typed once, and
-      `secrets/itunes-<hostname>.sops.json` written, committed, and holding
-      no plain GUID.
-- [ ] The same card written again with `make card` and booted: iTunes
-      followed with no code typed, and the boot partition left with no
-      pairing on it.
+Before the key was made, the script was tried against the backend Pi
+with a throwaway key: keep, restore (byte for byte, iTunes followed after),
+card, a hostname with nothing kept, and a Mac without the key. macOS's bash
+3.2 read an apostrophe inside `${VAR:?message}` as a quote, twice; the
+messages were reworded. sops looks for `.sops.yaml` from the folder it is
+run in, so the script names it with `--config`.
+
+On 2026-10-29 (CHG-0045):
+
+- [x] `sops` 3.13.3 and `age` 1.3.2 installed on the Mac; `new-key.sh` made
+      the key, its private half in the Keychain and its public half,
+      `age123ajx5…`, in `.sops.yaml`. The copy on paper is the owner's.
+- [x] `make pair` on the backend Pi at home: the code typed once, the Pi
+      listed in iTunes as "EdS home", and `secrets/itunes-eds-backend.sops.json`
+      written and committed, its four values encrypted.
+- [x] A card's first boot, without a reflash: the Pi's pairing moved aside,
+      the kept one decrypted to `/boot/firmware/eds/` as `make card` writes
+      it, and `eds-backend-setup` run. It installed it (`npagent`, `0600`),
+      emptied the boot partition's folder, and iTunes was followed within
+      five seconds. `make card`'s half, the file written to a card's folder,
+      was tried with the throwaway key.
 - [ ] The relay paired as `EdS relay` and kept the same way, iTunes listing
-      both remotes.
-- [ ] `make pairing` restores a deleted pairing on a running Pi.
+      both remotes. On a day on dvntm.
+- [x] `make pairing` restored a deleted pairing on the running Pi, byte for
+      byte, and iTunes was followed again.
