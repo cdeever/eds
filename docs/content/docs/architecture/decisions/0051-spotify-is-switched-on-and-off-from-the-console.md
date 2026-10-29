@@ -7,7 +7,7 @@ weight: 51
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}}: until it has been switched both ways from the console on the relay Pi; see [What would settle it](#what-would-settle-it) |
+| **Status** | {{< adr-status "Accepted" >}}: switched both ways from the console's page on the backend Pi, 2026-10-29 ([CHG-0044](/docs/changes/2026/0044-spotify-is-switched-from-the-backend-pis-console/)); see [What would settle it](#what-would-settle-it) |
 | **Date** | 2026-10-28 |
 | **Scope** | A switch for the Spotify driver: where its state is kept, what "off" stops, who reads it, and the console's second control. |
 | **Extends** | [ADR-0039](/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source/): a second retained setting, and the console's second control, which that record said would bring back the question of a login. |
@@ -136,20 +136,27 @@ the console's route was tried on the development broker: off before
 anything was set, `on` published retained and read back, another origin
 refused, and `off` again.
 
-Not tried yet: the page itself in a browser.
+Then, on a Pi with `NP_DRIVERS=itunes,spotify,turntable`. It was the
+backend Pi, on 2026-10-29 (CHG-0044), not the relay: the same agent and
+console, with a broker of its own, and reachable from home.
 
-Then, on the relay Pi, with `NP_DRIVERS=itunes,spotify,turntable`:
-
-- [ ] Deployed with no setting: Spotify offline, and no `api.calls` line
-      for `spotify` after the first minute.
-- [ ] Switched on from the console: Spotify online within seconds, and
-      followed while something plays on it.
-- [ ] Switched off: offline, and no `api.calls` for `spotify` in the next
-      full minute.
-- [ ] `npagent` restarted while on: on again without being switched.
-- [ ] iTunes and the turntable followed throughout.
+- [x] Deployed with no setting: Spotify offline, and no `api.calls` line
+      for `spotify` in the eleven minutes after.
+- [x] Switched on from the console: Spotify online within a second, with no
+      restart, and *Van Halen II* followed while it played, with its own
+      cover; the stand dark, as for any dark source.
+- [x] Switched off **from the page**, by its button: offline at once, and
+      no `api.calls` for `spotify` in the two full minutes after.
+- [x] `npagent` restarted while on: on again within half a second, from the
+      retained setting.
+- [x] iTunes and the turntable online throughout, and never restarted by a
+      switch.
 
 ## Follow-ups
+
+- [ ] The tenant's half: `terraform apply` for the two accounts' grants,
+      the console deployed to the workload, and the agent pushed to the
+      relay Pi. On a day on dvntm.
 
 - [ ] Ask Spotify less often when nothing plays (CHG-0024). It makes "on"
       cheaper and is independent of this.
