@@ -19,8 +19,8 @@ terraform {
   required_providers {
     deevnet = {
       source = "deevnet/deevnet"
-      # 0.7 is the first with deevnet_certificate.
-      version = "~> 0.7"
+      # 0.8 is the first with a certificate's sites.
+      version = "~> 0.8"
     }
     # The console's key and its signing request: see the certificate below.
     tls = {
@@ -112,6 +112,23 @@ resource "deevnet_certificate" "console" {
   tenant  = deevnet_tenant.eds.name
   name    = deevnet_dns_record.console.name
   csr_pem = tls_cert_request.console.cert_request_pem
+}
+
+# The home backend Pi's certificate (CHG-0042, Deevnet ADR-0041 §2). Unlike
+# the console's, its key is made on the Pi and never leaves it: this takes the
+# request `deevnet-kit cert request` wrote there, which is public and kept
+# beside this file. `cert install` refuses a certificate that does not name
+# mqtt, logs and grafana; console is the page.
+#
+# It lasts a year, and renewing is an apply for the same request. Then
+# `terraform output -json backend_certificate` and `cert install` on the Pi.
+# A new request (a card flashed again) is a new certificate.
+resource "deevnet_certificate" "backend" {
+  tenant  = deevnet_tenant.eds.name
+  name    = "mqtt"
+  names   = ["logs", "grafana", "console"]
+  sites   = ["home", "mobile"]
+  csr_pem = file("${path.module}/backend-pi.csr")
 }
 
 # The Wi-Fi credential EdS's devices are flashed with (Deevnet ADR-0012 §3, Deevnet CHG-0013).

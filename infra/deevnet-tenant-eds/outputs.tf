@@ -145,6 +145,17 @@ output "console_certificate" {
   }
 }
 
+output "backend_certificate" {
+  description = "The home backend Pi's certificate, for deevnet-kit cert install, and when it expires."
+  value = {
+    fullchain   = deevnet_certificate.backend.fullchain_pem
+    names       = deevnet_certificate.backend.dns_names
+    serial      = deevnet_certificate.backend.serial
+    not_after   = deevnet_certificate.backend.not_after
+    renew_after = deevnet_certificate.backend.renew_after
+  }
+}
+
 output "np_relay_broker" {
   description = "The relay agent's MQTT credential. deploy/relay writes it to a flashed card."
   sensitive   = true
