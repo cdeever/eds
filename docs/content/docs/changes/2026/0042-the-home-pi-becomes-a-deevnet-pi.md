@@ -206,3 +206,24 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
       on a day on dvntm: each holds this Pi's site alone.
 - [ ] The switching firmware (ADR-0049), over the air to the stand, the
       screen and the beacon; by cable to the reSpeaker.
+- [ ] The certificate named for the host, not a service. Its CN is
+      `mqtt.eds.deevnet.net`, from `name = "mqtt"`. Wanted: `name =
+      "backend"` and `names = ["mqtt", "logs", "grafana", "console",
+      "dv01rpi001p01"]`, sites `home` and `mobile`, for a CN of
+      `backend.eds.deevnet.net`. The tenant's CA signs only in its own zone,
+      so the Deevnet host name appears as `dv01rpi001p01.eds.deevnet.net`,
+      never `dv01rpi001p01.home.deevnet.net`. Changing `name` replaces the
+      certificate, and the old one is left to expire. The round trip is
+      this change's: `cert request` at home, `terraform apply` on dvntm,
+      `cert install` at home. Home DNS gains `backend` and `dv01rpi001p01`
+      under `eds.deevnet.net` and `eds.home.deevnet.net`, at `192.168.2.40`.
+      At the next reflash, perhaps the card named to match (it is
+      `eds-backend`).
+- [ ] `.local` or the A record for SSH and `make` (`PI ?=
+      $(PI_HOSTNAME).local` today). `.local` needs no router DNS but can
+      never be in a Deevnet certificate; the A record is one name for SSH,
+      HTTPS and the devices, and needs home DNS. To be talked through.
+- [ ] Deevnet: `deevnet-kit cert install` installs only for a pending
+      request, and deletes its key once used, so a renewal Terraform issues
+      for the same key cannot be installed. Every renewal is a new
+      `cert request`. To note beside ADR-0053's renewal job.
