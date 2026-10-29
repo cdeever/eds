@@ -87,9 +87,11 @@ and no rule anywhere depends on how long it has been quiet:**
    anniversary edition, when an original exists. An edition points at its
    original: *The Dark Side Of The Moon (50th Anniversary) [2023 Remaster]*
    is a reason to ask about *The Dark Side Of The Moon*. The recognizer's own
-   album is asked about only when the catalogs have no album for the track,
-   and not when its own track list rules the track out: that is the album of
-   the record before, carried over.
+   album is asked about too, and not when its own track list rules the track
+   out: that is the album of the record before, carried over. Beside the
+   catalogs' albums it counts only if it is an original, and is ranked by
+   its date with theirs; when the catalogs have none, it is the one asked
+   about. The catalogs can leave out the record itself (2026-10-29, below).
 4. If none can be found: the recognizer's album, and then the catalogs'
    cover search as today.
 
@@ -148,9 +150,21 @@ under a box set keeps *Dark Side*; "Speak to Me" with no album names *The
 Dark Side of the Moon*, not the anniversary remaster; a track only on a
 compilation names the compilation.
 
+On 2026-10-29, on the backend Pi: Journey's "Wheel in the Sky", heard on
+*Infinity*, was named *Alive in America*, a live album, and the stand lit
+from its cover. Deezer lists the track on live albums, best-ofs and the
+2008 re-recording *Revelation*, and never on *Infinity*; the recognizer's
+album was not asked about, because the catalog had others. It is now asked
+about beside them, as an original only, and *Infinity* (1978) is named.
+Tested on the host with the catalogs' answers of that day, then heard on
+the turntable the same night, pushed to the backend Pi as `4e51363`: *Infinity*
+named in 3.4 seconds (`named_by=original`), and the stand lit from its
+sleeve.
+
 On the turntable:
 
 - [ ] *Dark Side* side one, then *Animals*, without waiting: the stand changes
       from the rainbow to *Animals*' sleeve on its first track.
 - [ ] A record turned over: the same sleeve on the other side.
-- [ ] A record not in the collection lights with its original sleeve.
+- [x] A record not in the collection lights with its original sleeve:
+      Journey's *Infinity*, 2026-10-29.
