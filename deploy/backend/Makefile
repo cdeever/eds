@@ -34,6 +34,10 @@ STAGE   := $(CURDIR)/stage
 VERSION := $(shell git -C $(REPO) describe --always --dirty 2>/dev/null || echo dev)
 SSH     := $(PI_USER)@$(PI)
 
+# What iTunes calls this Pi's remote (ADR-0052): each Pi its own, so a lost
+# card is forgotten without the other.
+PAIR_NAME ?= EdS home
+
 # Where the flashed card's boot partition is mounted. macOS names it bootfs.
 BOOT ?= /Volumes/bootfs
 # The owner's Discogs settings, kept by hand and never committed.
@@ -48,7 +52,7 @@ NAMES ?=
 
 ARM64 := CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath
 
-.PHONY: help check stage image fetch card push status logs pair spotify drivers turntable devices
+.PHONY: help check stage image fetch card push status logs pair pairing spotify drivers turntable devices
 
 comma := ,
 
@@ -60,7 +64,8 @@ help:
 	@echo "  fetch   copy the built image here, and check its checksum"
 	@echo "  card    write this card's settings to its boot partition (BOOT=$(BOOT))"
 	@echo "  status  eds-backend-status on the Pi"
-	@echo "  pair    pair the agent with iTunes; prints a code to type in"
+	@echo "  pair    pair the agent with iTunes (prints a code), then keep the pairing in secrets/"
+	@echo "  pairing put the pairing kept in secrets/ back on the Pi, and restart the agent"
 	@echo "  spotify authorize the agent for Spotify in a browser here, and hand it to the Pi"
 	@echo "  drivers which players the Pi follows: DRIVERS=itunes,spotify,turntable"
 	@echo "  turntable  which input the turntable driver listens to: DEVICE=plughw:CODEC"
@@ -112,7 +117,11 @@ status:
 	ssh -t $(SSH) eds-backend-status
 
 pair:
-	ssh -t $(SSH) eds-agent-pair
+	ssh -t $(SSH) 'eds-agent-pair "$(PAIR_NAME)"'
+	@SSH="$(SSH)" PI_HOSTNAME="$(PI_HOSTNAME)" ../itunes-pairing.sh keep
+
+pairing:
+	@SSH="$(SSH)" PI_HOSTNAME="$(PI_HOSTNAME)" ../itunes-pairing.sh restore
 
 logs:
 	ssh -t $(SSH) sudo journalctl -u eds-nowplayd -u eds-lightd -u eds-console -u eds-palette -u npagent -f -o short

@@ -6,12 +6,13 @@
 # card, and by every process on the Pi. So the settings rest there only
 # between the card being written and its next boot.
 #
-# Four files, each optional, in /boot/firmware/eds-agent/:
+# Five files, each optional, in /boot/firmware/eds-agent/:
 #
 #   hostname             what this card calls itself
 #   npagent.env          the agent's settings, as an environment file
 #   deevnet-root-ca.pem  the CA the broker's certificate is verified against
 #   wifi.conf            SSID=, PSK=, COUNTRY=   a second network to join
+#   itunes-pairing.json  the iTunes pairing kept for this card (ADR-0052)
 #
 # wifi.conf is what makes a card a relay: a Pi whose players are on a network
 # the broker is not. Without it the Pi has its wired leg and nothing else.
@@ -123,6 +124,18 @@ if [[ -f "$DROP/npagent.env" ]]; then
     rm -f "$DROP/npagent.env"
     log "agent settings installed"
     imported=1
+fi
+
+if [[ -f "$DROP/itunes-pairing.json" ]]; then
+    # The GUID is the whole credential: readable by the agent alone.
+    if grep -Eq '"guid" *: *"[0-9A-F]{16}"' "$DROP/itunes-pairing.json"; then
+        install -o npagent -g npagent -m 0600 "$DROP/itunes-pairing.json" /var/lib/eds-npagent/itunes-pairing.json
+        rm -f "$DROP/itunes-pairing.json"
+        log "iTunes pairing installed"
+        imported=1
+    else
+        log "itunes-pairing.json holds no pairing; left in place"
+    fi
 fi
 
 # An emptied directory is removed, so the unit's condition is false next boot.

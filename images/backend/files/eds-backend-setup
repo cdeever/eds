@@ -17,11 +17,12 @@
 # should say has changed. So it is safe to run by hand, and a card that lost
 # power partway through its first boot finishes on its second.
 #
-# Two things may be left for it in /boot/firmware/eds/, and are removed from
+# Three things may be left for it in /boot/firmware/eds/, and are removed from
 # there once taken, because anyone holding the card can read that partition:
 #
 #   discogs.env             NP_DISCOGS_USER= and NP_DISCOGS_TOKEN=
 #   login, authorized_keys  a user's name, and public keys to admit as them
+#   itunes-pairing.json     the iTunes pairing kept for this card (ADR-0052)
 #
 # Nothing in those files is executed.
 set -euo pipefail
@@ -178,6 +179,17 @@ if [[ -f "$DROP/login" && -f "$DROP/authorized_keys" ]]; then
     else
         # The owner's user is made on the very first boot, from userconf.txt.
         log "no user '$user' on this card yet; the keys stay on the boot partition"
+    fi
+fi
+if [[ -f "$DROP/itunes-pairing.json" ]]; then
+    # The GUID is the whole credential: readable by the agent alone.
+    if grep -Eq '"guid" *: *"[0-9A-F]{16}"' "$DROP/itunes-pairing.json"; then
+        install -o npagent -g npagent -m 0600 "$DROP/itunes-pairing.json" /var/lib/eds-npagent/itunes-pairing.json
+        rm -f "$DROP/itunes-pairing.json"
+        systemctl try-restart npagent.service 2>/dev/null || true
+        log "iTunes pairing installed"
+    else
+        log "itunes-pairing.json holds no pairing; left in place"
     fi
 fi
 rmdir "$DROP" 2>/dev/null || true

@@ -36,11 +36,28 @@ segment, power it on, and give it a minute.
 
 ```bash
 make status    # every check should say ok; a driver not yet set up is noted
-make pair      # prints a four-digit code; type it into iTunes
+make pair      # prints a four-digit code; type it into iTunes. Skip it if a pairing is kept
 make spotify   # a browser opens here for Agree; the authorization goes to the Pi
 make status    # now all of it
 make logs      # the agent, as it publishes
 ```
+
+## The iTunes pairing is kept
+
+`make pair` pairs this Pi as **"EdS relay"** and then keeps the pairing in
+the repository, encrypted, as `secrets/itunes-<hostname>.sops.json`
+([ADR-0052](../../docs/content/docs/architecture/decisions/0052-each-pis-itunes-pairing-is-kept-encrypted-in-the-repository.md)).
+Commit that file. From then on:
+
+- **`make card`** writes the kept pairing onto a new card, and the card
+  starts paired: nobody goes to the iTunes PC.
+- **`make pairing`** puts it back on the running Pi, if the Pi lost it.
+
+It needs `sops` and `age` here and the owner's age key in the Keychain
+([`secrets/README.md`](../../secrets/README.md)). Without them, `make pair`
+still pairs the Pi and says it could not keep it; a card is written without
+the pairing and says so. iTunes forgets remotes only all at once ("Forget
+All Remotes"), after which each Pi pairs again.
 
 ## Spotify
 

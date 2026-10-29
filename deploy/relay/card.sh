@@ -10,6 +10,8 @@
 #                        second leg, which is what makes this card a relay
 #   npagent.env          the agent's broker account, from the tenant's state
 #   deevnet-root-ca.pem  the CA the broker's certificate is verified against
+#   itunes-pairing.json  the iTunes pairing kept for this card's name in
+#                        secrets/, when there is one (ADR-0052)
 #
 # Nothing is kept on this machine: the key is never written anywhere but the
 # card, and the broker account stays in the tenant's state where it lives.
@@ -108,6 +110,9 @@ if log:
     print("NP_LOG_DEVICE=%s" % log[0].rsplit("/", 1)[1])
 ' > "$drop/npagent.env"
 
+# The pairing kept for this card's name, decrypted straight onto the card.
+paired="$(PI_HOSTNAME="$PI_HOSTNAME" "$(dirname "$0")/../itunes-pairing.sh" card "$drop")"
+
 # macOS leaves its own files beside anything it writes to FAT.
 rm -f "$drop"/._* 2>/dev/null || true
 sync
@@ -115,6 +120,7 @@ sync
 echo
 echo "Written to $drop, for $PI_HOSTNAME:"
 ls -1 "$drop" | sed 's/^/  /'
+echo "With $paired."
 echo
 echo "Eject the card, put it in the Pi, connect its Ethernet, and power it on."
 echo "Then: make status"
