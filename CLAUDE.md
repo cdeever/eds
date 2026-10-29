@@ -585,3 +585,12 @@ URI and account name are not secret and keep Kconfig defaults.
 `sdkconfig` (generated) and `**/certs/*.pem` stay gitignored. Terraform secrets
 arrive as environment variables only; the tenant's `.backend.env` and
 `*.auto.tfvars` are gitignored too.
+
+**`secrets/` is committed encrypted, never plain** (ADR-0037, ADR-0052):
+sops to the owner's age key, whose private half is in the Mac's Keychain
+(`eds-sops-age`) and on paper. Its first secrets are each Pi's iTunes
+pairing, `secrets/itunes-<hostname>.sops.json`: `make pair` keeps it,
+`make card` writes it onto the next card, `make pairing` restores it
+(`deploy/itunes-pairing.sh`). A tool decrypts to a pipe or to where the
+secret is used, never to a file in a worktree. `secrets/README.md` has the
+key's one-time setup.

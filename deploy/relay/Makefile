@@ -21,9 +21,13 @@ NP    := $(REPO)/services/nowplaying
 # Where the flashed card's boot partition is mounted. macOS names it bootfs.
 BOOT ?= /Volumes/bootfs
 
-.PHONY: help image fetch card push spotify drivers turntable status pair logs
+.PHONY: help image fetch card push spotify drivers turntable status pair pairing logs
 
 comma := ,
+
+# What iTunes calls this Pi's remote (ADR-0052): each Pi its own, so a lost
+# card is forgotten without the other.
+PAIR_NAME ?= EdS relay
 
 help:
 	@echo "relay - the now-playing agent on $(PI)"
@@ -33,7 +37,8 @@ help:
 	@echo "  card    write this card's settings to its boot partition (BOOT=$(BOOT))"
 	@echo "  push    update the agent, its unit and its tools on the running Pi"
 	@echo "  status  eds-agent-status on the Pi"
-	@echo "  pair    pair the agent with iTunes; prints a code to type in"
+	@echo "  pair    pair the agent with iTunes (prints a code), then keep the pairing in secrets/"
+	@echo "  pairing put the pairing kept in secrets/ back on the Pi, and restart the agent"
 	@echo "  spotify authorize the agent for Spotify in a browser here, and hand it to the Pi"
 	@echo "  drivers which players the Pi follows: DRIVERS=itunes turns Spotify off,"
 	@echo "          DRIVERS=itunes,spotify turns it back on; turntable is the third"
@@ -99,7 +104,11 @@ status:
 	ssh -t $(BUILDER) 'ssh -o StrictHostKeyChecking=accept-new a_autoprov@$(PI) eds-agent-status'
 
 pair:
-	ssh -t $(BUILDER) 'ssh -t a_autoprov@$(PI) eds-agent-pair'
+	ssh -t $(BUILDER) 'ssh -t a_autoprov@$(PI) eds-agent-pair "\"$(PAIR_NAME)\""'
+	@BUILDER="$(BUILDER)" PI="$(PI)" PI_HOSTNAME="$(firstword $(subst ., ,$(PI)))" ../itunes-pairing.sh keep
+
+pairing:
+	@BUILDER="$(BUILDER)" PI="$(PI)" PI_HOSTNAME="$(firstword $(subst ., ,$(PI)))" ../itunes-pairing.sh restore
 
 logs:
 	ssh -t $(BUILDER) 'ssh a_autoprov@$(PI) sudo journalctl -u npagent -f -o cat'

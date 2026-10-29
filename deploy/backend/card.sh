@@ -8,8 +8,10 @@
 #                     deevnet-kit reads once, on the first boot
 #   userconf.txt      your login, which Raspberry Pi OS makes on the first boot
 #   ssh               turns SSH on
-#   eds/              your public key, and your Discogs settings if you have
-#                     them; taken and removed by eds-backend-setup
+#   eds/              your public key, your Discogs settings if you have
+#                     them, and the iTunes pairing kept for this card's name
+#                     in secrets/ (ADR-0052); taken and removed by
+#                     eds-backend-setup
 #
 # Nothing is kept on this machine. The card's broker accounts, its CA and its
 # tokens are not written here at all: they are made on the card.
@@ -120,6 +122,9 @@ else
     discogs="no Discogs settings (none at ${DISCOGS:-DISCOGS}): records are named by what was heard"
 fi
 
+# The pairing kept for this card's name, decrypted straight onto the card.
+itunes="$(PI_HOSTNAME="$PI_HOSTNAME" "$(dirname "$0")/../itunes-pairing.sh" card "$drop")"
+
 # macOS leaves its own files beside anything it writes to FAT.
 rm -f "$BOOT"/._* "$drop"/._* 2>/dev/null || true
 rmdir "$drop" 2>/dev/null || true
@@ -130,6 +135,7 @@ echo "Written to $BOOT, for $PI_HOSTNAME (tenant $TENANT, index $INDEX):"
 echo "  network   ${ssid:-a cable}"
 echo "  login     $PI_USER, with $keyed"
 echo "  also      $discogs"
+echo "  iTunes    $itunes"
 echo
 echo "Eject the card, put it in the Pi, and power it on. The first boot makes"
 echo "your login, restarts once, and then makes the card's CA and its accounts:"
