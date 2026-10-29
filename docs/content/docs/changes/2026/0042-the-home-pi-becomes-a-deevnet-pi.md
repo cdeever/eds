@@ -156,6 +156,8 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 | 2026-10-29 02:43 UTC | 5 | `play_pause` again, iTunes playing: nowplayd to the iTunes driver to iTunes in 7 ms, and iTunes paused. The turntable heard the song again at 02:42:19 and was not made current |
 | 2026-10-29 02:46 UTC | 7 | The cover screen (MAC `a0:a3:b3:ab:61:8c` on `/dev/cu.usbserial-2130`): tenant `creds` kept aside, a dry run, then written. Online on this Pi's broker within twenty seconds, and showed the cover when iTunes played. **Its buttons did nothing**: from 02:46:26 to 02:48:50 no press reached nowplayd |
 | 2026-10-29 02:48 UTC | 7 | Opening its serial port to watch restarted it. In that second start every touch registered and every press was carried out: pause, next, previous, previous, play, from `cover-screen-01` to iTunes. Why the first start after provisioning sent nothing is not known: no log covers it |
+| 2026-10-29 02:55 UTC | 7 | The stand (MAC `70:4b:ca:26:b1:a0`, on the port the beacon had used): tenant `creds` kept aside, a dry run, then written. Online within twenty seconds, and it reported applying the retained scene: `solid`, brightness 0, dark for iTunes |
+| 2026-10-29 02:56 UTC | 7 | The console's stand switch set to `all`: the stand applied `chase`, four colors from *American Fool*'s cover, brightness 0.8. Set back to `records`: `solid`, brightness 0 again |
 
 ### Departures from the plan
 
@@ -187,7 +189,7 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 - [ ] Find out why the cover screen's first start after provisioning sent no
       presses while showing covers. Test each device's controls straight
       after it is written, before anything restarts it.
-- [ ] Step 7, the rest: the stand and the reSpeaker. The
+- [ ] Step 7, the rest: the reSpeaker. The
       beacon is done, provisioned for this Pi alone; `--also mobile`
       waits for a day on dvntm.
 
