@@ -158,6 +158,7 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 | 2026-10-29 02:48 UTC | 7 | Opening its serial port to watch restarted it. In that second start every touch registered and every press was carried out: pause, next, previous, previous, play, from `cover-screen-01` to iTunes. Why the first start after provisioning sent nothing is not known: no log covers it |
 | 2026-10-29 02:55 UTC | 7 | The stand (MAC `70:4b:ca:26:b1:a0`, on the port the beacon had used): tenant `creds` kept aside, a dry run, then written. Online within twenty seconds, and it reported applying the retained scene: `solid`, brightness 0, dark for iTunes |
 | 2026-10-29 02:56 UTC | 7 | The console's stand switch set to `all`: the stand applied `chase`, four colors from *American Fool*'s cover, brightness 0.8. Set back to `records`: `solid`, brightness 0 again |
+| 2026-10-29 03:00 UTC | 7 | `respeaker-01` left on the tenant, by decision: what it sends is heard by `voiced` and written down by `scribe`, and neither runs on this Pi. It goes on working as before, through the tenant's workload |
 
 ### Departures from the plan
 
@@ -175,6 +176,9 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 - The beacon was provisioned without `--site home --also mobile=terraform`:
   the tenant's state is reachable only from dvntm. Its tenant settings were
   read from its `creds` partition first, to write back as the undo.
+- `respeaker-01` was not moved. The plan named it, but the backend Pi runs
+  palette, lightd, nowplayd and the console, and not `voiced` or `scribe`,
+  so its requests would reach a broker with nothing listening for them.
 - The Pi has two addresses on the home network, `192.168.2.40` (wired) and
   `192.168.2.228`.
 
@@ -189,9 +193,9 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 - [ ] Find out why the cover screen's first start after provisioning sent no
       presses while showing covers. Test each device's controls straight
       after it is written, before anything restarts it.
-- [ ] Step 7, the rest: the reSpeaker. The
-      beacon is done, provisioned for this Pi alone; `--also mobile`
-      waits for a day on dvntm.
-
+- [ ] The reSpeaker, once this Pi runs `voiced` and `scribe`: until then
+      it stays on the tenant. Its account is already in `accounts.conf`.
+- [ ] `--also mobile=terraform` for the beacon, the screen and the stand,
+      on a day on dvntm: each holds this Pi's site alone.
 - [ ] The switching firmware (ADR-0049), over the air to the stand, the
       screen and the beacon; by cable to the reSpeaker.
