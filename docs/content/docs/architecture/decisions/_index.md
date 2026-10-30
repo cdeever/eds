@@ -121,3 +121,4 @@ and incidents under the same names. To keep the two apart:
 | [0050](0050-how-each-track-was-completed-is-written-down/) | 2026-10-27 | How each track's album and cover were found is written down, one line a track, and sent to the log store | {{< adr-status "Proposed" >}} |
 | [0051](0051-spotify-is-switched-on-and-off-from-the-console/) | 2026-10-28 | Spotify is switched on and off from the console, a retained setting the agent obeys; off asks Spotify nothing | {{< adr-status "Accepted" >}} |
 | [0052](0052-each-pis-itunes-pairing-is-kept-encrypted-in-the-repository/) | 2026-10-28 | Each Pi's iTunes pairing is kept, encrypted with sops, and a card written again starts paired | {{< adr-status "Accepted" >}} |
+| [0053](0053-a-home-pi-opens-a-maintenance-leg-for-the-van/) | 2026-10-28 | A home Pi opens a Wi-Fi leg onto the home LAN for the van, for a while, when asked from inside; SSH only | {{< adr-status "Proposed" >}} |
