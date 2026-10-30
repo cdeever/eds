@@ -7,7 +7,7 @@ weight: 53
 
 | | |
 |---|---|
-| **Status** | {{< adr-status "Proposed" >}}: until a window has been opened, used and closed on the backend Pi; see [What would settle it](#what-would-settle-it) |
+| **Status** | {{< adr-status "Proposed" >}}: until a window has been opened, used and closed on the backend Pi; see [What would settle it](#what-would-settle-it). It takes effect when the Pi's cable leaves DVNT-CORE |
 | **Date** | 2026-10-28 |
 | **Scope** | How the mobile site reaches an EdS Pi that lives at home: a Wi-Fi leg onto the home LAN, off unless opened, and what it admits. The day-2 jobs that use it are named here and decided elsewhere. |
 | **Extends** | [ADR-0010](/docs/architecture/decisions/0010-home-lan-relay/): a second leg, fenced, now off by default and opened for a time. [ADR-0033](/docs/architecture/decisions/0033-the-whole-back-end-on-one-pi/): the backend Pi, now at home. |
@@ -31,10 +31,22 @@ the request carried on a USB stick. A van that can reach the Pi does it in
 one visit, with nothing carried by hand. Others will follow: revoking a
 certificate, patching, `make push`, a pairing restored (ADR-0052).
 
-Today the van cannot reach a home Pi. When it rolls in, it joins
-DVNT-CORE, and the Pi's wired leg is on whatever home network serves it.
-Whether the house routes the one to the other is the house's business, and
-cannot be counted on.
+**Today the van needs no window.** The backend Pi's cable is on
+DVNT-CORE, and since CHG-0046 its radio is off and it has that one address.
+A van on DVNT-CORE reaches it directly. That ends when Deevnet's home site
+is built and the Pi's cable moves onto one of its segments: then the Pi's
+wired leg is on a network the van is not on, and whether the house routes
+the one to the other is the house's business, which cannot be counted on.
+This record is for then.
+
+**The van, in practice, is the Builder.** Deevnet's Builder is dual-homed by
+design: "Upstream, it joins whatever external network is available (home,
+hotel, office)", and downstream it sits on the site's management segment
+(Deevnet's *Builder & Core Services*). It is site `00`, the roaming
+appliance, named in whichever site zone it is attached to (Deevnet
+ADR-0008). Away from dvntm it is out of reach today: `builder` names its
+management address, `10.20.99.95`, which a Mac at home cannot reach, so an
+EdS image cannot be built from home.
 
 **DVNT-CORE is not a Deevnet network.** Deevnet's home site (`dv01`, its
 trusted VLAN 10 and SSID `DVNT`) is designed and not built, and DVNT-CORE
@@ -89,7 +101,8 @@ nothing else; and every opening is logged.** The house lets the contractor
 in.
 
 - **The radio is off by default**, and turned off on every boot. A reboot
-  always closes the window.
+  always closes the window. The first half is already so: CHG-0046 turned
+  the backend Pi's radio off, and its image starts with it off.
 - **It is opened from inside, over SSH on the wired side**:
   `eds-maint open [minutes]` on the Pi. A window that is closed cannot be
   opened from the van, and that is the point: the owner lets the van in.
@@ -111,6 +124,25 @@ in.
 - **This is for DVNT-CORE.** Once Deevnet's home site is built, a leg onto
   its trusted VLAN is Deevnet's network and Deevnet's decision, and needs a
   record there first.
+
+### The van's side: the Builder's upstream leg on DVNT-CORE
+
+During a maintenance window, **the Builder's upstream leg joins DVNT-CORE**:
+the use Deevnet already gives that leg, at the house. The Builder seems to
+have a Wi-Fi radio it does not use, which would let it join without a
+cable; that is to be confirmed. Then:
+
+- **The Mac at home reaches the Builder**, on its DVNT-CORE address, so an
+  image is built and fetched from home.
+- **The Builder reaches the home Pis**: over their cable while it is on
+  DVNT-CORE, and through the Pi's window once it is not. The day-2 jobs
+  below run from it.
+- **Its management leg is not exposed by this.** The upstream leg is the
+  one Deevnet already treats as outside the site, and nothing inside the
+  site depends on it.
+
+How the Builder's upstream leg is set up, which radio, and what the Mac
+calls it on DVNT-CORE are Deevnet's to decide, in a record of its own.
 
 ### What the van does through it
 
@@ -140,8 +172,10 @@ EdS's `make`.
   opened; this is not out-of-band access. A button on the Pi is the answer
   if that is ever wanted.
 - **The relay's always-on leg is not changed** by this record.
-- **The Pi needs its DVNT-CORE key on the card**, which is one more value
-  `make card` asks for, as the relay's already does.
+- **The Pi needs its DVNT-CORE key on the card.** CHG-0046 took the Wi-Fi
+  question out of `make card`; the window brings it back, written as a
+  connection that never connects by itself, so the radio stays off until a
+  window opens.
 - **A certificate renewed by the van needs no visit to the factory**, which
   answers Deevnet ADR-0041's "a visit a year" for a Pi the van can reach.
 
@@ -156,6 +190,8 @@ EdS's `make`.
 - [ ] `maint.opened` and `maint.closed` in the log store, with who and how
       long.
 - [ ] A certificate renewed by the van through a window.
+- [ ] The Builder's upstream leg on DVNT-CORE: the Mac at home reaches it,
+      and `make -C deploy/backend image fetch` runs from home.
 
 ## Follow-ups
 
@@ -166,3 +202,7 @@ EdS's `make`.
       and who may send it.
 - [ ] A Deevnet record, before Deevnet's home site is built, for a tenant
       Pi's maintenance leg onto its trusted VLAN.
+- [ ] A Deevnet record for the Builder's upstream leg at the house: whether
+      its unused Wi-Fi joins DVNT-CORE during a maintenance window, and
+      what the Mac calls it there. First, confirm the Builder has the
+      radio.
