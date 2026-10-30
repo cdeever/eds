@@ -19,14 +19,16 @@ each part is up.
 The decision, and what was tried first, is
 [ADR-0018](../../docs/content/docs/architecture/decisions/0018-a-console-of-eds-own.md).
 
-## It looks, and switches one thing
+## It looks, and switches two settings
 
 The console learns everything from the bus. It calls no other service, and
-none calls it. Its broker account is granted subscriptions and two topics to
-publish: its own presence, and which sources the stand is lit for
-([ADR-0039](../../docs/content/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source.md)).
+none calls it. Its broker account is granted subscriptions and three topics
+to publish: its own presence, which sources the stand is lit for
+([ADR-0039](../../docs/content/docs/architecture/decisions/0039-the-console-can-light-the-stand-for-every-source.md)),
+and whether Spotify's driver runs
+([ADR-0051](../../docs/content/docs/architecture/decisions/0051-spotify-is-switched-on-and-off-from-the-console.md)).
 
-That setting is the one thing it changes. Beside the stands the page says
+The stand's setting is the first. Beside the stands the page says
 "lit for records" or, marked, "lit for every source", and a button switches
 it: `POST /api/stand` with `{"sources":"all"}` or `{"sources":"records"}`.
 The server publishes `{"v":1,"sources":…}` to `nowplaying/stand`, retained,
@@ -35,9 +37,18 @@ The page shows the setting when it hears it back from the broker, not when
 it asked; a setting not heard back within five seconds is said so. It stays
 as set until it is switched again.
 
-The route takes JSON only, from the console's own origin, so another site
-open in the same browser cannot post to it. Every other route answers `GET`
-and nothing else. Another control is not a feature to add here quietly: it
+Spotify's switch is the second. Under the stand's, the page says
+"followed" or "off: Spotify is asked nothing", and a button switches it:
+`POST /api/spotify` with `{"driver":"on"}` or `{"driver":"off"}`. The server
+publishes `{"v":1,"driver":…}` to `nowplaying/source/spotify/switch`,
+retained, and the agent runs the Spotify driver only while it is `on`.
+Nothing on the broker is `off`. Switched on and not online after ninety
+seconds, the page says the driver could not start.
+
+The routes take JSON only, from the console's own origin, so another site
+open in the same browser cannot post to them. Every other route answers
+`GET` and nothing else. There is no login: neither setting changes what
+plays. Another control is not a feature to add here quietly: it
 changes what the account may publish, and that is a decision to record
 first.
 

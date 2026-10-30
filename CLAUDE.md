@@ -148,8 +148,11 @@ an unpublished endpoint and may stop working any day. Keep every trace of
 Shazam in that file and its pinned requirements; the driver knows only "a WAV
 in, a name out". `make -C deploy/relay turntable DEVICE=…` names the input.
 **On, on the agent Pi, beside iTunes** (CHG-0013): the Pi runs
-`itunes,turntable`. Spotify is off again, for the calls it makes (CHG-0024);
-`make -C deploy/relay drivers DRIVERS=itunes,spotify,turntable` undoes it.
+`itunes,turntable`. Spotify is off again, for the calls it makes (CHG-0024).
+**Once ADR-0051 is deployed it is switched from the console instead**: the
+retained `nowplaying/source/spotify/switch` says whether the driver runs,
+`NP_DRIVERS` only whether it may, and nothing on the broker is off. Off, the
+driver asks Spotify nothing.
 
 **The record on the turntable is named by its owner's collection** (ADR-0022).
 For sources in `NP_COLLECTION_SOURCES`, nowplayd asks the owner's Discogs
@@ -347,10 +350,12 @@ two gigabytes through the core router hung it.
 
 The console (`services/console`, ADR-0018) is the page a person looks at:
 `https://console.eds.mobile.deevnet.net/`. It subscribes to the bus and serves
-what it heard. **It looks, and switches one thing** (ADR-0039): its broker
-account reads, and publishes only its own presence and the stand's setting,
-and its one route that is not `GET` is `POST /api/stand`, JSON from its own
-origin, with no login. Adding another control is a decision to record first,
+what it heard. **It looks, and switches two settings** (ADR-0039,
+ADR-0051): its broker account reads, and publishes only its own presence,
+the stand's setting and Spotify's switch, and its two routes that are not
+`GET` are `POST /api/stand` and `POST /api/spotify`, JSON from its own
+origin, with no login. Neither changes what plays; one that did would need
+a login. Adding another control is a decision to record first,
 not a handler to add. Its subscriptions (`view.Topics`) and the
 account in `main.tf` are one list kept in two places; the broker refuses a
 mismatch silently. `internal/web/static/effects.js` is a port of the
@@ -478,6 +483,7 @@ on the console, which is told and cannot find out.
 | `eds/lightd/status` | lightd → broker | yes (LWT) |
 | `eds/nowplaying/current/look` | nowplayd → lightd | yes |
 | `eds/nowplaying/stand` | console → nowplayd, console | yes (a setting) |
+| `eds/nowplaying/source/spotify/switch` | console → agent, console | yes (a setting) |
 | `eds/nowplaying/current/art/small` | nowplayd → cover screen | yes |
 | `eds/nowplaying/command` | cover screen → nowplayd | **never** |
 | `eds/nowplaying/source/<id>/command` | nowplayd → driver | **never** |
@@ -585,3 +591,12 @@ URI and account name are not secret and keep Kconfig defaults.
 `sdkconfig` (generated) and `**/certs/*.pem` stay gitignored. Terraform secrets
 arrive as environment variables only; the tenant's `.backend.env` and
 `*.auto.tfvars` are gitignored too.
+
+**`secrets/` is committed encrypted, never plain** (ADR-0037, ADR-0052):
+sops to the owner's age key, whose private half is in the Mac's Keychain
+(`eds-sops-age`) and on paper. Its first secrets are each Pi's iTunes
+pairing, `secrets/itunes-<hostname>.sops.json`: `make pair` keeps it,
+`make card` writes it onto the next card, `make pairing` restores it
+(`deploy/itunes-pairing.sh`). A tool decrypts to a pipe or to where the
+secret is used, never to a file in a worktree. `secrets/README.md` has the
+key's one-time setup.

@@ -289,6 +289,7 @@ func TestTopicsCoverWhatApplyReads(t *testing.T) {
 		"eds/lightstand/+/scene": true, "eds/lightstand/+/state": true, "eds/lightstand/+/status": true,
 		"eds/lightd/status": true, "eds/beacon/+/status": true,
 		"eds/screen/+/status": true, "eds/nowplaying/stand": true,
+		"eds/nowplaying/source/spotify/switch": true,
 	}
 	got := Topics("eds")
 	if len(got) != len(want) {
@@ -410,6 +411,38 @@ func TestTheStandsSettingIsReadAndDefaultsToRecords(t *testing.T) {
 		t.Errorf("encoded %s, %v", payload, err)
 	}
 	if _, err := EncodeStand("everything"); err == nil {
+		t.Error("encoded a word nobody reads")
+	}
+}
+
+// ADR-0051: whether Spotify's driver is switched on is read as the agent
+// reads it, and nothing, or anything unreadable, is off.
+func TestSpotifysSwitchIsReadAndDefaultsToOff(t *testing.T) {
+	v := New("eds")
+	if got := v.Snapshot().SpotifyDriver; got != DriverOff {
+		t.Fatalf("before anything is heard: %q", got)
+	}
+	topic := SpotifySwitchTopic("eds")
+	if !v.ApplyStored(topic, []byte(`{"v":1,"driver":"on"}`)) || v.Snapshot().SpotifyDriver != DriverOn {
+		t.Fatalf("on was not taken: %q", v.Snapshot().SpotifyDriver)
+	}
+	if v.Apply(topic, []byte(`{"v":1,"driver":"on"}`)) {
+		t.Error("the same setting again was a change")
+	}
+	for _, payload := range []string{``, `{"v":1,"driver":"yes"}`, `{"v":2,"driver":"on"}`, `on`} {
+		v.Apply(topic, []byte(`{"v":1,"driver":"on"}`))
+		if !v.Apply(topic, []byte(payload)) || v.Snapshot().SpotifyDriver != DriverOff {
+			t.Errorf("%q: %q", payload, v.Snapshot().SpotifyDriver)
+		}
+	}
+	// A source's switch is not one of its reports: it puts no source on the page.
+	if len(v.Snapshot().Sources) != 0 {
+		t.Errorf("the switch made a source: %+v", v.Snapshot().Sources)
+	}
+	if payload, err := EncodeSwitch(DriverOn); err != nil || string(payload) != `{"v":1,"driver":"on"}` {
+		t.Errorf("encoded %s, %v", payload, err)
+	}
+	if _, err := EncodeSwitch("yes"); err == nil {
 		t.Error("encoded a word nobody reads")
 	}
 }

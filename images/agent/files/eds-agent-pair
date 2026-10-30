@@ -1,9 +1,13 @@
 #!/bin/bash
 # eds-agent-pair - pair this Pi's agent with iTunes, once.
 #
+#   eds-agent-pair ["NAME"]    NAME is what iTunes lists this remote as
+#
 # Advertises a remote on the players' network and prints a four-digit code to
 # type into iTunes. The pairing is kept in the agent's own directory, and the
-# agent starts as soon as it exists.
+# agent starts as soon as it exists. Each Pi pairs under a name of its own
+# (ADR-0052): `make pair` gives "EdS relay" or "EdS home", and keeps the
+# pairing in the repository's secrets/ afterward.
 set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then
@@ -13,7 +17,8 @@ fi
 # The firewall admits exactly this port from the second leg.
 export NP_PAIR_PORT=3690
 export NP_STATE_DIR=/var/lib/eds-npagent
-export NP_REMOTE_NAME="${NP_REMOTE_NAME:-EdS}"
+# An argument, because sudo above leaves the environment behind.
+export NP_REMOTE_NAME="${1:-${NP_REMOTE_NAME:-EdS}}"
 
 # Not `set -e` for this one: the agent should start whenever a pairing exists,
 # including when the tool paired and then stumbled on something afterward.

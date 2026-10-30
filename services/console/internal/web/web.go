@@ -3,7 +3,8 @@
 // The page is static files compiled into the binary, plus three things the
 // server answers: the picture as JSON, the same picture pushed whenever it
 // changes, and the cover the stand is lit from. It looks (ADR-0018), and
-// changes one thing: which sources the stand is lit for (ADR-0039).
+// changes two settings: which sources the stand is lit for (ADR-0039), and
+// whether Spotify's driver runs (ADR-0051).
 package web
 
 import (
@@ -69,6 +70,11 @@ type Server struct {
 	// or view.StandAll. Nil, the page cannot switch it and the route is not
 	// served.
 	Switch func(sources string) error
+
+	// SwitchSpotify puts Spotify's switch on the bus (ADR-0051): view.DriverOn
+	// or view.DriverOff. Nil, the page cannot switch it and the route is not
+	// served.
+	SwitchSpotify func(driver string) error
 
 	mu      sync.Mutex
 	viewers map[chan struct{}]struct{}
@@ -177,19 +183,19 @@ func (s *Server) Handler() http.Handler {
 			h.Set("Strict-Transport-Security", "max-age=86400")
 		}
 
-		if r.URL.Path == standPath && s.Switch != nil {
+		if set := s.setting(r.URL.Path); set != nil {
 			h.Set("Cache-Control", "no-store")
 			if r.Method != http.MethodPost {
 				h.Set("Allow", "POST")
-				http.Error(w, "the stand's setting is changed with a POST", http.StatusMethodNotAllowed)
+				http.Error(w, set.name+"'s setting is changed with a POST", http.StatusMethodNotAllowed)
 				return
 			}
-			s.stand(w, r)
+			s.change(w, r, set)
 			return
 		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			h.Set("Allow", "GET, HEAD")
-			http.Error(w, "the console only looks, but for the stand's setting", http.StatusMethodNotAllowed)
+			http.Error(w, "the console only looks, but for its two settings", http.StatusMethodNotAllowed)
 			return
 		}
 		if !strings.HasPrefix(r.URL.Path, "/api/cover/") {
@@ -201,54 +207,77 @@ func (s *Server) Handler() http.Handler {
 	})
 }
 
-// standPath is the one route that changes anything (ADR-0039).
-const standPath = "/api/stand"
+// The routes that change anything: the stand's sources (ADR-0039) and
+// Spotify's switch (ADR-0051). Each is a setting, retained on the bus.
+const (
+	standPath   = "/api/stand"
+	spotifyPath = "/api/spotify"
+)
 
-// stand switches which sources the stand is lit for. The page sends JSON
-// from its own origin; anything else is refused, so that another site open in
-// the same browser cannot switch the stand by posting a form here. There is
-// no login: anyone who can open the console can do this, and this is all
-// they can do.
+// setting is one thing the page can change: the field the page sends, the
+// two words it may hold, and how it reaches the bus.
+type setting struct {
+	name    string // what a person calls it, in answers and the log
+	field   string
+	words   [2]string
+	publish func(word string) error
+}
+
+// setting is the one served at path, or nil. A setting with no way to the
+// bus is not served, and the console only looks.
+func (s *Server) setting(path string) *setting {
+	switch {
+	case path == standPath && s.Switch != nil:
+		return &setting{"the stand", "sources", [2]string{view.StandRecords, view.StandAll}, s.Switch}
+	case path == spotifyPath && s.SwitchSpotify != nil:
+		return &setting{"Spotify", "driver", [2]string{view.DriverOn, view.DriverOff}, s.SwitchSpotify}
+	}
+	return nil
+}
+
+// change puts a setting on the bus. The page sends JSON from its own origin;
+// anything else is refused, so that another site open in the same browser
+// cannot switch anything by posting a form here. There is no login: anyone
+// who can open the console can do this, and these two are all they can do.
 //
-// It answers with what it published. Whether nowplayd heard it is said by
-// the setting coming back on the bus, and the page shows that, not this.
-func (s *Server) stand(w http.ResponseWriter, r *http.Request) {
+// It answers with what it published. Whether it was heard is said by the
+// setting coming back on the bus, and the page shows that, not this.
+func (s *Server) change(w http.ResponseWriter, r *http.Request, set *setting) {
 	scheme := "http://"
 	if s.Secure {
 		scheme = "https://"
 	}
 	if origin := r.Header.Get("Origin"); origin != scheme+r.Host {
-		http.Error(w, "the stand is switched from the console's own page", http.StatusForbidden)
+		http.Error(w, set.name+" is switched from the console's own page", http.StatusForbidden)
 		return
 	}
 	if mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mt != "application/json" {
-		http.Error(w, "the stand's setting is sent as JSON", http.StatusUnsupportedMediaType)
+		http.Error(w, set.name+"'s setting is sent as JSON", http.StatusUnsupportedMediaType)
 		return
 	}
-	var body struct {
-		Sources string `json:"sources"`
-	}
+	var body map[string]string
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<10)).Decode(&body); err != nil {
 		http.Error(w, "not a setting", http.StatusBadRequest)
 		return
 	}
-	if body.Sources != view.StandRecords && body.Sources != view.StandAll {
-		http.Error(w, fmt.Sprintf("the stand is lit for %q or %q", view.StandRecords, view.StandAll), http.StatusBadRequest)
+	word := body[set.field]
+	if word != set.words[0] && word != set.words[1] {
+		http.Error(w, fmt.Sprintf("%s's %s is %q or %q", set.name, set.field, set.words[0], set.words[1]), http.StatusBadRequest)
 		return
 	}
-	if err := s.Switch(body.Sources); err != nil {
+	if err := set.publish(word); err != nil {
 		if s.Logger != nil {
-			s.Logger.Warn("the stand's setting could not be published", "sources", body.Sources, "error", err)
+			s.Logger.Warn(set.name+"'s setting could not be published", set.field, word, "error", err)
 		}
 		http.Error(w, "the setting could not be put on the bus", http.StatusBadGateway)
 		return
 	}
 	if s.Logger != nil {
-		s.Logger.Info("the stand's sources were switched from the page", "sources", body.Sources, "from", r.RemoteAddr)
+		s.Logger.Info(set.name+" was switched from the page", set.field, word, "from", r.RemoteAddr)
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusAccepted)
-	_ = json.NewEncoder(w).Encode(map[string]any{"v": view.ContractVersion, "sources": body.Sources})
+	_ = json.NewEncoder(w).Encode(map[string]any{"v": view.ContractVersion, set.field: word})
 }
 
 func (s *Server) state(w http.ResponseWriter, _ *http.Request) {

@@ -9,7 +9,7 @@ weight: 42
 |---|---|
 | **Date** | 2026-10-26 |
 | **Change type** | Migration |
-| **Status** | {{< status-badge "planned" "Planned" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} |
 | **Systems** | The home backend Pi, `192.168.2.40` on DVNT-CORE, with a new card named `dv01rpi001p01` (the card in it now calls itself `dv02rpi003p01`); `turntable-power-01`, `cover-screen-01`, `lp-stand-01`, `respeaker-01`; the tenant's Terraform (one `deevnet_certificate`); the home network's DNS |
 | **How** | `make -C deploy/backend image fetch card`; `deevnet-kit cert request` and `cert install`; `terraform apply` in `infra/deevnet-tenant-eds`; `make pair spotify turntable drivers status devices`; `provision_tenant.py --site home --also mobile=terraform` on each device |
 | **Risk** | Medium. Most likely to go wrong: a device refusing the broker's new certificate. No ESP32 has yet verified a server through Deevnet's Tenant Service CA to the Root |
@@ -144,13 +144,94 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 
 | When | Step | What happened |
 |---|---|---|
-| | | |
+| 2026-10-27 | 1–3 | The image built, the card written and booted; `make status` answered |
+| 2026-10-27 | 4 | `cert request` on the Pi; `deevnet_certificate.backend` applied with provider 0.8.0, serial `55:c1:0d:cb:…:9d:0a`, valid to 2027-10-28, for `mqtt`, `logs`, `grafana`, `console` at `eds`, `eds.home` and `eds.mobile`. It chains to the Deevnet Root and is for the request's key |
+| 2026-10-29 02:20 UTC | 4 | The pending request's key checked against the certificate's, then `cert install` and `restart eds-backend-setup`. `deevnet-kit status`: "trusts the Deevnet Root (a Deevnet Pi)", broker `mqtts://mqtt.eds.deevnet.net:8883`; `lightd.env` and `nowplayd.env` have `MQTT_HOST=mqtt.eds.deevnet.net` |
+| 2026-10-29 02:22 UTC | 4 | `deevnet-kit selftest`: 13 of 15. Grafana was still starting, and its log data sources still dialed `https://localhost:8427`, which the new certificate does not name. `systemctl restart deevnet-kit-dashboards` rewrote them as `logs.eds.deevnet.net`; then all 15 passed |
+| 2026-10-29 02:25 UTC | 5 | `make status`: every check ok but iTunes, whose PC at `192.168.2.104` did not answer (asleep or not running; the pairing is on file) |
+| 2026-10-29 02:27 UTC | 6 | Home DNS already answered `mqtt`, `logs`, `grafana` and `console` under `eds.deevnet.net` and `eds.home.deevnet.net` with `192.168.2.40`. `https://console.eds.deevnet.net/`, `https://console.eds.home.deevnet.net/` and Grafana answered 200 verified against the Deevnet Root alone, and the Mac's keychain trusts it |
+| 2026-10-29 02:28 UTC | 5 | With iTunes playing *Jack & Diane*, the console showed it with the player's cover, and lightd sent the stand `dark` at brightness 0. Fourteen seconds later the turntable driver heard the same song through the amplifier and became current: the beacon was still the tenant's, so this Pi had never heard from it. A `play_pause` sent as the cover screen went to the turntable, which takes none |
+| 2026-10-29 02:39 UTC | 7 | The beacon (MAC `70:4b:ca:27:06:14`): its tenant `creds` partition read and kept aside, the old card's CA set aside, `make devices` (DVNT-CORE), a dry run, then `provision_tenant.py` with `devices.json` and the Deevnet Root. Online on this Pi's broker at 02:39:35, six seconds after the write: an ESP32 verified a broker through the Tenant Service CA to the Root, with no firmware change |
+| 2026-10-29 02:41 UTC | 7 | Back on its outlet with the turntable off: `on=false`, and iTunes current at once |
+| 2026-10-29 02:43 UTC | 5 | `play_pause` again, iTunes playing: nowplayd to the iTunes driver to iTunes in 7 ms, and iTunes paused. The turntable heard the song again at 02:42:19 and was not made current |
+| 2026-10-29 02:46 UTC | 7 | The cover screen (MAC `a0:a3:b3:ab:61:8c` on `/dev/cu.usbserial-2130`): tenant `creds` kept aside, a dry run, then written. Online on this Pi's broker within twenty seconds, and showed the cover when iTunes played. **Its buttons did nothing**: from 02:46:26 to 02:48:50 no press reached nowplayd |
+| 2026-10-29 02:48 UTC | 7 | Opening its serial port to watch restarted it. In that second start every touch registered and every press was carried out: pause, next, previous, previous, play, from `cover-screen-01` to iTunes. Why the first start after provisioning sent nothing is not known: no log covers it |
+| 2026-10-29 02:55 UTC | 7 | The stand (MAC `70:4b:ca:26:b1:a0`, on the port the beacon had used): tenant `creds` kept aside, a dry run, then written. Online within twenty seconds, and it reported applying the retained scene: `solid`, brightness 0, dark for iTunes |
+| 2026-10-29 02:56 UTC | 7 | The console's stand switch set to `all`: the stand applied `chase`, four colors from *American Fool*'s cover, brightness 0.8. Set back to `records`: `solid`, brightness 0 again |
+| 2026-10-29 03:00 UTC | 7 | `respeaker-01` left on the tenant, by decision: what it sends is heard by `voiced` and written down by `scribe`, and neither runs on this Pi. It goes on working as before, through the tenant's workload |
+| 2026-10-29 02:58 UTC | Goal | The turntable switched on and a record played: the beacon online, the turntable current, and the stand lit from the cover (`chase`, four colors, 0.8). Between tracks, `standby` at 0.15. Every goal met but the reSpeaker's, which was left on the tenant by decision |
 
 ### Departures from the plan
 
--
+- The tenant's provider pin went from `~> 0.7` to `~> 0.8`: a certificate's
+  `sites` first came in 0.8.0.
+- The same day's applies also created `grafana_dashboard.covers`, waiting
+  since ADR-0050 was merged without one.
+- Before the certificate, the Pi warned that its card certificate did not
+  name its IPv6 address. A Deevnet certificate names no address.
+- The card is named `eds-backend`, not `dv01rpi001p01`: it was written
+  with `make card`'s default `PI_HOSTNAME`.
+- `cert install` restarted the services but not `deevnet-kit-dashboards`,
+  so Grafana's log data sources kept the card's `localhost` until that was
+  restarted by hand.
+- The beacon was provisioned without `--site home --also mobile=terraform`:
+  the tenant's state is reachable only from dvntm. Its tenant settings were
+  read from its `creds` partition first, to write back as the undo.
+- `respeaker-01` was not moved. The plan named it, but the backend Pi runs
+  palette, lightd, nowplayd and the console, and not `voiced` or `scribe`,
+  so its requests would reach a broker with nothing listening for them.
+- The Pi has two addresses on the home network, `192.168.2.40` (wired) and
+  `192.168.2.228`.
 
 ## Follow-ups
 
+- [ ] Deevnet: `deevnet-kit cert install` should rerun the dashboards step,
+      so Grafana's data sources dial the new names.
+- [ ] Deevnet: on a Deevnet Pi, `status` and `selftest` warn that the
+      certificate names none of the Pi's addresses and suggest
+      `regen-certs`, which then refuses. A Deevnet certificate names no
+      address by design; the check should not run in that mode.
+- [ ] Find out why the cover screen's first start after provisioning sent no
+      presses while showing covers. Test each device's controls straight
+      after it is written, before anything restarts it.
+- [ ] The resolver named Journey's *Wheel In the Sky*, heard on *Infinity*,
+      as from *Alive in America*, a live album, and lit the stand from its
+      cover (`named_by=original`, ADR-0038). The record is not in the
+      Discogs collection, so nothing named it first. The original album
+      step should not choose a live album or a reissue over a studio
+      original.
+- [ ] The reSpeaker, once this Pi runs `voiced` and `scribe`: until then
+      it stays on the tenant. Its account is already in `accounts.conf`.
+- [ ] `--also mobile=terraform` for the beacon, the screen and the stand,
+      on a day on dvntm: each holds this Pi's site alone.
 - [ ] The switching firmware (ADR-0049), over the air to the stand, the
       screen and the beacon; by cable to the reSpeaker.
+- [ ] The certificate named for the host, not a service. Its CN is
+      `mqtt.eds.deevnet.net`, from `name = "mqtt"`. Wanted: `name =
+      "backend"` and `names = ["mqtt", "logs", "grafana", "console",
+      "dv01rpi001p01"]`, sites `home` and `mobile`, for a CN of
+      `backend.eds.deevnet.net`. The tenant's CA signs only in its own zone,
+      so the Deevnet host name appears as `dv01rpi001p01.eds.deevnet.net`,
+      never `dv01rpi001p01.home.deevnet.net`. Changing `name` replaces the
+      certificate, and the old one is left to expire. The round trip is
+      this change's: `cert request` at home, `terraform apply` on dvntm,
+      `cert install` at home. Home DNS gains `backend` and `dv01rpi001p01`
+      under `eds.deevnet.net` and `eds.home.deevnet.net`, at `192.168.2.40`;
+      the `.home` one is the host's own name, for SSH.
+      At the next reflash, perhaps the card named to match (it is
+      `eds-backend`).
+- [ ] `.local` or the A record for SSH and `make` (`PI ?=
+      $(PI_HOSTNAME).local`). **Talked through on 2026-10-29: `.local` stays
+      for now.** It came with the take-home kit, which assumed no DNS at
+      all; iTunes needs Bonjour only to pair, and never the Pi's own name.
+      Its one remaining merit is working when the router's DNS does not,
+      which is when SSH is wanted most. Revisit with the certificate's
+      rename: give the host a **site-qualified** A record,
+      `backend.eds.home.deevnet.net` (a site-less name follows the tenant
+      between sites, and a host does not move), use it with
+      `PI=backend.eds.home.deevnet.net`, and decide then whether it becomes
+      the default.
+- [ ] Deevnet: `deevnet-kit cert install` installs only for a pending
+      request, and deletes its key once used, so a renewal Terraform issues
+      for the same key cannot be installed. Every renewal is a new
+      `cert request`. To note beside ADR-0053's renewal job.

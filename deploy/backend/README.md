@@ -50,10 +50,20 @@ Flash `eds-pi-backend.img.xz` with Raspberry Pi Imager, as a custom image.
 **Apply no customization.** Leave the card in.
 
 ```bash
-make card      # asks for the Wi-Fi key and a password for your login
+make card      # asks for a password for your login
 ```
 
-It writes the card's name and Wi-Fi for `deevnet-kit`, your login, and a
+**The Pi is on a cable.** The image starts with its Wi-Fi radio off, and the
+card asks for no network, so the Pi has one address
+([CHG-0046](../../docs/content/docs/changes/2026/0046-the-backend-pi-is-on-its-cable-alone.md)).
+A Pi that has to use Wi-Fi is switched on by hand, on it:
+
+```bash
+sudo nmcli radio wifi on
+sudo nmcli --ask device wifi connect <network>
+```
+
+It writes the card's name for `deevnet-kit`, your login, and a
 folder `eds/` with your public key and your Discogs settings
 (`deploy/discogs.env`, if it is there). `PI_HOSTNAME=` and `PI_USER=` name the
 card and the login; the defaults are `eds-backend` and `eds`.
@@ -64,11 +74,28 @@ broker accounts. Allow a few minutes.
 
 ```bash
 make status    # every check should say ok; a driver not yet set up is noted
-make pair      # prints a four-digit code; type it into iTunes
+make pair      # prints a four-digit code; type it into iTunes. Skip it if a pairing is kept
 make spotify   # a browser opens here for Agree; the authorization goes to the Pi
 make turntable DEVICE=plughw:CODEC
 make drivers DRIVERS=itunes,spotify,turntable
 ```
+
+## The iTunes pairing is kept
+
+`make pair` pairs this Pi as **"EdS home"** and then keeps the pairing in
+the repository, encrypted, as `secrets/itunes-<hostname>.sops.json`
+([ADR-0052](../../docs/content/docs/architecture/decisions/0052-each-pis-itunes-pairing-is-kept-encrypted-in-the-repository.md)).
+Commit that file. From then on:
+
+- **`make card`** writes the kept pairing onto a new card, and the card
+  starts paired: nobody goes to the iTunes PC.
+- **`make pairing`** puts it back on the running Pi, if the Pi lost it.
+
+It needs `sops` and `age` here and the owner's age key in the Keychain
+([`secrets/README.md`](../../secrets/README.md)). Without them, `make pair`
+still pairs the Pi and says it could not keep it; a card is written without
+the pairing and says so. iTunes forgets remotes only all at once ("Forget
+All Remotes"), after which each Pi pairs again.
 
 `make spotify` reads the app's Client ID and the devices that count from
 `deploy/relay/spotify.conf`. It makes this Pi an authorization of its own and

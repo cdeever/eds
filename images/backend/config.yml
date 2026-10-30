@@ -417,6 +417,27 @@
         content: "Etc/UTC\n"
         mode: "0644"
 
+    # The backend Pi is on a cable, and has one address (CHG-0046). Its radio
+    # starts off: NetworkManager reads this file when it starts, and keeps
+    # it as the radio is switched. `make card` asks for no Wi-Fi, so
+    # deevnet-kit sets up none. A Pi that has to use Wi-Fi is switched on by
+    # hand (deploy/backend/README.md).
+    - name: Make NetworkManager's directory
+      ansible.builtin.file:
+        path: "{{ chroot_root }}/var/lib/NetworkManager"
+        state: directory
+        mode: "0755"
+
+    - name: Start with the Wi-Fi radio off
+      ansible.builtin.copy:
+        dest: "{{ chroot_root }}/var/lib/NetworkManager/NetworkManager.state"
+        content: |
+          [main]
+          NetworkingEnabled=true
+          WirelessEnabled=false
+          WWANEnabled=true
+        mode: "0644"
+
     # ------------------------------------------------------------
     # Units
     # ------------------------------------------------------------
@@ -508,6 +529,18 @@
       ansible.builtin.assert:
         that: pi_eds_backend_secrets.stdout | length == 0
         fail_msg: "The image holds what must only be made on the card: {{ pi_eds_backend_secrets.stdout_lines }}"
+
+    - name: Read the radio's starting state back
+      ansible.builtin.command:
+        cmd: "grep -c '^WirelessEnabled=false$' {{ chroot_root }}/var/lib/NetworkManager/NetworkManager.state"
+      register: pi_eds_backend_radio
+      changed_when: false
+
+    - name: Fail if the radio would start on
+      ansible.builtin.assert:
+        that:
+          - pi_eds_backend_radio.stdout == "1"
+        fail_msg: "The image would start with its Wi-Fi radio on"
 
     - name: Read the forwarding setting back
       ansible.builtin.command:

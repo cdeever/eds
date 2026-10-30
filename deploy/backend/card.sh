@@ -4,12 +4,16 @@
 # The image carries no secret and no name. This writes, on the card's boot
 # partition:
 #
-#   deevnet-kit.txt   the tenant, the card's name and its Wi-Fi, which
-#                     deevnet-kit reads once, on the first boot
+#   deevnet-kit.txt   the tenant and the card's name, which deevnet-kit
+#                     reads once, on the first boot. No Wi-Fi: the Pi is on
+#                     a cable, and the image starts with its radio off
+#                     (CHG-0046)
 #   userconf.txt      your login, which Raspberry Pi OS makes on the first boot
 #   ssh               turns SSH on
-#   eds/              your public key, and your Discogs settings if you have
-#                     them; taken and removed by eds-backend-setup
+#   eds/              your public key, your Discogs settings if you have
+#                     them, and the iTunes pairing kept for this card's name
+#                     in secrets/ (ADR-0052); taken and removed by
+#                     eds-backend-setup
 #
 # Nothing is kept on this machine. The card's broker accounts, its CA and its
 # tokens are not written here at all: they are made on the card.
@@ -51,25 +55,9 @@ if [[ -z "$hasher" ]]; then
     exit 2
 fi
 
-read -r -p "Wi-Fi network for the Pi [DVNT-CORE], or - if it is on a cable: " ssid
-ssid="${ssid:-DVNT-CORE}"
-psk=""; country=""
-if [[ "$ssid" == "-" ]]; then
-    ssid=""
-else
-    read -r -s -p "Key for $ssid: " psk; echo
-    if (( ${#psk} < 8 || ${#psk} > 63 )); then
-        echo "A WPA key is 8 to 63 characters; that was ${#psk}." >&2
-        exit 2
-    fi
-    # deevnet-kit refuses either in a network's name or its key.
-    if [[ "$ssid$psk" == *";"* ]]; then
-        echo "deevnet-kit cannot take a semicolon in a Wi-Fi name or key." >&2
-        exit 2
-    fi
-    read -r -p "Wi-Fi country code [US]: " country
-    country="${country:-US}"
-fi
+# A cable, always: the image starts with its radio off, so a network named
+# here would never be joined.
+ssid=""; psk=""; country=""
 
 read -r -s -p "A password for $PI_USER on the card: " password; echo
 read -r -s -p "Again: " again; echo
@@ -120,6 +108,9 @@ else
     discogs="no Discogs settings (none at ${DISCOGS:-DISCOGS}): records are named by what was heard"
 fi
 
+# The pairing kept for this card's name, decrypted straight onto the card.
+itunes="$(PI_HOSTNAME="$PI_HOSTNAME" "$(dirname "$0")/../itunes-pairing.sh" card "$drop")"
+
 # macOS leaves its own files beside anything it writes to FAT.
 rm -f "$BOOT"/._* "$drop"/._* 2>/dev/null || true
 rmdir "$drop" 2>/dev/null || true
@@ -127,9 +118,10 @@ sync
 
 echo
 echo "Written to $BOOT, for $PI_HOSTNAME (tenant $TENANT, index $INDEX):"
-echo "  network   ${ssid:-a cable}"
+echo "  network   a cable (the radio is off)"
 echo "  login     $PI_USER, with $keyed"
 echo "  also      $discogs"
+echo "  iTunes    $itunes"
 echo
 echo "Eject the card, put it in the Pi, and power it on. The first boot makes"
 echo "your login, restarts once, and then makes the card's CA and its accounts:"

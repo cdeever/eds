@@ -49,4 +49,8 @@ bookCollapseSection: true
 | CHG-0039 | 2026-10-24 | [scribe in Two, and "Hey Jarvis" in Its Prompt](0039-scribe-in-two-and-hey-jarvis-in-its-prompt/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0040 | 2026-10-24 | [The Owner's Library for voiced](0040-the-owners-library-for-voiced/) | Upgrade | {{< status-badge "in-progress" "In progress" >}} |
 | CHG-0041 | 2026-10-24 | [voiced Asks eds-inventory](0041-voiced-asks-eds-inventory/) | Upgrade | {{< status-badge "complete" "Complete" >}} |
-| CHG-0042 | 2026-10-26 | [The Home Pi Becomes a Deevnet Pi](0042-the-home-pi-becomes-a-deevnet-pi/) | Migration | {{< status-badge "planned" "Planned" >}} |
+| CHG-0042 | 2026-10-26 | [The Home Pi Becomes a Deevnet Pi](0042-the-home-pi-becomes-a-deevnet-pi/) | Migration | {{< status-badge "complete" "Complete" >}} |
+| CHG-0043 | 2026-10-29 | [The Backend Pi Names the Record the Recognizer Heard](0043-the-backend-pi-names-the-record-the-recognizer-heard/) | Deployment | {{< status-badge "complete" "Complete" >}} |
+| CHG-0044 | 2026-10-29 | [Spotify Is Switched From the Backend Pi's Console](0044-spotify-is-switched-from-the-backend-pis-console/) | Deployment | {{< status-badge "complete" "Complete" >}} |
+| CHG-0045 | 2026-10-29 | [The Backend Pi's iTunes Pairing Is Kept](0045-the-backend-pis-itunes-pairing-is-kept/) | Deployment | {{< status-badge "complete" "Complete" >}} |
+| CHG-0046 | 2026-10-30 | [The Backend Pi Is on Its Cable Alone](0046-the-backend-pi-is-on-its-cable-alone/) | Configuration | {{< status-badge "complete" "Complete" >}} |

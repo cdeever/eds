@@ -19,8 +19,8 @@ terraform {
   required_providers {
     deevnet = {
       source = "deevnet/deevnet"
-      # 0.7 is the first with deevnet_certificate.
-      version = "~> 0.7"
+      # 0.8 is the first with a certificate's sites.
+      version = "~> 0.8"
     }
     # The console's key and its signing request: see the certificate below.
     tls = {
@@ -112,6 +112,23 @@ resource "deevnet_certificate" "console" {
   tenant  = deevnet_tenant.eds.name
   name    = deevnet_dns_record.console.name
   csr_pem = tls_cert_request.console.cert_request_pem
+}
+
+# The home backend Pi's certificate (CHG-0042, Deevnet ADR-0041 §2). Unlike
+# the console's, its key is made on the Pi and never leaves it: this takes the
+# request `deevnet-kit cert request` wrote there, which is public and kept
+# beside this file. `cert install` refuses a certificate that does not name
+# mqtt, logs and grafana; console is the page.
+#
+# It lasts a year, and renewing is an apply for the same request. Then
+# `terraform output -json backend_certificate` and `cert install` on the Pi.
+# A new request (a card flashed again) is a new certificate.
+resource "deevnet_certificate" "backend" {
+  tenant  = deevnet_tenant.eds.name
+  name    = "mqtt"
+  names   = ["logs", "grafana", "console"]
+  sites   = ["home", "mobile"]
+  csr_pem = file("${path.module}/backend-pi.csr")
 }
 
 # The Wi-Fi credential EdS's devices are flashed with (Deevnet ADR-0012 §3, Deevnet CHG-0013).
@@ -287,9 +304,10 @@ resource "deevnet_iot_broker_account" "voiced" {
 
 # The console, on the services workload (ADR-0018).
 #
-# It looks: every topic it reads, and two it writes - its own presence, and
-# which sources the stand is lit for (ADR-0039). Another control is a change
-# to this list and a decision first.
+# It looks: every topic it reads, and three it writes - its own presence,
+# which sources the stand is lit for (ADR-0039), and whether Spotify's driver
+# runs (ADR-0051). Another control is a change to this list and a decision
+# first.
 #
 # Each subscription is granted as the filter the console uses, to the
 # character (services/console/internal/view, Topics).
@@ -299,7 +317,8 @@ resource "deevnet_iot_broker_account" "console" {
 
   publish = [
     "console/status",
-    "nowplaying/stand", # the stand's setting, retained (ADR-0039)
+    "nowplaying/stand",                 # the stand's setting, retained (ADR-0039)
+    "nowplaying/source/spotify/switch", # Spotify's switch, retained (ADR-0051)
   ]
   subscribe = [
     "nowplaying/current",
@@ -311,9 +330,10 @@ resource "deevnet_iot_broker_account" "console" {
     "lightstand/+/state",
     "lightstand/+/status",
     "lightd/status",
-    "beacon/+/status",  # whether each switch with a beacon on it is on (ADR-0023)
-    "screen/+/status",  # whether each cover screen is there (ADR-0020)
-    "nowplaying/stand", # the setting in force, heard back (ADR-0039)
+    "beacon/+/status",                  # whether each switch with a beacon on it is on (ADR-0023)
+    "screen/+/status",                  # whether each cover screen is there (ADR-0020)
+    "nowplaying/stand",                 # the setting in force, heard back (ADR-0039)
+    "nowplaying/source/spotify/switch", # and Spotify's (ADR-0051)
   ]
 }
 
@@ -366,9 +386,13 @@ resource "deevnet_iot_broker_account" "np_relay" {
   # account may publish here.
   #
   # The turntable has none because there is nothing on it for one to reach.
+  #
+  # And whether the Spotify driver runs at all (ADR-0051): a setting the
+  # console writes. Without it the driver stays off.
   subscribe = [
     "nowplaying/source/itunes/command",
     "nowplaying/source/spotify/command",
+    "nowplaying/source/spotify/switch",
   ]
 }
 
