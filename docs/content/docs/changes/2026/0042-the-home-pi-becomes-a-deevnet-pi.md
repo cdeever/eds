@@ -216,13 +216,21 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
       certificate, and the old one is left to expire. The round trip is
       this change's: `cert request` at home, `terraform apply` on dvntm,
       `cert install` at home. Home DNS gains `backend` and `dv01rpi001p01`
-      under `eds.deevnet.net` and `eds.home.deevnet.net`, at `192.168.2.40`.
+      under `eds.deevnet.net` and `eds.home.deevnet.net`, at `192.168.2.40`;
+      the `.home` one is the host's own name, for SSH.
       At the next reflash, perhaps the card named to match (it is
       `eds-backend`).
 - [ ] `.local` or the A record for SSH and `make` (`PI ?=
-      $(PI_HOSTNAME).local` today). `.local` needs no router DNS but can
-      never be in a Deevnet certificate; the A record is one name for SSH,
-      HTTPS and the devices, and needs home DNS. To be talked through.
+      $(PI_HOSTNAME).local`). **Talked through on 2026-10-29: `.local` stays
+      for now.** It came with the take-home kit, which assumed no DNS at
+      all; iTunes needs Bonjour only to pair, and never the Pi's own name.
+      Its one remaining merit is working when the router's DNS does not,
+      which is when SSH is wanted most. Revisit with the certificate's
+      rename: give the host a **site-qualified** A record,
+      `backend.eds.home.deevnet.net` (a site-less name follows the tenant
+      between sites, and a host does not move), use it with
+      `PI=backend.eds.home.deevnet.net`, and decide then whether it becomes
+      the default.
 - [ ] Deevnet: `deevnet-kit cert install` installs only for a pending
       request, and deletes its key once used, so a renewal Terraform issues
       for the same key cannot be installed. Every renewal is a new
