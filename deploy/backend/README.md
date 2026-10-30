@@ -50,10 +50,20 @@ Flash `eds-pi-backend.img.xz` with Raspberry Pi Imager, as a custom image.
 **Apply no customization.** Leave the card in.
 
 ```bash
-make card      # asks for the Wi-Fi key and a password for your login
+make card      # asks for a password for your login
 ```
 
-It writes the card's name and Wi-Fi for `deevnet-kit`, your login, and a
+**The Pi is on a cable.** The image starts with its Wi-Fi radio off, and the
+card asks for no network, so the Pi has one address
+([CHG-0046](../../docs/content/docs/changes/2026/0046-the-backend-pi-is-on-its-cable-alone.md)).
+A Pi that has to use Wi-Fi is switched on by hand, on it:
+
+```bash
+sudo nmcli radio wifi on
+sudo nmcli --ask device wifi connect <network>
+```
+
+It writes the card's name for `deevnet-kit`, your login, and a
 folder `eds/` with your public key and your Discogs settings
 (`deploy/discogs.env`, if it is there). `PI_HOSTNAME=` and `PI_USER=` name the
 card and the login; the defaults are `eds-backend` and `eds`.
