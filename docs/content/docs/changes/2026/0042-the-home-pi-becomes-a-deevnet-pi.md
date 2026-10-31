@@ -195,7 +195,12 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
       address by design; the check should not run in that mode.
 - [ ] Find out why the cover screen's first start after provisioning sent no
       presses while showing covers. Test each device's controls straight
-      after it is written, before anything restarts it.
+      after it is written, before anything restarts it. **Not seen again on
+      2026-10-31:** unplugged since the move, the screen was powered again
+      with nothing on its serial port, came online by itself, and four
+      presses in a row reached iTunes, each in a fraction of a second. If it
+      happens again, it is right after a provisioning write, and the screen's
+      serial log is the place to look.
 - [ ] The resolver named Journey's *Wheel In the Sky*, heard on *Infinity*,
       as from *Alive in America*, a live album, and lit the stand from its
       cover (`named_by=original`, ADR-0038). The record is not in the
