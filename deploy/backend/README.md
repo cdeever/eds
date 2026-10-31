@@ -80,17 +80,36 @@ devices are given that address, and the card's certificate names it.
 On the Pi, `sudo deevnet-kit status` and `sudo deevnet-kit selftest` are the
 thorough look at the broker, the log store and Grafana.
 
-## The console
+## Names, the console and Grafana
 
-`https://<hostname>.local/`. It presents the card's own certificate, so a
-browser warns until the card's CA is trusted on that computer:
+Every service on the Pi is named under `eds.home.deevnet.net`: the Pi is
+EdS's backend, and another app's Pi has its own (ADR-0040).
 
-```bash
-make devices   # also fetches deevnet-kit-ca.pem
-```
+| Name | What |
+|---|---|
+| `https://console.eds.home.deevnet.net/` | the console, through nginx |
+| `https://grafana.eds.home.deevnet.net/` | Grafana, through nginx |
+| `mqtt.eds.home.deevnet.net:8883` | the broker. The devices still dial `mqtt.home.deevnet.net` until Deevnet ADR-0039 |
+| `logs.eds.home.deevnet.net:8427` | the log store, for tools |
 
-On macOS, open `deevnet-kit-ca.pem` in Keychain Access and trust it for SSL.
-It is one card's CA: a card flashed again has another.
+nginx answers on 443: a name beginning `grafana.` reaches Grafana, and any
+other name, or the Pi's address, the console. Grafana's own port, 3000, is
+not reached from the network. Each name has to be in the home router's DNS
+and in the card's certificate (`NAMES=` on a new card; `sudo deevnet-kit
+names set` and `regen-certs` on one in service, then restart Grafana and
+reload nginx). `make status` says when nginx presents an older certificate
+than the card's.
+
+SSH and `make` reach the Pi by its machine name,
+`dv01rpi001p01.home.deevnet.net`.
+
+nginx presents the card's own certificate, whose CA is the card's alone.
+**Don't trust it on your computer**: its key is on the Pi, and a computer
+that trusts it would accept anything that key signs, for any name. Accept the
+browser's warning, or pass the CA by file (`curl --cacert
+deevnet-kit-ca.pem`; `make devices` fetches it). Deevnet ADR-0039 (Proposed)
+is what replaces it with a certificate under the Deevnet Root, which every
+Deevnet computer already trusts.
 
 ## Moving the devices over
 
@@ -115,10 +134,10 @@ python3 tools/provision_tenant.py -p <port> \
 The beacon first: nothing is attached to it. The firmware is not rebuilt; the
 topics and the account names are the tenant's.
 
-**Not known yet:** whether the firmware accepts a certificate matched by an
-address. If a device will not connect, `make devices BROKER_HOST=<name>`
-gives it a name to dial instead: the name your router has for the Pi, which
-the certificate also carries.
+A device dials the broker by name, `mqtt.eds.home.deevnet.net` unless
+`make devices BROKER_HOST=<name>` gives another, and checks the certificate
+against it (CHG-0028). The name has to be in the router's DNS and in the
+card's certificate.
 
 To move a device back, provision it from the tenant as before
 (`make provision` in its directory).
@@ -133,9 +152,9 @@ make logs      # follow the services and the agent
 `make push` does not change the firewall, the kernel settings or the broker's
 configuration; those change with an image.
 
-If the Pi's address changes: `sudo deevnet-kit regen-certs`, then
-`sudo systemctl restart eds-console`, and provision the devices again with
-the new address.
+If the Pi's address changes: the router's DNS entries, `sudo deevnet-kit
+regen-certs`, then `sudo systemctl restart grafana` and `sudo systemctl
+reload nginx`. The devices dial a name, and need nothing.
 
 ## What is where on the Pi
 

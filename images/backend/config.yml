@@ -50,6 +50,7 @@
       - nftables
       - alsa-utils     # arecord, which is how the turntable driver listens
       - python3-venv   # palette and the recognizer are Python, each kept to itself
+      - nginx-light    # answers for the console and Grafana by name (ADR-0040)
 
     pi_eds_backend_binaries:
       - npagent
@@ -175,11 +176,11 @@
       failed_when: pi_eds_backend_useradd.rc not in [0, 9]  # 9 = exists
       loop: "{{ pi_eds_backend_users }}"
 
-    # The console presents the card's server certificate, and deevnet-kit is
-    # the group that may read its key (ADR-0033).
-    - name: Let the console read the server certificate's key
+    # nginx presents the card's server certificate, and deevnet-kit is the
+    # group that may read its key (ADR-0040). The console no longer does.
+    - name: Let nginx read the server certificate's key
       ansible.builtin.command:
-        cmd: "chroot {{ chroot_root }} usermod -aG deevnet-kit eds-console"
+        cmd: "chroot {{ chroot_root }} usermod -aG deevnet-kit www-data"
       changed_when: true
 
     # Its own user, with nothing but a directory for its pairing.
@@ -205,6 +206,7 @@
         - /usr/local/share/eds-palette
         - /usr/local/share/eds-recognize
         - /etc/systemd/system/npagent.service.d
+        - /etc/systemd/system/grafana.service.d
 
     - name: Create the agent's own directory
       ansible.builtin.command:
@@ -330,6 +332,21 @@
         - {src: npagent-backend.conf, dest: /etc/systemd/system/npagent.service.d/eds-backend.conf}
         - {src: 90-eds-backend.conf, dest: /etc/sysctl.d/90-eds-backend.conf}
         - {src: mosquitto-eds.conf, dest: /etc/mosquitto/conf.d/eds.conf}
+        - {src: grafana-eds.conf, dest: /etc/systemd/system/grafana.service.d/eds.conf}
+        - {src: nginx-eds.conf, dest: /etc/nginx/sites-available/eds}
+
+    # The site in place of Debian's welcome page, which would hold port 80.
+    - name: Enable nginx's site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/eds
+        dest: "{{ chroot_root }}/etc/nginx/sites-enabled/eds"
+        state: link
+        force: true
+
+    - name: Remove nginx's default site
+      ansible.builtin.file:
+        path: "{{ chroot_root }}/etc/nginx/sites-enabled/default"
+        state: absent
 
     # Added to the take-home image's greeting, not put in its place: what it
     # says about deevnet-kit is still the place to start.
@@ -379,6 +396,15 @@
       ansible.builtin.file:
         src: /usr/lib/systemd/system/nftables.service
         dest: "{{ chroot_root }}/etc/systemd/system/sysinit.target.wants/nftables.service"
+        state: link
+        force: true
+
+    # nginx's own unit, from the package. Its package enables it too; this
+    # does not leave that to chance.
+    - name: Enable nginx
+      ansible.builtin.file:
+        src: /usr/lib/systemd/system/nginx.service
+        dest: "{{ chroot_root }}/etc/systemd/system/multi-user.target.wants/nginx.service"
         state: link
         force: true
 
@@ -525,6 +551,32 @@
         cmd: "grep -E 'tcp dport \\{[^}]*\\}' {{ chroot_root }}/etc/nftables.conf | grep -w 8883 | grep -w -c 443"
       changed_when: false
 
+    # Grafana is reached through nginx by name, and not on its own port.
+    - name: Check the firewall does not admit Grafana's port
+      ansible.builtin.shell:
+        cmd: "! grep -E 'tcp dport \\{[^}]*\\}' {{ chroot_root }}/etc/nftables.conf | grep -w -q 3000"
+      changed_when: false
+
+    # The site is parsed by nginx itself. The kit's certificate is made on
+    # first boot and is not here yet, so a throwaway one stands in for it,
+    # and is removed with the copy that names it.
+    - name: Check nginx's site parses
+      ansible.builtin.shell:
+        cmd: |
+          set -e
+          t={{ chroot_root }}/tmp/eds-nginx-check
+          trap 'rm -rf "$t"' EXIT
+          mkdir -p "$t"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=check \
+            -keyout "$t/key.pem" -out "$t/cert.pem" 2>/dev/null
+          sed -e 's#/etc/deevnet-kit/tls/server-key.pem#/tmp/eds-nginx-check/key.pem#' \
+              -e 's#/etc/deevnet-kit/tls/server.pem#/tmp/eds-nginx-check/cert.pem#' \
+              {{ chroot_root }}/etc/nginx/sites-available/eds > "$t/site"
+          printf 'events {}\nhttp { include /tmp/eds-nginx-check/site; }\n' > "$t/nginx.conf"
+          chroot {{ chroot_root }} nginx -t -c /tmp/eds-nginx-check/nginx.conf
+        executable: /bin/bash
+      changed_when: false
+
     - name: Check palette can be imported
       ansible.builtin.command:
         cmd: "chroot {{ chroot_root }} /opt/eds-palette/bin/python -c 'import eds_palette.api'"
@@ -542,9 +594,9 @@
         cmd: "grep '^audio:' {{ chroot_root }}/etc/group | grep -c -w npagent"
       changed_when: false
 
-    - name: Check the console may read the certificate's key
+    - name: Check nginx may read the certificate's key
       ansible.builtin.shell:
-        cmd: "grep '^deevnet-kit:' {{ chroot_root }}/etc/group | grep -c -w eds-console"
+        cmd: "grep '^deevnet-kit:' {{ chroot_root }}/etc/group | grep -c -w www-data"
       changed_when: false
 
     # The take-home image removes the site's automation user, so that nothing

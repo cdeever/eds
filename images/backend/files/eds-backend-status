@@ -26,7 +26,12 @@ echo "Deevnet IoTaaS's side"
 if sudo test -f /etc/deevnet-kit/kit.json; then
     for unit in mosquitto vmauth victorialogs deevnet-log-bridge; do active "$unit"; done
     # Grafana is the one part the lights do not need, and the heaviest.
-    if systemctl is-active --quiet grafana; then ok "grafana is running"; else note "grafana is $(systemctl is-active grafana): no dashboards, and nothing else is affected"; fi
+    if systemctl is-active --quiet grafana; then
+        ok "grafana is running"
+        listening 3000 "Grafana, behind nginx"
+    else
+        note "grafana is $(systemctl is-active grafana): no dashboards, and nothing else is affected"
+    fi
     listening 8883 "the broker"
     listening 8427 "the log store"
 else
@@ -44,15 +49,18 @@ echo "Services"
 for unit in eds-palette eds-lightd eds-nowplayd eds-console; do active "$unit"; done
 listening 8731 "palette"
 listening 8732 "lightd"
-listening 443 "the console"
+listening 8080 "the console, behind nginx"
+active nginx
+listening 443 "nginx"
 if sudo test -s /etc/eds/discogs.env; then ok "Discogs settings present"; else note "no Discogs settings: the turntable's records are named by what was heard"; fi
 
-# The console presents the card's server certificate, read when it started.
-# One reissued since then is not the one a browser is being shown.
-cert=/etc/deevnet-kit/tls/server.pem
-started="$(systemctl show -p ActiveEnterTimestamp --value eds-console 2>/dev/null)"
-if [[ -n "$started" && -f "$cert" ]] && (( $(stat -c %Y "$cert") > $(date -d "$started" +%s 2>/dev/null || echo 0) )); then
-    fail "the certificate is newer than the console: sudo systemctl restart eds-console"
+# nginx presents the card's server certificate as it was when nginx started
+# or was last reloaded. One reissued since is not the one a browser is shown.
+fingerprint() { openssl x509 -noout -fingerprint -sha256 2>/dev/null; }
+served="$(timeout 5 openssl s_client -connect 127.0.0.1:443 </dev/null 2>/dev/null | fingerprint)"
+onfile="$(sudo cat /etc/deevnet-kit/tls/server.pem 2>/dev/null | fingerprint)"
+if [[ -n "$served" && -n "$onfile" && "$served" != "$onfile" ]]; then
+    fail "nginx presents an older certificate than the card's: sudo systemctl reload nginx"
 fi
 
 # A driver that was never set up is noted, not failed: a card may be here for

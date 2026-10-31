@@ -122,7 +122,14 @@ through builder as `a_autoprov` (`make -C deploy/relay status|pair|logs`);
 (ADR-0033, `Proposed`). `images/backend` is Deevnet IoTaaS's published
 take-home image, `pi-backend`, with EdS's four services run natively and the
 agent added; `deploy/backend` builds it, writes a card and looks after the Pi,
-which is reached directly as its owner's user and not through builder. It is
+which is reached directly as its owner's user and not through builder, by its
+home name `dv01rpi001p01.home.deevnet.net` (never `.local`). **A backend Pi
+is one app's, so its services are named under the app** (ADR-0040):
+`mqtt`, `logs`, `grafana` and `console` `.eds.home.deevnet.net`, interim
+until Deevnet ADR-0039 (`*.eds.deevnet.net`); the devices still dial
+`mqtt.home.deevnet.net` and move once, then. nginx holds 80 and 443: a name beginning
+`grafana.` reaches Grafana and any other the console, both on loopback only;
+Grafana's 3000 is closed. It is
 beside the tenant: nothing there, on the workload or on the relay Pi changes
 for it, and the devices stay with the tenant until they are provisioned
 again. A backend card makes its own secrets on first boot (`deevnet-kit`,

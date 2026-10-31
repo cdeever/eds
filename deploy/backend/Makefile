@@ -15,7 +15,9 @@ SHELL := /bin/bash
 BUILDER     ?= cdeever@builder
 BUILD_DIR   ?= /srv/eds-backend-build
 PI_HOSTNAME ?= eds-backend
-PI          ?= $(PI_HOSTNAME).local
+# The Pi in service, as the home network's DNS names it. PI= reaches another,
+# by name or address: PI=10.20.30.13 for the one tried on DVNTM.
+PI          ?= dv01rpi001p01.home.deevnet.net
 PI_USER     ?= eds
 IMAGE       := eds-pi-backend.img.xz
 
@@ -41,10 +43,17 @@ DISCOGS ?= $(REPO)/deploy/discogs.env
 # Extra names and addresses for the card's server certificate (deevnet-kit
 # 0.12.0's names=), comma-separated: a site's DNS names for the Pi, and the
 # address it will have where it is going. The image's kit takes it from
-# 0.12.0 on; a card for an older image must be written without it. For the
-# home Pi:
-#   NAMES=192.168.2.40,dv01rpi001p01.home.deevnet.net,mqtt.home.deevnet.net,console.eds.home.deevnet.net,grafana.home.deevnet.net,logs.home.deevnet.net
+# 0.12.0 on; a card for an older image must be written without it.
+#
+# A backend Pi is one app's, so every service on it is named under the app's
+# own domain, <service>.eds.home.deevnet.net, and another app's Pi has its
+# own (ADR-0040). nginx sends a name beginning grafana. to Grafana and any
+# other to the console. For the home Pi:
+#   NAMES=192.168.2.40,dv01rpi001p01.home.deevnet.net,mqtt.eds.home.deevnet.net,logs.eds.home.deevnet.net,grafana.eds.home.deevnet.net,console.eds.home.deevnet.net
 NAMES ?=
+# What the devices are given to dial (make devices). The certificate has to
+# name it.
+BROKER_HOST ?= mqtt.eds.home.deevnet.net
 
 ARM64 := CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath
 

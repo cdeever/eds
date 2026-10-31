@@ -1,5 +1,6 @@
-  EdS is on this Pi too: palette, lightd, nowplayd, the console (443) and
-  the now-playing agent.
+  EdS is on this Pi too: palette, lightd, nowplayd, the console and the
+  now-playing agent. nginx answers on 443 for the console and, at a name
+  beginning grafana., for Grafana; after regen-certs, reload it.
 
     eds-backend-status   each service, the broker's accounts, each driver
     eds-agent-pair       pair with iTunes (once; prints a code to type in)

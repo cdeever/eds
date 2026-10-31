@@ -1,10 +1,11 @@
 # The console's settings on a backend Pi, where they differ from the
 # workload's (deploy/console.env, which is read first).
 #
-# Its certificate is the card's one server certificate, which deevnet-kit
-# issues for the broker, the log store and Grafana, and which names
-# <hostname>.local. The kit issues no other (ADR-0033).
-CONSOLE_TLS_CERT_FILE=/etc/deevnet-kit/tls/server.pem
-CONSOLE_TLS_KEY_FILE=/etc/deevnet-kit/tls/server-key.pem
+# nginx presents the card's server certificate on 443 and passes the page to
+# the console here, in the clear, on loopback (ADR-0040). An empty
+# certificate is none, and the console then serves CONSOLE_ADDR alone.
+CONSOLE_ADDR=127.0.0.1:8080
+CONSOLE_TLS_CERT_FILE=
+CONSOLE_TLS_KEY_FILE=
 # No dashboard to link to until the tenant's are applied to this Pi's Grafana.
 CONSOLE_DASHBOARD_URL=

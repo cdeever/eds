@@ -107,3 +107,4 @@ and incidents under the same names. To keep the two apart:
 | [0036](0036-the-screen-sleeps-when-nothing-plays/) | 2026-10-17 | The cover screen sleeps when nothing has played for five minutes, and wakes for music | {{< adr-status "Accepted" >}} |
 | [0037](0037-hand-kept-secrets-are-encrypted-in-the-repository/) | 2026-10-18 | The secrets nothing else can issue are kept encrypted in the repository, with sops and age | {{< adr-status "Proposed" >}} |
 | [0038](0038-the-turntable-names-the-original-album-by-what-is-on-it/) | 2026-10-19 | The turntable's album is the one the track is on, and the original one, not a time since the last | {{< adr-status "Proposed" >}} |
+| [0040](0040-a-backend-pis-services-are-named-under-its-app/) | 2026-10-20 | A backend Pi's services are named under its app (`*.eds.home.deevnet.net`), and nginx answers for its pages by name | {{< adr-status "Proposed" >}} |

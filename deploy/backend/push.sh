@@ -12,7 +12,8 @@
 # only an account that is new to the list.
 #
 # Not pushed: the firewall, the kernel settings and the broker's drop-in.
-# Those change with an image.
+# Those change with an image. (Grafana's port is closed by Grafana listening
+# on loopback, which is pushed, as well as by the image's firewall.)
 set -euo pipefail
 
 SSH="${SSH:?}"; REPO="${REPO:?}"; STAGE="${STAGE:?}"; VERSION="${VERSION:?}"
@@ -29,6 +30,7 @@ cp "$STAGE"/settings/{lightd,nowplayd,console}.env "$stage/settings/"
 cp "$FILES/console-pi.settings" "$stage/settings/console-pi.env"
 cp "$FILES"/{accounts.conf,eds-backend-setup,eds-backend-status,eds-backend-palette-install} "$stage/"
 cp "$FILES"/{eds-backend-setup,eds-palette,eds-lightd,eds-nowplayd,eds-console}.service "$FILES/npagent-backend.conf" "$stage/"
+cp "$FILES"/{nginx-eds.conf,grafana-eds.conf} "$stage/"
 cp "$AGENT_FILES"/{npagent.service,eds-agent-pair,eds-agent-spotify} "$stage/"
 cp "$AGENT_FILES"/{eds-recognize,eds-recognize-requirements.txt,eds-agent-turntable-install} "$stage/"
 printf '%s\n' "$VERSION" > "$stage/source"
@@ -45,6 +47,21 @@ install -o root -g root -m 0644 settings/*.env /etc/eds/settings/
 install -o root -g root -m 0644 accounts.conf /etc/eds/accounts.conf
 install -o root -g root -m 0644 ./*.service /etc/systemd/system/
 install -o root -g root -m 0644 npagent-backend.conf /etc/systemd/system/npagent.service.d/eds-backend.conf
+install -o root -g root -m 0644 -D grafana-eds.conf /etc/systemd/system/grafana.service.d/eds.conf
+# nginx answers for the console and Grafana (ADR-0040). A Pi from an image
+# older than that has none: it comes from Debian, as the image's does.
+# The package starts nginx on 80 at once, which an older console holds until
+# it is restarted below.
+if ! command -v nginx >/dev/null; then
+    systemctl stop eds-console.service
+    apt-get update -q >/dev/null
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -q nginx-light >/dev/null
+fi
+usermod -aG deevnet-kit www-data
+install -o root -g root -m 0644 nginx-eds.conf /etc/nginx/sites-available/eds
+ln -sf /etc/nginx/sites-available/eds /etc/nginx/sites-enabled/eds
+rm -f /etc/nginx/sites-enabled/default
+nginx -t -q
 # Both come from PyPI, which the Pi reaches by itself.
 /usr/local/sbin/eds-backend-palette-install "$PWD/palette"
 /usr/local/sbin/eds-agent-turntable-install "$PWD"
@@ -52,10 +69,15 @@ printf 'pushed: %s on %s\n' "$(cat source)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> 
 systemctl daemon-reload
 /usr/local/sbin/eds-backend-setup
 systemctl restart eds-palette.service eds-lightd.service eds-nowplayd.service eds-console.service
+# After the console, which gives up 443 to it. Grafana, if it runs, moves to
+# loopback.
+systemctl enable --quiet nginx.service
+systemctl restart nginx.service
+if systemctl is-active --quiet grafana.service; then systemctl restart grafana.service; fi
 # 78 is "no driver is set up", which is a fair state for a Pi to be in.
 systemctl restart npagent.service || true
 echo "installed $(cat source)"
-for unit in eds-palette eds-lightd eds-nowplayd eds-console npagent; do
+for unit in eds-palette eds-lightd eds-nowplayd eds-console nginx grafana npagent; do
     echo "  $unit is $(systemctl is-active "$unit" || true)"
 done
 INSTALL
