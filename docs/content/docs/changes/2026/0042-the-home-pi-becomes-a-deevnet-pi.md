@@ -227,6 +227,11 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
       the `.home` one is the host's own name, for SSH.
       At the next reflash, perhaps the card named to match (it is
       `eds-backend`).
+- [ ] nginx on the Pi's 80 and 443: plain HTTP sent to HTTPS, and a name
+      beginning `grafana.` reaching Grafana, so it needs no `:3000`, with
+      Grafana on loopback behind it. From an earlier draft that this change
+      superseded, kept as the branch `archive/backend-names-nginx`; its
+      names were interim until the site-less ones this change put in place.
 - [ ] `.local` or the A record for SSH and `make` (`PI ?=
       $(PI_HOSTNAME).local`). **Talked through on 2026-10-29: `.local` stays
       for now.** It came with the take-home kit, which assumed no DNS at
