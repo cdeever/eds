@@ -185,9 +185,11 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
 
 ## Follow-ups
 
-- [ ] Deevnet: `deevnet-kit cert install` should rerun the dashboards step,
+- [ ] Deevnet: `deevnet-kit cert install` should rerun the dashboards step
+      ([deevnet-provisioning-api#41](https://github.com/deevnet/deevnet-provisioning-api/issues/41)),
       so Grafana's data sources dial the new names.
-- [ ] Deevnet: on a Deevnet Pi, `status` and `selftest` warn that the
+- [ ] Deevnet ([deevnet-provisioning-api#42](https://github.com/deevnet/deevnet-provisioning-api/issues/42)):
+      on a Deevnet Pi, `status` and `selftest` warn that the
       certificate names none of the Pi's addresses and suggest
       `regen-certs`, which then refuses. A Deevnet certificate names no
       address by design; the check should not run in that mode.
@@ -231,7 +233,8 @@ from the copies kept in step 7 (`provision_tenant.py` with them, and no
       between sites, and a host does not move), use it with
       `PI=backend.eds.home.deevnet.net`, and decide then whether it becomes
       the default.
-- [ ] Deevnet: `deevnet-kit cert install` installs only for a pending
+- [ ] Deevnet ([deevnet-provisioning-api#43](https://github.com/deevnet/deevnet-provisioning-api/issues/43)):
+      `deevnet-kit cert install` installs only for a pending
       request, and deletes its key once used, so a renewal Terraform issues
       for the same key cannot be installed. Every renewal is a new
       `cert request`. To note beside ADR-0053's renewal job.
