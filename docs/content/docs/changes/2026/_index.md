@@ -54,3 +54,4 @@ bookCollapseSection: true
 | CHG-0044 | 2026-10-29 | [Spotify Is Switched From the Backend Pi's Console](0044-spotify-is-switched-from-the-backend-pis-console/) | Deployment | {{< status-badge "complete" "Complete" >}} |
 | CHG-0045 | 2026-10-29 | [The Backend Pi's iTunes Pairing Is Kept](0045-the-backend-pis-itunes-pairing-is-kept/) | Deployment | {{< status-badge "complete" "Complete" >}} |
 | CHG-0046 | 2026-10-30 | [The Backend Pi Is on Its Cable Alone](0046-the-backend-pi-is-on-its-cable-alone/) | Configuration | {{< status-badge "complete" "Complete" >}} |
+| CHG-0047 | 2026-11-01 | [The Tenant Switches Spotify, and Names Its Console Without a Site](0047-the-tenant-switches-spotify-and-names-its-console-without-a-site/) | Deployment | {{< status-badge "in-progress" "In progress" >}} |
