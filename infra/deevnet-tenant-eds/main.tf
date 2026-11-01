@@ -112,6 +112,10 @@ resource "deevnet_certificate" "console" {
   tenant  = deevnet_tenant.eds.name
   name    = deevnet_dns_record.console.name
   csr_pem = tls_cert_request.console.cert_request_pem
+  # Its site-less name beside the factory's (Deevnet ADR-0040, CHG-0055):
+  # console.eds.deevnet.net and console.eds.mobile.deevnet.net, one
+  # certificate. The home site's console is the backend Pi's, not this.
+  sites = ["mobile"]
 }
 
 # The home backend Pi's certificate (CHG-0042, Deevnet ADR-0041 §2). Unlike
