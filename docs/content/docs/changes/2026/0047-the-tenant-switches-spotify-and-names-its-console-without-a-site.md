@@ -9,7 +9,7 @@ weight: 47
 |---|---|
 | **Date** | 2026-11-01 |
 | **Change type** | Deployment |
-| **Status** | {{< status-badge "in-progress" "In progress" >}} |
+| **Status** | {{< status-badge "complete" "Complete" >}} |
 | **Systems** | The tenant's Terraform (two broker accounts, the console's certificate); the services workload's console; the relay Pi `dv02rpi002p01` |
 | **How** | `make apply` in `infra/deevnet-tenant-eds`; `make -C deploy deploy WHERE=builder` and `make -C deploy units`; `make -C deploy/relay push` and `drivers` |
 | **Risk** | Low. Most likely to go wrong: the relay's agent, pushed from `main`, losing the album demo someone was using (see below) |
@@ -79,11 +79,17 @@ DRIVERS=itunes,turntable`.
 | When (UTC) | Step | What happened |
 |---|---|---|
 | 2026-11-01 01:33 | 1 | Provider upgraded to 0.8.0 in the worktree. The plan: 0 to add, 3 to change, 0 to destroy, all in place: the console's certificate given `sites`, and `console` and `np-relay` granted `nowplaying/source/spotify/switch`. The owner applied it. The new certificate: serial `24:d7:34:39:…:36:1b`, valid to 2027-11-01, for `console.eds.deevnet.net` and `console.eds.mobile.deevnet.net`. A second plan: no changes |
+| 2026-11-01 01:37 | 2 | `make -C deploy deploy WHERE=builder`: nowplayd, the console and voiced sent (their sources changed); palette, lightd and scribe unchanged and not sent. `units` wrote the new certificate and restarted the six services, all active. The console runs `e9b5803`, serves serial `24D7…361B` for both names, subscribes to 13 topics (the switch among them, so the grant holds), and draws the Spotify row, `off`. nowplayd online again by 01:39 |
+| 2026-11-01 01:52 | 3 | `make -C deploy/relay push`: `installed e9b5803`, replacing the demo. `drivers DRIVERS=itunes,spotify,turntable`: Spotify connected for its switch, offline; no call to Spotify and no refused grant from 01:52:34 to 01:54:49 |
 
 ### Departures from the plan
 
 - The tenant had no TSIG variable any more; the plan needed only the API
   token.
+- iTunes and the turntable were not shown followed on the relay. Its
+  iTunes driver had lost the player since 2026-10-30: its leg onto
+  DVNT-CORE is up only at home, and the kit was elsewhere. The turntable's
+  sound card is the backend Pi's since CHG-0042. Neither is this change's.
 
 ## Follow-ups
 
