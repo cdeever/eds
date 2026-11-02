@@ -42,6 +42,7 @@ so a settled question is found rather than argued again:
 
 | Record | Where | Write one when |
 |---|---|---|
+| **Proposal** | `docs/content/docs/architecture/proposals/` | a new idea, before any ADR: what it is and is not, its MVP and versions (`/cd:ideation`) |
 | **ADR-NNNN** | `docs/content/docs/architecture/decisions/` | two approaches were seriously considered; before the code |
 | **CHG-NNNN** | `docs/content/docs/changes/<year>/` | something running changes: a `terraform apply`, a deployment, a device flashed or reprovisioned, a credential renewed |
 | **INC-NNNN** | `docs/content/docs/incidents/<year>/` | something failed that a person would notice |
@@ -57,6 +58,11 @@ so a settled question is found rather than argued again:
 - **A bare `ADR-0006` means an EdS record.** Deevnet IoTaaS uses the same
   names: always write `Deevnet ADR-0012` for one of its.
 - Rules and templates: `docs/content/docs/develop/records/`.
+- **A new idea is shaped before it is built**, with the `/cd:` skills
+  from `cdeever/claude-skills`: `/cd:ideation` writes the proposal, and
+  `/cd:version-planning` cuts it into versions, each with a definition of done,
+  once it is accepted. New scope found along the way goes to the next version.
+  EdS's roadmap is kept in deevnet-docs, under `content/docs/roadmap/eds/`.
 
 ## Commands
 
