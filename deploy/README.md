@@ -26,6 +26,17 @@ loaded onto the workload from there. Settings and units still go from this
 machine: nothing secret is sent to the Builder. `CONTAINER=docker` uses Docker
 in place of Podman where that is what there is.
 
+**From Windows: WSL2.** The deploy needs bash, make, rsync, ssh, python3 and
+Terraform, so it runs in WSL2, not in PowerShell. Clone EdS inside WSL (`~/…`,
+not `/mnt/c`: a Windows checkout loses file modes). In WSL you need:
+
+- the provider, from `install-provider.sh`
+- this tenant's three uncommitted files (see its README's *On another machine*)
+- an SSH key in `ssh_keys`, or `WHERE=builder` with a key for the Builder
+
+Podman installs in WSL as on Linux. Turn on WSL's mirrored networking
+(Deevnet's Before You Start) so the workload's name resolves on `DVNTM-TD`.
+
 | On the workload | |
 |---|---|
 | `eds-palette.service` | `localhost/eds-palette`, port 8731 |

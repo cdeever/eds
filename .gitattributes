@@ -1,0 +1,5 @@
+# One line ending everywhere, LF, whatever the checkout: a Windows clone with
+# core.autocrlf would otherwise write CRLF into the Makefiles, scripts and
+# units, which make, bash and systemd misread, and change every image's
+# eds.source hash, so the deploy would send every image again.
+* text=auto eol=lf

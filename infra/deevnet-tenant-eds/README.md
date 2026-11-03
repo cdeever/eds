@@ -39,6 +39,12 @@ are local and gitignored.
    ([Deevnet ADR-0007][adr7]): it writes `backend.tf` (commit it) and `.backend.env`
    (secret; every later command needs it).
 
+**On Windows**, `tenant.ps1` does what the Makefile does, with the same guards
+and no make, bash or Python: `.\tenant.ps1 init`, `.\tenant.ps1 apply`,
+`.\tenant.ps1 state-backend`. The token is
+`$env:DEEVNET_API_TOKEN = terraform output -raw api_token`. Under WSL2 the
+Makefile works as it is.
+
 Keys are written when the VM is built, so a change to `ssh_keys` needs
 `terraform apply -replace=deevnet_workload.services`.
 
@@ -83,7 +89,7 @@ Three files are not committed and have to be put in this directory:
 | `deevnet-root-ca.pem` | the Deevnet Root CA; public | the operator, or the tenant downloads |
 | `ssh.auto.tfvars` | `ssh_keys` for the workload | a machine that already has it — without it a plan wants to replace the workload's keys |
 
-With those in place `make init` reads the state from the store.
+With those in place `make init` (or `.\tenant.ps1 init`) reads the state from the store.
 
 ## Publishing names
 
