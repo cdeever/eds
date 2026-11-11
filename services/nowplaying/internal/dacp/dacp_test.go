@@ -578,3 +578,51 @@ func TestAPlayerIsAskedForThePlainBeginningOfATitle(t *testing.T) {
 		}
 	}
 }
+
+// A song, an artist and shuffle, as the remote would ask (ADR-0055).
+func TestPlayingASongAnArtistAndShuffle(t *testing.T) {
+	p := &player{guid: "00000000DEADBEEF", change: make(chan string, 1)}
+	c := against(t, p)
+	ctx := context.Background()
+	if err := c.Login(ctx, p.guid); err != nil {
+		t.Fatal(err)
+	}
+	p.requests = nil
+
+	if err := c.PlayTrack(ctx, "The Beatles", "Come Together"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SetShuffle(ctx, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.PlayArtist(ctx, "Van Halen", 7); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SetShuffle(ctx, false); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"/ctrl-int/1/cue?command=clear&session-id=99",
+		"/ctrl-int/1/cue?command=play&query='daap.songartist:The%20Beatles'+'daap.itemname:Come%20Together*'&index=0&sort=name&session-id=99",
+		"/ctrl-int/1/setproperty?dacp.shufflestate=1&session-id=99",
+		"/ctrl-int/1/cue?command=clear&session-id=99",
+		"/ctrl-int/1/cue?command=play&query='daap.songartist:Van%20Halen'&index=7&sort=album&session-id=99",
+		"/ctrl-int/1/setproperty?dacp.shufflestate=0&session-id=99",
+	}
+	if len(p.requests) != len(want) {
+		t.Fatalf("requests = %q", p.requests)
+	}
+	for i := range want {
+		if p.requests[i] != want[i] {
+			t.Errorf("request %d = %q, want %q", i, p.requests[i], want[i])
+		}
+	}
+	for _, names := range [][2]string{{"", "Come Together"}, {"The Beatles", " "}} {
+		if err := c.PlayTrack(ctx, names[0], names[1]); err == nil {
+			t.Errorf("PlayTrack(%q) was sent", names)
+		}
+	}
+	if err := c.PlayArtist(ctx, "", 0); err == nil {
+		t.Error("PlayArtist without a name was sent")
+	}
+}

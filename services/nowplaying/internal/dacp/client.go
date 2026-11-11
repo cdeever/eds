@@ -315,6 +315,49 @@ func (c *Client) PlayAlbum(ctx context.Context, artist, start string) error {
 	return err
 }
 
+// PlayTrack replaces what the player is playing with the artist's songs
+// whose title begins with start (ADR-0055), the way PlayAlbum asks for an
+// album. Matched or not, the player answers alike; ask Now afterwards.
+func (c *Client) PlayTrack(ctx context.Context, artist, start string) error {
+	if strings.TrimSpace(artist) == "" || strings.TrimSpace(start) == "" {
+		return fmt.Errorf("dacp: a song is played by its artist and its title")
+	}
+	if _, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=clear&session-id=%d", c.session.Load()), 1<<20); err != nil {
+		return err
+	}
+	query := "'daap.songartist:" + quote(artist) + "'+'daap.itemname:" + quote(start) + "*'"
+	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=play&query=%s&index=0&sort=name&session-id=%d",
+		query, c.session.Load()), 1<<20)
+	return err
+}
+
+// PlayArtist replaces what the player is playing with all of the artist's
+// songs, by album, from the index'th (ADR-0055). The player's own shuffle
+// is not this queue's but the whole library's (2026-11-11): leave it off.
+func (c *Client) PlayArtist(ctx context.Context, artist string, index int) error {
+	if strings.TrimSpace(artist) == "" {
+		return fmt.Errorf("dacp: an artist is played by name")
+	}
+	if _, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=clear&session-id=%d", c.session.Load()), 1<<20); err != nil {
+		return err
+	}
+	query := "'daap.songartist:" + quote(artist) + "'"
+	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=play&query=%s&index=%d&sort=album&session-id=%d",
+		query, max(index, 0), c.session.Load()), 1<<20)
+	return err
+}
+
+// SetShuffle turns the player's shuffle on or off, as the remote's shuffle
+// button does (ADR-0055).
+func (c *Client) SetShuffle(ctx context.Context, on bool) error {
+	state := 0
+	if on {
+		state = 1
+	}
+	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/setproperty?dacp.shufflestate=%d&session-id=%d", state, c.session.Load()), 1<<20)
+	return err
+}
+
 // Stem is an album's title as it is matched: without a trailing ellipsis,
 // full stops or spaces, which libraries write three ways.
 func Stem(album string) string {

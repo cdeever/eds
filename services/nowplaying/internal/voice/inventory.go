@@ -88,6 +88,48 @@ func (i *Inventory) ByYear(ctx context.Context, a *OwnedArtist) ([]string, error
 	return out, nil
 }
 
+// Songs adds up the tracks of the artist's albums.
+func (i *Inventory) Songs(ctx context.Context, a *OwnedArtist) (int, error) {
+	var ans struct {
+		Artist struct {
+			Albums []struct {
+				Tracks int `json:"tracks"`
+			} `json:"albums"`
+		} `json:"artist"`
+	}
+	if err := i.get(ctx, "/v1/artists/"+url.PathEscape(a.ID), &ans); err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, al := range ans.Artist.Albums {
+		n += al.Tracks
+	}
+	return n, nil
+}
+
+// FindAlbums asks for the albums near a title, whoever they are by.
+func (i *Inventory) FindAlbums(ctx context.Context, title string) ([]OwnedAlbum, error) {
+	var ans struct {
+		Albums []struct {
+			Artist struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"artist"`
+			Album struct {
+				Title string `json:"title"`
+			} `json:"album"`
+		} `json:"albums"`
+	}
+	if err := i.get(ctx, "/v1/albums/find?"+url.Values{"title": {title}}.Encode(), &ans); err != nil {
+		return nil, err
+	}
+	var out []OwnedAlbum
+	for _, m := range ans.Albums {
+		out = append(out, OwnedAlbum{Artist: OwnedArtist{ID: m.Artist.ID, Name: m.Artist.Name}, Title: m.Album.Title})
+	}
+	return out, nil
+}
+
 // get asks the inventory, and refuses an answer of a version this program
 // does not speak.
 func (i *Inventory) get(ctx context.Context, path string, into any) error {

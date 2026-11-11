@@ -14,6 +14,7 @@
     <div class="brand">
       <span class="mark">EdS</span>
       <span class="tag">what is playing, and what the room is doing about it</span>
+      <a class="help-link" id="help-open" href="#talking">How to ask</a>
     </div>
     <div class="parts" id="parts" aria-label="Parts of EdS and whether they are up"></div>
   </header>
@@ -71,6 +72,62 @@
     <nav id="links" aria-label="Elsewhere"></nav>
     <span class="fine" id="version"></span>
   </footer>
+
+  <!-- What voiced understands (ADR-0042, ADR-0055). Every <q class="say">
+       is held to services/nowplaying/internal/voice by a test there: one it
+       would not understand fails it. Change the grammar, change this. -->
+  <dialog class="help" id="talking" aria-labelledby="talking-h">
+    <div class="help-head">
+      <h2 id="talking-h">Talking to EdS</h2>
+      <button type="button" class="help-close" id="help-close" aria-label="Close">×</button>
+    </div>
+    <p>Say <q>Hey DJ Ed</q>, then ask. The music turns down while you are
+      heard and comes back after. EdS knows only the requests below; anything
+      else is answered as not understood, never with a guess.</p>
+
+    <h3>An album</h3>
+    <ul>
+      <li><q class="say">Play Abbey Road by the Beatles</q></li>
+      <li><q class="say">Play Abbey Road from the Beatles</q></li>
+      <li><q class="say">Play the Beatles album Abbey Road</q></li>
+      <li><q class="say">Play the Beatles, Abbey Road</q></li>
+      <li><q class="say">Play Abbey Road</q>: alone, when only one artist you have made it</li>
+    </ul>
+
+    <h3>An album by its place</h3>
+    <ul>
+      <li><q class="say">Play Van Halen's first album</q></li>
+      <li><q class="say">Play the third album by Boston</q></li>
+      <li><q class="say">Play the latest album by AC/DC</q></li>
+    </ul>
+    <p class="fine">First to tenth, debut, latest, newest or most recent. Counted
+      among the artist's studio albums; one you have not got is skipped for the
+      next you have.</p>
+
+    <h3>A song</h3>
+    <ul>
+      <li><q class="say">Play the song Come Together by the Beatles</q></li>
+      <li><q class="say">Play the Beatles song Come Together</q></li>
+      <li><q class="say">Play Come Together by the Beatles</q>: when it is not one of their albums you have</li>
+    </ul>
+    <p class="fine">Always with the artist.</p>
+
+    <h3>An artist, shuffled</h3>
+    <ul>
+      <li><q class="say">Play some Van Halen</q></li>
+      <li><q class="say">Play songs by Genesis</q></li>
+      <li><q class="say">Shuffle Aerosmith</q></li>
+      <li><q class="say">Play the Beatles</q>: alone, when you have music by them</li>
+    </ul>
+
+    <h3>Ways to ask</h3>
+    <p><q class="say">Put on Rocks by Aerosmith</q>,
+      <q class="say">Let's hear Rocks by Aerosmith</q>,
+      <q class="say">I want to hear Rocks by Aerosmith</q>,
+      <q class="say">Can I hear Rocks by Aerosmith</q>: all the same as <q>play</q>.
+      <q>Please</q> anywhere is fine; <q>don't</q> or <q>not</q> before it means no.</p>
+    <p class="fine">What plays comes from the iTunes library, by its own names.</p>
+  </dialog>
 
   <noscript><p class="noscript">This page draws itself with JavaScript, and has none to run.</p></noscript>
 </body>

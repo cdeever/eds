@@ -264,6 +264,20 @@ const (
 // (ADR-0040).
 const PlayAlbum = "play_album"
 
+// PlayTrack and PlayArtist choose what plays as PlayAlbum does, and go where
+// it goes (ADR-0055): a song by its artist and title, or all of an artist's
+// songs, shuffled.
+const (
+	PlayTrack  = "play_track"
+	PlayArtist = "play_artist"
+)
+
+// ChoosesWhatPlays is whether a command names what to play, and so goes to
+// the source with a library rather than to the current one.
+func ChoosesWhatPlays(command string) bool {
+	return command == PlayAlbum || command == PlayTrack || command == PlayArtist
+}
+
 // maxName bounds an artist's or an album's name in a command. The longest
 // real ones are a few dozen characters; this is far past them, and short of
 // anything that could only be a mistake or a trick.
@@ -286,10 +300,19 @@ type Command struct {
 	// library names it. Nothing else carries them.
 	Artist string `json:"artist,omitempty"`
 	Album  string `json:"album,omitempty"`
+	// Title names the song play_track asks for (ADR-0055).
+	Title string `json:"title,omitempty"`
+	// Songs is how many songs play_artist's artist has, as far as the owner's
+	// library knows: the player's own shuffle is the whole library's, so the
+	// driver shuffles among these itself. Zero is not known: in order.
+	Songs int `json:"songs,omitempty"`
 	// Instead are the artist's albums to try, in order, if the library has
 	// not got Album (ADR-0045). play_album only, and at most MaxInstead.
 	Instead []string `json:"instead,omitempty"`
 }
+
+// maxSongs bounds play_artist's count: far past any one artist's.
+const maxSongs = 100000
 
 // MaxInstead is how many alternatives a play_album may carry: other names
 // for the album, then the artist's next albums. Each the library lacks is a
@@ -322,8 +345,28 @@ func (c Command) Validate() error {
 			}
 		}
 		return nil
+	case PlayTrack:
+		return names(c.Command, [][2]string{{"artist", c.Artist}, {"title", c.Title}})
+	case PlayArtist:
+		if c.Songs < 0 || c.Songs > maxSongs {
+			return fmt.Errorf("contract: play_artist's songs is %d, not 0 to %d", c.Songs, maxSongs)
+		}
+		return names(c.Command, [][2]string{{"artist", c.Artist}})
 	}
 	return fmt.Errorf("contract: unknown command %q", c.Command)
+}
+
+// names is whether each named field is there and not too long.
+func names(command string, fields [][2]string) error {
+	for _, f := range fields {
+		if strings.TrimSpace(f[1]) == "" {
+			return fmt.Errorf("contract: %s names no %s", command, f[0])
+		}
+		if len(f[1]) > maxName {
+			return fmt.Errorf("contract: %s's %s is longer than %d bytes", command, f[0], maxName)
+		}
+	}
+	return nil
 }
 
 // EncodeCommand stamps the version and marshals. A command that would not

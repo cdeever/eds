@@ -15,6 +15,7 @@ import (
 
 	"github.com/cdeever/eds/services/nowplaying/internal/bus"
 	"github.com/cdeever/eds/services/nowplaying/internal/contract"
+	"github.com/cdeever/eds/services/nowplaying/internal/library"
 	"github.com/cdeever/eds/services/nowplaying/internal/resolve"
 )
 
@@ -296,5 +297,93 @@ func TestAnInventoryThatDoesNotAnswerIsGuessedAround(t *testing.T) {
 	c, err := contract.DecodeCommand([]byte((*out)[0].payload))
 	if err != nil || c.Artist != "Van Halen" || c.Album != "Van Halen" {
 		t.Errorf("command %+v, %v", c, err)
+	}
+}
+
+// --- songs, artists and names alone (ADR-0055) -------------------------------
+
+// askedFor is what voiced asked to play, if anything, and what it said back.
+func askedFor(t *testing.T, said string, lib Library) (*contract.Command, Heard) {
+	t.Helper()
+	l, out, _ := listen(t, words(said))
+	l.Library = lib
+	l.Handle(utterance("respeaker-01"))
+	var c *contract.Command
+	var h Heard
+	for _, p := range *out {
+		switch p.topic {
+		case "eds/nowplaying/command":
+			got, err := contract.DecodeCommand([]byte(p.payload))
+			if err != nil {
+				t.Fatalf("%s: %v", p.payload, err)
+			}
+			if got.Command != contract.Duck && got.Command != contract.Unduck {
+				c = &got
+			}
+		case "eds/voice/respeaker-01/heard":
+			h = heard(t, p)
+		}
+	}
+	return c, h
+}
+
+func TestSongsArtistsAndNamesAloneAreAskedFor(t *testing.T) {
+	lib := inventory(t, owned())
+	for said, want := range map[string]contract.Command{
+		"Play some Van Halen.":                        {Command: contract.PlayArtist, Artist: "Van Halen", Songs: 30},
+		"DJ Ed. Clay some Van Halen.":                 {Command: contract.PlayArtist, Artist: "Van Halen", Songs: 30},
+		"Shuffle Arrowsmith.":                         {Command: contract.PlayArtist, Artist: "Aerosmith", Songs: 27},
+		"Play the song Come Together by the Beatles.": {Command: contract.PlayTrack, Artist: "The Beatles", Title: "Come Together"},
+		// Not an album of theirs the owner has: a song of theirs.
+		"Play Come Together by the Beatles.": {Command: contract.PlayTrack, Artist: "The Beatles", Title: "Come Together"},
+		"Play Abbey Road by the Beatles.":    {Command: contract.PlayAlbum, Artist: "The Beatles", Album: "Abbey Road"},
+		// A name alone: the album, whoever it is by; the artist first.
+		"Play Abby Road.": {Command: contract.PlayAlbum, Artist: "The Beatles", Album: "Abbey Road"},
+		"Play Van Halen.": {Command: contract.PlayArtist, Artist: "Van Halen", Songs: 30},
+		"Put on Trespass": {Command: contract.PlayAlbum, Artist: "Genesis", Album: "Trespass"},
+	} {
+		c, h := askedFor(t, said, lib)
+		if c == nil || c.Command != want.Command || c.Artist != want.Artist || c.Album != want.Album || c.Title != want.Title || c.Songs != want.Songs {
+			t.Errorf("%q: asked %+v, heard %+v; want %+v", said, c, h, want)
+			continue
+		}
+		if !h.Understood {
+			t.Errorf("%q: heard %+v", said, h)
+		}
+	}
+}
+
+// What the library has not got, or has twice over, is said back, and
+// nothing is asked for.
+func TestWhatTheLibraryCannotNameIsSaidBack(t *testing.T) {
+	ix := owned()
+	ix.Artists = append(ix.Artists, library.Artist{Name: "Boston", Albums: []library.Album{{Title: "Greatest Hits", Year: 1997, Tracks: 16}}})
+	lib := inventory(t, ix)
+	for said, reason := range map[string]string{
+		"Play some Nobody At All.":          "no such artist: nothing by Nobody At All",
+		"Play Sgt. Pepper.":                 "no artist or album called Sgt. Pepper",
+		"Play Greatest Hits.":               "Greatest Hits is by more than one: Aerosmith, Boston",
+		"Play Help by Somebody Else Again.": "no such album: not in the library: nothing by Somebody Else Again",
+	} {
+		c, h := askedFor(t, said, lib)
+		if c != nil || h.Understood || h.Reason != reason {
+			t.Errorf("%q: asked %+v, heard %+v; want %q", said, c, h, reason)
+		}
+	}
+}
+
+// With no library, "X by Y" is an album as before, and a name alone is not
+// read: nothing is guessed.
+func TestWithoutALibraryAlbumsAreAsBeforeAndNamesAloneAreNotRead(t *testing.T) {
+	c, _ := askedFor(t, "Play Come Together by the Beatles.", nil)
+	if c == nil || c.Command != contract.PlayAlbum || c.Album != "Come Together" {
+		t.Errorf("asked %+v", c)
+	}
+	if c, h := askedFor(t, "Play the Beatles.", nil); c != nil || h.Understood {
+		t.Errorf("asked %+v, heard %+v", c, h)
+	}
+	c, _ = askedFor(t, "Play some Van Halen.", nil)
+	if c == nil || c.Command != contract.PlayArtist || c.Artist != "Van Halen" {
+		t.Errorf("asked %+v", c)
 	}
 }
