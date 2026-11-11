@@ -88,6 +88,25 @@ func (i *Inventory) ByYear(ctx context.Context, a *OwnedArtist) ([]string, error
 	return out, nil
 }
 
+// Songs adds up the tracks of the artist's albums.
+func (i *Inventory) Songs(ctx context.Context, a *OwnedArtist) (int, error) {
+	var ans struct {
+		Artist struct {
+			Albums []struct {
+				Tracks int `json:"tracks"`
+			} `json:"albums"`
+		} `json:"artist"`
+	}
+	if err := i.get(ctx, "/v1/artists/"+url.PathEscape(a.ID), &ans); err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, al := range ans.Artist.Albums {
+		n += al.Tracks
+	}
+	return n, nil
+}
+
 // FindAlbums asks for the albums near a title, whoever they are by.
 func (i *Inventory) FindAlbums(ctx context.Context, title string) ([]OwnedAlbum, error) {
 	var ans struct {

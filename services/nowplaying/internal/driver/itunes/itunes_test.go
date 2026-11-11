@@ -46,6 +46,10 @@ type script struct {
 	owned map[string]bool
 
 	shuffles []bool // each shuffle set, kept apart from the presses
+
+	// artistSongs, when set, is how many songs each artist has: a place
+	// among them plays its song ("Song 3"), one past them plays nothing.
+	artistSongs map[string]int
 }
 
 // PlayTrack and PlayArtist press as PlayAlbum does; what plays after is
@@ -53,8 +57,18 @@ type script struct {
 func (s *script) PlayTrack(_ context.Context, artist, title string) error {
 	return s.press("track=" + artist + "/" + title)
 }
-func (s *script) PlayArtist(_ context.Context, artist string) error {
-	return s.press("artist=" + artist)
+func (s *script) PlayArtist(_ context.Context, artist string, index int) error {
+	if s.artistSongs != nil {
+		s.mu.Lock()
+		s.next++
+		played := dacp.Status{Revision: uint32(100 + s.next)}
+		if index < s.artistSongs[artist] {
+			played = st(uint32(100+s.next), true, false, artist, fmt.Sprintf("Song %d", index), "Album", abba, 200000)
+		}
+		s.after = &played
+		s.mu.Unlock()
+	}
+	return s.press(fmt.Sprintf("artist=%s@%d", artist, index))
 }
 func (s *script) SetShuffle(_ context.Context, on bool) error {
 	s.mu.Lock()
@@ -451,7 +465,7 @@ func (q *quietPlayer) PlayAlbum(context.Context, string, string) error {
 	return nil
 }
 func (q *quietPlayer) PlayTrack(context.Context, string, string) error { return nil }
-func (q *quietPlayer) PlayArtist(context.Context, string) error        { return nil }
+func (q *quietPlayer) PlayArtist(context.Context, string, int) error   { return nil }
 func (q *quietPlayer) SetShuffle(context.Context, bool) error          { return nil }
 
 // --- commands (ADR-0020) -----------------------------------------------------
@@ -824,9 +838,9 @@ func TestASongThatIsNotTheOneAskedIsNotFound(t *testing.T) {
 	}
 }
 
-// An artist is played shuffled; an album after it is played with shuffle
-// off, in its order.
-func TestAnArtistIsShuffledAndAnAlbumAfterItIsNot(t *testing.T) {
+// The player's own shuffle is never on: it shuffles the whole library
+// (2026-11-11). With no count, an artist plays in order from the first.
+func TestAnArtistWithNoCountPlaysInOrderAndShuffleStaysOff(t *testing.T) {
 	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)}}
 	d := live(t, p)
 	d.AlbumCheck = time.Millisecond
@@ -839,11 +853,130 @@ func TestAnArtistIsShuffledAndAnAlbumAfterItIsNot(t *testing.T) {
 	if err := d.Command(context.Background(), album("Van Halen", "Van Halen")); err != nil {
 		t.Fatal(err)
 	}
-	if got := fmt.Sprint(p.presses()); got != "[artist=van halen album=Van Halen/Van Halen]" {
+	if got := fmt.Sprint(p.presses()); got != "[artist=van halen@0 album=Van Halen/Van Halen]" {
 		t.Errorf("pressed %v", got)
 	}
-	if got := fmt.Sprint(p.shuffled()); got != "[true false]" {
+	if got := fmt.Sprint(p.shuffled()); got != "[false false]" {
 		t.Errorf("shuffle %v", got)
+	}
+}
+
+func artistCommand(artist string, songs int) contract.Command {
+	return contract.Command{V: contract.Version, Command: contract.PlayArtist, Artist: artist, Songs: songs}
+}
+
+// The driver's shuffle: the first song a random place, and each song of
+// theirs that follows - the player's next, or Next pressed - a jump to the
+// next place, until every one has played.
+func TestTheDriverShufflesAnArtist(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)}, artistSongs: map[string]int{"The Rolling Stones": 4}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	d.Shuffle = func(n int) []int { return []int{2, 0, 3, 1}[:n] }
+	ctx := context.Background()
+
+	if err := d.Command(ctx, artistCommand("The Rolling Stones", 4)); err != nil {
+		t.Fatal(err)
+	}
+	// The player goes on to the song after Song 2 in its own order.
+	for want := 2; want <= 4; want++ {
+		d.onSong(ctx, st(50, true, false, "The Rolling Stones", "Song 9", "Album", abba, 200000))
+		waitPresses(t, p, want)
+		settled(t, d)
+	}
+	if got := fmt.Sprint(p.presses()); got != "[artist=The Rolling Stones@2 artist=The Rolling Stones@0 artist=The Rolling Stones@3 artist=The Rolling Stones@1]" {
+		t.Errorf("pressed %v", got)
+	}
+	// Every song played: the player goes on by itself.
+	d.onSong(ctx, st(51, true, false, "The Rolling Stones", "Song 2", "Album", abba, 200000))
+	time.Sleep(20 * time.Millisecond)
+	if got := len(p.presses()); got != 4 {
+		t.Errorf("%d presses after the last song", got)
+	}
+}
+
+// The same song said again, or paused, is not a cue; another artist's song
+// ends the shuffle, and so does choosing anything else.
+func TestTheShuffleEndsWhenSomethingElsePlays(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)}, artistSongs: map[string]int{"Van Halen": 5}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	d.Shuffle = func(n int) []int { return []int{1, 2, 3, 4, 0} }
+	ctx := context.Background()
+
+	if err := d.Command(ctx, artistCommand("Van Halen", 5)); err != nil {
+		t.Fatal(err)
+	}
+	d.onSong(ctx, st(60, false, true, "Van Halen", "Song 1", "Album", abba, 200000)) // paused
+	d.onSong(ctx, st(61, true, false, "Blondie", "Call Me", "Hits", abba, 200000))
+	d.onSong(ctx, st(62, true, false, "Van Halen", "Song 4", "Album", abba, 200000))
+	time.Sleep(20 * time.Millisecond)
+	if got := fmt.Sprint(p.presses()); got != "[artist=Van Halen@1]" {
+		t.Errorf("pressed %v", got)
+	}
+
+	if err := d.Command(ctx, artistCommand("Van Halen", 5)); err != nil {
+		t.Fatal(err)
+	}
+	p.playsAfter(st(70, true, false, "Van Halen", "Runnin' With The Devil", "Van Halen", abba, 215000))
+	if err := d.Command(ctx, album("Van Halen", "Van Halen")); err != nil {
+		t.Fatal(err)
+	}
+	d.onSong(ctx, st(71, true, false, "Van Halen", "Eruption", "Van Halen", abba, 100000))
+	time.Sleep(20 * time.Millisecond)
+	if got := len(p.presses()); got != 3 {
+		t.Errorf("pressed %v: the shuffle went on after an album", p.presses())
+	}
+}
+
+// The library counted more songs than the player has under the name: a
+// place past the end is dropped, with every place after it.
+func TestPlacesPastTheArtistsSongsAreDropped(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)}, artistSongs: map[string]int{"Santana": 3}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	d.Shuffle = func(n int) []int { return []int{7, 5, 1, 9, 0, 2} }
+
+	if err := d.Command(context.Background(), artistCommand("Santana", 6)); err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprint(p.presses()); got != "[artist=Santana@7 artist=Santana@5 artist=Santana@1]" {
+		t.Errorf("pressed %v", got)
+	}
+	d.mu.Lock()
+	deck := fmt.Sprint(d.shuffling.deck)
+	d.mu.Unlock()
+	if deck != "[0 2]" {
+		t.Errorf("left to play %s", deck)
+	}
+}
+
+// settled waits for a jump under way to land.
+func settled(t *testing.T, d *Driver) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		d.mu.Lock()
+		done := d.shuffling == nil || d.shuffling.at != ""
+		d.mu.Unlock()
+		if done {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("a jump did not land")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+func waitPresses(t *testing.T, p *script, n int) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for len(p.presses()) < n {
+		if time.Now().After(deadline) {
+			t.Fatalf("pressed %v, waiting for %d", p.presses(), n)
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
 

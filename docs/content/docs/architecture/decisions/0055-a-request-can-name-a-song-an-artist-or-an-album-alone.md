@@ -60,11 +60,20 @@ kind inside `play_album` would be played as an album.
   asked, with shuffle off, and then asks what plays: the artist's, and
   a title that is the one asked with at most an edition's note after it
   ("Come Together - Remastered 2009"). Anything else is a failed command.
-- **`play_artist`** names an artist. The driver turns shuffle on, empties
-  the queue, asks for all of the artist's songs, and checks the artist of
-  what plays.
-- **`play_album` turns shuffle off first**, so an album played after an
-  artist is in its order.
+- **`play_artist`** names an artist and how many songs the owner has by
+  them (`songs`, from eds-inventory). **The driver shuffles, not the
+  player**: iTunes' own shuffle, set from this remote before or after the
+  artist is queued, shuffles the whole library and ignores the queue (1
+  song in 6 the artist's, 2026-11-11), while with it off the queue is the
+  artist's alone, by album (6 in 6). So the driver queues the artist from
+  a random place among `songs`, and each time a song of theirs follows,
+  the player's next or Next pressed, jumps to another, none twice, until
+  all have played. A place past the end of their songs (the library
+  counted more than the player files under the name) is dropped with
+  every place after it. Another artist's song, nothing playing, or
+  anything else chosen ends it. Without a count, the artist plays in order.
+- **Every command that chooses what plays turns the player's shuffle
+  off**, so an album after an artist is in its order.
 - **An album without its artist** is looked up in eds-inventory by its
   title (`GET /v1/albums/find?title=`). One artist near enough: it is
   `play_album` with that artist. None, or more than one: not understood,
@@ -95,8 +104,10 @@ and "play X" alone not at all.
   not a wrong one.
 - **A song that is not the one asked stops the music**, as an album that
   is missed does (ADR-0045): the queue was emptied to ask for it.
-- **Shuffle is the driver's to set**, for every one of the three: what
+- **The player's shuffle is turned off** by every one of the three: what
   the owner last chose on iTunes itself is not kept.
+- **A shuffled artist's next song is heard for a moment**: the player
+  starts the one after in its own order before the driver jumps.
 - **eds-inventory gains a route** on the schema it has; the schema's
   rework carries it over.
 
@@ -105,7 +116,10 @@ and "play X" alone not at all.
 - [ ] "Play Come Together by the Beatles" plays it, and a song the owner
       has not got is a failed command.
 - [ ] "Play some Van Halen" plays their songs shuffled, and an album asked
-      for after it plays in order.
+      for after it plays in order. First tried 2026-11-11 with the player's
+      shuffle: the whole library's, so the driver's own instead.
 - [ ] "Play Abbey Road" plays it; a title two artists share is answered
       with both.
-- [ ] iTunes for Windows takes `dacp.shufflestate` from this remote.
+- [x] iTunes for Windows takes `dacp.shufflestate` from this remote: it
+      does, and shuffles the whole library with it (2026-11-11, by hand
+      with the relay's pairing), which is why the driver shuffles instead.

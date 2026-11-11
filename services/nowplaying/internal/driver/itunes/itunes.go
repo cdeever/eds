@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"strings"
 	"sync"
@@ -42,7 +43,7 @@ type Player interface {
 	// artist (ADR-0055), and its shuffle button.
 	PlayAlbum(ctx context.Context, artist, album string) error
 	PlayTrack(ctx context.Context, artist, title string) error
-	PlayArtist(ctx context.Context, artist string) error
+	PlayArtist(ctx context.Context, artist string, index int) error
 	SetShuffle(ctx context.Context, on bool) error
 }
 
@@ -83,6 +84,22 @@ type Driver struct {
 	ducking bool
 	ducked  int
 	undo    *time.Timer
+
+	// The artist the driver is shuffling (ADR-0055), or nil. The player's
+	// own shuffle is the whole library's, so the driver jumps to a random
+	// song of theirs each time one ends.
+	shuffling *artistShuffle
+
+	// Shuffle orders n songs; nil is a random order.
+	Shuffle func(n int) []int
+}
+
+// artistShuffle is an artist's songs being played in an order of the
+// driver's: their places in the player's queue of the artist, by album.
+type artistShuffle struct {
+	artist string
+	deck   []int  // places still to play, in order
+	at     string // the song jumped to; "" while a jump is under way
 }
 
 // DuckTo is how far a duck turns the music down: to a quarter of what it was.
@@ -129,14 +146,14 @@ func (d *Driver) Command(ctx context.Context, c contract.Command) error {
 		d.forgetDuck()
 		return d.nudge(ctx, -VolumeStep)
 	case contract.PlayAlbum:
-		d.beforeChoosing(ctx, false)
+		d.beforeChoosing(ctx)
 		return d.playFirstOwned(ctx, c.Artist, append([]string{c.Album}, c.Instead...))
 	case contract.PlayTrack:
-		d.beforeChoosing(ctx, false)
+		d.beforeChoosing(ctx)
 		return d.playTrack(ctx, c.Artist, c.Title)
 	case contract.PlayArtist:
-		d.beforeChoosing(ctx, true)
-		return d.playArtist(ctx, c.Artist)
+		d.beforeChoosing(ctx)
+		return d.playArtist(ctx, c.Artist, c.Songs)
 	case contract.Duck:
 		return d.duck(ctx)
 	case contract.Unduck:
@@ -146,15 +163,17 @@ func (d *Driver) Command(ctx context.Context, c contract.Command) error {
 }
 
 // beforeChoosing readies the player for what is chosen to play: at the
-// volume the room had, not the ducked one (ADR-0044), and shuffled only for
-// an artist, so that an album after one plays in order (ADR-0055). Neither
-// failing stops what was asked for.
-func (d *Driver) beforeChoosing(ctx context.Context, shuffle bool) {
+// volume the room had, not the ducked one (ADR-0044); with the player's own
+// shuffle off, which shuffles the whole library and not what was chosen
+// (ADR-0055, 2026-11-11); and with any shuffle of the driver's ended.
+// Neither failing stops what was asked for.
+func (d *Driver) beforeChoosing(ctx context.Context) {
+	d.endShuffle(nil)
 	if err := d.unduck(ctx); err != nil {
 		d.logger().Warn("the volume could not be brought back before choosing what plays", "error", err)
 	}
-	if err := d.Player.SetShuffle(ctx, shuffle); err != nil {
-		d.logger().Warn("shuffle could not be set", "on", shuffle, "error", err)
+	if err := d.Player.SetShuffle(ctx, false); err != nil {
+		d.logger().Warn("the player's shuffle could not be turned off", "error", err)
 	}
 }
 
@@ -181,17 +200,124 @@ func (d *Driver) playTrack(ctx context.Context, artist, title string) error {
 	return fmt.Errorf("%w: asked for %q by %q, playing %q by %q", ErrTrackNotFound, title, artist, now.Title, now.Artist)
 }
 
-// playArtist asks for all of the artist's songs, and then whether what
-// plays is theirs.
-func (d *Driver) playArtist(ctx context.Context, artist string) error {
-	if err := d.Player.PlayArtist(ctx, artist); err != nil {
-		return err
+// playArtist plays the artist's songs: shuffled by the driver among the
+// songs the library says they have, or in order when it does not say.
+func (d *Driver) playArtist(ctx context.Context, artist string, songs int) error {
+	if songs <= 0 {
+		if err := d.Player.PlayArtist(ctx, artist, 0); err != nil {
+			return err
+		}
+		now, ok, err := d.until(ctx, func(now dacp.Status) bool { return strings.EqualFold(now.Artist, artist) })
+		if err != nil || ok {
+			return err
+		}
+		return fmt.Errorf("%w: asked for %q, playing %q", ErrArtistNotFound, artist, now.Artist)
 	}
-	now, ok, err := d.until(ctx, func(now dacp.Status) bool { return strings.EqualFold(now.Artist, artist) })
-	if err != nil || ok {
-		return err
+	order := d.Shuffle
+	if order == nil {
+		order = rand.Perm
 	}
-	return fmt.Errorf("%w: asked for %q, playing %q", ErrArtistNotFound, artist, now.Artist)
+	s := &artistShuffle{artist: artist, deck: order(songs)}
+	d.mu.Lock()
+	d.shuffling = s
+	d.mu.Unlock()
+	return d.jump(ctx, s)
+}
+
+// jump plays the next of a shuffle's songs. A place past the end of the
+// artist's songs - the library counted more than the player has under
+// their name - is not theirs, and nor is any after it: those are dropped
+// and the next tried.
+func (d *Driver) jump(ctx context.Context, s *artistShuffle) error {
+	for {
+		d.mu.Lock()
+		if d.shuffling != s {
+			d.mu.Unlock()
+			return nil // something else was chosen meanwhile
+		}
+		if len(s.deck) == 0 {
+			d.shuffling = nil // every song played: the player goes on in order
+			d.mu.Unlock()
+			return nil
+		}
+		i := s.deck[0]
+		s.deck, s.at = s.deck[1:], ""
+		d.mu.Unlock()
+
+		if err := d.Player.PlayArtist(ctx, s.artist, i); err != nil {
+			d.endShuffle(s)
+			return err
+		}
+		now, ok, err := d.until(ctx, func(now dacp.Status) bool { return strings.EqualFold(now.Artist, s.artist) })
+		if err != nil {
+			d.endShuffle(s)
+			return err
+		}
+		if ok {
+			d.mu.Lock()
+			s.at = songKey(now)
+			d.mu.Unlock()
+			return nil
+		}
+		if i == 0 {
+			d.endShuffle(s)
+			return fmt.Errorf("%w: asked for %q, playing %q", ErrArtistNotFound, s.artist, now.Artist)
+		}
+		d.mu.Lock()
+		kept := s.deck[:0]
+		for _, j := range s.deck {
+			if j < i {
+				kept = append(kept, j)
+			}
+		}
+		s.deck = kept
+		d.mu.Unlock()
+		d.logger().Info("fewer songs by the artist than the library counted", "artist", s.artist, "past", i)
+	}
+}
+
+// endShuffle ends the driver's shuffle: s, or whichever is going for nil.
+func (d *Driver) endShuffle(s *artistShuffle) {
+	d.mu.Lock()
+	if s == nil || d.shuffling == s {
+		d.shuffling = nil
+	}
+	d.mu.Unlock()
+}
+
+// onSong is told each status the player reports. While the driver
+// shuffles, another song of the artist's - the next in the player's own
+// order, or Next pressed - is the cue for the next of the shuffle's; a song
+// of anyone else's, or nothing playing, ends it.
+func (d *Driver) onSong(ctx context.Context, now dacp.Status) {
+	d.mu.Lock()
+	s := d.shuffling
+	if s == nil || s.at == "" {
+		d.mu.Unlock()
+		return // none, or a jump under way
+	}
+	key := songKey(now)
+	switch {
+	case key == s.at:
+		d.mu.Unlock()
+		return // the same song: paused, resumed, or said again
+	case now.Title == "" || !strings.EqualFold(now.Artist, s.artist):
+		d.shuffling = nil
+		d.mu.Unlock()
+		d.logger().Info("the shuffle ended: something else plays", "artist", s.artist)
+		return
+	}
+	s.at = "" // jumping
+	d.mu.Unlock()
+	go func() {
+		if err := d.jump(ctx, s); err != nil && ctx.Err() == nil {
+			d.logger().Warn("the shuffle could not go on", "artist", s.artist, "error", err)
+		}
+	}()
+}
+
+func songKey(s dacp.Status) string {
+	return s.Artist + "\x00" + s.Album + "\x00" + s.Title
 }
 
 // until asks the player what it plays until it is what was asked for or
@@ -511,6 +637,7 @@ func (d *Driver) report(ctx context.Context, status dacp.Status) error {
 	)
 
 	for {
+		d.onSong(ctx, status)
 		state := d.toState(status)
 
 		// The moment something a listener would notice happened: a different

@@ -330,19 +330,19 @@ func askedFor(t *testing.T, said string, lib Library) (*contract.Command, Heard)
 func TestSongsArtistsAndNamesAloneAreAskedFor(t *testing.T) {
 	lib := inventory(t, owned())
 	for said, want := range map[string]contract.Command{
-		"Play some Van Halen.":                        {Command: contract.PlayArtist, Artist: "Van Halen"},
-		"Shuffle Arrowsmith.":                         {Command: contract.PlayArtist, Artist: "Aerosmith"},
+		"Play some Van Halen.":                        {Command: contract.PlayArtist, Artist: "Van Halen", Songs: 30},
+		"Shuffle Arrowsmith.":                         {Command: contract.PlayArtist, Artist: "Aerosmith", Songs: 27},
 		"Play the song Come Together by the Beatles.": {Command: contract.PlayTrack, Artist: "The Beatles", Title: "Come Together"},
 		// Not an album of theirs the owner has: a song of theirs.
 		"Play Come Together by the Beatles.": {Command: contract.PlayTrack, Artist: "The Beatles", Title: "Come Together"},
 		"Play Abbey Road by the Beatles.":    {Command: contract.PlayAlbum, Artist: "The Beatles", Album: "Abbey Road"},
 		// A name alone: the album, whoever it is by; the artist first.
 		"Play Abby Road.": {Command: contract.PlayAlbum, Artist: "The Beatles", Album: "Abbey Road"},
-		"Play Van Halen.": {Command: contract.PlayArtist, Artist: "Van Halen"},
+		"Play Van Halen.": {Command: contract.PlayArtist, Artist: "Van Halen", Songs: 30},
 		"Put on Trespass": {Command: contract.PlayAlbum, Artist: "Genesis", Album: "Trespass"},
 	} {
 		c, h := askedFor(t, said, lib)
-		if c == nil || c.Command != want.Command || c.Artist != want.Artist || c.Album != want.Album || c.Title != want.Title {
+		if c == nil || c.Command != want.Command || c.Artist != want.Artist || c.Album != want.Album || c.Title != want.Title || c.Songs != want.Songs {
 			t.Errorf("%q: asked %+v, heard %+v; want %+v", said, c, h, want)
 			continue
 		}

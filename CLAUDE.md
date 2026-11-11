@@ -427,8 +427,9 @@ library has (ADR-0045): "Genesis' first album" is the first of theirs the
 owner has. A miss empties iTunes' queue, so missing them all stops the music.
 **`play_track` and `play_artist` go where `play_album` goes** (ADR-0055,
 `Proposed`): a song by its artist and title, checked by the title that
-plays, and an artist's songs with shuffle on; `play_album` turns shuffle
-off. voiced sends `play_track` for "the song X by Y", and for "X by Y"
+plays, and an artist's songs **shuffled by the driver**, among the count
+voiced sends: iTunes' own shuffle is the whole library's, so it is always
+turned off. voiced sends `play_track` for "the song X by Y", and for "X by Y"
 when the owner has no such album by Y; "play X" alone is the artist if the
 owner has one, else the album if one artist has it (eds-inventory's
 `GET /v1/albums/find`), else said back.

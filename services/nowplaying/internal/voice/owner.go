@@ -26,6 +26,9 @@ type Owner interface {
 	// FindAlbums are the albums near enough a title, whoever they are by,
 	// nearest first: for an album asked for without its artist (ADR-0055).
 	FindAlbums(ctx context.Context, title string) ([]OwnedAlbum, error)
+	// Songs is how many songs the owner has on the artist's albums: what
+	// play_artist shuffles among (ADR-0055).
+	Songs(ctx context.Context, a *OwnedArtist) (int, error)
 }
 
 // OwnedAlbum is an album the owner has, by its artist, as the player will
@@ -112,4 +115,12 @@ func (o indexOwner) FindAlbums(_ context.Context, title string) ([]OwnedAlbum, e
 		out = append(out, OwnedAlbum{Artist: OwnedArtist{ID: m.Artist.Name, Name: m.Artist.Name}, Title: m.Album.Title})
 	}
 	return out, nil
+}
+
+func (o indexOwner) Songs(_ context.Context, a *OwnedArtist) (int, error) {
+	n := 0
+	for _, al := range o.artist(a).Albums {
+		n += al.Tracks
+	}
+	return n, nil
 }

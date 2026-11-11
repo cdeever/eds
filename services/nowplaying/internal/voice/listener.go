@@ -221,36 +221,47 @@ func (l *Listener) playAlbum(log *slog.Logger, heard Heard, artist, album string
 
 // artistFor is the owner's spelling of an artist heard, or the name as
 // heard with no library, or one that does not answer. ok is false when the
-// library answered and has nobody by that name.
-func (l *Listener) artistFor(ctx context.Context, log *slog.Logger, owner Owner, heard string) (string, bool) {
+// library answered and has nobody by that name. owned is the owner's
+// artist, when the library answered.
+func (l *Listener) artistFor(ctx context.Context, log *slog.Logger, owner Owner, heard string) (name string, owned *OwnedArtist, ok bool) {
 	if owner == nil {
-		return heard, true
+		return heard, nil, true
 	}
 	a, _, err := ownedArtist(ctx, l.Albums, owner, heard)
 	if err != nil {
 		log.Warn("the owner's music could not be asked; the artist is asked for as heard", "error", err)
-		return heard, true
+		return heard, nil, true
 	}
 	if a == nil {
-		return "", false
+		return "", nil, false
 	}
-	return a.Name, true
+	return a.Name, a, true
 }
 
 // playArtist asks for all of an artist's songs, shuffled (ADR-0055).
 func (l *Listener) playArtist(ctx context.Context, log *slog.Logger, owner Owner, heard Heard, asked string, started time.Time) Heard {
-	artist, ok := l.artistFor(ctx, log, owner, asked)
+	artist, owned, ok := l.artistFor(ctx, log, owner, asked)
 	if !ok {
 		log.Info("no such artist", "artist", asked)
 		heard.Reason = "no such artist: nothing by " + asked
 		return heard
 	}
-	if err := l.send(contract.Command{Command: contract.PlayArtist, Artist: artist}); err != nil {
+	// How many to shuffle among: the player's own shuffle is the whole
+	// library's. Not known, the driver plays them in order.
+	songs := 0
+	if owned != nil {
+		n, err := owner.Songs(ctx, owned)
+		if err != nil {
+			log.Warn("the artist's songs could not be counted; played in order", "artist", artist, "error", err)
+		}
+		songs = min(n, 100000)
+	}
+	if err := l.send(contract.Command{Command: contract.PlayArtist, Artist: artist, Songs: songs}); err != nil {
 		log.Warn("could not ask for the artist", "artist", artist, "error", err)
 		heard.Reason = "the artist could not be asked for"
 		return heard
 	}
-	log.Info("asked for an artist", "artist", artist, "total_ms", time.Since(started).Milliseconds())
+	log.Info("asked for an artist", "artist", artist, "songs", songs, "total_ms", time.Since(started).Milliseconds())
 	heard.Understood, heard.Artist = true, artist
 	return heard
 }
@@ -258,7 +269,7 @@ func (l *Listener) playArtist(ctx context.Context, log *slog.Logger, owner Owner
 // playTrack asks for a song by its artist and title (ADR-0055). The title
 // is as said: the library knows no songs yet, and the player is the check.
 func (l *Listener) playTrack(ctx context.Context, log *slog.Logger, owner Owner, heard Heard, asked, title string, started time.Time) Heard {
-	artist, ok := l.artistFor(ctx, log, owner, asked)
+	artist, _, ok := l.artistFor(ctx, log, owner, asked)
 	if !ok {
 		log.Info("no such artist", "artist", asked)
 		heard.Reason = "no such song: nothing by " + asked

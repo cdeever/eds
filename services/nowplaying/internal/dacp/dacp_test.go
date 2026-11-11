@@ -595,7 +595,7 @@ func TestPlayingASongAnArtistAndShuffle(t *testing.T) {
 	if err := c.SetShuffle(ctx, true); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.PlayArtist(ctx, "Van Halen"); err != nil {
+	if err := c.PlayArtist(ctx, "Van Halen", 7); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.SetShuffle(ctx, false); err != nil {
@@ -606,7 +606,7 @@ func TestPlayingASongAnArtistAndShuffle(t *testing.T) {
 		"/ctrl-int/1/cue?command=play&query='daap.songartist:The%20Beatles'+'daap.itemname:Come%20Together*'&index=0&sort=name&session-id=99",
 		"/ctrl-int/1/setproperty?dacp.shufflestate=1&session-id=99",
 		"/ctrl-int/1/cue?command=clear&session-id=99",
-		"/ctrl-int/1/cue?command=play&query='daap.songartist:Van%20Halen'&index=0&sort=album&session-id=99",
+		"/ctrl-int/1/cue?command=play&query='daap.songartist:Van%20Halen'&index=7&sort=album&session-id=99",
 		"/ctrl-int/1/setproperty?dacp.shufflestate=0&session-id=99",
 	}
 	if len(p.requests) != len(want) {
@@ -622,7 +622,7 @@ func TestPlayingASongAnArtistAndShuffle(t *testing.T) {
 			t.Errorf("PlayTrack(%q) was sent", names)
 		}
 	}
-	if err := c.PlayArtist(ctx, ""); err == nil {
+	if err := c.PlayArtist(ctx, "", 0); err == nil {
 		t.Error("PlayArtist without a name was sent")
 	}
 }

@@ -332,8 +332,9 @@ func (c *Client) PlayTrack(ctx context.Context, artist, start string) error {
 }
 
 // PlayArtist replaces what the player is playing with all of the artist's
-// songs (ADR-0055). In what order is the player's shuffle: SetShuffle first.
-func (c *Client) PlayArtist(ctx context.Context, artist string) error {
+// songs, by album, from the index'th (ADR-0055). The player's own shuffle
+// is not this queue's but the whole library's (2026-11-11): leave it off.
+func (c *Client) PlayArtist(ctx context.Context, artist string, index int) error {
 	if strings.TrimSpace(artist) == "" {
 		return fmt.Errorf("dacp: an artist is played by name")
 	}
@@ -341,8 +342,8 @@ func (c *Client) PlayArtist(ctx context.Context, artist string) error {
 		return err
 	}
 	query := "'daap.songartist:" + quote(artist) + "'"
-	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=play&query=%s&index=0&sort=album&session-id=%d",
-		query, c.session.Load()), 1<<20)
+	_, err := c.raw(ctx, fmt.Sprintf("ctrl-int/1/cue?command=play&query=%s&index=%d&sort=album&session-id=%d",
+		query, max(index, 0), c.session.Load()), 1<<20)
 	return err
 }
 

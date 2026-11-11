@@ -302,10 +302,17 @@ type Command struct {
 	Album  string `json:"album,omitempty"`
 	// Title names the song play_track asks for (ADR-0055).
 	Title string `json:"title,omitempty"`
+	// Songs is how many songs play_artist's artist has, as far as the owner's
+	// library knows: the player's own shuffle is the whole library's, so the
+	// driver shuffles among these itself. Zero is not known: in order.
+	Songs int `json:"songs,omitempty"`
 	// Instead are the artist's albums to try, in order, if the library has
 	// not got Album (ADR-0045). play_album only, and at most MaxInstead.
 	Instead []string `json:"instead,omitempty"`
 }
+
+// maxSongs bounds play_artist's count: far past any one artist's.
+const maxSongs = 100000
 
 // MaxInstead is how many alternatives a play_album may carry: other names
 // for the album, then the artist's next albums. Each the library lacks is a
@@ -341,6 +348,9 @@ func (c Command) Validate() error {
 	case PlayTrack:
 		return names(c.Command, [][2]string{{"artist", c.Artist}, {"title", c.Title}})
 	case PlayArtist:
+		if c.Songs < 0 || c.Songs > maxSongs {
+			return fmt.Errorf("contract: play_artist's songs is %d, not 0 to %d", c.Songs, maxSongs)
+		}
 		return names(c.Command, [][2]string{{"artist", c.Artist}})
 	}
 	return fmt.Errorf("contract: unknown command %q", c.Command)
