@@ -24,10 +24,11 @@ import numpy as np
 # Road by the Beatles", that was a request, and on 2026-10-24 the Beatles
 # played for a request nobody made (INC-0001). A list of names is not one.
 #
-# "Hey Jarvis" first: the device sends a moment from before its wake word,
-# and the end of the wake word, written without it, came out as "Lee
-# Jarvis", "Travis" and "The band was very generous" (2026-10-24).
-PROMPT = "Hey Jarvis. Aerosmith, Van Halen, AC/DC, Led Zeppelin, Guns N' Roses, the Beatles, Pink Floyd."
+# The wake word first: the device sends a moment from before it was decided
+# on, and the end of the wake word, written without it, came out as "Lee
+# Jarvis", "Travis" and "The band was very generous" (2026-10-24). It is
+# "Hey DJ Ed" since 2026-11-11 (ADR-0054).
+PROMPT = "Hey DJ Ed. Aerosmith, Van Halen, AC/DC, Led Zeppelin, Guns N' Roses, the Beatles, Pink Floyd."
 
 # Whisper's own thresholds, as its reference implementation uses them to
 # decide that a stretch of audio held no speech: a segment the model thinks
