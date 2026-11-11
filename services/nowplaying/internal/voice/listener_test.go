@@ -331,6 +331,7 @@ func TestSongsArtistsAndNamesAloneAreAskedFor(t *testing.T) {
 	lib := inventory(t, owned())
 	for said, want := range map[string]contract.Command{
 		"Play some Van Halen.":                        {Command: contract.PlayArtist, Artist: "Van Halen", Songs: 30},
+		"DJ Ed. Clay some Van Halen.":                 {Command: contract.PlayArtist, Artist: "Van Halen", Songs: 30},
 		"Shuffle Arrowsmith.":                         {Command: contract.PlayArtist, Artist: "Aerosmith", Songs: 27},
 		"Play the song Come Together by the Beatles.": {Command: contract.PlayTrack, Artist: "The Beatles", Title: "Come Together"},
 		// Not an album of theirs the owner has: a song of theirs.

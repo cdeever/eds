@@ -264,6 +264,11 @@ func ParseOwned(words string) (Request, error) {
 	if _, err := byPlace(text); err == nil {
 		return Request{}, ErrNotARequest // by place, Parse's rules hold
 	}
+	// "Clay some Van Halen" (2026-11-11): an artist, or a song by one, the
+	// caller plays only if the library has the artist.
+	if r, err := songOrArtist(text); err == nil {
+		return r, nil
+	}
 	if m := named.FindStringSubmatch(text); m != nil {
 		return request(m[2], m[1], 0)
 	}

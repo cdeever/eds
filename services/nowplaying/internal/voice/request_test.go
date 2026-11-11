@@ -106,6 +106,9 @@ func TestAnAlbumByNameAfterAMisheardPlayIsOneIfOwned(t *testing.T) {
 		"Jarvis, Clay Revolver by the Beatles.":                {Artist: "the Beatles", Album: "Revolver"},
 		"Jarvis, placed sticky fingers by the Rolling Stones.": {Artist: "the Rolling Stones", Album: "sticky fingers"},
 		"Jarvis played sticky fingers by the Rolling Stones.":  {Artist: "the Rolling Stones", Album: "sticky fingers"},
+		// As scribe wrote it, 2026-11-11.
+		"DJ Ed. Clay some Van Halen.":     {Kind: AnArtist, Artist: "Van Halen"},
+		"Clay the song Jump by Van Halen": {Kind: ASong, Artist: "Van Halen", Title: "Jump"},
 	} {
 		if _, err := Parse(words); err == nil {
 			t.Errorf("Parse(%q) took it without the library", words)
