@@ -123,3 +123,4 @@ and incidents under the same names. To keep the two apart:
 | [0052](0052-each-pis-itunes-pairing-is-kept-encrypted-in-the-repository/) | 2026-10-28 | Each Pi's iTunes pairing is kept, encrypted with sops, and a card written again starts paired | {{< adr-status "Accepted" >}} |
 | [0053](0053-a-home-pi-opens-a-maintenance-leg-for-the-van/) | 2026-10-28 | A home Pi opens a Wi-Fi leg onto the home LAN for the van, for a while, when asked from inside; SSH only | {{< adr-status "Proposed" >}} |
 | [0054](0054-the-ears-wake-to-hey-dj-ed-trained-here/) | 2026-11-11 | The ears wake to "Hey DJ Ed", a model EdS trains itself on the owner's Mac | {{< adr-status "Proposed" >}} |
+| [0055](0055-a-request-can-name-a-song-an-artist-or-an-album-alone/) | 2026-11-11 | A request can name a song by its artist, an artist to shuffle, or an album without its artist | {{< adr-status "Proposed" >}} |
