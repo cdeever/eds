@@ -29,6 +29,7 @@ builds the monorepo as a whole; work inside one project directory at a time.
 | `firmware/power-beacon` | C / ESP-IDF | `make test` (host), `make build flash` (device) |
 | `firmware/ears` | C / ESP-IDF (ESP32-S3) | `make test` (host), `make build flash provision` (device) |
 | `tools/ota` | Go 1.25 | `make check test-integration`; run by `make ota` in a firmware |
+| `tools/wakeword` | Python 3.12 / microWakeWord | `make venv`, then `make listen generate fetch features config train manifest WORK=…` |
 | `infra/deevnet-tenant-eds` | Terraform | `make paths init plan apply` |
 | `images` | Ansible / shell | `make -C deploy/relay image fetch`, `make -C deploy/backend image fetch` (build on builder) |
 
@@ -256,6 +257,13 @@ held, it keeps what is said as 16 kHz mono and sends it as one WAV to
 woken; keep it that way, since the docs promise it. `app/audio/pcm.c` is the
 host-tested half. Its credentials, WiFi, event log and provisioning are
 copies of the screen's. `flash` and `provision` check its MAC.
+
+**"Hey DJ Ed" is trained here, not downloaded** (ADR-0054, `Proposed`):
+`tools/wakeword` is microWakeWord's notebook as make targets, on the Mac,
+with its work folder (~35 GB) outside the repository. Only the trained
+`.tflite` and its manifest are committed, marked for personal use; the
+clips, the downloaded sets, the owner's music and voice never are. The
+firmware keeps "Hey Jarvis" until a model is switched to, by a change record.
 
 ### Updates over the air (`tools/ota`, all three firmwares)
 
