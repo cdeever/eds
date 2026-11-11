@@ -69,8 +69,11 @@ kind inside `play_album` would be played as an album.
   a random place among `songs`, and each time a song of theirs follows,
   the player's next or Next pressed, jumps to another, none twice, until
   all have played. A place past the end of their songs (the library
-  counted more than the player files under the name) is dropped with
-  every place after it. Another artist's song, nothing playing, or
+  counted more than the player files under the name, 73 for Van Halen)
+  is refused by iTunes with a 500, and is dropped with every place after
+  it. A jump has landed on a song of theirs other than the one playing
+  before it: iTunes names the old one for a moment after, and taking that
+  for the landing ran through two albums a song a second (2026-11-11). Another artist's song, nothing playing, or
   anything else chosen ends it. Without a count, the artist plays in order.
 - **Every command that chooses what plays turns the player's shuffle
   off**, so an album after an artist is in its order.

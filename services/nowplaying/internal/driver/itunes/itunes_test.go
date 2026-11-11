@@ -48,8 +48,17 @@ type script struct {
 	shuffles []bool // each shuffle set, kept apart from the presses
 
 	// artistSongs, when set, is how many songs each artist has: a place
-	// among them plays its song ("Song 3"), one past them plays nothing.
+	// among them plays its song ("Song 3"), one past them plays nothing,
+	// or is refused with a 500 when refusePast is set, as iTunes does.
+	// Each is the song it plays; Now says the last.
 	artistSongs map[string]int
+	refusePast  bool
+	revision    uint32 // the revisions PlayArtist hands out
+	// stale, when set, is how many times Now says the song that was
+	// playing after a place is asked for, as iTunes does for a moment.
+	stale   int
+	staling int
+	was     *dacp.Status
 }
 
 // PlayTrack and PlayArtist press as PlayAlbum does; what plays after is
@@ -58,12 +67,20 @@ func (s *script) PlayTrack(_ context.Context, artist, title string) error {
 	return s.press("track=" + artist + "/" + title)
 }
 func (s *script) PlayArtist(_ context.Context, artist string, index int) error {
+	if s.artistSongs != nil && s.refusePast && index >= s.artistSongs[artist] {
+		s.press(fmt.Sprintf("artist=%s@%d", artist, index))
+		return &dacp.StatusError{Code: 500, Status: "500 Internal Server Error"}
+	}
 	if s.artistSongs != nil {
 		s.mu.Lock()
-		s.next++
-		played := dacp.Status{Revision: uint32(100 + s.next)}
+		if s.after != nil {
+			old := *s.after
+			s.was, s.staling = &old, s.stale
+		}
+		s.revision++
+		played := dacp.Status{Revision: 100 + s.revision}
 		if index < s.artistSongs[artist] {
-			played = st(uint32(100+s.next), true, false, artist, fmt.Sprintf("Song %d", index), "Album", abba, 200000)
+			played = st(100+s.revision, true, false, artist, fmt.Sprintf("Song %d", index), "Album", abba, 200000)
 		}
 		s.after = &played
 		s.mu.Unlock()
@@ -149,6 +166,10 @@ func (s *script) hand(ctx context.Context) (dacp.Status, error) {
 func (s *script) Now(ctx context.Context) (dacp.Status, error) {
 	s.mu.Lock()
 	after := s.after
+	if s.staling > 0 && s.was != nil {
+		s.staling--
+		after = s.was
+	}
 	s.mu.Unlock()
 	if after != nil {
 		return *after, nil
@@ -989,5 +1010,64 @@ func TestAnArtistTheLibraryHasNotGotIsNotFound(t *testing.T) {
 	err := d.Command(context.Background(), contract.Command{V: contract.Version, Command: contract.PlayArtist, Artist: "Nobody"})
 	if !errors.Is(err, ErrArtistNotFound) {
 		t.Errorf("err = %v", err)
+	}
+}
+
+// iTunes refuses a place past the artist's songs with a 500: the place is
+// dropped, with those after it, and the next tried; and a moment of the
+// song that was playing is not the landing.
+func TestARefusedPlaceIsDroppedAndTheOldSongIsNotALanding(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)},
+		artistSongs: map[string]int{"Van Halen": 3}, refusePast: true}
+	d := live(t, p)
+	d.AlbumCheck = 30 * time.Millisecond
+	d.Shuffle = func(n int) []int { return []int{70, 1, 50, 2, 0} }
+	p.playsAfter(st(5, true, false, "Van Halen", "Song 0", "Album", abba, 200000))
+	ctx := context.Background()
+
+	if err := d.Command(ctx, artistCommand("Van Halen", 73)); err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprint(p.presses()); got != "[artist=Van Halen@70 artist=Van Halen@1]" {
+		t.Errorf("pressed %v", got)
+	}
+	d.mu.Lock()
+	at, deck := d.shuffling.at, fmt.Sprint(d.shuffling.deck)
+	d.mu.Unlock()
+	if at != songKey(st(0, true, false, "Van Halen", "Song 1", "Album", 0, 0)) {
+		t.Errorf("landed on %q", at)
+	}
+	if deck != "[50 2 0]" && deck != "[2 0]" {
+		t.Errorf("left to play %s", deck)
+	}
+}
+
+// For a moment after a jump the player still says the song that was
+// playing, by the same artist: that is not the landing, or every song
+// after it would look like the next (2026-11-11, a song a second).
+func TestTheSongBeforeAJumpIsNotItsLanding(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)},
+		artistSongs: map[string]int{"The Rolling Stones": 6}, stale: 2}
+	d := live(t, p)
+	d.AlbumCheck = 60 * time.Millisecond
+	d.Shuffle = func(n int) []int { return []int{4, 1, 5, 0, 2, 3} }
+	p.playsAfter(st(5, true, false, "The Rolling Stones", "Song 3", "Album", abba, 200000))
+	ctx := context.Background()
+
+	if err := d.Command(ctx, artistCommand("The Rolling Stones", 6)); err != nil {
+		t.Fatal(err)
+	}
+	settled(t, d)
+	d.mu.Lock()
+	at := d.shuffling.at
+	d.mu.Unlock()
+	if want := songKey(st(0, true, false, "The Rolling Stones", "Song 4", "Album", 0, 0)); at != want {
+		t.Fatalf("landed on %q, want Song 4", at)
+	}
+	// The landing said again by the follow loop is not a cue.
+	d.onSong(ctx, st(6, true, false, "The Rolling Stones", "Song 4", "Album", abba, 200000))
+	time.Sleep(100 * time.Millisecond)
+	if got := len(p.presses()); got != 1 {
+		t.Errorf("pressed %v", p.presses())
 	}
 }

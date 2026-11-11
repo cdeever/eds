@@ -227,8 +227,21 @@ func (d *Driver) playArtist(ctx context.Context, artist string, songs int) error
 // jump plays the next of a shuffle's songs. A place past the end of the
 // artist's songs - the library counted more than the player has under
 // their name - is not theirs, and nor is any after it: those are dropped
-// and the next tried.
+// and the next tried. iTunes for Windows answers such a place with a 500
+// (2026-11-11, 73 counted for Van Halen).
+//
+// It has landed on a song of theirs that is not the one playing before the
+// jump: for a moment after it is asked, the player still says that one,
+// and taking it for the landing made each song that followed look like
+// the next (2026-11-11, a song a second through two albums).
 func (d *Driver) jump(ctx context.Context, s *artistShuffle) error {
+	// What was playing, asked briefly: a player slow to say is no reason
+	// not to jump, only to take the first song of theirs heard for the
+	// landing.
+	ask, cancel := context.WithTimeout(ctx, time.Second)
+	before, _ := d.Player.Now(ask)
+	cancel()
+	from := songKey(before)
 	for {
 		d.mu.Lock()
 		if d.shuffling != s {
@@ -244,14 +257,24 @@ func (d *Driver) jump(ctx context.Context, s *artistShuffle) error {
 		s.deck, s.at = s.deck[1:], ""
 		d.mu.Unlock()
 
-		if err := d.Player.PlayArtist(ctx, s.artist, i); err != nil {
+		err := d.Player.PlayArtist(ctx, s.artist, i)
+		var refused *dacp.StatusError
+		past := errors.As(err, &refused) && refused.Code >= 500
+		if err != nil && !past {
 			d.endShuffle(s)
 			return err
 		}
-		now, ok, err := d.until(ctx, func(now dacp.Status) bool { return strings.EqualFold(now.Artist, s.artist) })
-		if err != nil {
-			d.endShuffle(s)
-			return err
+		var now dacp.Status
+		ok := false
+		if !past {
+			theirs := func(now dacp.Status) bool { return strings.EqualFold(now.Artist, s.artist) }
+			now, ok, err = d.until(ctx, func(now dacp.Status) bool { return theirs(now) && songKey(now) != from })
+			if err != nil {
+				d.endShuffle(s)
+				return err
+			}
+			// The place was the very song playing before: it is still theirs.
+			ok = ok || (theirs(now) && songKey(now) == from)
 		}
 		if ok {
 			d.mu.Lock()
