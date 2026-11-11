@@ -113,7 +113,7 @@ manifest: need-work
 install: need-work
 	@# install, not cp: files on exFAT come as rwx------, with macOS attributes.
 	install -m 644 "$(WORK)/out/hey_dj_ed.tflite" "$(WORK)/out/hey_dj_ed.json" $(MODELS)/
-	@echo "Copied to $(MODELS). The firmware still embeds hey_jarvis until it is switched."
+	@echo "Installed in $(MODELS); a build embeds it, and its cutoff goes in Kconfig."
 
 # exFAT and other foreign disks collect macOS's ._ files beside every file
 # written; the training's file scans would read them as audio.

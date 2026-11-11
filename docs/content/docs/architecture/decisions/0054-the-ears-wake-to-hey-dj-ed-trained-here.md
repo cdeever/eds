@@ -74,8 +74,8 @@ and only the trained model and the tool are kept in the repository.**
   non-commercial use; the models README says so beside it. The repository
   is public; the owner chose to commit it marked so.
 
-The firmware keeps "Hey Jarvis" until a model is good enough to switch to.
-That switch is a change record: the model embedded, Kconfig's cutoff from
+The firmware keeps "Hey Jarvis" until a model is switched to, by a change
+record (the first, CHG-0049): the model embedded, Kconfig's cutoff from
 the manifest, scribe's prompt and voiced's grammar told "DJ Ed".
 
 ## Consequences

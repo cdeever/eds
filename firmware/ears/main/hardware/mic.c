@@ -26,7 +26,7 @@ static const char *TAG = "mic";
 #define MIN_SAMPLES ((size_t)EA_PCM_RATE * EA_REQUEST_MIN_MS / 1000)
 
 // What was heard just before the wake word was decided on, kept with the
-// request: the model decides a moment after "Jarvis" ends, and a "play" said
+// request: the model decides a moment after the wake word ends, and a "play" said
 // straight after it lost its P without this (2026-10-24, "Clay Aerosmith's
 // first album"), and at 350 ms still did ("Tae Van Halen's first album").
 // It brings the end of the wake word with it; voiced allows a word or two

@@ -34,7 +34,7 @@ idf_component_register(
     SRCS ${srcs}
     INCLUDE_DIRS ${includes}
     EMBED_TXTFILES ${embeds}
-    EMBED_FILES "models/hey_jarvis.tflite"
+    EMBED_FILES "models/hey_dj_ed.tflite"
     REQUIRES nvs_flash esp_wifi esp_event esp_timer esp_app_format app_update
              esp_driver_i2s esp_driver_gpio esp_driver_usb_serial_jtag mqtt
              esp-tflite-micro esp-micro-speech-features

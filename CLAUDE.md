@@ -250,8 +250,8 @@ make build flash provision monitor   # PORT defaults to /dev/cu.usbmodem2101
 
 The reSpeaker Lite's XIAO ESP32-S3 (ADR-0043). The XMOS chip beside it
 sends one cleaned-up voice over I2S and drives the clock; the firmware
-measures the rate and prints both channels' levels. Woken by "Hey Jarvis"
-(microWakeWord, on the device; CHG-0036), or while the XIAO's BOOT button is
+measures the rate and prints both channels' levels. Woken by "Hey DJ Ed"
+(microWakeWord, on the device; CHG-0049), or while the XIAO's BOOT button is
 held, it keeps what is said as 16 kHz mono and sends it as one WAV to
 `voice/respeaker-01/utterance` (ADR-0042). Nothing leaves it before it is
 woken; keep it that way, since the docs promise it. `app/audio/pcm.c` is the
@@ -262,8 +262,8 @@ copies of the screen's. `flash` and `provision` check its MAC.
 `tools/wakeword` is microWakeWord's notebook as make targets, on the Mac,
 with its work folder (~35 GB) outside the repository. Only the trained
 `.tflite` and its manifest are committed, marked for personal use; the
-clips, the downloaded sets, the owner's music and voice never are. The
-firmware keeps "Hey Jarvis" until a model is switched to, by a change record.
+clips, the downloaded sets, the owner's music and voice never are. A new
+model reaches the ears by `make install`, a build and a change record.
 
 ### Updates over the air (`tools/ota`, all three firmwares)
 
