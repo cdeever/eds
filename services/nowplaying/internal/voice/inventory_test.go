@@ -67,6 +67,13 @@ func fakeInventory(ix *library.Index, version int) http.Handler {
 		}
 		answer(w, 200, map[string]any{"title": nil, "album": album(a.Owned(titles...))})
 	})
+	mux.HandleFunc("GET /v1/albums/find", func(w http.ResponseWriter, r *http.Request) {
+		albums := []any{}
+		for _, m := range ix.FindAlbums(r.URL.Query().Get("title")) {
+			albums = append(albums, map[string]any{"artist": map[string]any{"id": "ar_" + m.Artist.Name, "name": m.Artist.Name}, "album": album(m.Album), "score": m.Score})
+		}
+		answer(w, 200, map[string]any{"title": r.URL.Query().Get("title"), "albums": albums})
+	})
 	mux.HandleFunc("GET /v1/artists/{id}/albums/by-year", func(w http.ResponseWriter, r *http.Request) {
 		a := byID(r)
 		if a == nil {

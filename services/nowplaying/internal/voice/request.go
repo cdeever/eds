@@ -11,8 +11,12 @@
 //	play Abbey Road from the Beatles      the same
 //	play the Beatles album Abbey Road     the same, the artist first
 //	play the Beatles, Abbey Road          the same, with a comma or an 's
+//	play the song Come Together by the Beatles   a song (ADR-0055)
+//	play some Van Halen                   an artist, shuffled (ADR-0055)
+//	shuffle Van Halen                     the same
 //
 // "Put on", "let's hear", "I want to hear" and a few more are "play".
+// "Play X" alone, an artist or an album, is ParseName's, with the library.
 package voice
 
 import (
@@ -23,15 +27,35 @@ import (
 )
 
 // Request is an album asked for: by its name, or by its place among the
-// artist's albums (ADR-0041).
+// artist's albums (ADR-0041); or a song, an artist, or a name that is one
+// of the two (ADR-0055), as Kind says.
 type Request struct {
+	Kind   Kind
 	Artist string
 	// Album is the album's name; empty when Nth says which.
 	Album string
 	// Nth counts the artist's studio albums from 1, or back from the newest
 	// at -1. Zero when the album is named.
 	Nth int
+	// Title is the song's title, or the name said alone.
+	Title string
 }
+
+// Kind is what a request asks for.
+type Kind int
+
+const (
+	// AnAlbum by its name or its place. An album by its name the library
+	// has not got, by an artist it has, may be a song of theirs instead.
+	AnAlbum Kind = iota
+	// ASong by its artist and title, said as one: "the song X by Y".
+	ASong
+	// AnArtist, all their songs, shuffled.
+	AnArtist
+	// AName said alone: the artist, if the library has one by it, else the
+	// album, whoever it is by.
+	AName
+)
 
 // ErrNotARequest means the words are not one this grammar reads.
 var ErrNotARequest = errors.New("voice: not a request for an album")
@@ -57,10 +81,28 @@ var (
 	saidFirst  = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|’|')\s+(?:album\s+)?(.+?)(?:\s+(?:album|record|lp))?$`)
 )
 
+var (
+	// "play the song Come Together by the Beatles", "the track X from Y"
+	songBy = regexp.MustCompile(`(?i)^play\s+(?:the\s+)?(?:song|track|tune)\s+(.+?)\s+(?:by|from)\s+(.+)$`)
+	// "play the Beatles song Come Together", "the Beatles' song X"
+	songOf = regexp.MustCompile(`(?i)^play\s+(.+?)(?:'s|’s|’|')?\s+(?:song|track|tune)\s+(.+)$`)
+	// "play some Van Halen", "play songs by Van Halen", "anything by X"
+	// "Music from" is too often an era or a place ("music from the 80s"):
+	// music is an artist's only with "by".
+	someOf = regexp.MustCompile(`(?i)^play\s+(?:(?:some|any)(?:thing)?\s+(?:songs?\s+|tracks?\s+)?(?:by|from)\s+|(?:some\s+)?(?:songs|tracks|stuff)\s+(?:by|from)\s+|(?:some\s+)?music\s+by\s+|some\s+)(.+)$`)
+	// "shuffle Van Halen", "play Van Halen shuffled", "shuffle songs by X"
+	shuffled = regexp.MustCompile(`(?i)^(?:shuffle\s+(?:(?:songs|music|tracks|everything)\s+(?:by|from)\s+)?(.+)|play\s+(.+?)\s+(?:shuffled|on\s+shuffle))$`)
+	// "play X", nothing else: a name alone
+	alone = regexp.MustCompile(`(?i)^play\s+(.+)$`)
+	// what a name alone never has in it: the shape of another request, or
+	// of a sentence
+	notAlone = regexp.MustCompile(`(?i)(?:\s(?:by|from|album|record|lp|song|track)(?:\s|$)|'s\s|’s\s|,)`)
+)
+
 // vague is what stands where an album's name would, but is not one: "play
 // something from Pink Floyd", "play music from the 80s". Read as names,
 // they would be asked for, missed, and the music stopped (ADR-0045).
-var vague = regexp.MustCompile(`(?i)^(?:something|anything|some(?:thing)?\s+.*|music|songs?|stuff|tracks?|hits|the\s+hits|a\s+song|an?\s+album|the\s+album|albums?|records?|it|them|that|this)$`)
+var vague = regexp.MustCompile(`(?i)^(?:something|anything|some(?:thing)?\s+.*|music|songs?|stuff|tracks?|hits|the\s+hits|(?:a|the)\s+(?:song|track|tune|record)|an?\s+album|the\s+album|albums?|records?|it|them|that|this)$`)
 
 // place is a word that says an album's place, known or not: "Van Halen's
 // eleventh album" is a place this grammar does not count, never an album
@@ -95,6 +137,9 @@ var ordinals = map[string]int{
 // album" asks for "Van Halens"): the grammar cannot tell it from a name that
 // ends in one, such as Talking Heads, and whoever looks the artist up can.
 func Parse(words string) (Request, error) {
+	if r, err := parseShuffle(clean(words)); err == nil {
+		return r, nil
+	}
 	text, ok := fromPlay(clean(words))
 	if !ok {
 		// "play" misheard is taken for "play" only where the rest is an
@@ -112,7 +157,74 @@ func Parse(words string) (Request, error) {
 	if r, err := byPlace(text); err == nil {
 		return r, nil
 	}
+	if r, err := songOrArtist(text); err == nil {
+		return r, nil
+	}
 	return byName(text)
+}
+
+// songOrArtist reads a song said as one, or an artist said as one.
+func songOrArtist(text string) (Request, error) {
+	if m := songBy.FindStringSubmatch(text); m != nil {
+		return song(m[2], m[1])
+	}
+	if m := songOf.FindStringSubmatch(text); m != nil {
+		return song(m[1], m[2])
+	}
+	if m := someOf.FindStringSubmatch(text); m != nil {
+		return artistAlone(m[1])
+	}
+	return Request{}, ErrNotARequest
+}
+
+// parseShuffle reads "shuffle X", which does not begin with a way of
+// asking for something to play.
+func parseShuffle(text string) (Request, error) {
+	if m := shuffled.FindStringSubmatch(text); m != nil {
+		return artistAlone(m[1] + m[2])
+	}
+	return Request{}, ErrNotARequest
+}
+
+// ParseName reads "play X" said alone, which only the owner's library can
+// tell an artist from an album in (ADR-0055). The caller asks it only when
+// Parse has not read the words, and only with a library: without one,
+// nothing is guessed.
+func ParseName(words string) (Request, error) {
+	text, ok := fromPlay(clean(words))
+	if !ok {
+		return Request{}, ErrNotARequest
+	}
+	m := alone.FindStringSubmatch(text)
+	if m == nil {
+		return Request{}, ErrNotARequest
+	}
+	name := strings.TrimSpace(m[1])
+	if notAlone.MatchString(" "+name) || len(strings.Fields(name)) > 8 || unnamed(name) {
+		return Request{}, ErrNotARequest
+	}
+	return Request{Kind: AName, Title: name}, nil
+}
+
+func song(artist, title string) (Request, error) {
+	artist, title = strings.TrimSpace(artist), strings.TrimSpace(title)
+	if artist == "" || title == "" || unnamed(artist) || vague.MatchString(title) || joining.MatchString(title) {
+		return Request{}, ErrNotARequest
+	}
+	return Request{Kind: ASong, Artist: artist, Title: title}, nil
+}
+
+func artistAlone(artist string) (Request, error) {
+	artist = strings.TrimSpace(artist)
+	if artist == "" || unnamed(artist) || vague.MatchString(artist) {
+		return Request{}, ErrNotARequest
+	}
+	return Request{Kind: AnArtist, Artist: artist}, nil
+}
+
+// unnamed is whether words name nobody: an article, a pronoun, or a place.
+func unnamed(name string) bool {
+	return article.MatchString(name) || pronoun.MatchString(name) || place.MatchString(name) || inner.MatchString(name) || vague.MatchString(name)
 }
 
 // byName reads an album by its name, with its artist said after it or

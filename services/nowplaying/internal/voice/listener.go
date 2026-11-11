@@ -39,6 +39,7 @@ type Heard struct {
 	Understood bool   `json:"understood"`
 	Artist     string `json:"artist,omitempty"`
 	Album      string `json:"album,omitempty"`
+	Title      string `json:"title,omitempty"` // a song's (ADR-0055)
 	Reason     string `json:"reason,omitempty"`
 }
 
@@ -158,12 +159,30 @@ func (l *Listener) hear(ctx context.Context, device string, wav []byte) Heard {
 	if err != nil && owner != nil {
 		r, err = ParseOwned(text)
 	}
+	if err != nil && owner != nil {
+		r, err = ParseName(text)
+	}
 	if err != nil {
 		log.Info("not a request")
 		heard.Reason = "not a request for an album"
 		return heard
 	}
+	switch r.Kind {
+	case AnArtist:
+		return l.playArtist(ctx, log, owner, heard, r.Artist, started)
+	case ASong:
+		return l.playTrack(ctx, log, owner, heard, r.Artist, r.Title, started)
+	case AName:
+		return l.playName(ctx, log, owner, heard, r.Title, started)
+	}
 	artist, album, instead, err := Choose(ctx, l.Albums, owner, r)
+	if errors.Is(err, ErrNotOwned) && owner != nil && r.Album != "" {
+		// "Play X by Y": not an album of Y's the owner has, so perhaps a
+		// song of theirs (ADR-0055). Only for an artist the owner has.
+		if a, _, aerr := ownedArtist(ctx, l.Albums, owner, r.Artist); aerr == nil && a != nil {
+			return l.playTrack(ctx, log, owner, heard, a.Name, r.Album, started)
+		}
+	}
 	if err != nil && owner != nil && !errors.Is(err, ErrNotOwned) && ctx.Err() == nil {
 		// Asked, and not answered: the album is guessed at, as it is with no
 		// library at all, and that is said.
@@ -176,17 +195,118 @@ func (l *Listener) hear(ctx context.Context, device string, wav []byte) Heard {
 		return heard
 	}
 
-	c, err := contract.EncodeCommand(contract.Command{Command: contract.PlayAlbum, From: "voiced", Artist: artist, Album: album, Instead: instead})
-	if err == nil {
-		err = l.Publish(contract.CommandTopic(l.Prefix), c, false)
-	}
+	return l.playAlbum(log, heard, artist, album, instead, started)
+}
+
+// send asks for what was chosen to play.
+func (l *Listener) send(c contract.Command) error {
+	c.From = "voiced"
+	payload, err := contract.EncodeCommand(c)
 	if err != nil {
+		return err
+	}
+	return l.Publish(contract.CommandTopic(l.Prefix), payload, false)
+}
+
+func (l *Listener) playAlbum(log *slog.Logger, heard Heard, artist, album string, instead []string, started time.Time) Heard {
+	if err := l.send(contract.Command{Command: contract.PlayAlbum, Artist: artist, Album: album, Instead: instead}); err != nil {
 		log.Warn("could not ask for the album", "artist", artist, "album", album, "error", err)
 		heard.Reason = "the album could not be asked for"
 		return heard
 	}
 	log.Info("asked for an album", "artist", artist, "album", album, "total_ms", time.Since(started).Milliseconds())
 	heard.Understood, heard.Artist, heard.Album = true, artist, album
+	return heard
+}
+
+// artistFor is the owner's spelling of an artist heard, or the name as
+// heard with no library, or one that does not answer. ok is false when the
+// library answered and has nobody by that name.
+func (l *Listener) artistFor(ctx context.Context, log *slog.Logger, owner Owner, heard string) (string, bool) {
+	if owner == nil {
+		return heard, true
+	}
+	a, _, err := ownedArtist(ctx, l.Albums, owner, heard)
+	if err != nil {
+		log.Warn("the owner's music could not be asked; the artist is asked for as heard", "error", err)
+		return heard, true
+	}
+	if a == nil {
+		return "", false
+	}
+	return a.Name, true
+}
+
+// playArtist asks for all of an artist's songs, shuffled (ADR-0055).
+func (l *Listener) playArtist(ctx context.Context, log *slog.Logger, owner Owner, heard Heard, asked string, started time.Time) Heard {
+	artist, ok := l.artistFor(ctx, log, owner, asked)
+	if !ok {
+		log.Info("no such artist", "artist", asked)
+		heard.Reason = "no such artist: nothing by " + asked
+		return heard
+	}
+	if err := l.send(contract.Command{Command: contract.PlayArtist, Artist: artist}); err != nil {
+		log.Warn("could not ask for the artist", "artist", artist, "error", err)
+		heard.Reason = "the artist could not be asked for"
+		return heard
+	}
+	log.Info("asked for an artist", "artist", artist, "total_ms", time.Since(started).Milliseconds())
+	heard.Understood, heard.Artist = true, artist
+	return heard
+}
+
+// playTrack asks for a song by its artist and title (ADR-0055). The title
+// is as said: the library knows no songs yet, and the player is the check.
+func (l *Listener) playTrack(ctx context.Context, log *slog.Logger, owner Owner, heard Heard, asked, title string, started time.Time) Heard {
+	artist, ok := l.artistFor(ctx, log, owner, asked)
+	if !ok {
+		log.Info("no such artist", "artist", asked)
+		heard.Reason = "no such song: nothing by " + asked
+		return heard
+	}
+	if err := l.send(contract.Command{Command: contract.PlayTrack, Artist: artist, Title: title}); err != nil {
+		log.Warn("could not ask for the song", "artist", artist, "title", title, "error", err)
+		heard.Reason = "the song could not be asked for"
+		return heard
+	}
+	log.Info("asked for a song", "artist", artist, "title", title, "total_ms", time.Since(started).Milliseconds())
+	heard.Understood, heard.Artist, heard.Title = true, artist, title
+	return heard
+}
+
+// playName asks for a name said alone: the artist, if the owner has one by
+// it, else the album, if one artist has an album by it (ADR-0055). Two or
+// more are said back, so the request can be said again with one.
+func (l *Listener) playName(ctx context.Context, log *slog.Logger, owner Owner, heard Heard, name string, started time.Time) Heard {
+	a, _, err := owner.FindArtist(ctx, name)
+	if err != nil {
+		log.Warn("the owner's music could not be asked about a name alone", "name", name, "error", err)
+		heard.Reason = "the library could not be asked"
+		return heard
+	}
+	if a != nil {
+		return l.playArtist(ctx, log, owner, heard, a.Name, started)
+	}
+	albums, err := owner.FindAlbums(ctx, name)
+	if err != nil {
+		log.Warn("the owner's music could not be asked about a name alone", "name", name, "error", err)
+		heard.Reason = "the library could not be asked"
+		return heard
+	}
+	switch len(albums) {
+	case 0:
+		log.Info("no artist or album by that name", "name", name)
+		heard.Reason = "no artist or album called " + name
+		return heard
+	case 1:
+		return l.playAlbum(log, heard, albums[0].Artist.Name, albums[0].Title, nil, started)
+	}
+	var by []string
+	for _, al := range albums {
+		by = append(by, al.Artist.Name)
+	}
+	log.Info("an album more than one artist has", "name", name, "artists", by)
+	heard.Reason = name + " is by more than one: " + strings.Join(by, ", ")
 	return heard
 }
 

@@ -44,6 +44,23 @@ type script struct {
 	// what Now says plays after; one that is not leaves the player stopped,
 	// as iTunes was left on 2026-10-24.
 	owned map[string]bool
+
+	shuffles []bool // each shuffle set, kept apart from the presses
+}
+
+// PlayTrack and PlayArtist press as PlayAlbum does; what plays after is
+// whatever `after` says.
+func (s *script) PlayTrack(_ context.Context, artist, title string) error {
+	return s.press("track=" + artist + "/" + title)
+}
+func (s *script) PlayArtist(_ context.Context, artist string) error {
+	return s.press("artist=" + artist)
+}
+func (s *script) SetShuffle(_ context.Context, on bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.shuffles = append(s.shuffles, on)
+	return nil
 }
 
 func (s *script) PlayAlbum(_ context.Context, artist, album string) error {
@@ -433,6 +450,9 @@ func (q *quietPlayer) SetVolume(context.Context, int) error         { return nil
 func (q *quietPlayer) PlayAlbum(context.Context, string, string) error {
 	return nil
 }
+func (q *quietPlayer) PlayTrack(context.Context, string, string) error { return nil }
+func (q *quietPlayer) PlayArtist(context.Context, string) error        { return nil }
+func (q *quietPlayer) SetShuffle(context.Context, bool) error          { return nil }
 
 // --- commands (ADR-0020) -----------------------------------------------------
 
@@ -753,5 +773,88 @@ func TestATitleIsTheOneAskedForOrItWithANote(t *testing.T) {
 		if begins(title, asked) {
 			t.Errorf("%q was taken for %q", title, asked)
 		}
+	}
+}
+
+// --- play_track and play_artist (ADR-0055) -----------------------------------
+
+func (s *script) playsAfter(st dacp.Status) {
+	s.mu.Lock()
+	s.after = &st
+	s.mu.Unlock()
+}
+
+func (s *script) shuffled() []bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]bool(nil), s.shuffles...)
+}
+
+// A song is asked for by its artist and title, with shuffle off, and is
+// the song asked for if what plays has its title, an edition's note after
+// it or not.
+func TestASongIsAskedForAndThenSeenPlaying(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	p.playsAfter(st(2, true, false, "The Beatles", "Come Together - Remastered 2009", "Abbey Road", abba, 259000))
+
+	c := contract.Command{V: contract.Version, Command: contract.PlayTrack, Artist: "The Beatles", Title: "Come Together"}
+	if err := d.Command(context.Background(), c); err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprint(p.presses()); got != "[track=The Beatles/Come Together]" {
+		t.Errorf("pressed %v", got)
+	}
+	if got := fmt.Sprint(p.shuffled()); got != "[false]" {
+		t.Errorf("shuffle %v", got)
+	}
+}
+
+// More of a title is not a note: "Something" is not "Something in the Way".
+func TestASongThatIsNotTheOneAskedIsNotFound(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	p.playsAfter(st(2, true, false, "Nirvana", "Something in the Way", "Nevermind", abba, 232000))
+
+	c := contract.Command{V: contract.Version, Command: contract.PlayTrack, Artist: "Nirvana", Title: "Something"}
+	if err := d.Command(context.Background(), c); !errors.Is(err, ErrTrackNotFound) {
+		t.Errorf("err = %v", err)
+	}
+}
+
+// An artist is played shuffled; an album after it is played with shuffle
+// off, in its order.
+func TestAnArtistIsShuffledAndAnAlbumAfterItIsNot(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	p.playsAfter(st(2, true, false, "Van Halen", "Panama", "1984", abba, 211000))
+
+	if err := d.Command(context.Background(), contract.Command{V: contract.Version, Command: contract.PlayArtist, Artist: "van halen"}); err != nil {
+		t.Fatal(err)
+	}
+	p.playsAfter(st(3, true, false, "Van Halen", "Runnin' With The Devil", "Van Halen", abba, 215000))
+	if err := d.Command(context.Background(), album("Van Halen", "Van Halen")); err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprint(p.presses()); got != "[artist=van halen album=Van Halen/Van Halen]" {
+		t.Errorf("pressed %v", got)
+	}
+	if got := fmt.Sprint(p.shuffled()); got != "[true false]" {
+		t.Errorf("shuffle %v", got)
+	}
+}
+
+func TestAnArtistTheLibraryHasNotGotIsNotFound(t *testing.T) {
+	p := &script{statuses: []dacp.Status{st(1, false, false, "", "", "", 0, 0)}}
+	d := live(t, p)
+	d.AlbumCheck = time.Millisecond
+	p.playsAfter(dacp.Status{Revision: 2})
+
+	err := d.Command(context.Background(), contract.Command{V: contract.Version, Command: contract.PlayArtist, Artist: "Nobody"})
+	if !errors.Is(err, ErrArtistNotFound) {
+		t.Errorf("err = %v", err)
 	}
 }

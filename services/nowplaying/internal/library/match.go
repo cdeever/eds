@@ -57,6 +57,32 @@ func artistScore(want, name string) float64 {
 	return s
 }
 
+// AlbumMatch is an album found by its title alone, and whose it is.
+type AlbumMatch struct {
+	Artist *Artist
+	Album  *Album
+	Score  float64
+}
+
+// FindAlbums are the albums near enough the title, whoever they are by:
+// each artist's nearest, nearest first, then by artist (ADR-0055).
+func (ix *Index) FindAlbums(title string) []AlbumMatch {
+	var out []AlbumMatch
+	for i := range ix.Artists {
+		a := &ix.Artists[i]
+		if al, score := a.FindAlbum(title); al != nil {
+			out = append(out, AlbumMatch{Artist: a, Album: al, Score: score})
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Score != out[j].Score {
+			return out[i].Score > out[j].Score
+		}
+		return out[i].Artist.Name < out[j].Artist.Name
+	})
+	return out
+}
+
 // FindAlbum is the artist's album nearest the title asked for, and how near,
 // or nil when none is near enough.
 func (a *Artist) FindAlbum(asked string) (*Album, float64) {

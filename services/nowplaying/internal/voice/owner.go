@@ -23,6 +23,16 @@ type Owner interface {
 	// ByYear are the titles of the artist's own albums, earliest first,
 	// without compilations or what is named as one.
 	ByYear(ctx context.Context, a *OwnedArtist) ([]string, error)
+	// FindAlbums are the albums near enough a title, whoever they are by,
+	// nearest first: for an album asked for without its artist (ADR-0055).
+	FindAlbums(ctx context.Context, title string) ([]OwnedAlbum, error)
+}
+
+// OwnedAlbum is an album the owner has, by its artist, as the player will
+// match it.
+type OwnedAlbum struct {
+	Artist OwnedArtist
+	Title  string
 }
 
 // OwnedArtist is an artist the owner has albums by.
@@ -92,6 +102,14 @@ func (o indexOwner) ByYear(_ context.Context, a *OwnedArtist) ([]string, error) 
 	var out []string
 	for _, al := range o.artist(a).ByYear() {
 		out = append(out, al.Title)
+	}
+	return out, nil
+}
+
+func (o indexOwner) FindAlbums(_ context.Context, title string) ([]OwnedAlbum, error) {
+	var out []OwnedAlbum
+	for _, m := range o.ix.FindAlbums(title) {
+		out = append(out, OwnedAlbum{Artist: OwnedArtist{ID: m.Artist.Name, Name: m.Artist.Name}, Title: m.Album.Title})
 	}
 	return out, nil
 }

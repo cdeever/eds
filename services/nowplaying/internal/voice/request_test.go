@@ -170,11 +170,12 @@ func TestMoreWaysOfAsking(t *testing.T) {
 // What the new ways would read wrongly, were it not for their guards.
 func TestMoreWaysOfAskingGuessNothing(t *testing.T) {
 	for _, words := range []string{
-		"Play something from Pink Floyd.",
 		"Play music from the 80s.",
-		"Play some songs from the Beatles.",
-		"Play the album The Wall.", // no artist: not yet (ADR-0055)
-		"Play the Beatles.",        // an artist alone: not yet (ADR-0055)
+		"Play the Beatles.",        // a name alone is ParseName's, with a library
+		"Play the album The Wall.", // the same
+		"Play some music.",
+		"Shuffle.",
+		"Play the song by the Beatles.",
 		"Put on something good.",
 		"I don't want to hear Rocks by Aerosmith.",
 		"Don't put on Abbey Road by the Beatles.",
@@ -186,6 +187,61 @@ func TestMoreWaysOfAskingGuessNothing(t *testing.T) {
 	} {
 		if got, err := Parse(words); !errors.Is(err, ErrNotARequest) {
 			t.Errorf("Parse(%q) = %+v, %v; want not a request", words, got, err)
+		}
+	}
+}
+
+// A song said as one, and an artist said as one (ADR-0055).
+func TestASongOrAnArtistSaidAsOne(t *testing.T) {
+	for words, want := range map[string]Request{
+		"Play the song Come Together by the Beatles.":   {Kind: ASong, Artist: "the Beatles", Title: "Come Together"},
+		"Hey DJ Ed, play the track Jump from Van Halen": {Kind: ASong, Artist: "Van Halen", Title: "Jump"},
+		"Play the Beatles song Come Together":           {Kind: ASong, Artist: "the Beatles", Title: "Come Together"},
+		"Put on Van Halen's song Panama.":               {Kind: ASong, Artist: "Van Halen", Title: "Panama"},
+
+		"Play some Van Halen.":               {Kind: AnArtist, Artist: "Van Halen"},
+		"Play something from Pink Floyd.":    {Kind: AnArtist, Artist: "Pink Floyd"},
+		"Play some songs from the Beatles.":  {Kind: AnArtist, Artist: "the Beatles"},
+		"Play anything by Aerosmith":         {Kind: AnArtist, Artist: "Aerosmith"},
+		"Play songs by Genesis.":             {Kind: AnArtist, Artist: "Genesis"},
+		"Play some music by Rush.":           {Kind: AnArtist, Artist: "Rush"},
+		"Shuffle Van Halen.":                 {Kind: AnArtist, Artist: "Van Halen"},
+		"Hey DJ Ed, shuffle songs by Boston": {Kind: AnArtist, Artist: "Boston"},
+		"Play Van Halen shuffled.":           {Kind: AnArtist, Artist: "Van Halen"},
+		"Let's hear some Led Zeppelin.":      {Kind: AnArtist, Artist: "Led Zeppelin"},
+	} {
+		got, err := Parse(words)
+		if err != nil || got != want {
+			t.Errorf("Parse(%q) = %+v, %v; want %+v", words, got, err, want)
+		}
+	}
+}
+
+// A name alone is read only by ParseName, and only as a name.
+func TestANameAlone(t *testing.T) {
+	for words, want := range map[string]string{
+		"Play the Beatles.":           "the Beatles",
+		"Play Abbey Road.":            "Abbey Road",
+		"Hey DJ Ed, put on Van Halen": "Van Halen",
+		"I want to hear Kind of Blue": "Kind of Blue",
+	} {
+		got, err := ParseName(words)
+		if err != nil || got != (Request{Kind: AName, Title: want}) {
+			t.Errorf("ParseName(%q) = %+v, %v; want %q", words, got, err, want)
+		}
+	}
+	for _, words := range []string{
+		"Play something good.",
+		"Play it.",
+		"Play his first album.",
+		"Play the album.",
+		"Don't play Abbey Road.",
+		"Play Rocks by Aerosmith and then something else entirely please now.", // a sentence
+		"Thank you.",
+		"Play the Beatles, Abbey Road", // another request's shape
+	} {
+		if got, err := ParseName(words); err == nil {
+			t.Errorf("ParseName(%q) = %+v; want not a name", words, got)
 		}
 	}
 }

@@ -38,8 +38,12 @@ type Player interface {
 	Volume(ctx context.Context) (int, error)
 	SetVolume(ctx context.Context, volume int) error
 
-	// What the remote sends to play an album (ADR-0040).
+	// What the remote sends to play an album (ADR-0040), a song or an
+	// artist (ADR-0055), and its shuffle button.
 	PlayAlbum(ctx context.Context, artist, album string) error
+	PlayTrack(ctx context.Context, artist, title string) error
+	PlayArtist(ctx context.Context, artist string) error
+	SetShuffle(ctx context.Context, on bool) error
 }
 
 // Driver follows one player.
@@ -125,17 +129,100 @@ func (d *Driver) Command(ctx context.Context, c contract.Command) error {
 		d.forgetDuck()
 		return d.nudge(ctx, -VolumeStep)
 	case contract.PlayAlbum:
-		// The album starts at the volume the room had, not the ducked one.
-		if err := d.unduck(ctx); err != nil {
-			d.logger().Warn("the volume could not be brought back before an album", "error", err)
-		}
+		d.beforeChoosing(ctx, false)
 		return d.playFirstOwned(ctx, c.Artist, append([]string{c.Album}, c.Instead...))
+	case contract.PlayTrack:
+		d.beforeChoosing(ctx, false)
+		return d.playTrack(ctx, c.Artist, c.Title)
+	case contract.PlayArtist:
+		d.beforeChoosing(ctx, true)
+		return d.playArtist(ctx, c.Artist)
 	case contract.Duck:
 		return d.duck(ctx)
 	case contract.Unduck:
 		return d.unduck(ctx)
 	}
 	return fmt.Errorf("itunes: no such command %q", c.Command)
+}
+
+// beforeChoosing readies the player for what is chosen to play: at the
+// volume the room had, not the ducked one (ADR-0044), and shuffled only for
+// an artist, so that an album after one plays in order (ADR-0055). Neither
+// failing stops what was asked for.
+func (d *Driver) beforeChoosing(ctx context.Context, shuffle bool) {
+	if err := d.unduck(ctx); err != nil {
+		d.logger().Warn("the volume could not be brought back before choosing what plays", "error", err)
+	}
+	if err := d.Player.SetShuffle(ctx, shuffle); err != nil {
+		d.logger().Warn("shuffle could not be set", "on", shuffle, "error", err)
+	}
+}
+
+// ErrTrackNotFound and ErrArtistNotFound mean the player was asked for a
+// song or an artist and is not playing it (ADR-0055).
+var (
+	ErrTrackNotFound  = errors.New("itunes: the library played no song by that name")
+	ErrArtistNotFound = errors.New("itunes: the library played nothing by that artist")
+)
+
+// playTrack asks for the artist's songs whose title begins with the one
+// asked, and then whether what plays is it, with at most an edition's note
+// after its title ("Come Together - Remastered 2009").
+func (d *Driver) playTrack(ctx context.Context, artist, title string) error {
+	if err := d.Player.PlayTrack(ctx, artist, dacp.Stem(title)); err != nil {
+		return err
+	}
+	now, ok, err := d.until(ctx, func(now dacp.Status) bool {
+		return strings.EqualFold(now.Artist, artist) && begins(now.Title, title)
+	})
+	if err != nil || ok {
+		return err
+	}
+	return fmt.Errorf("%w: asked for %q by %q, playing %q by %q", ErrTrackNotFound, title, artist, now.Title, now.Artist)
+}
+
+// playArtist asks for all of the artist's songs, and then whether what
+// plays is theirs.
+func (d *Driver) playArtist(ctx context.Context, artist string) error {
+	if err := d.Player.PlayArtist(ctx, artist); err != nil {
+		return err
+	}
+	now, ok, err := d.until(ctx, func(now dacp.Status) bool { return strings.EqualFold(now.Artist, artist) })
+	if err != nil || ok {
+		return err
+	}
+	return fmt.Errorf("%w: asked for %q, playing %q", ErrArtistNotFound, artist, now.Artist)
+}
+
+// until asks the player what it plays until it is what was asked for or
+// the wait is out, and says what it last heard: as soon as it might have
+// started, and again until the wait is out. What is there is known in a few
+// tenths of a second, what is not only when the wait is.
+func (d *Driver) until(ctx context.Context, asked func(dacp.Status) bool) (dacp.Status, bool, error) {
+	wait := d.AlbumCheck
+	if wait == 0 {
+		wait = albumCheck
+	}
+	deadline := time.Now().Add(wait)
+	var now dacp.Status
+	for {
+		step := min(wait/6, time.Until(deadline))
+		select {
+		case <-ctx.Done():
+			return now, false, ctx.Err()
+		case <-time.After(max(step, 0)):
+		}
+		var err error
+		if now, err = d.Player.Now(ctx); err != nil {
+			return now, false, err
+		}
+		if asked(now) {
+			return now, true, nil
+		}
+		if !time.Now().Before(deadline) {
+			return now, false, nil
+		}
+	}
 }
 
 // playFirstOwned plays the first of the albums the library has (ADR-0045):
@@ -196,32 +283,11 @@ func (d *Driver) tryAlbum(ctx context.Context, artist, album, start string) erro
 	if err := d.Player.PlayAlbum(ctx, artist, start); err != nil {
 		return err
 	}
-	wait := d.AlbumCheck
-	if wait == 0 {
-		wait = albumCheck
-	}
-	// Asked as soon as it might have started, and again until the wait is
-	// out: an album that is there is known in a few tenths of a second, one
-	// that is not only when the wait is.
-	deadline := time.Now().Add(wait)
-	var now dacp.Status
-	for {
-		step := min(wait/6, time.Until(deadline))
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(max(step, 0)):
-		}
-		var err error
-		if now, err = d.Player.Now(ctx); err != nil {
-			return err
-		}
-		if strings.EqualFold(now.Artist, artist) && begins(now.Album, album) {
-			return nil
-		}
-		if !time.Now().Before(deadline) {
-			break
-		}
+	now, ok, err := d.until(ctx, func(now dacp.Status) bool {
+		return strings.EqualFold(now.Artist, artist) && begins(now.Album, album)
+	})
+	if err != nil || ok {
+		return err
 	}
 	return fmt.Errorf("%w: asked for %q by %q, playing %q by %q", ErrAlbumNotFound, album, artist, now.Album, now.Artist)
 }

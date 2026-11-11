@@ -425,3 +425,52 @@ func TestPlayAlbumMayNameAFewAlbumsInstead(t *testing.T) {
 		}
 	}
 }
+
+// --- play_track and play_artist (ADR-0055) ----------------------------------
+
+func TestPlayTrackAndPlayArtistWireForms(t *testing.T) {
+	for _, c := range []struct {
+		cmd  Command
+		want string
+	}{
+		{Command{Command: PlayTrack, From: "voiced", Artist: "The Beatles", Title: "Come Together"},
+			`{"v":1,"command":"play_track","from":"voiced","artist":"The Beatles","title":"Come Together"}`},
+		{Command{Command: PlayArtist, From: "voiced", Artist: "Van Halen"},
+			`{"v":1,"command":"play_artist","from":"voiced","artist":"Van Halen"}`},
+	} {
+		got, err := EncodeCommand(c.cmd)
+		if err != nil || string(got) != c.want {
+			t.Errorf("wire form changed:\n got %s, %v\nwant %s", got, err, c.want)
+		}
+		if back, err := DecodeCommand(got); err != nil || back.Artist != c.cmd.Artist || back.Title != c.cmd.Title {
+			t.Errorf("came back as %+v, %v", back, err)
+		}
+	}
+}
+
+// A song is played by its artist and its title, and an artist by name, or
+// not at all.
+func TestPlayTrackAndPlayArtistNeedTheirNames(t *testing.T) {
+	long := strings.Repeat("x", 201)
+	for name, payload := range map[string]string{
+		"a track with no artist": `{"v":1,"command":"play_track","title":"Come Together"}`,
+		"a track with no title":  `{"v":1,"command":"play_track","artist":"The Beatles"}`,
+		"a title too long":       `{"v":1,"command":"play_track","artist":"The Beatles","title":"` + long + `"}`,
+		"an artist, blank":       `{"v":1,"command":"play_artist","artist":" "}`,
+		"an artist too long":     `{"v":1,"command":"play_artist","artist":"` + long + `"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := DecodeCommand([]byte(payload)); err == nil {
+				t.Error("accepted")
+			}
+		})
+	}
+	for _, c := range []string{PlayAlbum, PlayTrack, PlayArtist} {
+		if !ChoosesWhatPlays(c) {
+			t.Errorf("%s does not choose what plays", c)
+		}
+	}
+	if ChoosesWhatPlays(Next) {
+		t.Error("next chooses what plays")
+	}
+}
