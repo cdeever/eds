@@ -76,3 +76,6 @@ make -C deploy deploy WHERE=builder
 | Time | What happened |
 |---|---|
 | 2026-11-11 | Built: `_binary_hey_dj_ed_tflite_start` in `ears.elf`. Host tests 58 of 58, nowplaying's check and scribe's tests pass. builder did not answer, so scribe and voiced wait. |
+| 15:36 UTC | Flashed by cable on dvntm. `system.boot` firmware `159ef2f`, on DVNTM-IOT, connected to the broker, so kept; no `wake.failed`, so the model loaded within its arena. The serial console could not be read from here, so the arena's use is not yet known. |
+| 16:20–16:21 | Four "Hey DJ Ed"s from the owner, four `voice.woken`, with scribe and voiced still the old ones (prompt "Hey Jarvis."). scribe wrote "DJ Ed, Play Arrowsmith's first album." and "DJ Ed, Play Van Halen's first album.", both asked for; "J. Ed. Play the Beatles, Abbey Road album.", not a request (the grammar's, not the wake word's: it knows "Abbey Road by the Beatles"); then *Abbey Road* asked again and "Come Together" playing at 16:21:41, 11 s from the wake word. `duck` and `unduck` around each. |
+| 16:2x | `make -C deploy deploy WHERE=builder` built scribe and voiced, but dvntm's builder had never reached the workload and refused its host key. The key it was offered, ED25519 `SHA256:6EIeLiu…Jhk`, is the one the Mac already holds for it; to be added to builder's `known_hosts` by the owner. |
