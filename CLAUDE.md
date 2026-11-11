@@ -370,7 +370,9 @@ the stand's setting and Spotify's switch, and its two routes that are not
 `GET` are `POST /api/stand` and `POST /api/spotify`, JSON from its own
 origin, with no login. Neither changes what plays; one that did would need
 a login. Adding another control is a decision to record first,
-not a handler to add. Its subscriptions (`view.Topics`) and the
+not a handler to add. Its "How to ask" (`index.html`'s `#talking`) lists
+voiced's grammar, and a test in `internal/voice` holds every
+`<q class="say">` on it to the grammar: change one, change the other. Its subscriptions (`view.Topics`) and the
 account in `main.tf` are one list kept in two places; the broker refuses a
 mismatch silently. `internal/web/static/effects.js` is a port of the
 firmware's `effects.c` - change one, change the other. A console test holds
@@ -423,6 +425,13 @@ For an album asked for by its place, voiced names up to three of the
 artist's next albums in `instead`, and the driver plays the first the
 library has (ADR-0045): "Genesis' first album" is the first of theirs the
 owner has. A miss empties iTunes' queue, so missing them all stops the music.
+**`play_track` and `play_artist` go where `play_album` goes** (ADR-0055,
+`Proposed`): a song by its artist and title, checked by the title that
+plays, and an artist's songs with shuffle on; `play_album` turns shuffle
+off. voiced sends `play_track` for "the song X by Y", and for "X by Y"
+when the owner has no such album by Y; "play X" alone is the artist if the
+owner has one, else the album if one artist has it (eds-inventory's
+`GET /v1/albums/find`), else said back.
 **With the owner's library indexed, voiced chooses from it** (ADR-0046):
 `cmd/library index` makes `library.json` from iTunes' XML (artist, album,
 year, tracks, compilation; nothing else), `make -C deploy library XML=…`
