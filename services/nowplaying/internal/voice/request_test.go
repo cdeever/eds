@@ -132,3 +132,60 @@ func TestTheWordAlbumIsNotTheAlbumsName(t *testing.T) {
 		t.Errorf("%+v, %v", r, err)
 	}
 }
+
+// Other ways of naming an album and its artist, and of asking (2026-11-11).
+func TestMoreWaysOfAsking(t *testing.T) {
+	for words, want := range map[string]Request{
+		// As scribe wrote it on 2026-11-11, when it was not understood.
+		"J. Ed. Play the Beatles, Abbey Road album.": {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play the Beatles, Abbey Road.":              {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play the Beatles' Abbey Road.":              {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play the Beatles' Abbey Road album":         {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play Van Halen's 1984.":                     {Artist: "Van Halen", Album: "1984"},
+		"Play Crosby, Stills, Nash & Young, Déjà Vu": {Artist: "Crosby, Stills, Nash & Young", Album: "Déjà Vu"},
+		"Play Pink Floyd, the album The Wall":        {Artist: "Pink Floyd", Album: "The Wall"},
+
+		"Play Abbey Road from the Beatles.":                {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play the Beatles album Abbey Road.":               {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play Pink Floyd's album The Wall":                 {Artist: "Pink Floyd", Album: "The Wall"},
+		"Play the Rolling Stones record Exile on Main St.": {Artist: "the Rolling Stones", Album: "Exile on Main St"},
+
+		"Put on Abbey Road by the Beatles.":              {Artist: "the Beatles", Album: "Abbey Road"},
+		"Hey DJ Ed, put on Van Halen's first album.":     {Artist: "Van Halen", Nth: 1},
+		"Let's hear Rocks by Aerosmith.":                 {Artist: "Aerosmith", Album: "Rocks"},
+		"Let me hear the Beatles, Revolver":              {Artist: "the Beatles", Album: "Revolver"},
+		"I want to hear Genesis' first album.":           {Artist: "Genesis", Nth: 1},
+		"I'd like to hear Kind of Blue by Miles Davis.":  {Artist: "Miles Davis", Album: "Kind of Blue"},
+		"Can I hear the latest album by AC/DC?":          {Artist: "AC/DC", Nth: -1},
+		"DJ Ed, could we hear Abbey Road by the Beatles": {Artist: "the Beatles", Album: "Abbey Road"},
+		"Um, put on Rocks by Aerosmith.":                 {Artist: "Aerosmith", Album: "Rocks"},
+	} {
+		got, err := Parse(words)
+		if err != nil || got != want {
+			t.Errorf("Parse(%q) = %+v, %v; want %+v", words, got, err, want)
+		}
+	}
+}
+
+// What the new ways would read wrongly, were it not for their guards.
+func TestMoreWaysOfAskingGuessNothing(t *testing.T) {
+	for _, words := range []string{
+		"Play something from Pink Floyd.",
+		"Play music from the 80s.",
+		"Play some songs from the Beatles.",
+		"Play the album The Wall.", // no artist: not yet (ADR-0055)
+		"Play the Beatles.",        // an artist alone: not yet (ADR-0055)
+		"Put on something good.",
+		"I don't want to hear Rocks by Aerosmith.",
+		"Don't put on Abbey Road by the Beatles.",
+		"Listen to this.",
+		"Listen to Abbey Road by the Beatles.", // "listen to" is not asking
+		"Play Van Halen, eleventh album.",
+		"Play the Beatles' album.",
+		"Play the album by the Beatles.",
+	} {
+		if got, err := Parse(words); !errors.Is(err, ErrNotARequest) {
+			t.Errorf("Parse(%q) = %+v, %v; want not a request", words, got, err)
+		}
+	}
+}

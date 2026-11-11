@@ -442,7 +442,9 @@ never a lost request. `NP_TEST_INVENTORY` runs a test against a real one.
 wake word as one WAV on `voice/<id>/utterance`; `voiced`
 (`services/nowplaying/cmd/voiced`, its own service and broker account) has
 `scribe` write it down, reads it with `internal/voice`'s short grammar
-("play X's first album", "play the Nth album by X", "play ALBUM by X"),
+("play X's first album", "play the Nth album by X", "play ALBUM by X",
+"from X", "X album ALBUM", "X, ALBUM"; "put on", "let's hear" and a few
+more are "play"; words like "something" or "music" are never a title),
 counts the artist's studio albums in MusicBrainz when a place is named
 (ADR-0041, `resolve.Originals.Discography`), sends `play_album`, and says
 what it made of it on `voice/<id>/heard`. **scribe knows nothing about
