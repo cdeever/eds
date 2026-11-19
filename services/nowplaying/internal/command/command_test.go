@@ -242,3 +242,20 @@ func TestAButtonStillGoesToWhatIsCurrent(t *testing.T) {
 		t.Errorf("sent %+v", b.sent)
 	}
 }
+
+// A song and an artist go where an album goes (ADR-0055).
+func TestASongAndAnArtistGoToTheSourceWithALibrary(t *testing.T) {
+	for _, payload := range []string{
+		`{"v":1,"command":"play_track","from":"voiced","artist":"The Beatles","title":"Come Together"}`,
+		`{"v":1,"command":"play_artist","from":"voiced","artist":"Van Halen"}`,
+	} {
+		b := &fakeBus{}
+		r := router(b)
+		r.AlbumSource = "itunes"
+		r.SetCurrent("turntable")
+		r.Handle(command(payload))
+		if len(b.sent) != 1 || b.sent[0].topic != "eds/nowplaying/source/itunes/command" || b.sent[0].payload != payload {
+			t.Errorf("%s: sent %+v", payload, b.sent)
+		}
+	}
+}

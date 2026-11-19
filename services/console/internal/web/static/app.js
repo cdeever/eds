@@ -536,3 +536,14 @@ setInterval(checkStream, 5000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkStream(); });
 window.addEventListener("online", listen);
 requestAnimationFrame(paint);
+
+// How to ask (ADR-0055): the grammar, on the page, opened from the header.
+// The link's #talking is where it goes without a dialog to open.
+$("help-open").addEventListener("click", (e) => {
+  e.preventDefault();
+  $("talking").showModal();
+});
+$("help-close").addEventListener("click", () => $("talking").close());
+$("talking").addEventListener("click", (e) => {
+  if (e.target === $("talking")) $("talking").close(); // a click on the backdrop
+});

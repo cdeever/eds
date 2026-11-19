@@ -106,6 +106,9 @@ func TestAnAlbumByNameAfterAMisheardPlayIsOneIfOwned(t *testing.T) {
 		"Jarvis, Clay Revolver by the Beatles.":                {Artist: "the Beatles", Album: "Revolver"},
 		"Jarvis, placed sticky fingers by the Rolling Stones.": {Artist: "the Rolling Stones", Album: "sticky fingers"},
 		"Jarvis played sticky fingers by the Rolling Stones.":  {Artist: "the Rolling Stones", Album: "sticky fingers"},
+		// As scribe wrote it, 2026-11-11.
+		"DJ Ed. Clay some Van Halen.":     {Kind: AnArtist, Artist: "Van Halen"},
+		"Clay the song Jump by Van Halen": {Kind: ASong, Artist: "Van Halen", Title: "Jump"},
 	} {
 		if _, err := Parse(words); err == nil {
 			t.Errorf("Parse(%q) took it without the library", words)
@@ -130,5 +133,118 @@ func TestTheWordAlbumIsNotTheAlbumsName(t *testing.T) {
 	r, err := Parse("Play album The Wall by Pink Floyd.")
 	if err != nil || r != (Request{Artist: "Pink Floyd", Album: "The Wall"}) {
 		t.Errorf("%+v, %v", r, err)
+	}
+}
+
+// Other ways of naming an album and its artist, and of asking (2026-11-11).
+func TestMoreWaysOfAsking(t *testing.T) {
+	for words, want := range map[string]Request{
+		// As scribe wrote it on 2026-11-11, when it was not understood.
+		"J. Ed. Play the Beatles, Abbey Road album.": {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play the Beatles, Abbey Road.":              {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play the Beatles' Abbey Road.":              {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play the Beatles' Abbey Road album":         {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play Van Halen's 1984.":                     {Artist: "Van Halen", Album: "1984"},
+		"Play Crosby, Stills, Nash & Young, Déjà Vu": {Artist: "Crosby, Stills, Nash & Young", Album: "Déjà Vu"},
+		"Play Pink Floyd, the album The Wall":        {Artist: "Pink Floyd", Album: "The Wall"},
+
+		"Play Abbey Road from the Beatles.":                {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play the Beatles album Abbey Road.":               {Artist: "the Beatles", Album: "Abbey Road"},
+		"Play Pink Floyd's album The Wall":                 {Artist: "Pink Floyd", Album: "The Wall"},
+		"Play the Rolling Stones record Exile on Main St.": {Artist: "the Rolling Stones", Album: "Exile on Main St"},
+
+		"Put on Abbey Road by the Beatles.":              {Artist: "the Beatles", Album: "Abbey Road"},
+		"Hey DJ Ed, put on Van Halen's first album.":     {Artist: "Van Halen", Nth: 1},
+		"Let's hear Rocks by Aerosmith.":                 {Artist: "Aerosmith", Album: "Rocks"},
+		"Let me hear the Beatles, Revolver":              {Artist: "the Beatles", Album: "Revolver"},
+		"I want to hear Genesis' first album.":           {Artist: "Genesis", Nth: 1},
+		"I'd like to hear Kind of Blue by Miles Davis.":  {Artist: "Miles Davis", Album: "Kind of Blue"},
+		"Can I hear the latest album by AC/DC?":          {Artist: "AC/DC", Nth: -1},
+		"DJ Ed, could we hear Abbey Road by the Beatles": {Artist: "the Beatles", Album: "Abbey Road"},
+		"Um, put on Rocks by Aerosmith.":                 {Artist: "Aerosmith", Album: "Rocks"},
+	} {
+		got, err := Parse(words)
+		if err != nil || got != want {
+			t.Errorf("Parse(%q) = %+v, %v; want %+v", words, got, err, want)
+		}
+	}
+}
+
+// What the new ways would read wrongly, were it not for their guards.
+func TestMoreWaysOfAskingGuessNothing(t *testing.T) {
+	for _, words := range []string{
+		"Play music from the 80s.",
+		"Play the Beatles.",        // a name alone is ParseName's, with a library
+		"Play the album The Wall.", // the same
+		"Play some music.",
+		"Shuffle.",
+		"Play the song by the Beatles.",
+		"Put on something good.",
+		"I don't want to hear Rocks by Aerosmith.",
+		"Don't put on Abbey Road by the Beatles.",
+		"Listen to this.",
+		"Listen to Abbey Road by the Beatles.", // "listen to" is not asking
+		"Play Van Halen, eleventh album.",
+		"Play the Beatles' album.",
+		"Play the album by the Beatles.",
+	} {
+		if got, err := Parse(words); !errors.Is(err, ErrNotARequest) {
+			t.Errorf("Parse(%q) = %+v, %v; want not a request", words, got, err)
+		}
+	}
+}
+
+// A song said as one, and an artist said as one (ADR-0055).
+func TestASongOrAnArtistSaidAsOne(t *testing.T) {
+	for words, want := range map[string]Request{
+		"Play the song Come Together by the Beatles.":   {Kind: ASong, Artist: "the Beatles", Title: "Come Together"},
+		"Hey DJ Ed, play the track Jump from Van Halen": {Kind: ASong, Artist: "Van Halen", Title: "Jump"},
+		"Play the Beatles song Come Together":           {Kind: ASong, Artist: "the Beatles", Title: "Come Together"},
+		"Put on Van Halen's song Panama.":               {Kind: ASong, Artist: "Van Halen", Title: "Panama"},
+
+		"Play some Van Halen.":               {Kind: AnArtist, Artist: "Van Halen"},
+		"Play something from Pink Floyd.":    {Kind: AnArtist, Artist: "Pink Floyd"},
+		"Play some songs from the Beatles.":  {Kind: AnArtist, Artist: "the Beatles"},
+		"Play anything by Aerosmith":         {Kind: AnArtist, Artist: "Aerosmith"},
+		"Play songs by Genesis.":             {Kind: AnArtist, Artist: "Genesis"},
+		"Play some music by Rush.":           {Kind: AnArtist, Artist: "Rush"},
+		"Shuffle Van Halen.":                 {Kind: AnArtist, Artist: "Van Halen"},
+		"Hey DJ Ed, shuffle songs by Boston": {Kind: AnArtist, Artist: "Boston"},
+		"Play Van Halen shuffled.":           {Kind: AnArtist, Artist: "Van Halen"},
+		"Let's hear some Led Zeppelin.":      {Kind: AnArtist, Artist: "Led Zeppelin"},
+	} {
+		got, err := Parse(words)
+		if err != nil || got != want {
+			t.Errorf("Parse(%q) = %+v, %v; want %+v", words, got, err, want)
+		}
+	}
+}
+
+// A name alone is read only by ParseName, and only as a name.
+func TestANameAlone(t *testing.T) {
+	for words, want := range map[string]string{
+		"Play the Beatles.":           "the Beatles",
+		"Play Abbey Road.":            "Abbey Road",
+		"Hey DJ Ed, put on Van Halen": "Van Halen",
+		"I want to hear Kind of Blue": "Kind of Blue",
+	} {
+		got, err := ParseName(words)
+		if err != nil || got != (Request{Kind: AName, Title: want}) {
+			t.Errorf("ParseName(%q) = %+v, %v; want %q", words, got, err, want)
+		}
+	}
+	for _, words := range []string{
+		"Play something good.",
+		"Play it.",
+		"Play his first album.",
+		"Play the album.",
+		"Don't play Abbey Road.",
+		"Play Rocks by Aerosmith and then something else entirely please now.", // a sentence
+		"Thank you.",
+		"Play the Beatles, Abbey Road", // another request's shape
+	} {
+		if got, err := ParseName(words); err == nil {
+			t.Errorf("ParseName(%q) = %+v; want not a name", words, got)
+		}
 	}
 }
