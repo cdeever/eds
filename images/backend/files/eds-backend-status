@@ -3,7 +3,7 @@
 #
 # The Pi is the whole back end (ADR-0033): Deevnet IoTaaS's take-home
 # services, EdS's four, and the agent. This looks at EdS's side and at
-# whether the other is up; `sudo deevnet-kit status` and `selftest` are the
+# whether the other is up; `sudo tenant2backend status` and `selftest` are the
 # thorough look at the broker, the log store and Grafana.
 #
 # Prints what it finds and exits non-zero if anything is wrong, so it serves
@@ -22,8 +22,12 @@ if ip route show default | grep -q .; then ok "default route: $(ip route show de
 [[ "$(cat /proc/sys/net/ipv4/ip_forward)" == "0" ]] && ok "forwarding is off" || fail "forwarding is ON"
 if sudo nft list chain inet eds_backend input 2>/dev/null | grep -q 'policy drop'; then ok "firewall is loaded"; else fail "firewall is not loaded"; fi
 
+# The base's tool and its files (Deevnet ADR-0045): tenant2backend and
+# /etc/backend, or deevnet-kit and /etc/deevnet-kit on an older base.
+if command -v tenant2backend >/dev/null; then KIT_CMD=tenant2backend KIT=/etc/backend; else KIT_CMD=deevnet-kit KIT=/etc/deevnet-kit; fi
+
 echo "Deevnet IoTaaS's side"
-if sudo test -f /etc/deevnet-kit/kit.json; then
+if sudo test -f "$KIT/kit.json"; then
     for unit in mosquitto vmauth victorialogs deevnet-log-bridge; do active "$unit"; done
     # Grafana is the one part the lights do not need, and the heaviest.
     if systemctl is-active --quiet grafana; then ok "grafana is running"; else note "grafana is $(systemctl is-active grafana): no dashboards, and nothing else is affected"; fi
@@ -31,13 +35,13 @@ if sudo test -f /etc/deevnet-kit/kit.json; then
     listening 8883 "the broker"
     listening 8427 "the log store"
 else
-    fail "deevnet-kit has not run: no /etc/deevnet-kit/kit.json (journalctl -u deevnet-kit-firstboot)"
+    fail "$KIT_CMD has not run: no $KIT/kit.json (journalctl -u ${KIT#/etc/}-firstboot)"
 fi
 
 echo "Accounts"
 missing=""
 while read -r name _; do
-    sudo test -f "/etc/deevnet-kit/accounts/$name.json" && sudo test -s "/etc/eds/accounts/$name.pw" || missing+=" $name"
+    sudo test -f "$KIT/accounts/$name.json" && sudo test -s "/etc/eds/accounts/$name.pw" || missing+=" $name"
 done < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' /etc/eds/accounts.conf)
 if [[ -z "$missing" ]]; then ok "all of /etc/eds/accounts.conf are on the broker"; else fail "not made:$missing (sudo eds-backend-setup; journalctl -u eds-backend-setup)"; fi
 
@@ -50,7 +54,7 @@ if sudo test -s /etc/eds/discogs.env; then ok "Discogs settings present"; else n
 
 # The console presents the card's server certificate, read when it started.
 # One reissued since then is not the one a browser is being shown.
-cert=/etc/deevnet-kit/tls/server.pem
+cert="$KIT/tls/server.pem"
 started="$(systemctl show -p ActiveEnterTimestamp --value eds-console 2>/dev/null)"
 if [[ -n "$started" && -f "$cert" ]] && (( $(stat -c %Y "$cert") > $(date -d "$started" +%s 2>/dev/null || echo 0) )); then
     fail "the certificate is newer than the console: sudo systemctl restart eds-console"

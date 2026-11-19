@@ -30,7 +30,7 @@ the beacon stay with the tenant until each is provisioned again.
 The image is Deevnet IoTaaS's take-home image, `pi-backend`, with EdS added.
 The take-home image keeps the tenant's contract on a Pi: the same ports, the
 same topic prefix, the same log partitions and the same Grafana data sources.
-A program on it, `deevnet-kit`, makes the card's own CA and tokens the first
+A program on it, `tenant2backend`, makes the card's own CA and tokens the first
 time it boots.
 
 EdS adds its four services and the agent, each as a unit under its own user,

@@ -120,7 +120,7 @@ resource "deevnet_certificate" "console" {
 
 # The home backend Pi's certificate (CHG-0042, Deevnet ADR-0041 §2). Unlike
 # the console's, its key is made on the Pi and never leaves it: this takes the
-# request `deevnet-kit cert request` wrote there, which is public and kept
+# request `tenant2backend cert request` wrote there, which is public and kept
 # beside this file. `cert install` refuses a certificate that does not name
 # mqtt, logs and grafana; console is the page.
 #

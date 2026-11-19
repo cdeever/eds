@@ -7,7 +7,7 @@
 #                                beacon are provisioned with, as JSON
 #
 # The image carries no secret, and nothing here comes from Deevnet IoTaaS or
-# from the EdS tenant there (ADR-0033). deevnet-kit has already made this
+# from the EdS tenant there (ADR-0033). tenant2backend has already made this
 # card's CA and its log tokens. This adds the tenant's eight broker accounts
 # (/etc/eds/accounts.conf), each with a password made here, and writes each
 # service the settings it reads.
@@ -30,7 +30,13 @@ set -euo pipefail
 ETC=/etc/eds
 PASSWORDS="$ETC/accounts"
 LIST="$ETC/accounts.conf"
-KIT=/etc/deevnet-kit
+# The base's tool and its files: tenant2backend and /etc/backend since Deevnet
+# IoTaaS's v0.28.0 (Deevnet ADR-0045), deevnet-kit and /etc/deevnet-kit before.
+if command -v tenant2backend >/dev/null; then
+    KIT_CMD=tenant2backend KIT=/etc/backend
+else
+    KIT_CMD=deevnet-kit KIT=/etc/deevnet-kit
+fi
 CA="$KIT/tls/ca.pem"
 DROP=/boot/firmware/eds
 log() { echo "eds-backend-setup: $*"; }
@@ -38,15 +44,15 @@ log() { echo "eds-backend-setup: $*"; }
 if [[ $EUID -ne 0 ]]; then
     exec sudo "$0" "$@"
 fi
-[[ -f "$KIT/kit.json" ]] || { echo "deevnet-kit has not run on this card yet: there is no $KIT/kit.json" >&2; exit 1; }
+[[ -f "$KIT/kit.json" ]] || { echo "$KIT_CMD has not run on this card yet: there is no $KIT/kit.json" >&2; exit 1; }
 
 # One named value from the kit's view of this card. Read, never sourced.
-kit_value() { deevnet-kit env | grep -m1 -E "^$1=" | cut -d= -f2-; }
+kit_value() { "$KIT_CMD" env | grep -m1 -E "^$1=" | cut -d= -f2-; }
 tenant="$(kit_value DEEVNET_TENANT)"
-[[ -n "$tenant" ]] || { echo "deevnet-kit names no tenant" >&2; exit 1; }
+[[ -n "$tenant" ]] || { echo "$KIT_CMD names no tenant" >&2; exit 1; }
 
 # What the services here dial. On the card's own CA, localhost, which its
-# certificate names. On a Deevnet Pi (deevnet-kit cert install, Deevnet
+# certificate names. On a Deevnet Pi (tenant2backend cert install, Deevnet
 # ADR-0041 §2) the certificate is the Tenant Service CA's and names the
 # tenant's Deevnet names, never localhost: the kit maps them to loopback, and
 # the devices are given the broker's, which the network's DNS answers.
@@ -132,19 +138,19 @@ while read -r name device publish subscribe <&3; do
         # The list has changed since the account was made (a new topic, as
         # ADR-0039's). Made again with the password it has, so nothing that
         # logs in with it notices.
-        deevnet-kit account rm "$name" >/dev/null
-        deevnet-kit "${args[@]}" --password-file "$PASSWORDS/$name.pw" >/dev/null
+        "$KIT_CMD" account rm "$name" >/dev/null
+        "$KIT_CMD" "${args[@]}" --password-file "$PASSWORDS/$name.pw" >/dev/null
         log "account $tenant-$name granted what the list says now"
         continue
     fi
     # Half made, or its password lost: the kit keeps only a hash, so the
     # account is made again and whatever held the old password is told below.
     if [[ -f "$KIT/accounts/$name.json" ]]; then
-        deevnet-kit account rm "$name" >/dev/null
+        "$KIT_CMD" account rm "$name" >/dev/null
     fi
     head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$PASSWORDS/$name.pw.new"
     echo >> "$PASSWORDS/$name.pw.new"
-    deevnet-kit "${args[@]}" --password-file "$PASSWORDS/$name.pw.new" >/dev/null
+    "$KIT_CMD" "${args[@]}" --password-file "$PASSWORDS/$name.pw.new" >/dev/null
     mv "$PASSWORDS/$name.pw.new" "$PASSWORDS/$name.pw"
     log "account $tenant-$name made"
 done 3< <(accounts)

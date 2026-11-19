@@ -4,7 +4,7 @@
 # Its certificate is the card's one server certificate, which deevnet-kit
 # issues for the broker, the log store and Grafana, and which names
 # <hostname>.local. The kit issues no other (ADR-0033).
-CONSOLE_TLS_CERT_FILE=/etc/deevnet-kit/tls/server.pem
-CONSOLE_TLS_KEY_FILE=/etc/deevnet-kit/tls/server-key.pem
+CONSOLE_TLS_CERT_FILE=/etc/backend/tls/server.pem
+CONSOLE_TLS_KEY_FILE=/etc/backend/tls/server-key.pem
 # The link to the stand's dashboard names this Pi, and is written by
 # eds-backend-setup into /etc/eds/console.env.

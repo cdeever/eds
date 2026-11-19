@@ -24,7 +24,8 @@ umask 077
 fetched="$(mktemp)"
 trap 'rm -f "$fetched"' EXIT
 ssh "$SSH" 'sudo eds-backend-setup devices' > "$fetched"
-ssh "$SSH" 'cat /etc/deevnet-kit/tls/ca.pem' > "$HERE/deevnet-kit-ca.pem"
+# /etc/backend since Deevnet ADR-0045; /etc/deevnet-kit on a card from before.
+ssh "$SSH" 'cat /etc/backend/tls/ca.pem 2>/dev/null || cat /etc/deevnet-kit/tls/ca.pem' > "$HERE/deevnet-kit-ca.pem"
 grep -q 'BEGIN CERTIFICATE' "$HERE/deevnet-kit-ca.pem" || { echo "The Pi's CA did not arrive." >&2; exit 1; }
 
 read -r -p "Wi-Fi network the devices join [DVNT-CORE]: " ssid
@@ -59,7 +60,7 @@ cat <<NEXT
 Written: $HERE/devices.json and deevnet-kit-ca.pem.
 
 The broker's address must stay what it is: reserve it for the Pi on the
-router. If it changes, on the Pi: sudo deevnet-kit regen-certs, then
+router. If it changes, on the Pi: sudo tenant2backend regen-certs (deevnet-kit on an older card), then
 sudo systemctl restart eds-console, and provision the devices again.
 
 To move a device to this Pi (it leaves the tenant when you do), with ESP-IDF

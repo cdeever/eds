@@ -3,11 +3,11 @@
 
 The same dashboards the tenant's Terraform applies to Deevnet's Grafana
 (infra/deevnet-tenant-eds/dashboards/), in the same folder, under the
-tenant's own login. deevnet-kit gives this Pi's Grafana Deevnet's contract:
+tenant's own login. The base's tool (tenant2backend; deevnet-kit before) gives this Pi's Grafana Deevnet's contract:
 an organization for the tenant and the log data sources with their fixed
 UIDs, so the dashboards apply unchanged.
 
-It runs on every boot, after deevnet-kit has set Grafana up, and by
+It runs on every boot, after the base's tool has set Grafana up, and by
 `make push`. Each is written with the checksum of its file, and one that
 already carries it is left alone, so Grafana's history is not filled with
 copies of it. One edited here keeps the edit until the file it came from
@@ -18,6 +18,7 @@ import glob
 import hashlib
 import json
 import os
+import shutil
 import ssl
 import subprocess
 import sys
@@ -25,14 +26,18 @@ import urllib.error
 import urllib.request
 
 DASHBOARDS = "/usr/local/share/eds-dashboards"
-KIT_JSON = "/etc/deevnet-kit/kit.json"
-CA = "/etc/deevnet-kit/tls/ca.pem"
+# The base's tool and its files (Deevnet ADR-0045): tenant2backend and
+# /etc/backend, or deevnet-kit and /etc/deevnet-kit on an older base.
+KIT_CMD = "tenant2backend" if shutil.which("tenant2backend") else "deevnet-kit"
+KIT = "/etc/backend" if KIT_CMD == "tenant2backend" else "/etc/deevnet-kit"
+KIT_JSON = KIT + "/kit.json"
+CA = KIT + "/tls/ca.pem"
 PORT = 3000
 FOLDER = {"uid": "eds", "title": "EdS"}
 
 
 def kit_env():
-    out = subprocess.run(["deevnet-kit", "env"], check=True, capture_output=True, text=True).stdout
+    out = subprocess.run([KIT_CMD, "env"], check=True, capture_output=True, text=True).stdout
     env = {}
     for line in out.splitlines():
         if "=" in line and not line.startswith("#"):
@@ -45,9 +50,9 @@ def main():
     env = kit_env()
     tenant, auth, org = env.get("DEEVNET_TENANT"), env.get("GRAFANA_AUTH"), env.get("GRAFANA_ORG_ID")
     if not (tenant and auth and org):
-        sys.exit("Grafana is not set up yet: systemctl status deevnet-kit-dashboards")
+        sys.exit("Grafana is not set up yet: systemctl status " + KIT[len("/etc/"):] + "-dashboards")
     # The name the certificate holds that this Pi resolves itself, as
-    # deevnet-kit dials it: localhost on the card's own CA, the tenant's
+    # the base's tool dials it: localhost on the card's own CA, the tenant's
     # Deevnet name, mapped to loopback, on a Deevnet Pi.
     with open(KIT_JSON) as f:
         deevnet = json.load(f).get("pki") == "deevnet"

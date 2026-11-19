@@ -4,8 +4,10 @@
 # The image carries no secret and no name. This writes, on the card's boot
 # partition:
 #
-#   deevnet-kit.txt   the tenant and the card's name, which deevnet-kit
-#                     reads once, on the first boot. No Wi-Fi: the Pi is on
+#   backend.txt       the tenant and the card's name, which the base's tool
+#                     (tenant2backend; deevnet-kit.txt and deevnet-kit on a
+#                     base from before Deevnet ADR-0045) reads once, on the
+#                     first boot. No Wi-Fi: the Pi is on
 #                     a cable, and the image starts with its radio off
 #                     (CHG-0046)
 #   userconf.txt      your login, which Raspberry Pi OS makes on the first boot
@@ -26,8 +28,12 @@ TENANT="${TENANT:?}"; INDEX="${INDEX:?}"
 DISCOGS="${DISCOGS:-}"
 NAMES="${NAMES:-}"
 
-if [[ ! -f "$BOOT/eds-backend.txt" || ! -f "$BOOT/deevnet-kit.txt" ]]; then
-    echo "No backend card at $BOOT (no eds-backend.txt and deevnet-kit.txt there)." >&2
+# The settings file the image put there: backend.txt, or deevnet-kit.txt on
+# an image built before the base's tool was renamed (Deevnet ADR-0045).
+KIT_TXT=backend.txt
+[[ -f "$BOOT/$KIT_TXT" ]] || KIT_TXT=deevnet-kit.txt
+if [[ ! -f "$BOOT/eds-backend.txt" || ! -f "$BOOT/$KIT_TXT" ]]; then
+    echo "No backend card at $BOOT (no eds-backend.txt and backend.txt there)." >&2
     echo "Flash the image, leave the card in, and check where its boot partition mounted:" >&2
     echo "  make card BOOT=/Volumes/<name>" >&2
     exit 2
@@ -78,7 +84,7 @@ unset password again
     if [[ -n "$NAMES" ]]; then
         printf 'names=%s\n' "$NAMES"
     fi
-} > "$BOOT/deevnet-kit.txt"
+} > "$BOOT/$KIT_TXT"
 unset psk
 
 printf '%s:%s\n' "$PI_USER" "$hash" > "$BOOT/userconf.txt"

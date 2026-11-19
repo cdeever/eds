@@ -3,7 +3,8 @@
 #
 # Runs against a mounted copy of Deevnet IoTaaS's take-home image, pi-backend:
 # Raspberry Pi OS with a broker, a log store, the bridge between them and
-# Grafana, and deevnet-kit to manage them. The root is at chroot_root and the
+# Grafana, and the base's tool to manage them (tenant2backend; deevnet-kit before
+# Deevnet ADR-0045). The root is at chroot_root and the
 # boot partition at chroot_root/boot. The image does not boot and needs no
 # network of its own; apt and pip run in the chroot over the build host's.
 #
@@ -12,10 +13,10 @@
 # makes is in images/README.md. The rules it holds to:
 #
 #   - Nothing secret is baked in. The card's CA and tokens are made by
-#     deevnet-kit on first boot, and the broker accounts by eds-backend-setup
+#     the base's tool on first boot, and the broker accounts by eds-backend-setup
 #     after it. The build fails if any is found in the image.
 #   - Nothing particular to one Pi is baked in either. Its name and its Wi-Fi
-#     arrive on the card's boot partition, in deevnet-kit.txt.
+#     arrive on the card's boot partition, in backend.txt (deevnet-kit.txt on an older base).
 #   - Nothing of the base is changed. Its units, its broker's configuration
 #     and its instructions are left as Deevnet IoTaaS made them; what is added
 #     is added beside them. The one file replaced is /etc/nftables.conf, which
@@ -103,46 +104,59 @@
     # ------------------------------------------------------------
     # Is this the base it has to be?
     # ------------------------------------------------------------
+    # The base's tool is tenant2backend, with its files under the noun
+    # `backend`, since Deevnet IoTaaS's v0.28.0 (Deevnet ADR-0045); before,
+    # deevnet-kit. This image takes either, and names the files the base has.
+    - name: Look for the base's tool by its new name
+      ansible.builtin.stat:
+        path: "{{ chroot_root }}/usr/local/bin/tenant2backend"
+      register: pi_eds_backend_t2b
+
+    - name: Name the base's tool and its files
+      ansible.builtin.set_fact:
+        pi_eds_kit_cmd: "{{ 'tenant2backend' if pi_eds_backend_t2b.stat.exists else 'deevnet-kit' }}"
+        pi_eds_kit_name: "{{ 'backend' if pi_eds_backend_t2b.stat.exists else 'deevnet-kit' }}"
+
     - name: Look for the take-home image's first-boot unit
       ansible.builtin.stat:
-        path: "{{ chroot_root }}/etc/systemd/system/deevnet-kit-firstboot.service"
+        path: "{{ chroot_root }}/etc/systemd/system/{{ pi_eds_kit_name }}-firstboot.service"
       register: pi_eds_backend_firstboot
 
     - name: Fail if the base is not the take-home image
       ansible.builtin.assert:
         that: pi_eds_backend_firstboot.stat.exists
-        fail_msg: "No deevnet-kit first-boot unit: this is not Deevnet IoTaaS's pi-backend image"
+        fail_msg: "No {{ pi_eds_kit_name }}-firstboot unit: this is not Deevnet IoTaaS's pi-backend image"
 
-    # deevnet-kit prints no version. What is asked is whether it can do the
+    # The tool prints no version. What is asked is whether it can do the
     # two things this card needs of it, by where each shows: keeping a
     # password from a file, in its own help, and taking a hostname from the
     # card, in the settings file that ships beside it. The image published on
     # 2026-09-24 can do neither.
-    - name: Ask the image's deevnet-kit what it can do
+    - name: Ask the image's tool what it can do
       ansible.builtin.command:
-        cmd: "chroot {{ chroot_root }} /usr/local/bin/deevnet-kit help"
+        cmd: "chroot {{ chroot_root }} /usr/local/bin/{{ pi_eds_kit_cmd }} help"
       register: pi_eds_backend_kit_help
       changed_when: false
 
     - name: Read the settings file the image puts on its boot partition
       ansible.builtin.command:
-        cmd: "cat {{ chroot_root }}/boot/deevnet-kit.txt"
+        cmd: "cat {{ chroot_root }}/boot/{{ pi_eds_kit_name }}.txt"
       register: pi_eds_backend_kit_txt
       changed_when: false
 
-    - name: Fail if the base's deevnet-kit is too old
+    - name: Fail if the base's tool is too old
       ansible.builtin.assert:
         that:
           - "'--password-file' in pi_eds_backend_kit_help.stdout"
           - "'hostname=' in pi_eds_backend_kit_txt.stdout"
           # 0.12.0: extra names on the certificate, so a card can carry the
           # names and address of the site it is going to (Deevnet CHG-0050).
-          - "'deevnet-kit names' in pi_eds_backend_kit_help.stdout"
+          - "(pi_eds_kit_cmd ~ ' names') in pi_eds_backend_kit_help.stdout"
           # 0.15.0: a certificate from the Tenant Service CA, so the card
           # answers to the tenant's Deevnet names (Deevnet CHG-0056).
-          - "'deevnet-kit cert install' in pi_eds_backend_kit_help.stdout"
+          - "(pi_eds_kit_cmd ~ ' cert install') in pi_eds_backend_kit_help.stdout"
         fail_msg: >-
-          The published pi-backend image carries a deevnet-kit older than
+          The published pi-backend image carries a {{ pi_eds_kit_cmd }} older than
           0.15.0: it cannot keep a password from a file, take a hostname from
           the card, put extra names on the certificate, or install one from
           the Tenant Service CA. Deevnet IoTaaS has
@@ -180,11 +194,11 @@
       failed_when: pi_eds_backend_useradd.rc not in [0, 9]  # 9 = exists
       loop: "{{ pi_eds_backend_users }}"
 
-    # The console presents the card's server certificate, and deevnet-kit is
-    # the group that may read its key (ADR-0033).
+    # The console presents the card's server certificate, and the base tool's
+    # group (backend, or deevnet-kit on an older base) may read its key (ADR-0033).
     - name: Let the console read the server certificate's key
       ansible.builtin.command:
-        cmd: "chroot {{ chroot_root }} usermod -aG deevnet-kit eds-console"
+        cmd: "chroot {{ chroot_root }} usermod -aG {{ pi_eds_kit_name }} eds-console"
       changed_when: true
 
     # Its own user, with nothing but a directory for its pairing.
@@ -348,8 +362,21 @@
         - {src: 90-eds-backend.conf, dest: /etc/sysctl.d/90-eds-backend.conf}
         - {src: mosquitto-eds.conf, dest: /etc/mosquitto/conf.d/eds.conf}
 
+    # The console's group and certificate paths are written with the new names
+    # (Deevnet ADR-0045). Neither can choose for itself, so on a base from
+    # before the rename they are given the old ones here.
+    - name: Give the console the old names on an older base
+      ansible.builtin.replace:
+        path: "{{ chroot_root }}{{ item.path }}"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
+      loop:
+        - {path: /etc/eds/settings/console-pi.env, regexp: '/etc/backend/', replace: '/etc/deevnet-kit/'}
+        - {path: /etc/systemd/system/eds-console.service, regexp: '^SupplementaryGroups=backend$', replace: 'SupplementaryGroups=deevnet-kit'}
+      when: pi_eds_kit_name == 'deevnet-kit'
+
     # Added to the take-home image's greeting, not put in its place: what it
-    # says about deevnet-kit is still the place to start.
+    # says about the base's tool is still the place to start.
     - name: Add EdS's lines to the greeting
       ansible.builtin.shell:
         cmd: "cat {{ playbook_dir }}/files/motd >> {{ chroot_root }}/etc/motd"
@@ -420,7 +447,7 @@
     # The backend Pi is on a cable, and has one address (CHG-0046). Its radio
     # starts off: NetworkManager reads this file when it starts, and keeps
     # it as the radio is switched. `make card` asks for no Wi-Fi, so
-    # deevnet-kit sets up none. A Pi that has to use Wi-Fi is switched on by
+    # the base's tool sets up none. A Pi that has to use Wi-Fi is switched on by
     # hand (deploy/backend/README.md).
     - name: Make NetworkManager's directory
       ansible.builtin.file:
@@ -492,7 +519,7 @@
           secret and no name.
 
           To finish it, set this card's tenant, name and Wi-Fi in
-          deevnet-kit.txt, and create your login with userconf.txt and ssh.
+          {{ pi_eds_kit_name }}.txt, and create your login with userconf.txt and ssh.
           README.txt, beside this file, says how. The tenant is  eds  and its
           index is  2.
 
@@ -515,9 +542,9 @@
         cmd: >-
           ls -d {{ chroot_root }}/etc/eds/*.env
           {{ chroot_root }}/etc/eds/accounts
-          {{ chroot_root }}/etc/deevnet-kit/kit.json
-          {{ chroot_root }}/etc/deevnet-kit/tls
-          {{ chroot_root }}/etc/mosquitto/deevnet-kit/passwd
+          {{ chroot_root }}/etc/{{ pi_eds_kit_name }}/kit.json
+          {{ chroot_root }}/etc/{{ pi_eds_kit_name }}/tls
+          {{ chroot_root }}/etc/mosquitto/{{ pi_eds_kit_name }}/passwd
           {{ chroot_root }}/var/lib/eds-npagent/itunes-pairing.json
           {{ chroot_root }}/var/lib/eds-npagent/spotify-token.json
           {{ chroot_root }}/boot/eds
@@ -594,7 +621,7 @@
 
     - name: Check the console may read the certificate's key
       ansible.builtin.shell:
-        cmd: "grep '^deevnet-kit:' {{ chroot_root }}/etc/group | grep -c -w eds-console"
+        cmd: "grep '^{{ pi_eds_kit_name }}:' {{ chroot_root }}/etc/group | grep -c -w eds-console"
       changed_when: false
 
     # The take-home image removes the site's automation user, so that nothing

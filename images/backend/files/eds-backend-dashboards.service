@@ -1,11 +1,13 @@
-# Puts EdS's dashboards in this Pi's Grafana, after deevnet-kit has given it
+# Puts EdS's dashboards in this Pi's Grafana, after tenant2backend has given it
 # the tenant's organization and log data sources. Every boot: it writes only
 # what differs, and puts back a dashboard changed by hand.
 [Unit]
 Description=EdS backend: dashboards
-ConditionPathExists=/etc/deevnet-kit/kit.json
-Wants=deevnet-kit-dashboards.service
-After=deevnet-kit-dashboards.service grafana.service
+# Either name of the base's tool (Deevnet ADR-0045); a missing unit is ignored.
+ConditionPathExists=|/etc/backend/kit.json
+ConditionPathExists=|/etc/deevnet-kit/kit.json
+Wants=backend-dashboards.service deevnet-kit-dashboards.service
+After=backend-dashboards.service deevnet-kit-dashboards.service grafana.service
 
 [Service]
 Type=oneshot
