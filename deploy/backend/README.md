@@ -28,7 +28,7 @@ provisioned again, which is the last step and the owner's choice.
 ## Before the first build
 
 The build takes the image Deevnet IoTaaS publishes, and refuses one whose
-`deevnet-kit` is too old to take a hostname from the card or keep a password
+tool is too old to take a hostname from the card or keep a password
 from a file. The one published on 2026-09-24 is. Rebuilding and publishing it
 is Deevnet IoTaaS's, on the Builder:
 
@@ -63,7 +63,7 @@ sudo nmcli radio wifi on
 sudo nmcli --ask device wifi connect <network>
 ```
 
-It writes the card's name for `deevnet-kit`, your login, and a
+It writes the card's name for `tenant2backend`, your login, and a
 folder `eds/` with your public key and your Discogs settings
 (`deploy/discogs.env`, if it is there). `PI_HOSTNAME=` and `PI_USER=` name the
 card and the login; the defaults are `eds-backend` and `eds`.
@@ -104,19 +104,22 @@ never copies the relay's.
 Give the Pi a reserved address on the router before going further. The
 devices are given that address, and the card's certificate names it.
 
-On the Pi, `sudo deevnet-kit status` and `sudo deevnet-kit selftest` are the
-thorough look at the broker, the log store and Grafana.
+On the Pi, `sudo tenant2backend status` and `sudo tenant2backend selftest` are the
+thorough look at the broker, the log store and Grafana. **A card from an image built before
+Deevnet IoTaaS renamed the tool** (Deevnet ADR-0045, v0.28.0) calls it `deevnet-kit`, with its
+files under `/etc/deevnet-kit/`; the commands are the same. EdS's own build, scripts and units
+take either.
 
 ## The dashboards
 
 The tenant's, from `infra/deevnet-tenant-eds/dashboards/`: LP Stand, Outside
 Services and Covers, in an EdS folder in this Pi's Grafana, at
 `https://<hostname>.local:3000/` (on a Deevnet Pi,
-`https://grafana.eds.deevnet.net:3000/`), with the login `deevnet-kit status`
-names. deevnet-kit gives this Grafana Deevnet's data sources, by the same
+`https://grafana.eds.deevnet.net:3000/`), with the login `tenant2backend status`
+names. tenant2backend gives this Grafana Deevnet's data sources, by the same
 UIDs, so they are the same files Terraform applies there.
 
-`eds-backend-dashboards` writes them on every boot, after deevnet-kit has set
+`eds-backend-dashboards` writes them on every boot, after tenant2backend has set
 Grafana up, and `make push` writes them again. A dashboard is written only
 when its file has changed, and then over any edit made here: change the file
 and push. The console's "Events in Grafana" opens LP Stand.
@@ -133,7 +136,7 @@ and a card flashed again keeps its names.
 After the first boot, on the Pi:
 
 ```bash
-sudo deevnet-kit cert request    # a new key here, and a request for the CA
+sudo tenant2backend cert request    # a new key here, and a request for the CA
 ```
 
 The request is signed by the tenant's Terraform (`deevnet_certificate`,
@@ -141,7 +144,7 @@ with name `mqtt`, names `logs`, `grafana` and `console`, and the sites the
 Pi will answer at). Copy the full chain and the Deevnet Root to the Pi, then:
 
 ```bash
-sudo deevnet-kit cert install fullchain.pem deevnet-root-ca.pem
+sudo tenant2backend cert install fullchain.pem deevnet-root-ca.pem
 sudo systemctl restart eds-backend-setup
 ```
 
@@ -220,7 +223,7 @@ make logs      # follow the services and the agent
 `make push` does not change the firewall, the kernel settings or the broker's
 configuration; those change with an image.
 
-If the Pi's address changes: `sudo deevnet-kit regen-certs`, then
+If the Pi's address changes: `sudo tenant2backend regen-certs`, then
 `sudo systemctl restart eds-console`, and provision the devices again with
 the new address.
 
@@ -232,7 +235,7 @@ the new address.
 | `/etc/eds/accounts/` | each account's password, made on the card; root only |
 | `/etc/eds/*.env` | each service's broker login; written by `eds-backend-setup` |
 | `/etc/eds/settings/` | the settings that are not secret: `deploy/*.env`, as built |
-| `/etc/deevnet-kit/` | the card's CA, certificate and tokens; `deevnet-kit`'s |
+| `/etc/backend/` | the card's CA, certificate and tokens; `tenant2backend`'s |
 | `/usr/local/share/eds-dashboards/` | the dashboards, as built; `eds-backend-dashboards` writes them to Grafana |
 | `/etc/eds-backend-release` | what this image is, and each push since |
 

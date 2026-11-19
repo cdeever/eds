@@ -2,7 +2,7 @@
 #
 # It only looks (ADR-0018). It serves the card's own server certificate on
 # 443, and on 80 only sends people there. That certificate is read once, when
-# the console starts: after `deevnet-kit regen-certs`, restart this unit.
+# the console starts: after `tenant2backend regen-certs`, restart this unit.
 [Unit]
 Description=EdS console
 Documentation=https://github.com/cdeever/eds/tree/main/services/console
@@ -14,7 +14,7 @@ ConditionPathExists=/etc/eds/console.env
 User=eds-console
 Group=eds-console
 # The group that may read the server certificate's key.
-SupplementaryGroups=deevnet-kit
+SupplementaryGroups=backend
 # In this order: a later file's settings win.
 EnvironmentFile=/etc/eds/settings/console.env
 EnvironmentFile=/etc/eds/settings/console-pi.env

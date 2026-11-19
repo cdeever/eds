@@ -99,7 +99,7 @@ IoTaaS behind it. **Not yet proven**: ADR-0033 is `Proposed`.
 
 | | |
 |---|---|
-| From the base | Mosquitto (8883), the log store (8427), the bridge from `eds/log/<device>` into it, Grafana (3000), and `deevnet-kit`, which manages them |
+| From the base | Mosquitto (8883), the log store (8427), the bridge from `eds/log/<device>` into it, Grafana (3000), and `tenant2backend`, which manages them |
 | Added | `palette`, `lightd`, `nowplayd` and the console, each a unit under its own user; `npagent`, its tools and the recognizer, as on the agent Pi |
 | Network | one leg, a cable or Wi-Fi. No routing: `ip_forward` is 0 and the firewall's forward chain drops everything |
 | Firewall | nftables, loaded before any interface comes up. In: SSH, 8883, 443 and 80, 3000, 8427, Bonjour and the pairing port. `palette` and `lightd`'s own ports are not opened |
@@ -112,8 +112,8 @@ IoTaaS behind it. **Not yet proven**: ADR-0033 is `Proposed`.
 where an agent card is handed its broker account, a backend card makes its
 own:
 
-1. `deevnet-kit` runs once on first boot. It reads the tenant, the card's
-   name and its Wi-Fi from `deevnet-kit.txt` on the boot partition, and makes
+1. `tenant2backend` runs once on first boot. It reads the tenant, the card's
+   name and its Wi-Fi from `backend.txt` on the boot partition, and makes
    the card's CA, its certificate and its log tokens.
 2. `eds-backend-setup` runs after it, and on every boot. It adds the eight
    broker accounts in `/etc/eds/accounts.conf`, each with a password it makes
@@ -128,7 +128,7 @@ The services' settings that are not secret are not copied: the build takes
 `deploy/lightd.env`, `deploy/nowplayd.env` and `deploy/console.env` as they
 are.
 
-The build fails if the base's `deevnet-kit` is too old for the card, if it
+The build fails if the base's `tenant2backend` is too old for the card, if it
 finds a secret in the image, or if the site's automation user is on it.
 
 ### On the Pi
@@ -139,7 +139,7 @@ eds-backend-setup    (root) make any account or settings file that is missing
 eds-backend-setup devices   (root) what the devices are provisioned with, as JSON
 eds-agent-pair       pair with iTunes, once; prints a code to type in
 eds-agent-spotify    install a Spotify authorization or the devices that count
-deevnet-kit status   the broker, the log store and Grafana; `selftest` proves them end to end
+tenant2backend status   the broker, the log store and Grafana; `selftest` proves them end to end
 ```
 
 [`deploy/backend`](../deploy/backend) is how a card is written and the Pi

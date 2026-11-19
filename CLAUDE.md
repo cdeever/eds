@@ -133,7 +133,7 @@ agent added; `deploy/backend` builds it, writes a card and looks after the Pi,
 which is reached directly as its owner's user and not through builder. It is
 beside the tenant: nothing there, on the workload or on the relay Pi changes
 for it, and the devices stay with the tenant until they are provisioned
-again. A backend card makes its own secrets on first boot (`deevnet-kit`,
+again. A backend card makes its own secrets on first boot (`tenant2backend`,
 then `eds-backend-setup`); none comes from the tenant. **Its broker accounts
 are `images/backend/files/accounts.conf`, a copy of the tenant's in
 `main.tf`**: change the Terraform first, then the list, and

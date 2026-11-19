@@ -1,6 +1,6 @@
 # Makes this card's broker accounts and its services' settings.
 #
-# The image carries no secret. deevnet-kit makes the card's CA and tokens on
+# The image carries no secret. tenant2backend makes the card's CA and tokens on
 # its first boot; this runs after it and adds what is EdS's: the eight broker
 # accounts, each with a password made here, and each service's settings. It
 # also takes what the owner left for it on the boot partition.
@@ -10,10 +10,12 @@
 # taken.
 [Unit]
 Description=EdS backend: accounts and settings
-After=local-fs.target deevnet-kit-firstboot.service mosquitto.service
+After=local-fs.target backend-firstboot.service deevnet-kit-firstboot.service mosquitto.service
 Wants=mosquitto.service
 Before=eds-lightd.service eds-nowplayd.service eds-console.service npagent.service
-ConditionPathExists=/etc/deevnet-kit/kit.json
+# Either name of the base's tool (Deevnet ADR-0045).
+ConditionPathExists=|/etc/backend/kit.json
+ConditionPathExists=|/etc/deevnet-kit/kit.json
 
 [Service]
 Type=oneshot

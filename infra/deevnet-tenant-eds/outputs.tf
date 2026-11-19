@@ -146,7 +146,7 @@ output "console_certificate" {
 }
 
 output "backend_certificate" {
-  description = "The home backend Pi's certificate, for deevnet-kit cert install, and when it expires."
+  description = "The home backend Pi's certificate, for tenant2backend cert install, and when it expires."
   value = {
     fullchain   = deevnet_certificate.backend.fullchain_pem
     names       = deevnet_certificate.backend.dns_names
@@ -244,7 +244,7 @@ output "login" {
   value       = "ssh ${deevnet_workload.services.login_user}@${deevnet_workload.services.fqdn}"
 }
 
-# The services' whole environment, in the shape deevnet-kit and the Deploy
+# The services' whole environment, in the shape tenant2backend and the Deploy
 # Your App page expect: `terraform output -raw kit_env > kit.env`. The app's
 # login is lightd's broker account.
 output "kit_env" {
