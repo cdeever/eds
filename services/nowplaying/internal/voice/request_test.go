@@ -44,6 +44,13 @@ func TestRequestsAreRead(t *testing.T) {
 		"Jarvis, played Genesis' first album.":      {Artist: "Genesis", Nth: 1},
 		"And Jarvis, played Genesis's first album.": {Artist: "Genesis", Nth: 1},
 		"Hey Jarvis, play Rocks by Aerosmith.":      {Artist: "Aerosmith", Album: "Rocks"},
+		// "Hey DJ Ed" (ADR-0054), however "DJ" is written.
+		"Hey DJ Ed, play Rocks by Aerosmith.":       {Artist: "Aerosmith", Album: "Rocks"},
+		"Hey, DJ Ed, play Van Halen's first album.": {Artist: "Van Halen", Nth: 1},
+		"Hey D.J. Ed, play Rush's first album.":     {Artist: "Rush", Nth: 1},
+		"Hey deejay Ed. Play Genesis' first album.": {Artist: "Genesis", Nth: 1},
+		"DJ Ed, could you play Rocks by Aerosmith?": {Artist: "Aerosmith", Album: "Rocks"},
+		"Ed, play Kind of Blue by Miles Davis.":     {Artist: "Miles Davis", Album: "Kind of Blue"},
 		"Play the Beatles' latest album.":           {Artist: "the Beatles", Nth: -1},
 		// "Playing", and the comma scribe writes for a possessive after a
 		// name ending in s, as they were heard on 2026-10-24.

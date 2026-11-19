@@ -15,7 +15,7 @@
 
 static const char *TAG = "wake";
 
-extern const uint8_t model_start[] asm("_binary_hey_jarvis_tflite_start");
+extern const uint8_t model_start[] asm("_binary_hey_dj_ed_tflite_start");
 
 // The frontend, as ESPHome sets it over TensorFlow's defaults
 // (esphome/components/micro_wake_word/preprocessor_settings.h): the model
@@ -105,18 +105,24 @@ extern "C" esp_err_t ea_wake_init(void)
     tflite::MicroAllocator *variable_allocator = tflite::MicroAllocator::Create(variables, VARIABLE_ARENA);
     tflite::MicroResourceVariables *resources = tflite::MicroResourceVariables::Create(variable_allocator, 20);
 
-    interpreter = new tflite::MicroInterpreter(model, ops, arena, arena_size, resources);
-    if (interpreter->AllocateTensors() != kTfLiteOk) {
+    // Kept in `interpreter` only once it has passed: ea_wake_feed answers
+    // "no" while that is null, and the button and the console still ask.
+    tflite::MicroInterpreter *made = new tflite::MicroInterpreter(model, ops, arena, arena_size, resources);
+    if (made->AllocateTensors() != kTfLiteOk) {
         ESP_LOGE(TAG, "the model's tensors do not fit in %u bytes", (unsigned)arena_size);
+        delete made;
         return ESP_ERR_NO_MEM;
     }
-    input = interpreter->input(0);
-    TfLiteTensor *output = interpreter->output(0);
-    if (input->dims->size != 3 || input->dims->data[0] != 1 || input->dims->data[2] != FEATURES ||
-        input->type != kTfLiteInt8 || output->type != kTfLiteUInt8) {
+    TfLiteTensor *in = made->input(0);
+    TfLiteTensor *output = made->output(0);
+    if (in->dims->size != 3 || in->dims->data[0] != 1 || in->dims->data[2] != FEATURES ||
+        in->type != kTfLiteInt8 || output->type != kTfLiteUInt8) {
         ESP_LOGE(TAG, "the model does not take what microWakeWord's do");
+        delete made;
         return ESP_ERR_INVALID_ARG;
     }
+    interpreter = made;
+    input = in;
     stride = input->dims->data[1];
     ESP_LOGI(TAG, "\"%s\": %d features at a time, %u of %u arena bytes used; wakes above %d/255 over %d",
              CONFIG_EA_WAKE_WORD, stride, (unsigned)interpreter->arena_used_bytes(), (unsigned)arena_size,

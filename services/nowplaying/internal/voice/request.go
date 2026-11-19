@@ -209,8 +209,13 @@ func fromPlay(text string) (string, bool) {
 	return m[2], true
 }
 
-// politeness is what a person says around a request that is not it.
-var politeness = regexp.MustCompile(`(?i)^(?:(?:hey|okay|ok|hi)\s+(?:ed|jarvis)[,.!]?\s+|(?:ed|jarvis)[,.!]\s+)?(?:(?:can|could|would|will)\s+you\s+(?:please\s+)?|please\s+)?`)
+// politeness is what a person says around a request that is not it: the
+// wake word, "Hey DJ Ed" (ADR-0054), however "DJ" is written, or "Hey
+// Jarvis", which the ears woke to before; and "please".
+var politeness = regexp.MustCompile(`(?i)^(?:(?:hey|okay|ok|hi)[,]?\s+(?:` + dj + `[,.]?\s+)?(?:ed|jarvis)[,.!]?\s+|(?:` + dj + `[,.]?\s+)?(?:ed|jarvis)[,.!]\s+)?(?:(?:can|could|would|will)\s+you\s+(?:please\s+)?|please\s+)?`)
+
+// dj is "DJ" as speech-to-text may write it.
+const dj = `(?:dj|d\.\s?j\.|dee\s?jay|deejay)`
 
 // clean is the words as one line: no surrounding punctuation, no wake word
 // or "please", and "play" however it was capitalized.

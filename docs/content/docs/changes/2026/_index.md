@@ -56,3 +56,4 @@ bookCollapseSection: true
 | CHG-0046 | 2026-10-30 | [The Backend Pi Is on Its Cable Alone](0046-the-backend-pi-is-on-its-cable-alone/) | Configuration | {{< status-badge "complete" "Complete" >}} |
 | CHG-0047 | 2026-11-01 | [The Tenant Switches Spotify, and Names Its Console Without a Site](0047-the-tenant-switches-spotify-and-names-its-console-without-a-site/) | Deployment | {{< status-badge "complete" "Complete" >}} |
 | CHG-0048 | 2026-11-01 | [The Backend Image Is Rebuilt](0048-the-backend-image-is-rebuilt/) | Deployment | {{< status-badge "complete" "Complete" >}} |
+| CHG-0049 | 2026-11-11 | [The Ears Wake to "Hey DJ Ed"](0049-the-ears-wake-to-hey-dj-ed/) | Upgrade | {{< status-badge "complete" "Complete" >}} |

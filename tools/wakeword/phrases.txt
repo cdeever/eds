@@ -1,0 +1,9 @@
+# "Hey DJ Ed" as the generator is asked to say it (ADR-0054).
+# One spelling a line. Piper reads "DJ" as letters only sometimes, so it is
+# spelled the ways a person says it; `make listen` plays one of each.
+# Heard by the owner on 2026-11-11: "hey deejay ed" and "hey dee jay, ed"
+# decent, "hey dee jay ed" just OK; "hey deejayed" did not sound right and
+# was dropped.
+hey deejay ed
+hey dee jay, ed
+hey dee jay ed
